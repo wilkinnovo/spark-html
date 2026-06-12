@@ -1,6 +1,6 @@
 {
   "name": "spark-html",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "description": "Svelte-style single-file HTML components with zero build step",
   "type": "module",
   "main": "./src/index.js",
@@ -11,6 +11,10 @@
   "files": [
     "src"
   ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/wilkinnovo/spark-monorepo.git"
+  },
   "keywords": [
     "reactive",
     "html",
