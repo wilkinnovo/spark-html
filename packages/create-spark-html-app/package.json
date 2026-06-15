@@ -1,6 +1,6 @@
 {
   "name": "create-spark-html-app",
-  "version": "0.1.2",
+  "version": "0.3.0",
   "description": "Scaffold a Vite + spark-html app with a live reactive welcome screen.",
   "type": "module",
   "bin": {
