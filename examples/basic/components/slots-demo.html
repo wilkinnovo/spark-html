@@ -1,0 +1,43 @@
+<div class="wrap">
+  <h2>Slots</h2>
+  <p class="hint">
+    <code>card</code> is a reusable wrapper. The content below is projected into
+    its <code>&lt;slot&gt;</code>s but keeps <em>this</em> component's scope —
+    so the interpolation and the button handler work where they're written.
+  </p>
+
+  <div import="components/card">
+    <span slot="title">{user.name}'s inbox</span>
+
+    <p>You have <strong>{user.unread}</strong> unread message{user.unread === 1 ? '' : 's'}.</p>
+    <p class="muted" :hidden="user.unread > 0">Inbox zero. Nice. ✨</p>
+
+    <button slot="actions" class="ghost" onclick="{markRead}" :disabled="user.unread === 0">Mark all read</button>
+    <button slot="actions" class="solid" onclick="{addOne}">Simulate new</button>
+  </div>
+</div>
+
+<script>
+  // Plain object → deeply reactive: mutating user.unread re-renders,
+  // no need to replace the whole object.
+  let user = { name: 'Ada', unread: 3 };
+
+  function markRead() { user.unread = 0; }
+  function addOne() { user.unread = user.unread + 1; }
+</script>
+
+<style>
+  .wrap { display: flex; flex-direction: column; gap: 12px; }
+  h2 { margin-bottom: 2px; }
+  .hint { font-size: 13px; color: #888; }
+  .hint code { background: #f0eeff; color: #5b4ff7; padding: 1px 5px; border-radius: 4px; font-size: 12px; }
+  .muted { color: #aaa; font-size: 14px; }
+  button {
+    padding: 7px 14px; border-radius: 7px; font-size: 13px; cursor: pointer;
+    font-family: inherit; border: 1px solid #ddd;
+  }
+  .ghost { background: #fafafa; }
+  .ghost:hover:not(:disabled) { background: #f0eeff; border-color: #5b4ff7; }
+  .solid { background: #5b4ff7; color: white; border-color: #5b4ff7; }
+  button:disabled { opacity: .4; cursor: not-allowed; }
+</style>

@@ -78,6 +78,7 @@ The plugin serves component fragments raw and full-reloads when they change.
 | Two-way binding     | `<input bind:value="draft">` / `bind:checked`     |
 | Reactive statements | `$: doubled = count * 2` — re-runs on change      |
 | Conditional blocks  | `<template if="show">…</template>`                |
+| Slots               | `<slot>` / `<slot name="title">` — project caller content |
 | Lifecycle           | `onMount(fn)` builtin; return a fn for cleanup    |
 | Escape hatch        | `spark-ignore` attribute — subtree never patched  |
 
@@ -151,7 +152,9 @@ component('hello', `
    touches `innerHTML` (browsers strip script tags injected that way).
 3. The script runs inside a `Proxy` scope; every assignment schedules a
    patch of only that component's DOM. Patches are batched onto a single
-   microtask, so a burst of assignments costs one DOM update.
+   microtask, so a burst of assignments costs one DOM update. Plain
+   objects/arrays read from scope are deeply reactive, so `todos.push(x)`
+   and `row.done = true` re-render without replacing the value.
 4. Styles are auto-scoped via a `[name="component"]` prefix.
 5. Loops reconcile: each item keeps its DOM nodes across updates (matched
    by index, or by `key`), so inputs inside loops keep focus.
@@ -162,6 +165,8 @@ component('hello', `
 
 - One reactive scope per component (top-level `let`/`function`)
 - Block-scoped `let/const` inside functions hoist to component scope
-- Replace arrays to update a list (`todos = [...todos, x]`); in-place index
-  assignment doesn't trip the proxy. Loops reconcile by index — add
+- Plain objects/arrays are deeply reactive; `Map`/`Set`/class instances are
+  not tracked — reassign them to update. Loops reconcile by index — add
   `key="…"` for identity-stable reordering
+- No SSR/hydration (client-rendered) and no built-in router (a companion
+  package); the runtime uses `new Function` so a strict CSP needs `unsafe-eval`

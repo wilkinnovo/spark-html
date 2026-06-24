@@ -19,6 +19,17 @@
  */
 
 
+// ─── Debugging help for consumers ──────────────────────────────────────
+// Expressions are evaluated on every patch, so a broken one would warn on
+// every keystroke. Dedupe by a stable key: each distinct problem is
+// reported ONCE — enough to debug, quiet enough to live with.
+const warned = new Set();
+function warnOnce(key, ...args) {
+  if (warned.has(key)) return;
+  warned.add(key);
+  console.warn(...args);
+}
+
 // ─── Expression evaluation ─────────────────────────────────────────────
 // Compiling `new Function(...)` is the single most expensive thing the
 // runtime does, and the same expressions are evaluated on every patch.
@@ -30,8 +41,11 @@ function compileExpr(code) {
   let fn = exprCache.get(code);
   if (fn === undefined) {
     try {
-      fn = new Function('__scope__', `with(__scope__) { return (${code}) }`);
-    } catch {
+      // The closing brace MUST be on its own line: if `code` ends with a
+      // `//` line comment, putting `}` on the same line would comment it out.
+      fn = new Function('__scope__', `with(__scope__) {\nreturn (${code})\n}`);
+    } catch (e) {
+      warnOnce(`c:${code}`, `[spark] Syntax error in expression {${code}} — ${e.message}`);
       fn = () => '';
     }
     exprCache.set(code, fn);
@@ -44,8 +58,10 @@ function compileStmt(code) {
   let fn = stmtCache.get(code);
   if (fn === undefined) {
     try {
-      fn = new Function('__scope__', 'event', '__val__', `with(__scope__) { ${code} }`);
-    } catch {
+      // Newlines around `code` so a trailing `//` comment can't eat the `}`.
+      fn = new Function('__scope__', 'event', '__val__', `with(__scope__) {\n${code}\n}`);
+    } catch (e) {
+      warnOnce(`c:${code}`, `[spark] Syntax error in "${code}" — ${e.message}`);
       fn = () => {};
     }
     stmtCache.set(code, fn);
@@ -56,7 +72,10 @@ function compileStmt(code) {
 function evaluate(code, scope) {
   try {
     return compileExpr(code)(scope);
-  } catch {
+  } catch (e) {
+    // A thrown evaluation (e.g. reading a property of undefined) renders as
+    // empty — tell the consumer which expression and why, once.
+    warnOnce(`e:${code}`, `[spark] Error evaluating {${code}} — ${e.message}. (Rendered as empty. Use {a?.b} for values that may be missing.)`);
     return '';
   }
 }
@@ -136,6 +155,66 @@ function reveal(el) {
   }
 }
 
+// Nearest enclosing component element (the one whose scope governs `node`).
+function closestComponent(node) {
+  let n = node.parentNode;
+  while (n) {
+    if (n.hasAttribute && n.hasAttribute('name')) return n;
+    n = n.parentNode;
+  }
+  return null;
+}
+
+// ─── Slots: project the placeholder's children into the component ─────────
+// The Spark way: reuse the real <slot> element. Whatever a caller writes
+// between <div import="…"> … </div> is projected into the component's
+// <slot> (default) and <slot name="x"> positions, with the slot's own
+// children as fallback. Caller content keeps the PARENT's scope, so it
+// interpolates and reacts where the author wrote it — not inside the child.
+function projectSlots(host, slotted, parentHost) {
+  const slots = host.querySelectorAll ? [...host.querySelectorAll('slot')] : [];
+  if (!slots.length) return; // component declares no slots → content dropped
+
+  const byName = new Map();
+  const def = [];
+  for (const n of slotted) {
+    const name = n.getAttribute && n.getAttribute('slot');
+    if (name) {
+      if (!byName.has(name)) byName.set(name, []);
+      byName.get(name).push(n);
+    } else {
+      def.push(n);
+    }
+  }
+
+  const projected = [];
+  for (const slot of slots) {
+    const name = slot.getAttribute('name');
+    const content = name ? byName.get(name) || [] : def;
+    let cursor = slot;
+    if (content.length) {
+      for (const c of content) {
+        if (c.removeAttribute) c.removeAttribute('slot');
+        // Tag with the parent so walkNode patches it in the parent's scope.
+        if (parentHost) c.__sparkSlotHost = parentHost;
+        cursor.after(c);
+        cursor = c;
+        projected.push(c);
+      }
+    } else {
+      // Fallback content is the component's own — leave it in child scope.
+      for (const c of [...slot.childNodes]) {
+        cursor.after(c);
+        cursor = c;
+      }
+    }
+    slot.remove();
+  }
+  if (parentHost && projected.length) {
+    (parentHost.__sparkSlotProjected ||= []).push(...projected);
+  }
+}
+
 // ─── Import resolution ─────────────────────────────────────────────────
 async function resolveImports(root) {
   const nodes = [...root.querySelectorAll('[import]')];
@@ -150,6 +229,11 @@ async function resolveImports(root) {
 
         const compName = path.replace(/.*\//, '').replace('.html', '');
         const { markup, script, style } = parseSFC(source);
+
+        // Capture the placeholder's children as slot content (before they're
+        // discarded), and the component that owns them, for scope.
+        const slotted = [...node.childNodes];
+        const parentHost = closestComponent(node);
 
         // Build the component host. The import placeholder itself becomes
         // the host, so classes/ids on it are preserved.
@@ -176,10 +260,14 @@ async function resolveImports(root) {
         host.__sparkScriptSrc = script;
         host.__sparkStyleSrc = style;
 
-        await resolveImports(host); // nested imports
+        projectSlots(host, slotted, parentHost); // <slot> content projection
+        await resolveImports(host); // nested imports (incl. inside slots)
         node.replaceWith(host);
       } catch (e) {
-        console.warn(`[spark] Could not import "${path}":`, e.message);
+        const hint = /HTTP 404/.test(e.message)
+          ? ` Check the path is correct and the file is served (relative to the page).`
+          : '';
+        console.warn(`[spark] Could not import "${path}" — ${e.message}.${hint}`);
       }
     }),
   );
@@ -254,6 +342,59 @@ function subscribeStore(name, componentEl, scopeRef) {
   return entry.proxy;
 }
 
+// ─── Deep reactivity ───────────────────────────────────────────────────
+// Plain objects and arrays read from a component's scope come back wrapped
+// in a thin proxy whose mutations call the component's onMutate(). This is
+// what makes `todos.push(x)`, `todos.sort()`, and `row.done = true` reactive
+// without forcing the user to replace the whole value. The Spark way: no
+// compiler, no dependency graph — just the same schedule() the set trap
+// already uses, reached one level deeper.
+//
+// Only PLAIN objects/arrays are wrapped. Dates, Maps, Sets, class instances,
+// and DOM nodes pass straight through, so their internal slots/methods keep
+// working (a proxied Date would throw on .getTime()).
+const REACTIVE_RAW = Symbol('spark.raw');
+
+function isPlainContainer(v) {
+  if (Array.isArray(v)) return true;
+  if (v === null || typeof v !== 'object') return false;
+  const proto = Object.getPrototypeOf(v);
+  return proto === Object.prototype || proto === null;
+}
+
+function reactify(value, onMutate, cache) {
+  // Unwrap any reactive proxy back to its raw target first, so every value
+  // maps to one canonical proxy (stable identity, no proxy-of-proxy).
+  if (value && typeof value === 'object' && value[REACTIVE_RAW]) {
+    value = value[REACTIVE_RAW];
+  }
+  if (!isPlainContainer(value)) return value;
+  const cached = cache.get(value);
+  if (cached) return cached;
+
+  const proxy = new Proxy(value, {
+    get(t, k) {
+      if (k === REACTIVE_RAW) return t;
+      return reactify(Reflect.get(t, k), onMutate, cache);
+    },
+    set(t, k, v) {
+      if (v && typeof v === 'object' && v[REACTIVE_RAW]) v = v[REACTIVE_RAW];
+      const prev = t[k];
+      const ok = Reflect.set(t, k, v);
+      if (ok && prev !== t[k]) onMutate();
+      return ok;
+    },
+    deleteProperty(t, k) {
+      const had = k in t;
+      const ok = Reflect.deleteProperty(t, k);
+      if (ok && had) onMutate();
+      return ok;
+    },
+  });
+  cache.set(value, proxy);
+  return proxy;
+}
+
 // ─── Reactive scope ────────────────────────────────────────────────────
 function makeScope(rawCode, componentEl, props = {}) {
   // Normalize line endings + strip comments so the declaration regexes
@@ -324,6 +465,13 @@ function makeScope(rawCode, componentEl, props = {}) {
     onMount: (fn) => mountCallbacks.push(fn),
   };
 
+  // Per-component cache so each raw object/array maps to one stable
+  // reactive proxy (identity-preserving, see reactify).
+  const reactiveCache = new WeakMap();
+  const onMutate = () => {
+    if (ready && !inReactive) schedule();
+  };
+
   const scope = new Proxy(raw, {
     has(target, key) {
       if (typeof key !== 'string') return false;
@@ -335,12 +483,17 @@ function makeScope(rawCode, componentEl, props = {}) {
     get(target, key) {
       if (key === Symbol.unscopables) return undefined;
       if (Object.prototype.hasOwnProperty.call(builtins, key)) return builtins[key];
-      return target[key];
+      // Wrap plain objects/arrays so in-place mutation re-renders.
+      return reactify(target[key], onMutate, reactiveCache);
     },
     set(target, key, value) {
       if (typeof key === 'symbol') {
         target[key] = value;
         return true;
+      }
+      // Store the raw value, not a reactive wrapper, for stable identity.
+      if (value && typeof value === 'object' && value[REACTIVE_RAW]) {
+        value = value[REACTIVE_RAW];
       }
       target[key] = value;
       // Don't patch synchronously per assignment: a single handler often
@@ -370,12 +523,21 @@ function makeScope(rawCode, componentEl, props = {}) {
         try {
           compileStmt(stmt)(scope);
         } catch (e) {
-          console.warn(`[spark] Error in "$: ${stmt}":`, e.message);
+          // Runs on every state change — warn once per statement.
+          warnOnce(`react:${stmt}`, `[spark] Error in reactive "$: ${stmt}" — ${e.message}`);
         }
       }
     } finally {
       inReactive = false;
     }
+  }
+
+  // Re-render any content this component lent to a child's <slot>. It lives
+  // inside the child but belongs to us, so our patch must refresh it too.
+  function patchSlots() {
+    const lent = componentEl.__sparkSlotProjected;
+    if (!lent) return;
+    for (const n of lent) if (n.isConnected) walkNode(n, scope, false);
   }
 
   // Microtask-batched flush: recompute reactive statements once, then patch
@@ -386,6 +548,7 @@ function makeScope(rawCode, componentEl, props = {}) {
     if (!componentEl.isConnected) return;
     runReactive();
     patch(componentEl, scope);
+    patchSlots();
   }
   function schedule() {
     if (scheduled) return;
@@ -394,7 +557,8 @@ function makeScope(rawCode, componentEl, props = {}) {
   }
 
   try {
-    new Function('__scope__', `with(__scope__) { ${rewritten} }`)(scope);
+    // Newline before `}` so a script ending in a `//` comment still closes.
+    new Function('__scope__', `with(__scope__) {\n${rewritten}\n}`)(scope);
     ready = true;
     // Props override `export let` defaults.
     for (const [key, value] of Object.entries(props)) {
@@ -403,11 +567,12 @@ function makeScope(rawCode, componentEl, props = {}) {
     }
     runReactive();
     patch(componentEl, scope);
+    patchSlots();
   } catch (e) {
+    // A throw here means the whole <script> failed to run, so none of the
+    // component's state/handlers exist — make that unmistakable.
     console.warn(
-      '[spark] Script error in',
-      componentEl.getAttribute('name'),
-      e,
+      `[spark] <script> in component "${componentEl.getAttribute('name')}" failed to run — ${e.message}. The component's state and handlers are unavailable.`,
     );
   }
   return scope;
@@ -470,6 +635,12 @@ function walkNode(node, scope, isRoot = false) {
     // here with the parent scope would evaluate loop bindings against the
     // wrong scope and blank out interpolations.
     if (child.__sparkManaged) continue;
+    // Slot-projected content belongs to the parent component — patch it
+    // with the parent's scope, not the component it now physically sits in.
+    if (child.__sparkSlotHost && child.__sparkSlotHost.__sparkScope) {
+      walkNode(child, child.__sparkSlotHost.__sparkScope);
+      continue;
+    }
     walkNode(child, scope);
   }
 }
@@ -544,6 +715,10 @@ function patchEach(el, scope) {
     const match = expr.match(/^(\w+)(?:\s*,\s*(\w+))?\s+in\s+(.+)$/);
     if (!match) {
       el.__sparkEachParsed = true;
+      warnOnce(
+        `each:${expr}`,
+        `[spark] Invalid each="${expr}". Expected each="item in items" or each="item, i in items".`,
+      );
       return;
     }
 
@@ -580,7 +755,17 @@ function patchEach(el, scope) {
   if (!el.parentNode) return;
 
   const arr = evaluate(arrayExpr, scope);
-  if (!Array.isArray(arr)) return;
+  if (!Array.isArray(arr)) {
+    // null/undefined is a normal "loading" state; warn only for a real
+    // type mistake (e.g. each over an object or string).
+    if (arr != null) {
+      warnOnce(
+        `eacharr:${arrayExpr}`,
+        `[spark] each="… in ${arrayExpr}" expected an array but got ${typeof arr}. Nothing rendered.`,
+      );
+    }
+    return;
+  }
 
   const makeLoopScope = (item, i) =>
     new Proxy(scope, {
@@ -720,10 +905,13 @@ function patchElement(el, scope) {
       let result;
       try {
         result = compileExpr(value)(scope);
-      } catch {
-        // Evaluation failed (e.g. a walker with the wrong scope reached a
-        // loop clone). Leave the attribute untouched instead of blanking
-        // it — event handlers may still need to read it.
+      } catch (e) {
+        // Evaluation failed — leave the attribute untouched (event handlers
+        // may still need to read it) but tell the consumer once.
+        warnOnce(
+          `attr:${name}=${value}`,
+          `[spark] Error in :${realAttr}="${value}" — ${e.message}. (Attribute left unchanged.)`,
+        );
         continue;
       }
       if (typeof result === 'boolean') {

@@ -5,12 +5,14 @@
     <a href="#install">Installation</a>
     <a href="#components">Components</a>
     <a href="#syntax">Template syntax</a>
+    <a href="#slots">Slots</a>
     <a href="#reactive">Reactivity &amp; lifecycle</a>
     <a href="#props">Props</a>
     <a href="#stores">Stores</a>
     <a href="#api">JavaScript API</a>
     <a href="#vite">Vite plugin</a>
     <a href="#how">How it works</a>
+    <a href="#debugging">Debugging</a>
     <a href="#limits">Limitations</a>
   </aside>
 
@@ -62,9 +64,25 @@
       <tr><td>Dynamic class</td><td><code>&lt;li :class="done ? 'item done' : 'item'"&gt;</code></td></tr>
       <tr><td>Two-way binding</td><td><code>&lt;input bind:value="draft"&gt;</code> &nbsp; <code>&lt;input type="checkbox" bind:checked="done"&gt;</code></td></tr>
       <tr><td>Conditional blocks</td><td><code>&lt;template if="show"&gt;…&lt;/template&gt;</code> — nodes enter/leave the DOM</td></tr>
+      <tr><td>Slots</td><td><code>&lt;slot&gt;&lt;/slot&gt;</code> &nbsp; <code>&lt;slot name="title"&gt;&lt;/slot&gt;</code> — project caller content</td></tr>
       <tr><td>Escape hatch</td><td><code>&lt;pre spark-ignore&gt;</code> — subtree is never patched; literal <code>{braces}</code> survive</td></tr>
     </table>
-    <p class="note">Loops live on <code>&lt;template&gt;</code> so they're valid HTML anywhere — including inside <code>&lt;ul&gt;</code> and <code>&lt;table&gt;</code>. To update a list, replace the array: <code>todos = [...todos, item]</code>. Loops <strong>reconcile</strong> rather than rebuild — existing rows keep their DOM nodes (and focus, scroll, and CSS transitions) across updates, so you can safely place a <code>bind:value</code> input inside a loop. Add <code>key="…"</code> when items reorder, to reuse nodes by identity.</p>
+    <p class="note">Loops live on <code>&lt;template&gt;</code> so they're valid HTML anywhere — including inside <code>&lt;ul&gt;</code> and <code>&lt;table&gt;</code>. Loops <strong>reconcile</strong> rather than rebuild — existing rows keep their DOM nodes (and focus, scroll, and CSS transitions) across updates, so you can safely place a <code>bind:value</code> input inside a loop. Add <code>key="…"</code> when items reorder, to reuse nodes by identity.</p>
+
+    <h2 id="slots">Slots</h2>
+    <p>Slots let a component wrap content the <em>caller</em> provides — the key to reusable wrappers like cards, modals, and layouts. A component marks insertion points with the real <code>&lt;slot&gt;</code> element:</p>
+    <pre spark-ignore>&lt;!-- components/card.html --&gt;
+&lt;article class="card"&gt;
+  &lt;header&gt;&lt;slot name="title"&gt;Untitled&lt;/slot&gt;&lt;/header&gt;
+  &lt;div class="body"&gt;&lt;slot&gt;Nothing here yet.&lt;/slot&gt;&lt;/div&gt;
+&lt;/article&gt;</pre>
+    <p>Whatever you write between the import tags is projected in — targeted by <code>slot="name"</code>, with everything else filling the default slot:</p>
+    <pre spark-ignore>&lt;div import="components/card"&gt;
+  &lt;span slot="title"&gt;{heading}&lt;/span&gt;
+  &lt;p&gt;Hello {user.name} — you have {count} messages.&lt;/p&gt;
+  &lt;button onclick="{refresh}"&gt;Refresh&lt;/button&gt;
+&lt;/div&gt;</pre>
+    <p class="note">Projected content keeps the <strong>parent's</strong> scope: its <code>{interpolations}</code>, <code>bind:</code>, and <code>onclick</code> handlers resolve where you wrote them, and stay reactive to the parent. A <code>&lt;slot&gt;</code> with no provided content renders its own children as fallback.</p>
 
     <h2 id="reactive">Reactive statements &amp; lifecycle</h2>
     <p>Derive values with <code>$:</code> — they re-run automatically whenever component state changes:</p>
@@ -145,9 +163,18 @@ export default defineConfig({
 
     <h2 id="how">How it works</h2>
     <p><strong>1 — Text-level parsing.</strong> When a component is fetched, <code>&lt;script&gt;</code> and <code>&lt;style&gt;</code> are extracted from the raw text <em>before</em> the markup ever touches <code>innerHTML</code>. Browsers neuter script tags injected via <code>innerHTML</code>, so DOM-based extraction is unreliable by design — Spark sidesteps the whole class of bugs.</p>
-    <p><strong>2 — Proxy scopes.</strong> The script's top-level declarations are collected, the declarations are rewritten to bare assignments, and the code runs inside <code>with(proxy)</code>. Every assignment hits the proxy's set trap, which re-patches that component's subtree. Window built-ins like <code>name</code> or <code>status</code> can't shadow your state — the scope only claims identifiers your script declared.</p>
+    <p><strong>2 — Proxy scopes.</strong> The script's top-level declarations are collected, the declarations are rewritten to bare assignments, and the code runs inside <code>with(proxy)</code>. Every assignment hits the proxy's set trap, which re-patches that component's subtree. Objects and arrays read from scope come back wrapped in a thin reactive proxy, so in-place mutation (<code>todos.push(x)</code>, <code>row.done = true</code>) re-renders too — only plain objects/arrays are wrapped, so <code>Date</code>s and class instances are left alone. Window built-ins like <code>name</code> or <code>status</code> can't shadow your state — the scope only claims identifiers your script declared.</p>
     <p><strong>3 — In-place patching.</strong> Text nodes and attributes cache their original template on first visit, then diff against the interpolated result on every patch. Loops keep one block of nodes per item and reconcile them — reusing nodes in place (by index, or by <code>key</code> when given), creating only what's new and removing only what's gone. No virtual DOM and no full-tree diff — just direct, scoped writes against the real nodes, batched onto a single microtask flush.</p>
     <p><strong>4 — No flash on load.</strong> A cloak style hides Spark-managed elements until each component is booted, styled, and patched — so the raw <code>{braces}</code> and unstyled markup never flash before the runtime catches up.</p>
+
+    <h2 id="debugging">Debugging</h2>
+    <p>When something doesn't render, check the console — Spark warns (prefixed <code>[spark]</code>) instead of failing silently:</p>
+    <ul>
+      <li>A throwing <code>{expression}</code> renders empty and warns with the exact expression (use <code>{a?.b}</code> for values that may be missing).</li>
+      <li>A syntax error in an expression or <code>&lt;script&gt;</code> names the offending code; a failed <code>&lt;script&gt;</code> tells you the component's state and handlers are unavailable.</li>
+      <li>A malformed <code>each</code>, an <code>each</code> over a non-array, or a missing <code>import</code> each warn with the likely fix.</li>
+    </ul>
+    <p class="note">Warnings are <strong>deduplicated</strong> — each distinct problem is reported once, so a broken binding won't flood the console on every keystroke.</p>
 
     <h2 id="limits">Limitations</h2>
     <p>Spark trades completeness for simplicity. Know the edges:</p>
@@ -155,7 +182,7 @@ export default defineConfig({
       <tr><th>Limit</th><th>Detail</th></tr>
       <tr><td>One scope per component</td><td>All top-level declarations share the component scope; there is no module system inside component scripts.</td></tr>
       <tr><td>Block scoping</td><td><code>let</code>/<code>const</code> with a simple identifier inside functions hoist to component scope. Destructuring declarations are untouched and stay local.</td></tr>
-      <tr><td>Array updates</td><td>Replace arrays (<code>todos = [...todos, x]</code>) rather than mutating in place — index assignments don't trigger the proxy.</td></tr>
+      <tr><td>Reactivity depth</td><td>Plain objects/arrays are deeply reactive (mutation re-renders). <code>Map</code>/<code>Set</code>/class instances are not tracked — reassign them to update.</td></tr>
       <tr><td>Loop reconciliation</td><td>Reuse is positional by default; reordering a list without a <code>key</code> keeps nodes in place and rewrites their contents. Add <code>key="…"</code> for identity-stable moves.</td></tr>
       <tr><td>Coarse store updates</td><td>Store writes re-patch all subscribers. Patching is cheap, but there's no per-key dependency tracking.</td></tr>
     </table>

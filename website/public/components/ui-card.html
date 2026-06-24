@@ -1,0 +1,35 @@
+<article class="uic">
+  <header class="uic-head">
+    <slot name="title">Untitled</slot>
+  </header>
+  <div class="uic-body">
+    <slot>Nothing here yet.</slot>
+  </div>
+  <footer class="uic-foot">
+    <slot name="actions"></slot>
+  </footer>
+</article>
+
+<style>
+  .uic {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+  }
+  .uic-head {
+    padding: 13px 18px;
+    border-bottom: 1px solid var(--border);
+    font-weight: 600;
+    font-size: 15px;
+    background: var(--surface-2);
+  }
+  .uic-body { padding: 18px; font-size: 14px; color: #c9c7d8; }
+  .uic-foot:not(:empty) {
+    padding: 13px 18px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+  }
+</style>

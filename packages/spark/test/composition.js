@@ -1,0 +1,120 @@
+/**
+ * Tests for slots (default + named + fallback, parent-scoped & reactive)
+ * and deep reactivity (in-place array/object mutation).
+ */
+import './dom-shim.js';
+import { body, parseHTML } from './dom-shim.js';
+import { strict as assert } from 'node:assert';
+
+const { mount, component } = await import('../src/index.js');
+
+let pass = 0, fail = 0;
+async function test(name, fn) {
+  try { await fn(); pass++; console.log(`  ✅ ${name}`); }
+  catch (e) { fail++; console.log(`  ❌ ${name}\n     ${e.message}`); }
+}
+const tick = () => new Promise((r) => setTimeout(r, 5));
+function fire(el, type) {
+  const e = { type, target: el };
+  let n = el;
+  while (n) { (n._listeners?.[type] || []).forEach((fn) => fn(e)); n = n.parentNode; }
+}
+
+// ── a reusable wrapper component with default + named slots + fallback ──
+component('card', `
+<div class="card">
+  <header class="hd"><slot name="title">Untitled</slot></header>
+  <div class="body"><slot>nothing here</slot></div>
+</div>
+`);
+
+// ── a page that fills the card's slots with parent-scoped content ──
+component('cardpage', `
+<div import="card">
+  <span slot="title">{heading}</span>
+  <p class="content">Count is {count}</p>
+  <button class="inc" onclick="{inc}">+</button>
+</div>
+<div import="card"></div>
+<script>
+  let heading = 'Hello';
+  let count = 0;
+  function inc() { count++; }
+</script>
+`);
+
+// ── deep reactivity ──
+component('deeptest', `
+<p class="len">{items.length}</p>
+<p class="first">{items[0].n}</p>
+<button class="push" onclick="{add}">add</button>
+<button class="bump" onclick="{bump}">bump</button>
+<script>
+  let items = [{ n: 1 }];
+  function add() { items.push({ n: items.length + 1 }); }
+  function bump() { items[0].n = 99; }
+</script>
+`);
+
+// ── regression: a script ending in a // line comment must still parse ──
+// (the with(){} wrapper's closing brace must not be swallowed by the comment)
+component('trailingcomment', `
+<p class="tc">{msg}</p>
+<script>
+  let msg = 'parsed';
+  function noop() { msg = 'changed'; } // trailing line comment with no newline
+</script>`);
+
+parseHTML('<div import="cardpage"></div><div import="deeptest"></div><div import="trailingcomment"></div>', body);
+await mount();
+await tick();
+
+console.log('\nslots');
+await test('default slot content renders (in parent scope)', () => {
+  const content = body.querySelector('[name="cardpage"] .content');
+  assert.ok(content, 'projected content should exist inside the card');
+  assert.equal(content.childNodes[0].textContent, 'Count is 0');
+});
+await test('named slot content renders', () => {
+  const hd = body.querySelectorAll('[name="cardpage"] .hd')[0];
+  assert.equal(hd.textContent.trim(), 'Hello');
+});
+await test('fallback content shows when a slot is not filled', () => {
+  // second card has no provided content → fallbacks
+  const cards = body.querySelectorAll('[name="cardpage"] [name="card"]');
+  assert.equal(cards.length, 2);
+  const empty = cards[1];
+  assert.equal(empty.querySelector('.body').textContent.trim(), 'nothing here');
+  assert.equal(empty.querySelector('.hd').textContent.trim(), 'Untitled');
+});
+await test('slot handler runs in parent scope and re-renders slot content', async () => {
+  fire(body.querySelector('[name="cardpage"] .inc'), 'click');
+  await tick();
+  const content = body.querySelector('[name="cardpage"] .content');
+  assert.equal(content.childNodes[0].textContent, 'Count is 1');
+});
+
+console.log('\ndeep reactivity');
+await test('initial values', () => {
+  assert.equal(body.querySelector('[name="deeptest"] .len').textContent, '1');
+  assert.equal(body.querySelector('[name="deeptest"] .first').textContent, '1');
+});
+await test('array.push() re-renders without replacing the array', async () => {
+  fire(body.querySelector('[name="deeptest"] .push'), 'click');
+  await tick();
+  assert.equal(body.querySelector('[name="deeptest"] .len').textContent, '2');
+});
+await test('nested object property mutation re-renders', async () => {
+  fire(body.querySelector('[name="deeptest"] .bump'), 'click');
+  await tick();
+  assert.equal(body.querySelector('[name="deeptest"] .first').textContent, '99');
+});
+
+console.log('\nrobustness');
+await test('script ending in a // comment still parses and renders', () => {
+  const el = body.querySelector('[name="trailingcomment"] .tc');
+  assert.equal(el.textContent, 'parsed');
+});
+
+console.log(`\n${pass} passed, ${fail} failed`);
+process.exit(fail ? 1 : 0);
