@@ -216,61 +216,111 @@ function projectSlots(host, slotted, parentHost) {
 }
 
 // ─── Import resolution ─────────────────────────────────────────────────
+// Resolve ONE [import] placeholder into a booted-ready component host and
+// swap it into the DOM. Returns the host (or null on failure).
+//
+// `scope` is optional: when an import lives inside an each/if block, the
+// placeholder's path and prop attributes may interpolate loop state —
+// import="/users/{u.id}" or name="{u.name}" — so we evaluate them against
+// the block's scope before fetching and building props.
+async function resolveImportNode(node, scope = null) {
+  let path = node.getAttribute('import');
+  if (scope && path.includes('{')) path = interpolate(path, scope);
+  if (!path.endsWith('.html')) path += '.html';
+  try {
+    const res = await _origFetchComponent(path);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const source = await res.text();
+
+    const compName = path.replace(/.*\//, '').replace('.html', '');
+    const { markup, script, style } = parseSFC(source);
+
+    // Capture the placeholder's children as slot content (before they're
+    // discarded), and the component that owns them, for scope.
+    const slotted = [...node.childNodes];
+    const parentHost = closestComponent(node);
+
+    // Build the component host. The import placeholder itself becomes
+    // the host, so classes/ids on it are preserved.
+    const host = document.createElement('div');
+    host.setAttribute('name', compName);
+    // Cloak until booted+patched so the raw markup (with {braces}) and
+    // not-yet-injected styles never flash. reveal() clears this.
+    host.setAttribute('data-spark-cloak', '');
+    // Placeholder attributes become PROPS (except import/class/id,
+    // which keep their normal HTML meaning and are carried over).
+    const props = {};
+    for (const attr of node.attributes) {
+      if (attr.name === 'import') continue;
+      const val =
+        scope && attr.value.includes('{')
+          ? interpolate(attr.value, scope)
+          : attr.value;
+      if (attr.name === 'class' || attr.name === 'id') {
+        host.setAttribute(attr.name, val);
+        continue;
+      }
+      props[attr.name] = coerce(val);
+    }
+    host.__sparkProps = props;
+    host.innerHTML = markup; // markup contains no <script>/<style> now
+
+    // stash extracted source on the element — bootComponent reads these
+    host.__sparkScriptSrc = script;
+    host.__sparkStyleSrc = style;
+
+    projectSlots(host, slotted, parentHost); // <slot> content projection
+    await resolveImports(host); // nested imports (incl. inside slots)
+    node.replaceWith(host);
+    return host;
+  } catch (e) {
+    const hint = /HTTP 404/.test(e.message)
+      ? ` Check the path is correct and the file is served (relative to the page).`
+      : '';
+    console.warn(`[spark] Could not import "${path}" — ${e.message}.${hint}`);
+    return null;
+  }
+}
+
 async function resolveImports(root) {
   const nodes = [...root.querySelectorAll('[import]')];
-  await Promise.all(
-    nodes.map(async (node) => {
-      let path = node.getAttribute('import');
-      if (!path.endsWith('.html')) path += '.html';
-      try {
-        const res = await _origFetchComponent(path);
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const source = await res.text();
+  await Promise.all(nodes.map((node) => resolveImportNode(node)));
+}
 
-        const compName = path.replace(/.*\//, '').replace('.html', '');
-        const { markup, script, style } = parseSFC(source);
+// Hydrate imports inside a freshly-rendered each/if block. patch() is
+// synchronous, but imports are async and `querySelectorAll('[import]')`
+// never descends into <template> content — so placeholders cloned out of a
+// loop/conditional are invisible to mount()'s one-shot resolveImports and
+// would otherwise sit cloaked-and-empty forever (the silent failure).
+//
+// `nodes` is the block's node list; we mutate it IN PLACE, replacing each
+// self-import placeholder with its booted host so the each-loop reconciler
+// tracks the host (not the discarded placeholder) on later patches.
+function hydrateBlockImports(nodes, scope) {
+  for (let idx = 0; idx < nodes.length; idx++) {
+    const node = nodes[idx];
+    if (node.nodeType !== Node.ELEMENT_NODE) continue;
 
-        // Capture the placeholder's children as slot content (before they're
-        // discarded), and the component that owns them, for scope.
-        const slotted = [...node.childNodes];
-        const parentHost = closestComponent(node);
+    // The cloned node IS itself an import placeholder.
+    if (node.hasAttribute('import')) {
+      resolveImportNode(node, scope).then((host) => {
+        if (!host) return;
+        host.__sparkManaged = node.__sparkManaged; // stays owned by the block
+        nodes[idx] = host;
+        bootComponent(host);
+        host.querySelectorAll('[name]').forEach(bootComponent);
+      });
+      continue;
+    }
 
-        // Build the component host. The import placeholder itself becomes
-        // the host, so classes/ids on it are preserved.
-        const host = document.createElement('div');
-        host.setAttribute('name', compName);
-        // Cloak until booted+patched so the raw markup (with {braces}) and
-        // not-yet-injected styles never flash. reveal() clears this.
-        host.setAttribute('data-spark-cloak', '');
-        // Placeholder attributes become PROPS (except import/class/id,
-        // which keep their normal HTML meaning and are carried over).
-        const props = {};
-        for (const attr of node.attributes) {
-          if (attr.name === 'import') continue;
-          if (attr.name === 'class' || attr.name === 'id') {
-            host.setAttribute(attr.name, attr.value);
-            continue;
-          }
-          props[attr.name] = coerce(attr.value);
-        }
-        host.__sparkProps = props;
-        host.innerHTML = markup; // markup contains no <script>/<style> now
-
-        // stash extracted source on the element — bootComponent reads these
-        host.__sparkScriptSrc = script;
-        host.__sparkStyleSrc = style;
-
-        projectSlots(host, slotted, parentHost); // <slot> content projection
-        await resolveImports(host); // nested imports (incl. inside slots)
-        node.replaceWith(host);
-      } catch (e) {
-        const hint = /HTTP 404/.test(e.message)
-          ? ` Check the path is correct and the file is served (relative to the page).`
-          : '';
-        console.warn(`[spark] Could not import "${path}" — ${e.message}.${hint}`);
-      }
-    }),
-  );
+    // Imports nested somewhere inside the cloned node.
+    if (node.querySelector && node.querySelector('[import]')) {
+      const inner = [...node.querySelectorAll('[import]')];
+      Promise.all(inner.map((n) => resolveImportNode(n, scope))).then(() => {
+        node.querySelectorAll('[name]').forEach(bootComponent);
+      });
+    }
+  }
 }
 
 // Coerce attribute strings into sensible JS values for props.
@@ -788,6 +838,8 @@ function patchIf(el, scope) {
       el.__sparkIfRendered.push(clone);
       walkNode(clone, scope, false);
     });
+    // Resolve any [import] placeholders cloned into the branch (async).
+    hydrateBlockImports(el.__sparkIfRendered, scope);
   } else if (!show && isShown) {
     el.__sparkIfRendered.forEach((n) => {
       destroyComponent(n); // run cleanups for any nested components
@@ -927,6 +979,10 @@ function patchEach(el, scope) {
         nodes.push(clone);
         walkNode(clone, loopScope, false);
       }
+      // Resolve any [import] placeholders cloned into this block (async),
+      // swapping them for booted hosts; mutates `nodes` so reconciliation
+      // tracks the host on later patches.
+      hydrateBlockImports(nodes, loopScope);
       block = { key, nodes };
     }
 
