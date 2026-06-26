@@ -10,6 +10,6 @@
     "dev": "npm run dev -w examples/basic",
     "site": "npm run dev -w website",
     "site:build": "npm run build -w website",
-    "test": "node packages/spark/test/run.js && node packages/spark/test/repro-input.js && node packages/spark/test/features.js && node packages/spark/test/loops.js && node packages/spark/test/composition.js && node packages/spark/test/errors.js && node packages/spark/test/reactive-multiline.js"
+    "test": "node packages/spark/test/run.js && node packages/spark/test/css.js && node packages/spark/test/repro-input.js && node packages/spark/test/features.js && node packages/spark/test/loops.js && node packages/spark/test/composition.js && node packages/spark/test/errors.js && node packages/spark/test/reactive-multiline.js && node packages/spark/test/perf.js && node packages/spark/test/deps.js"
   }
 }

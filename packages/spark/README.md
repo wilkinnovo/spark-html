@@ -74,7 +74,7 @@ The plugin serves component fragments raw and full-reloads when they change.
 | Loops with index    | `<template each="todo, i in todos">…</template>` |
 | Keyed loops         | `<template each="row in rows" key="row.id">…`    |
 | Scoped styles       | `<style>` auto-scoped to the component           |
-| Global styles       | `:global(body) { … }` escapes scoping            |
+| Global styles       | `:global(body)` / `:global(.x) .y` escapes scoping (anywhere in a selector) |
 | Two-way binding     | `<input bind:value="draft">` / `bind:checked`     |
 | Reactive statements | `$: doubled = count * 2` — re-runs on change      |
 | Conditional blocks  | `<template if="show">…</template>`                |
@@ -155,10 +155,20 @@ component('hello', `
    microtask, so a burst of assignments costs one DOM update. Plain
    objects/arrays read from scope are deeply reactive, so `todos.push(x)`
    and `row.done = true` re-render without replacing the value.
-4. Styles are auto-scoped via a `[name="component"]` prefix.
-5. Loops reconcile: each item keeps its DOM nodes across updates (matched
+4. Patches are cheap by construction. Static subtrees (no bindings) are
+   walked once and then skipped, so a patch costs work proportional to the
+   *dynamic* nodes, not the whole tree. And while a binding (or `$:`) is
+   evaluated the scope records which keys it read, so a plain `count++`
+   re-evaluates only the bindings that read `count` — O(changed). Changes
+   that can't be pinned to a key (deep mutation, store writes, member-path
+   binds) fall back to a full, still-cheap pass — never stale.
+5. Styles are auto-scoped via a `[name="component"]` prefix by a small CSS
+   parser: `@media`/`@supports` selectors scope correctly, `@keyframes`/
+   `@font-face` are left alone, and `:global(…)` opts out anywhere in a
+   selector.
+6. Loops reconcile: each item keeps its DOM nodes across updates (matched
    by index, or by `key`), so inputs inside loops keep focus.
-6. A cloak style hides components until they're booted and patched — no
+7. A cloak style hides components until they're booted and patched — no
    flash of raw `{braces}` or unstyled markup on load.
 
 ## Limits

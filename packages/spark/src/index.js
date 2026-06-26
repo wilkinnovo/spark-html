@@ -383,8 +383,9 @@ function subscribeStore(name, componentEl, scopeRef) {
   const cb = () => {
     if (!scopeRef.scope || !componentEl.isConnected) return;
     // Route through the component's batching scheduler when available so a
-    // burst of store writes collapses into a single patch.
-    if (componentEl.__sparkSchedule) componentEl.__sparkSchedule();
+    // burst of store writes collapses into a single patch. Store changes
+    // aren't tracked against component-scope keys, so force a full pass.
+    if (componentEl.__sparkScheduleFull) componentEl.__sparkScheduleFull();
     else patch(componentEl, scopeRef.scope);
   };
   entry.subscribers.add(cb);
@@ -443,6 +444,69 @@ function reactify(value, onMutate, cache) {
   });
   cache.set(value, proxy);
   return proxy;
+}
+
+// ─── Dependency tracking (Tier 2: O(changed), not O(all bindings)) ─────
+// Tier 1 made a patch walk only the DYNAMIC nodes; this makes each dynamic
+// node re-evaluate ONLY when a value it actually reads changed. The whole
+// mechanism rides on the proxies we already have:
+//
+//   • Reads: while a binding (text interpolation, :attr, attr interp, bind
+//     read, or a `$:` statement) is evaluated, `captureSet` is its dep set.
+//     The component scope's `get` trap adds each key read to it — so after
+//     one evaluation we know exactly which top-level keys the binding needs.
+//     (Loop variables resolve in the loop proxy and never reach the scope
+//     get, so they aren't captured — deep mutation handles those via the
+//     full-walk fallback below.)
+//   • Writes: a plain `count = …` assignment hits the scope `set` trap, which
+//     records the changed key. The flush then runs in DIRTY MODE: it still
+//     walks the (already cheap, Tier-1) tree, but SKIPS re-evaluating any
+//     node whose captured deps don't intersect the changed keys.
+//
+// Safety first — dirty mode is used ONLY when a flush was triggered purely by
+// tracked top-level scope writes. Anything we can't attribute to a key →
+// FULL MODE (re-evaluate everything, exactly like Tier 1): deep mutation of a
+// plain object/array (`todos.push`), a store notification, a member-path
+// two-way write (`bind:value="row.text"`). And a binding that read no
+// trackable key (e.g. `{Math.random()}`) is marked untracked and always
+// re-evaluates. The result is never stale; at worst it does redundant work.
+let captureSet = null;     // Set being filled with the keys a binding reads
+let gDirtyMode = false;    // is the current walk a targeted (dirty) pass?
+let gDirtyKeys = null;     // keys changed this flush (gating set, live)
+
+function setsIntersect(a, b) {
+  if (!a || !b) return false;
+  if (a.size > b.size) { const t = a; a = b; b = t; }
+  for (const x of a) if (b.has(x)) return true;
+  return false;
+}
+
+// A node should re-evaluate this pass if we're in full mode, it has no
+// recorded deps yet (first sight), it's untracked (deps === null), or one of
+// its deps changed.
+function shouldEval(node) {
+  if (!gDirtyMode) return true;
+  const deps = node.__sparkReadKeys;
+  if (deps === undefined || deps === null) return true;
+  return setsIntersect(deps, gDirtyKeys);
+}
+
+// Run `fn` (which evaluates a binding), recording every scope key it reads
+// onto `node.__sparkReadKeys`. `null` means "read nothing trackable" → always
+// re-evaluate (treated as untracked, never skipped). The dep Set is reused
+// across evaluations of the same node to avoid per-patch allocation.
+function withCapture(node, fn) {
+  const prev = captureSet;
+  let set = node.__sparkReadKeys;
+  if (set == null) set = new Set();
+  else set.clear();
+  captureSet = set;
+  try {
+    fn();
+  } finally {
+    captureSet = prev;
+  }
+  node.__sparkReadKeys = set.size ? set : null;
 }
 
 // ─── `$:` extraction (multi-line aware) ───────────────────────────────
@@ -591,6 +655,10 @@ function makeScope(rawCode, componentEl, props = {}) {
     const t = stmt.match(/^([a-zA-Z_$][\w$]*)\s*=[^=]/);
     if (t) raw[t[1]] = undefined;
   }
+  // Each `$:` statement becomes an effect carrying the keys it reads
+  // (stamped on `__sparkReadKeys` by withCapture, like a DOM binding), so a
+  // dirty-mode flush re-runs only the statements whose inputs changed.
+  const reactiveEffects = reactiveStmts.map((src) => ({ src }));
 
   // Rewrite declarations to bare assignments so they hit the proxy.
   let rewritten = code.replace(
@@ -619,11 +687,22 @@ function makeScope(rawCode, componentEl, props = {}) {
     onMount: (fn) => mountCallbacks.push(fn),
   };
 
+  // Keys changed since the last flush (drives targeted dirty-mode updates),
+  // and a flag forcing a full re-evaluation when a change can't be pinned to
+  // a key (deep mutation, store, member-path write). See the dep-tracking
+  // section above.
+  let dirtyKeys = new Set();
+  let fullDirty = false;
+
   // Per-component cache so each raw object/array maps to one stable
   // reactive proxy (identity-preserving, see reactify).
   const reactiveCache = new WeakMap();
+  // In-place mutation of a plain object/array can't be attributed to a single
+  // top-level key, so it forces a full re-evaluation (never stale).
   const onMutate = () => {
-    if (ready && !inReactive) schedule();
+    if (!ready) return;
+    fullDirty = true;
+    schedule();
   };
 
   const scope = new Proxy(raw, {
@@ -637,6 +716,8 @@ function makeScope(rawCode, componentEl, props = {}) {
     get(target, key) {
       if (key === Symbol.unscopables) return undefined;
       if (Object.prototype.hasOwnProperty.call(builtins, key)) return builtins[key];
+      // Record this read for the binding currently being evaluated (Tier 2).
+      if (captureSet !== null && typeof key === 'string') captureSet.add(key);
       // Wrap plain objects/arrays so in-place mutation re-renders.
       return reactify(target[key], onMutate, reactiveCache);
     },
@@ -650,12 +731,18 @@ function makeScope(rawCode, componentEl, props = {}) {
         value = value[REACTIVE_RAW];
       }
       target[key] = value;
-      // Don't patch synchronously per assignment: a single handler often
-      // makes several writes, and each `$:` statement is itself an
-      // assignment. Coalesce them into ONE patch on the microtask queue.
-      // (`inReactive` writes are already inside a flush — no need to
-      // reschedule; the in-progress flush will patch once at the end.)
-      if (ready && !inReactive) schedule();
+      if (!ready) return true; // initialization writes: no scheduling/tracking
+      if (inReactive) {
+        // A `$:` write during a flush: extend the live gating set so nodes
+        // reading this key re-evaluate in the same pass. Don't reschedule —
+        // the in-progress flush will patch once at the end.
+        if (gDirtyKeys) gDirtyKeys.add(key);
+        return true;
+      }
+      // Normal write (e.g. an event handler): record the key and coalesce
+      // into ONE patch on the microtask queue.
+      dirtyKeys.add(key);
+      schedule();
       return true;
     },
   });
@@ -663,22 +750,48 @@ function makeScope(rawCode, componentEl, props = {}) {
   scopeRef.scope = scope;
   componentEl.__sparkOnMount = mountCallbacks;
   componentEl.__sparkSchedule = schedule;
+  // Force a full (non-targeted) re-evaluation next flush — used by changes we
+  // can't pin to a scope key (store notifications, member-path two-way writes).
+  componentEl.__sparkScheduleFull = () => { fullDirty = true; schedule(); };
 
   // Re-run `$:` statements. Guarded so a reactive assignment doesn't
   // recurse into another full reactive pass; the patch after the outer
   // set sees the settled state.
   let inReactive = false;
   let ready = false; // don't run reactive stmts mid-initialization
+  function runOneReactive(eff) {
+    withCapture(eff, () => {
+      try {
+        compileStmt(eff.src)(scope);
+      } catch (e) {
+        // Runs on every state change — warn once per statement.
+        warnOnce(`react:${eff.src}`, `[spark] Error in reactive "$: ${eff.src}" — ${e.message}`);
+      }
+    });
+  }
   function runReactive() {
-    if (!ready || inReactive || reactiveStmts.length === 0) return;
+    if (!ready || inReactive || reactiveEffects.length === 0) return;
     inReactive = true;
     try {
-      for (const stmt of reactiveStmts) {
-        try {
-          compileStmt(stmt)(scope);
-        } catch (e) {
-          // Runs on every state change — warn once per statement.
-          warnOnce(`react:${stmt}`, `[spark] Error in reactive "$: ${stmt}" — ${e.message}`);
+      if (!gDirtyMode) {
+        // Full pass: run every `$:` statement, (re)recording its deps.
+        for (const eff of reactiveEffects) runOneReactive(eff);
+      } else {
+        // Dirty pass: run only statements whose deps changed. A statement's
+        // write extends gDirtyKeys (via the set trap), which can make a later
+        // statement newly dirty — so iterate to a fixpoint. The pass cap is
+        // the statement count (a linear `$:` chain settles in that many
+        // passes); it also bounds any pathological cycle.
+        let grew = true;
+        let passes = 0;
+        while (grew && passes++ <= reactiveEffects.length) {
+          grew = false;
+          for (const eff of reactiveEffects) {
+            if (!shouldEval(eff)) continue;
+            const before = gDirtyKeys.size;
+            runOneReactive(eff);
+            if (gDirtyKeys.size > before) grew = true;
+          }
         }
       }
     } finally {
@@ -695,14 +808,37 @@ function makeScope(rawCode, componentEl, props = {}) {
   }
 
   // Microtask-batched flush: recompute reactive statements once, then patch
-  // once, no matter how many writes happened this tick.
+  // once, no matter how many writes happened this tick. Snapshot + reset the
+  // trigger state up front so any new change DURING the flush schedules the
+  // next one cleanly.
   let scheduled = false;
   function flush() {
     scheduled = false;
+    // Swap the dirty set out (cheaper than copying) so writes during the
+    // flush accumulate into a fresh set for the next round.
+    const keys = dirtyKeys.size ? dirtyKeys : null;
+    dirtyKeys = new Set();
+    const wasFull = fullDirty;
+    fullDirty = false;
     if (!componentEl.isConnected) return;
-    runReactive();
-    patch(componentEl, scope);
-    patchSlots();
+
+    // Dirty mode only when the change set is fully attributable to keys.
+    if (!wasFull && keys) {
+      gDirtyMode = true;
+      gDirtyKeys = keys;
+      try {
+        runReactive();
+        patch(componentEl, scope);
+        patchSlots();
+      } finally {
+        gDirtyMode = false;
+        gDirtyKeys = null;
+      }
+    } else {
+      runReactive();
+      patch(componentEl, scope);
+      patchSlots();
+    }
   }
   function schedule() {
     if (scheduled) return;
@@ -745,13 +881,26 @@ function patch(el, scope) {
 // Request a batched re-render of the component that owns `el`. Used after
 // two-way binds: `bind:value="row.text"` is a member write, which mutates
 // the object directly without tripping the scope proxy's set trap, so we
-// have to ask the owning component to re-patch explicitly.
+// have to ask the owning component to re-patch explicitly — and since it's
+// not attributable to a key, force a full pass.
 function scheduleRerender(el) {
   let n = el;
   while (n) {
-    if (n.__sparkSchedule) return n.__sparkSchedule();
+    if (n.__sparkScheduleFull) return n.__sparkScheduleFull();
     n = n.parentNode;
   }
+}
+
+// Is a child node already known to be static — i.e. re-walking it can't
+// change anything? Text without `{…}`, fully-static element subtrees, and
+// comments qualify. An each/if anchor (never marked static) and any element
+// with a live binding do not, so the parent keeps descending into them.
+function isStaticNode(n) {
+  if (n.nodeType === Node.TEXT_NODE) {
+    return !(n.__sparkTpl && n.__sparkTpl.includes('{'));
+  }
+  if (n.nodeType !== Node.ELEMENT_NODE) return true;
+  return n.__sparkStatic === true;
 }
 
 function walkNode(node, scope, isRoot = false) {
@@ -760,12 +909,28 @@ function walkNode(node, scope, isRoot = false) {
     return;
   }
   if (node.nodeType !== Node.ELEMENT_NODE) return;
+
+  // Known-static subtree from a previous walk: nothing in it ever changes,
+  // so skip the whole branch in one check. The component root (isRoot) is
+  // never skipped — it must always re-walk its children. This is the core
+  // of Tier 1: cost becomes proportional to DYNAMIC nodes, not total nodes.
+  if (!isRoot && node.__sparkStatic) return;
+
   // Escape hatch: subtrees marked spark-ignore are never patched —
   // essential for documentation/code samples containing literal {braces}.
-  if (node.hasAttribute('spark-ignore')) return;
-  // Don't reach into a nested component's territory.
-  if (!isRoot && node.hasAttribute('name')) return;
+  if (node.hasAttribute('spark-ignore')) {
+    if (!isRoot) node.__sparkStatic = true;
+    return;
+  }
+  // Don't reach into a nested component's territory — it self-manages via
+  // its own scheduler, so from here its whole subtree counts as static.
+  if (!isRoot && node.hasAttribute('name')) {
+    node.__sparkStatic = true;
+    return;
+  }
 
+  // each/if anchors drive dynamic structure — never marked static, so the
+  // parent always re-walks them (and they re-run their own reconciler).
   if (node.hasAttribute('each')) {
     patchEach(node, scope);
     return;
@@ -781,6 +946,9 @@ function walkNode(node, scope, isRoot = false) {
 
   patchElement(node, scope);
 
+  // A node is static only if it has no live binding of its own AND every
+  // child is static. Computed bottom-up here and cached on the node.
+  let allStatic = !node.__sparkLive;
   for (const child of [...node.childNodes]) {
     // A child may have been detached during this loop; skip stragglers.
     if (child.parentNode !== node) continue;
@@ -788,23 +956,31 @@ function walkNode(node, scope, isRoot = false) {
     // get walked with the correct loop/branch scope there. Walking them
     // here with the parent scope would evaluate loop bindings against the
     // wrong scope and blank out interpolations.
-    if (child.__sparkManaged) continue;
+    if (child.__sparkManaged) {
+      allStatic = false; // dynamic structure lives here — never skip this node
+      continue;
+    }
     // Slot-projected content belongs to the parent component — patch it
     // with the parent's scope, not the component it now physically sits in.
     if (child.__sparkSlotHost && child.__sparkSlotHost.__sparkScope) {
       walkNode(child, child.__sparkSlotHost.__sparkScope);
+      if (!isStaticNode(child)) allStatic = false;
       continue;
     }
     walkNode(child, scope);
+    if (!isStaticNode(child)) allStatic = false;
   }
+  if (!isRoot) node.__sparkStatic = allStatic;
 }
 
 function patchText(node, scope) {
   if (node.__sparkTpl === undefined) {
     node.__sparkTpl = node.textContent || '';
   }
-  if (!node.__sparkTpl.includes('{')) return;
-  const next = interpolate(node.__sparkTpl, scope);
+  if (!node.__sparkTpl.includes('{')) return; // static text: nothing to do
+  if (!shouldEval(node)) return;              // deps unchanged this pass
+  let next;
+  withCapture(node, () => { next = interpolate(node.__sparkTpl, scope); });
   if (node.textContent !== next) node.textContent = next;
 }
 
@@ -1003,111 +1179,124 @@ function patchEach(el, scope) {
 }
 
 // ─── Attribute / event bindings ───────────────────────────────────────
-function patchElement(el, scope) {
-  // Listeners are attached ONCE but a node may be re-walked with a different
-  // scope on every patch (loop clones are reused, not recreated). Stash the
-  // current scope on the node so the long-lived listener always reads the
-  // live one — never the scope captured at first render.
-  el.__sparkScopeRef = scope;
+// An element's bindings are parsed ONCE into a "plan": a list of the
+// per-patch operations it needs (read a two-way bind, evaluate a `:attr`,
+// interpolate an attribute). Event handlers + bind listeners are attached
+// during this one-time parse — they're not per-patch work. Later patches
+// just replay the cached plan, skipping the attribute spread and the regex
+// re-tests that used to run on every keystroke.
+//
+// `__sparkLive` marks an element that must keep being walked even when its
+// plan is empty: one with an attached listener still needs its live scope
+// ref refreshed each patch (loop clones are reused with a new scope). Only
+// elements that are NOT live AND whose whole subtree is static can be
+// skipped wholesale (see walkNode).
+function buildElementPlan(el) {
+  const plan = [];
+  let live = false;
   for (const attr of [...el.attributes]) {
     const { name, value } = attr;
 
     // bind:value="draft" / bind:checked="done" — two-way binding.
-    // Reading: every patch pushes the scope value into the element.
-    // Writing: input/change events push the element value into the scope.
+    // Reading (per patch): push the scope value into the element.
+    // Writing (once): input/change event pushes the element value back.
     if (name === 'bind:value' || name === 'bind:checked') {
       const prop = name.slice(5); // 'value' | 'checked'
       const expr = value.trim();
-      if (!el.__sparkBound) el.__sparkBound = new Set();
-      if (!el.__sparkBound.has(name)) {
-        el.__sparkBound.add(name);
-        const eventName = prop === 'checked' ? 'change' : 'input';
-        el.addEventListener(eventName, () => {
-          // Simple identifiers and member paths both work:
-          // bind:value="draft" / bind:value="form.email" / bind:value="row.text"
-          execute(`${expr} = __val__`, el.__sparkScopeRef, null, el[prop]);
-          // Member writes don't trip the scope proxy, so re-render explicitly.
-          scheduleRerender(el);
-        });
-      }
-      const current = evaluate(expr, scope);
-      if (prop === 'checked') {
+      const eventName = prop === 'checked' ? 'change' : 'input';
+      el.addEventListener(eventName, () => {
+        // Simple identifiers and member paths both work:
+        // bind:value="draft" / bind:value="form.email" / bind:value="row.text"
+        execute(`${expr} = __val__`, el.__sparkScopeRef, null, el[prop]);
+        // Member writes don't trip the scope proxy, so re-render explicitly.
+        scheduleRerender(el);
+      });
+      plan.push({ kind: 'bind', prop, expr });
+      live = true;
+      continue;
+    }
+
+    // onclick={handler} — attached once; no per-patch op.
+    if (/^on\w+$/.test(name) && value.startsWith('{') && value.endsWith('}')) {
+      const fnExpr = value.slice(1, -1).trim();
+      el.addEventListener(name.slice(2), (e) => {
+        execute(`${fnExpr}(event)`, el.__sparkScopeRef, e);
+      });
+      el.removeAttribute(name);
+      live = true;
+      continue;
+    }
+
+    // :disabled="count >= 10" — dynamic attribute, evaluated each patch.
+    if (name.startsWith(':')) {
+      plan.push({ kind: 'attr', name, realAttr: name.slice(1), expr: value });
+      live = true;
+      continue;
+    }
+
+    // value="{input}" — interpolated attribute. Capture the template now,
+    // while the braces are still present (after the first interpolation the
+    // live value has none, which is why this is cached, not re-read).
+    if (value.includes('{')) {
+      plan.push({ kind: 'interp', name, tpl: value });
+      live = true;
+    }
+  }
+  el.__sparkLive = live;
+  return plan;
+}
+
+function runElementPlan(el, scope) {
+  for (const op of el.__sparkPlan) {
+    if (op.kind === 'bind') {
+      const current = evaluate(op.expr, scope);
+      if (op.prop === 'checked') {
         const want = Boolean(current);
         if (el.checked !== want) el.checked = want;
       } else {
         const want = current == null ? '' : String(current);
         if (el.value !== want) el.value = want;
       }
-      continue;
-    }
-
-    // onclick={handler}
-    if (
-      /^on\w+$/.test(name) &&
-      value.startsWith('{') &&
-      value.endsWith('}')
-    ) {
-      if (!el.__sparkEvents) el.__sparkEvents = new Set();
-      if (!el.__sparkEvents.has(name)) {
-        el.__sparkEvents.add(name);
-        const fnExpr = value.slice(1, -1).trim();
-        el.addEventListener(name.slice(2), (e) => {
-          execute(`${fnExpr}(event)`, el.__sparkScopeRef, e);
-        });
-        el.removeAttribute(name);
-      }
-      continue;
-    }
-
-    // :disabled="count >= 10"
-    if (name.startsWith(':')) {
-      const realAttr = name.slice(1);
+    } else if (op.kind === 'attr') {
       let result;
       try {
-        result = compileExpr(value)(scope);
+        result = compileExpr(op.expr)(scope);
       } catch (e) {
         // Evaluation failed — leave the attribute untouched (event handlers
         // may still need to read it) but tell the consumer once.
         warnOnce(
-          `attr:${name}=${value}`,
-          `[spark] Error in :${realAttr}="${value}" — ${e.message}. (Attribute left unchanged.)`,
+          `attr:${op.name}=${op.expr}`,
+          `[spark] Error in :${op.realAttr}="${op.expr}" — ${e.message}. (Attribute left unchanged.)`,
         );
         continue;
       }
       if (typeof result === 'boolean') {
-        result
-          ? el.setAttribute(realAttr, '')
-          : el.removeAttribute(realAttr);
+        result ? el.setAttribute(op.realAttr, '') : el.removeAttribute(op.realAttr);
       } else {
         const str = String(result ?? '');
-        if (el.getAttribute(realAttr) !== str)
-          el.setAttribute(realAttr, str);
+        if (el.getAttribute(op.realAttr) !== str) el.setAttribute(op.realAttr, str);
       }
-      continue;
-    }
-
-    // value="{input}" interpolation in attributes.
-    // Interpolated attribute: value="{draft}". The template is cached on
-    // first sight — the guard must check the CACHE, not the live value,
-    // because after the first interpolation the live value has no braces
-    // and the binding would go dead (the "input never clears" bug).
-    const tpl =
-      attr.__sparkTpl !== undefined
-        ? attr.__sparkTpl
-        : value.includes('{')
-          ? value
-          : undefined;
-    if (tpl !== undefined) {
-      attr.__sparkTpl = tpl;
-      const next = interpolate(tpl, scope);
-      if (attr.value !== next) el.setAttribute(name, next);
+    } else if (op.kind === 'interp') {
+      const next = interpolate(op.tpl, scope);
+      if (el.getAttribute(op.name) !== next) el.setAttribute(op.name, next);
       // The value PROPERTY diverges from the attribute once the user has
       // typed — sync it independently so programmatic clears reach the UI.
-      if (name === 'value' && 'value' in el && el.value !== next) {
+      if (op.name === 'value' && 'value' in el && el.value !== next) {
         el.value = next;
       }
     }
   }
+}
+
+function patchElement(el, scope) {
+  // Stash the current scope so long-lived listeners always read the live one
+  // — never the scope captured at first render (loop clones are reused). This
+  // happens every walk, even when the bindings are skipped below.
+  el.__sparkScopeRef = scope;
+  if (el.__sparkPlan === undefined) el.__sparkPlan = buildElementPlan(el);
+  if (!el.__sparkPlan.length) return;
+  if (!shouldEval(el)) return; // deps unchanged this pass — skip re-evaluation
+  withCapture(el, () => runElementPlan(el, scope));
 }
 
 // ─── Component boot ───────────────────────────────────────────────────
@@ -1198,25 +1387,215 @@ function destroyComponent(node) {
   }
 }
 
-// Prefix bare selectors with [name="comp"] for automatic scoping.
-// `:global(...)` escapes scoping.
+// ─── CSS scoping ───────────────────────────────────────────────────────
+// Prefix every selector with [name="comp"] so a component's styles can't
+// leak out (or in). The old implementation was a single regex — it couldn't
+// see into @media, mangled @keyframes step selectors (0%/100%), embedded
+// CSS comments into selectors, and only handled :global() when it wrapped
+// the ENTIRE selector. This is a small, proper tokenizer instead: it strips
+// comments, walks the rule tree by brace depth, scopes only real selector
+// lists (recursing into @media/@supports so their selectors get the SAME
+// scope — which also balances specificity against base rules), leaves
+// @keyframes/@font-face bodies untouched, and unwraps :global(...) wherever
+// it appears in a selector.
+
+// Advance past a CSS string starting at `i`; returns the index just after
+// the closing quote. Handles escapes.
+function cssSkipString(s, i) {
+  const q = s[i++];
+  while (i < s.length) {
+    const c = s[i];
+    if (c === '\\') { i += 2; continue; }
+    if (c === q) return i + 1;
+    i++;
+  }
+  return i;
+}
+
+// Strip /* … */ comments, preserving strings. A comment becomes one space so
+// adjacent tokens never fuse (e.g. `a/* x */b` → `a b`, not `ab`).
+function stripCssComments(css) {
+  let out = '';
+  let i = 0;
+  while (i < css.length) {
+    const c = css[i];
+    if (c === '"' || c === "'") { const j = cssSkipString(css, i); out += css.slice(i, j); i = j; continue; }
+    if (c === '/' && css[i + 1] === '*') {
+      i += 2;
+      while (i < css.length && !(css[i] === '*' && css[i + 1] === '/')) i++;
+      i += 2;
+      out += ' ';
+      continue;
+    }
+    out += c;
+    i++;
+  }
+  return out;
+}
+
+// Index of the `}` matching the `{` at `openIdx` (string-aware).
+function cssMatchBrace(css, openIdx) {
+  let depth = 0;
+  let i = openIdx;
+  while (i < css.length) {
+    const c = css[i];
+    if (c === '"' || c === "'") { i = cssSkipString(css, i); continue; }
+    if (c === '{') depth++;
+    else if (c === '}') { depth--; if (depth === 0) return i; }
+    i++;
+  }
+  return css.length; // unbalanced — treat the rest as the body
+}
+
+// Index just past a balanced ( … ) or [ … ] group starting at `open`.
+function cssMatchGroup(s, open) {
+  let depth = 0;
+  let i = open;
+  while (i < s.length) {
+    const c = s[i];
+    if (c === '"' || c === "'") { i = cssSkipString(s, i); continue; }
+    if (c === '(' || c === '[') depth++;
+    else if (c === ')' || c === ']') { depth--; if (depth === 0) return i + 1; }
+    i++;
+  }
+  return s.length;
+}
+
+// At-rules whose body is itself a list of rules (so we recurse + scope the
+// nested selectors). Everything else with a block (@keyframes, @font-face,
+// @page, @font-feature-values…) has a body that is NOT selectors — leave it.
+const NESTED_AT_RULES = new Set([
+  'media', 'supports', 'container', 'document', '-moz-document', 'layer',
+]);
+
+// Split a selector list on top-level commas (commas inside (), [], or strings
+// — e.g. :is(.a, .b) or [x="a,b"] — don't separate selectors).
+function splitSelectorList(list) {
+  const parts = [];
+  let depth = 0;
+  let start = 0;
+  let i = 0;
+  while (i < list.length) {
+    const c = list[i];
+    if (c === '"' || c === "'") { i = cssSkipString(list, i); continue; }
+    if (c === '(' || c === '[') depth++;
+    else if (c === ')' || c === ']') depth--;
+    else if (c === ',' && depth === 0) { parts.push(list.slice(start, i)); start = i + 1; }
+    i++;
+  }
+  parts.push(list.slice(start));
+  return parts;
+}
+
+// Break one complex selector into compounds + combinators, respecting
+// strings and ()/[] groups (so `>`/`+`/`~`/spaces inside :nth-child(2n+1) or
+// [a~=b] are not treated as combinators).
+function tokenizeSelector(sel) {
+  const tokens = [];
+  let compound = '';
+  const flush = () => { if (compound) { tokens.push({ t: 'c', v: compound }); compound = ''; } };
+  let i = 0;
+  while (i < sel.length) {
+    const c = sel[i];
+    if (c === '"' || c === "'") { const j = cssSkipString(sel, i); compound += sel.slice(i, j); i = j; continue; }
+    if (c === '(' || c === '[') { const j = cssMatchGroup(sel, i); compound += sel.slice(i, j); i = j; continue; }
+    if (c === ' ' || c === '\t' || c === '\n' || c === '\r' || c === '>' || c === '+' || c === '~') {
+      flush();
+      let comb = '';
+      while (i < sel.length && /[\s>+~]/.test(sel[i])) { comb += sel[i]; i++; }
+      const sym = comb.match(/[>+~]/);
+      tokens.push({ t: 'comb', v: sym ? ` ${sym[0]} ` : ' ' });
+      continue;
+    }
+    compound += c;
+    i++;
+  }
+  flush();
+  return tokens;
+}
+
+// Scope one selector: insert `prefix ` before the first compound that isn't
+// wrapped in :global(), and unwrap :global(X) → X wherever it appears. A
+// selector that is entirely :global(...) stays fully unscoped.
+function scopeSelector(sel, prefix) {
+  const trimmed = sel.trim();
+  if (!trimmed) return sel;
+  const tokens = tokenizeSelector(trimmed);
+  let out = '';
+  let inserted = false;
+  for (const tok of tokens) {
+    if (tok.t === 'comb') { out += tok.v; continue; }
+    const whole = tok.v.match(/^:global\(([\s\S]*)\)$/);
+    if (whole) {
+      out += whole[1]; // a purely-global compound: drop the wrapper, no scope
+    } else {
+      if (!inserted) { out += `${prefix} `; inserted = true; }
+      out += tok.v.replace(/:global\(([\s\S]*?)\)/g, '$1'); // partial :global()
+    }
+  }
+  return out;
+}
+
+function scopeSelectorList(list, prefix) {
+  return splitSelectorList(list)
+    .map((sel) => scopeSelector(sel, prefix))
+    .join(', ');
+}
+
+// Walk a sequence of rules at one nesting level, scoping style-rule selectors.
+function scopeRules(css, prefix) {
+  let out = '';
+  let i = 0;
+  const n = css.length;
+  while (i < n) {
+    // Preserve leading whitespace between rules.
+    const ws = i;
+    while (i < n && /\s/.test(css[i])) i++;
+    out += css.slice(ws, i);
+    if (i >= n) break;
+
+    // Read the prelude (selector list or at-rule header) up to a top-level
+    // `{` or `;` — `{`/`;` inside (), [], or strings don't count.
+    const preludeStart = i;
+    let depth = 0;
+    while (i < n) {
+      const c = css[i];
+      if (c === '"' || c === "'") { i = cssSkipString(css, i); continue; }
+      if (c === '(' || c === '[') { depth++; i++; continue; }
+      if (c === ')' || c === ']') { depth--; i++; continue; }
+      if (depth === 0 && (c === '{' || c === ';')) break;
+      i++;
+    }
+    const prelude = css.slice(preludeStart, i);
+
+    if (i >= n) { out += prelude; break; }
+
+    if (css[i] === ';') {        // statement at-rule (@import, @charset…)
+      out += prelude + ';';
+      i++;
+      continue;
+    }
+
+    // css[i] === '{' — block rule.
+    const end = cssMatchBrace(css, i);
+    const body = css.slice(i + 1, end);
+    const trimmed = prelude.trim();
+
+    if (trimmed[0] === '@') {
+      const name = (trimmed.slice(1).match(/^[\w-]*/) || [''])[0].toLowerCase();
+      out += NESTED_AT_RULES.has(name)
+        ? `${trimmed} {${scopeRules(body, prefix)}}` // scope nested selectors
+        : `${trimmed} {${body}}`;                    // @keyframes/@font-face: leave
+    } else {
+      out += `${scopeSelectorList(prelude, prefix)} {${body}}`;
+    }
+    i = end + 1;
+  }
+  return out;
+}
+
 function scopeCss(css, tag) {
-  return css.replace(
-    /(^|\})\s*([^{}@]+)\s*\{/g,
-    (full, brace, selectorList) => {
-      const scoped = selectorList
-        .split(',')
-        .map((sel) => {
-          sel = sel.trim();
-          if (!sel) return sel;
-          const globalMatch = sel.match(/^:global\((.+)\)$/);
-          if (globalMatch) return globalMatch[1];
-          return `[name="${tag}"] ${sel}`;
-        })
-        .join(', ');
-      return `${brace}\n${scoped} {`;
-    },
-  );
+  return scopeRules(stripCssComments(css), `[name="${tag}"]`);
 }
 
 // ─── Public API ───────────────────────────────────────────────────────
@@ -1293,5 +1672,5 @@ function unmount(el) {
   destroyComponent(el);
 }
 
-export { mount, unmount, component, store, evaluate, interpolate, parseSFC };
+export { mount, unmount, component, store, evaluate, interpolate, parseSFC, scopeCss };
 export default { mount, unmount, component, store };

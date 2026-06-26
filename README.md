@@ -11,7 +11,7 @@ spark-monorepo/
 │   └── spark/              ← the publishable library (spark-html)
 │       ├── src/index.js    ← runtime: mount(), component(), reactivity
 │       ├── src/vite.js     ← vite plugin (spark-html/vite)
-│       └── test/run.js     ← node test suite, no browser needed
+│       └── test/           ← node test suite, no browser needed
 ├── examples/
 │   └── basic/              ← vite app consuming the package
 │       ├── index.html
@@ -43,8 +43,12 @@ is a Spark component.
 ## Run the tests
 
 ```bash
-npm test           # 17 tests, pure node, no browser
+npm test           # 110+ assertions, pure node, no browser
 ```
+
+Covers the parser, reactivity, loops/slots/composition, error handling, the
+CSS scoper, and the performance paths (static-subtree skipping + dependency
+tracking).
 
 ## Use in any project
 

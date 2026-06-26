@@ -202,9 +202,27 @@ This means component styles are isolated and won't leak to parent or sibling com
 ```css
 :global(body) { font-family: sans-serif; }
 :global([hidden]) { display: none !important; }
+:global(.theme-dark) .card { color: #fff; }   /* partial — now supported */
 ```
 
-Wrapping a selector in `:global()` prevents the scoping prefix from being added.
+Wrapping a selector (or any part of one) in `:global()` prevents the scoping
+prefix from being added to that part.
+
+### CSS scoping internals — ✅ rewritten as a proper parser
+
+The old `scopeCss` was a single regex. It has been replaced by a small,
+0-dependency CSS tokenizer that fixes the whole class of bugs the regex caused:
+
+- **`@media` / `@supports` now scope correctly.** Selectors inside them get the
+  same `[name="…"]` prefix as base rules — so a responsive override and its base
+  rule have *equal* specificity and the later (media) rule wins by source order.
+  No more `:global()` workaround for responsive styles.
+- **`@keyframes` are left alone.** Step selectors (`0%`, `100%`, `from`, `to`)
+  are no longer mis-scoped, so animations work. `@font-face`/`@page` bodies are
+  likewise untouched.
+- **Comments are stripped first**, so `/* … */` can't bleed into a selector.
+- **`:global()` works anywhere in a selector**, not only when it wraps the whole
+  thing — `:global(.a) .b` → `.a [name="…"] .b`.
 
 ### Sharing styles across components
 
@@ -238,7 +256,9 @@ Variables declared inside an `each` loop body are isolated to the loop iteration
 | `:attr` dynamic attributes (`:data-id`, `:src`) | Yes |
 | `:hidden` with boolean expression | Yes (with `!important` workaround) |
 | `<style>` scoped to component | Yes |
-| `:global()` scoping escape | Yes |
+| `:global()` scoping escape (whole **or partial** selector) | Yes |
+| Scoped selectors inside `@media` / `@supports` | Yes (parser rewrite) |
+| `@keyframes` / `@font-face` left unscoped | Yes (parser rewrite) |
 | `store()` / `useStore()` | Yes |
 | `bind:value` with store properties | Yes |
 | `template if` with store properties | Yes |
@@ -250,6 +270,39 @@ Variables declared inside an `each` loop body are isolated to the loop iteration
 | Loop variable access in slot content | **No** |
 | `:hidden` with string expression | **No** — must use boolean expression |
 | `onclick="{ funcName; }"` (block + semicolons) | **No** — use `onclick={funcName}` |
+
+## 12. Performance — ✅ no longer O(everything) per change
+
+The original concern was that *any* state change re-ran **all** `$:` statements
+and did a **full DOM walk** of the component — O(total nodes), not O(changed).
+Two changes fix this without a compiler or a signals rewrite (it's still the
+same proxy-based model):
+
+- **Static-subtree skipping (Tier 1).** On the first walk, any subtree with no
+  bindings / `each` / `if` / nested component / slot is marked static and
+  skipped wholesale on every later patch. A patch now costs O(*dynamic* nodes),
+  not O(total). (Measured: a 904-element component re-walks 3 elements on a
+  change.) Each element's bindings are also parsed once into a cached "plan"
+  instead of re-scanning attributes every patch.
+- **Dependency tracking (Tier 2).** While a binding (or `$:`) is evaluated, the
+  scope proxy records which keys it reads. A plain top-level write (`count++`)
+  then re-evaluates **only** the bindings and `$:` statements that read that key
+  — O(changed). (Measured: ~7–8× faster on a targeted update in a 300-field
+  component vs. re-evaluating all of them.)
+
+**Safety / fallbacks (never stale):** changes that can't be pinned to a single
+key fall back to a full (Tier-1-fast) re-evaluation — in-place deep mutation
+(`todos.push`, `row.done = true`), store notifications, and member-path
+two-way writes (`bind:value="row.text"`). A binding that reads nothing trackable
+(e.g. `{Math.random()}`) is always re-evaluated.
+
+**Remaining gap (honest):** dependency tracking makes *evaluation* O(changed),
+but the patch still *traverses* the dynamic nodes (cheap branch checks +
+set-intersect) rather than jumping straight to the dirty ones, and `each` loops
+still reconcile every flush (per-row evaluation is gated, the reconcile pass is
+not). True O(changed) *traversal* — including per-row loop targeting — would
+need an effect registry on top of this same tracking substrate; it's the
+natural next increment, not a rewrite.
 
 ## Additional notes
 

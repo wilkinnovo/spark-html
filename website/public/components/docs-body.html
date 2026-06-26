@@ -47,7 +47,7 @@
     <p>Use it anywhere with an import placeholder. The path resolves relative to the served root; the <code>.html</code> extension is optional:</p>
     <pre spark-ignore>&lt;div import="components/welcome"&gt;&lt;/div&gt;</pre>
     <p>Every top-level <code>let</code>, <code>const</code>, <code>var</code>, and <code>function</code> in the script becomes reactive component state. Assigning to a variable re-patches the component's DOM — that's the whole reactivity model.</p>
-    <p>Styles are automatically scoped to the component. Use <code>:global(selector)</code> to opt out for resets and page-level rules.</p>
+    <p>Styles are automatically scoped to the component by a small CSS parser: selectors inside <code>@media</code> and <code>@supports</code> are scoped too (so responsive overrides just work), while <code>@keyframes</code> and <code>@font-face</code> are left untouched. Use <code>:global(selector)</code> to opt out for resets and page-level rules — it works anywhere in a selector, e.g. <code>:global(.theme-dark) .card</code>.</p>
 
     <h2 id="syntax">Template syntax</h2>
     <table>
@@ -165,8 +165,9 @@ export default defineConfig({
     <h2 id="how">How it works</h2>
     <p><strong>1 — Text-level parsing.</strong> When a component is fetched, <code>&lt;script&gt;</code> and <code>&lt;style&gt;</code> are extracted from the raw text <em>before</em> the markup ever touches <code>innerHTML</code>. Browsers neuter script tags injected via <code>innerHTML</code>, so DOM-based extraction is unreliable by design — Spark sidesteps the whole class of bugs.</p>
     <p><strong>2 — Proxy scopes.</strong> The script's top-level declarations are collected, the declarations are rewritten to bare assignments, and the code runs inside <code>with(proxy)</code>. Every assignment hits the proxy's set trap, which re-patches that component's subtree. Objects and arrays read from scope come back wrapped in a thin reactive proxy, so in-place mutation (<code>todos.push(x)</code>, <code>row.done = true</code>) re-renders too — only plain objects/arrays are wrapped, so <code>Date</code>s and class instances are left alone. Window built-ins like <code>name</code> or <code>status</code> can't shadow your state — the scope only claims identifiers your script declared.</p>
-    <p><strong>3 — In-place patching.</strong> Text nodes and attributes cache their original template on first visit, then diff against the interpolated result on every patch. Loops keep one block of nodes per item and reconcile them — reusing nodes in place (by index, or by <code>key</code> when given), creating only what's new and removing only what's gone. No virtual DOM and no full-tree diff — just direct, scoped writes against the real nodes, batched onto a single microtask flush.</p>
-    <p><strong>4 — No flash on load.</strong> A cloak style hides Spark-managed elements until each component is booted, styled, and patched — so the raw <code>{braces}</code> and unstyled markup never flash before the runtime catches up.</p>
+    <p><strong>3 — In-place patching.</strong> Text nodes and attributes cache their original template (and parsed bindings) on first visit, then diff against the interpolated result on every patch. Loops keep one block of nodes per item and reconcile them — reusing nodes in place (by index, or by <code>key</code> when given), creating only what's new and removing only what's gone. No virtual DOM and no full-tree diff — just direct, scoped writes against the real nodes, batched onto a single microtask flush.</p>
+    <p><strong>4 — Only what changed.</strong> A patch does work proportional to the <em>changed</em> state, not the size of the component. Static subtrees (no bindings, loops, conditionals, or nested components) are walked once and then skipped entirely. And while each binding and <code>$:</code> statement is evaluated, the proxy records which scope keys it read — so a plain <code>count++</code> re-evaluates only the bindings and reactive statements that read <code>count</code>. Changes that can't be attributed to a single key — in-place deep mutation (<code>todos.push</code>), store notifications, and member-path two-way writes — fall back to a full (still cheap) pass, so the UI is never stale.</p>
+    <p><strong>5 — No flash on load.</strong> A cloak style hides Spark-managed elements until each component is booted, styled, and patched — so the raw <code>{braces}</code> and unstyled markup never flash before the runtime catches up.</p>
 
     <h2 id="debugging">Debugging</h2>
     <p>When something doesn't render, check the console — Spark warns (prefixed <code>[spark]</code>) instead of failing silently:</p>
@@ -185,7 +186,7 @@ export default defineConfig({
       <tr><td>Block scoping</td><td><code>let</code>/<code>const</code> with a simple identifier inside functions hoist to component scope. Destructuring declarations are untouched and stay local.</td></tr>
       <tr><td>Reactivity depth</td><td>Plain objects/arrays are deeply reactive (mutation re-renders). <code>Map</code>/<code>Set</code>/class instances are not tracked — reassign them to update.</td></tr>
       <tr><td>Loop reconciliation</td><td>Reuse is positional by default; reordering a list without a <code>key</code> keeps nodes in place and rewrites their contents. Add <code>key="…"</code> for identity-stable moves.</td></tr>
-      <tr><td>Coarse store updates</td><td>Store writes re-patch all subscribers. Patching is cheap, but there's no per-key dependency tracking.</td></tr>
+      <tr><td>Coarse store updates</td><td>Component-local state is dependency-tracked (only bindings that read a changed value re-evaluate), but a store write notifies every subscriber for a full (cheap) pass — store reads aren't tracked per key.</td></tr>
     </table>
   </main>
 </div>

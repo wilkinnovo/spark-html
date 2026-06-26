@@ -90,6 +90,14 @@ export function parseSFC(source: string): {
   style: string;
 };
 
+/**
+ * Scope a component's CSS by prefixing every selector with
+ * `[name="<tag>"]`. Recurses into `@media`/`@supports`, leaves
+ * `@keyframes`/`@font-face` bodies untouched, and unwraps `:global(...)`
+ * anywhere in a selector. Primarily an internal/advanced helper.
+ */
+export function scopeCss(css: string, tag: string): string;
+
 declare const _default: {
   mount: typeof mount;
   unmount: typeof unmount;
