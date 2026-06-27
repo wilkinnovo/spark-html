@@ -1,0 +1,36 @@
+{
+  "name": "spark-html-router",
+  "version": "0.1.0",
+  "description": "Declarative <template route> client routing for spark-html — no JS config, just markup.",
+  "type": "module",
+  "main": "./src/index.js",
+  "types": "./src/index.d.ts",
+  "homepage": "https://wilkinnovo.github.io/spark",
+  "exports": {
+    ".": {
+      "types": "./src/index.d.ts",
+      "default": "./src/index.js"
+    }
+  },
+  "scripts": {
+    "test": "node test/router.js"
+  },
+  "files": [
+    "src"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/wilkinnovo/spark.git",
+    "directory": "packages/spark-html-router"
+  },
+  "dependencies": {
+    "spark-html": "^0.20.0"
+  },
+  "keywords": [
+    "spark-html",
+    "router",
+    "spa",
+    "routing"
+  ],
+  "license": "MIT"
+}
