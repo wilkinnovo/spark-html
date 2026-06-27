@@ -24,7 +24,20 @@
  * await mount(el);          // a subtree by element
  * ```
  */
-export function mount(root?: string | Element): Promise<void>;
+export interface MountOptions {
+  /**
+   * Show a full-screen dev error overlay (message, failing component, and
+   * stack) when a component throws. Off by default — Spark has no build-time
+   * dev/prod split. Also enabled by the global `__SPARK_DEV_OVERLAY__`.
+   * Intended for development only.
+   */
+  devOverlay?: boolean;
+}
+
+export function mount(
+  root?: string | Element,
+  options?: MountOptions,
+): Promise<void>;
 
 /**
  * Tear down a mounted subtree: runs `onMount` cleanups and unsubscribes its
