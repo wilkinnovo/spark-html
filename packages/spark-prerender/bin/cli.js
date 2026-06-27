@@ -59,12 +59,18 @@ async function main() {
       const routes = routesOf(await readFile(entryAbs, 'utf8'));
       if (routes.length) {
         const all = routes.includes('/') ? routes : ['/', ...routes];
+        // Render every route from the ORIGINAL entry first, then write — the
+        // "/" route's output file IS the entry, so writing mid-loop would
+        // clobber the source the remaining routes re-read.
+        const rendered = [];
         for (const route of all) {
-          const html = await prerender(entryAbs, { root: opts.root, route });
-          const dest = join(outDir, routeToFile(route));
+          rendered.push([route, routeToFile(route), await prerender(entryAbs, { root: opts.root, route })]);
+        }
+        for (const [route, name, html] of rendered) {
+          const dest = join(outDir, name);
           await mkdir(dirname(dest), { recursive: true });
           await writeFile(dest, html, 'utf8');
-          console.log(`✓ ${entry} [${route}] → ${routeToFile(route)} (${Buffer.byteLength(html)} bytes)`);
+          console.log(`✓ ${entry} [${route}] → ${name} (${Buffer.byteLength(html)} bytes)`);
         }
         await writeFile(join(outDir, '_redirects'), redirectsFor(all), 'utf8');
         await writeFile(join(outDir, 'vercel.json'), vercelConfigFor(all), 'utf8');

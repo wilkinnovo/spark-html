@@ -46,9 +46,16 @@ export default function sparkPrerender(options = {}) {
           const routes = routesOf(await readFile(file, 'utf8'));
           if (routes.length) {
             const all = routes.includes('/') ? routes : ['/', ...routes];
+            // Render every route from the ORIGINAL entry first, then write —
+            // the "/" route's output IS this entry file, so writing mid-loop
+            // would clobber the source the remaining routes re-read (leaking
+            // the home route into about.html etc.).
+            const rendered = [];
             for (const route of all) {
-              const out = await prerender(file, { root, route, ...(options.prerender || {}) });
-              const dest = join(root, routeToFile(route));
+              rendered.push([routeToFile(route), await prerender(file, { root, route, ...(options.prerender || {}) })]);
+            }
+            for (const [name, out] of rendered) {
+              const dest = join(root, name);
               await mkdir(dirname(dest), { recursive: true });
               await writeFile(dest, out, 'utf8');
             }
