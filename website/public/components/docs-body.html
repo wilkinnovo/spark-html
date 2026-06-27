@@ -13,6 +13,8 @@
     <a href="#vite">Vite plugin</a>
     <a href="#how">How it works</a>
     <a href="#debugging">Debugging</a>
+    <a href="#errors">Error handling</a>
+    <a href="#prerender">Prerender / SEO</a>
     <a href="#limits">Limitations</a>
   </aside>
 
@@ -177,6 +179,25 @@ export default defineConfig({
       <li>A malformed <code>each</code>, an <code>each</code> over a non-array, or a missing <code>import</code> each warn with the likely fix.</li>
     </ul>
     <p class="note">Warnings are <strong>deduplicated</strong> — each distinct problem is reported once, so a broken binding won't flood the console on every keystroke.</p>
+
+    <h2 id="errors">Error handling</h2>
+    <p>Failures are <strong>isolated to the component</strong> that caused them — a broken component never blanks the page or stops a sibling from rendering. Broken expressions, <code>$:</code> statements, event handlers, a <code>&lt;script&gt;</code> that throws, boot, and patch are all caught and logged (deduped) with the component named.</p>
+    <p>For development, opt into a full-screen <strong>error overlay</strong> (message, failing component, and stack) — off by default:</p>
+    <pre spark-ignore>import { mount } from 'spark-html';
+mount(document.body, { devOverlay: true });</pre>
+
+    <h2 id="prerender">Prerender for SEO</h2>
+    <p>Spark renders on the client, so a crawler that doesn't run JS sees empty placeholders. The companion <code>spark-prerender</code> package runs the <em>real</em> runtime against a server DOM and writes back fully-rendered HTML — <code>{interpolations}</code> resolved, <code>each</code>/<code>if</code> and nested imports rendered, scoped styles inlined, and <code>&lt;title&gt;</code>/<code>&lt;meta&gt;</code> injected from component state. The output keeps its <code>import</code> placeholders, so the client <strong>re-renders over it</strong> (hydrates) with no blank.</p>
+    <pre spark-ignore># post-build step — multi-page is just a list (no router)
+npx spark-prerender dist/index.html dist/docs.html</pre>
+    <p>Metadata needs no special API — declare it as component state, and async data lands in the HTML via an <code>async load()</code> hook:</p>
+    <pre spark-ignore>&lt;script&gt;
+  let pageTitle = 'Spark — HTML that reacts!';
+  let pageDescription = 'Single-file HTML components with built-in reactivity.';
+  let photos = [];
+  async function load() { photos = await (await fetch('/api/photos')).json(); }
+&lt;/script&gt;</pre>
+    <p class="note">There's also a Vite plugin (<code>spark-prerender/vite</code>) that prerenders <code>dist/*.html</code> automatically on build. See the package README for options.</p>
 
     <h2 id="limits">Limitations</h2>
     <p>Spark trades completeness for simplicity. Know the edges:</p>
