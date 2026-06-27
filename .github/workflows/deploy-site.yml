@@ -6,6 +6,7 @@ on:
     paths:
       - 'website/**'
       - 'packages/spark/**'
+      - 'packages/spark-prerender/**'
       - '.github/workflows/deploy-site.yml'
   workflow_dispatch:
 

@@ -1,4 +1,5 @@
 node_modules
+dist
 future.md
 
 # npm's package-lock.json is the single source of truth (CI uses `npm ci`).

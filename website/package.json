@@ -12,6 +12,7 @@
     "spark-html": "*"
   },
   "devDependencies": {
+    "spark-prerender": "*",
     "vite": "^5.0.0"
   }
 }

@@ -13,12 +13,27 @@ npm run dev
 Open the dev server and edit `public/components/welcome.html`. Save, and the
 page reloads instantly.
 
-## Build
+## Build (SEO-ready)
 
 ```bash
 npm run build     # static output → dist/, serve anywhere
 npm run preview   # preview the production build locally
 ```
+
+`npm run build` is **SEO-friendly out of the box**: the `spark-prerender`
+Vite plugin runs your app at build time and writes fully-rendered HTML into
+`dist/` — so crawlers and AI tools read real content (headings, text, links),
+not empty placeholders. The browser still hydrates over it for full
+interactivity. Set page metadata as plain component state:
+
+```html
+<script>
+  let pageTitle = 'My App — does a thing';
+  let pageDescription = 'A short, crawlable description of the page.';
+</script>
+```
+
+Don't need SEO? Remove the `prerender(...)` plugin from `vite.config.js`.
 
 ## How it's wired
 
@@ -29,7 +44,7 @@ npm run preview   # preview the production build locally
 ├── public/components/      ← your components (plain .html files)
 │   ├── app.html            ← theme + shell
 │   └── welcome.html        ← the live reactive welcome screen
-└── vite.config.js          ← spark-html/vite plugin
+└── vite.config.js          ← spark-html/vite + spark-prerender/vite (SEO)
 ```
 
 A component is a `.html` file with optional `<script>` and `<style>`. Top-level

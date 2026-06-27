@@ -206,14 +206,30 @@ export async function prerender(entryPath, options = {}) {
   // mount() awaits DOMContentLoaded only when readyState === 'loading'.
   try { if (document.readyState === 'loading') document.readyState = 'complete'; } catch { /* read-only is fine */ }
 
-  // Browser-global stubs (set on window for `window.x`, and exposed as globals
-  // below for bare-identifier access). Only fill what's absent.
-  const stubs = options.stubBrowserGlobals === false
+  // Timer stubs — ALWAYS on, and they OVERRIDE the real timers. Without this,
+  // a component that starts a setInterval/setTimeout in onMount leaves an open
+  // handle and the build process never exits. Intervals are live-only (no
+  // value at build time) → no-op; timeouts fire once on a microtask (so
+  // deferred state still settles), bounded against runaway recursion.
+  let timeoutBudget = 10000;
+  const timerStubs = {
+    setInterval: () => 0,
+    clearInterval: () => {},
+    setTimeout: (fn) => { if (typeof fn === 'function' && timeoutBudget-- > 0) queueMicrotask(fn); return 0; },
+    clearTimeout: () => {},
+  };
+  // Browser-feature stubs (matchMedia, localStorage, …) — only fill what's
+  // absent so any real linkedom implementation is preserved.
+  const featureStubs = options.stubBrowserGlobals === false
     ? {}
     : { ...makeBrowserStubs(), ...(options.stubs || {}) };
-  for (const [k, v] of Object.entries(stubs)) {
+  for (const [k, v] of Object.entries(timerStubs)) {
+    try { window[k] = v; } catch { /* read-only */ }
+  }
+  for (const [k, v] of Object.entries(featureStubs)) {
     if (window[k] === undefined) { try { window[k] = v; } catch { /* read-only */ } }
   }
+  const stubs = { ...featureStubs, ...timerStubs };
 
   // ── Drainable rAF: bootComponent defers its reveal + onMount here. We run
   //    these synchronously between settle passes instead of on a frame timer.
