@@ -360,9 +360,22 @@ async function resolveImportNode(node, scope = null) {
     const hydrate = node.hasAttribute('name');
 
     // Slot content: a real placeholder's children are the caller's slotted
-    // content; a prerendered host's children are its own rendered output (not
-    // slots) — discard them.
-    const slotted = hydrate ? [] : [...node.childNodes];
+    // content. A prerendered host's children are its own rendered output, so
+    // we read the caller's original slots from the <template data-spark-slots>
+    // the prerenderer stashed (if any), and re-project those.
+    let slotted;
+    if (hydrate) {
+      const tpl = [...node.childNodes].find(
+        (c) =>
+          c.nodeType === Node.ELEMENT_NODE &&
+          c.tagName === 'TEMPLATE' &&
+          c.hasAttribute('data-spark-slots'),
+      );
+      slotted = tpl ? [...tpl.content.childNodes] : [];
+      if (tpl) tpl.remove();
+    } else {
+      slotted = [...node.childNodes];
+    }
     const parentHost = closestComponent(node);
 
     // Build the component host. The import placeholder itself becomes
@@ -398,6 +411,14 @@ async function resolveImportNode(node, scope = null) {
     // stash extracted source on the element — bootComponent reads these
     host.__sparkScriptSrc = script;
     host.__sparkStyleSrc = style;
+
+    // During prerender, stash a clone of the caller's slot content so the
+    // prerenderer can serialize it for the client to re-project on hydration
+    // (the projected originals get consumed + rendered otherwise). Browser-only
+    // work is skipped — this only runs at build time.
+    if (typeof globalThis !== 'undefined' && globalThis.__SPARK_PRERENDER__ && slotted.length) {
+      host.__sparkSlotted = slotted.map((n) => (n.cloneNode ? n.cloneNode(true) : n));
+    }
 
     projectSlots(host, slotted, parentHost); // <slot> content projection
     await resolveImports(host); // nested imports (incl. inside slots)
@@ -516,7 +537,12 @@ function store(name, initial) {
 function subscribeStore(name, componentEl, scopeRef) {
   let entry = stores.get(name);
   if (!entry) {
-    console.warn(`[spark] useStore("${name}") — store not created. Call store("${name}", initial) before mount().`);
+    // During prerender the page's bootstrap (which calls store()) hasn't run,
+    // so an absent store is EXPECTED — auto-create it silently. In the browser
+    // it's a real mistake, so warn there.
+    if (!(typeof globalThis !== 'undefined' && globalThis.__SPARK_PRERENDER__)) {
+      console.warn(`[spark] useStore("${name}") — store not created. Call store("${name}", initial) before mount().`);
+    }
     store(name, {});
     entry = stores.get(name);
   }
@@ -1793,9 +1819,11 @@ async function mount(root = document.body, options = {}) {
     if (root.querySelectorAll) {
       root.querySelectorAll('[data-spark-cloak]').forEach(reveal);
     }
-    console.log(
-      `[spark] ⚡ ready — ${root.querySelectorAll('[name]').length} component(s)`,
-    );
+    if (!(typeof globalThis !== 'undefined' && globalThis.__SPARK_PRERENDER__)) {
+      console.log(
+        `[spark] ⚡ ready — ${root.querySelectorAll('[name]').length} component(s)`,
+      );
+    }
   };
 
   if (document.readyState === 'loading') {

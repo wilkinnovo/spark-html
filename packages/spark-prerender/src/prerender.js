@@ -145,13 +145,46 @@ function injectMetadata(document, metaMap) {
 // real browser takes over cleanly instead of finding a script-less host and
 // blanking. Nested hosts are left alone: they're rebuilt when their parent
 // re-resolves. Disable with `hydratable: false` for pure-static output.
+// Serialize a coerced prop value back to an attribute string that round-trips
+// through the runtime's coerce(): '' = true, JSON for objects/arrays, etc.
+function serializeProp(v) {
+  if (v === true) return '';
+  if (v === false) return 'false';
+  if (v === null) return 'null';
+  if (typeof v === 'string') return v;
+  if (typeof v === 'number') return String(v);
+  return JSON.stringify(v);
+}
+
 function makeHydratable(document) {
   const hosts = [...document.querySelectorAll('[name]')].filter((h) => h.__sparkImportPath);
   for (const host of hosts) {
     let p = host.parentNode;
     let nested = false;
     while (p) { if (p.__sparkImportPath) { nested = true; break; } p = p.parentNode; }
-    if (!nested) host.setAttribute('import', host.__sparkImportPath);
+    if (nested) continue;
+
+    host.setAttribute('import', host.__sparkImportPath);
+
+    // Props: write them back as attributes so the client re-resolve gets them
+    // (class/id are already real attributes on the host).
+    const props = host.__sparkProps;
+    if (props) {
+      for (const [k, v] of Object.entries(props)) {
+        if (k === 'class' || k === 'id') continue;
+        try { host.setAttribute(k, serializeProp(v)); } catch { /* skip bad name */ }
+      }
+    }
+
+    // Slots: re-emit the caller's original slot content (stashed by the runtime
+    // during prerender) into an inert <template> the client reads on hydration.
+    const slotted = host.__sparkSlotted;
+    if (slotted && slotted.length) {
+      const tpl = document.createElement('template');
+      tpl.setAttribute('data-spark-slots', '');
+      tpl.innerHTML = slotted.map((n) => n.outerHTML ?? n.textContent ?? '').join('');
+      host.appendChild(tpl);
+    }
   }
 }
 
@@ -263,7 +296,7 @@ export async function prerender(entryPath, options = {}) {
   };
 
   return withGlobals(
-    { window, document, Node: window.Node, requestAnimationFrame, fetch, ...stubs },
+    { window, document, Node: window.Node, requestAnimationFrame, fetch, __SPARK_PRERENDER__: true, ...stubs },
     async () => {
       // Import the runtime FRESH per page (cache-busted) so its module-load
       // cloak + caches bind to THIS document, and pages stay isolated.

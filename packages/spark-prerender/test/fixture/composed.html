@@ -1,0 +1,13 @@
+<!doctype html>
+<html lang="en">
+  <head><meta charset="utf-8" /><title>composed</title></head>
+  <body>
+    <div import="components/card" title="Hello Card" count="3">
+      <span slot="body">Slotted content here</span>
+    </div>
+    <script type="module">
+      import { mount } from 'spark-html';
+      mount();
+    </script>
+  </body>
+</html>
