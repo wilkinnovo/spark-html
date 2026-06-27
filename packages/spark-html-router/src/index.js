@@ -65,10 +65,14 @@ function markActiveLinks() {
   for (const a of rootEl.querySelectorAll('a[href]')) {
     const href = a.getAttribute('href');
     let match = false;
-    if (href && !/^[a-z]+:/i.test(href) && !href.startsWith('#')) {
+    // Skip external schemes and in-page anchors (#hash, or same-route + hash) —
+    // those aren't route links and shouldn't be marked aria-current.
+    if (href && !/^[a-z]+:/i.test(href) && href[0] !== '#') {
       try {
         const u = new URL(href, location.href);
-        if (u.origin === location.origin) match = normalize(u.pathname) === path;
+        if (u.origin === location.origin && !(u.hash && normalize(u.pathname) === path)) {
+          match = normalize(u.pathname) === path;
+        }
       } catch { /* malformed href — not active */ }
     }
     if (match) a.setAttribute('aria-current', 'page');
@@ -186,8 +190,12 @@ function onClick(e) {
   if (!href || (target && target !== '_self') || el.hasAttribute('download') || /^[a-z]+:/i.test(href)) {
     return; // external scheme, new tab, or download — let the browser handle it
   }
+  if (href[0] === '#') return; // in-page anchor (e.g. a docs TOC link) — native scroll
   const url = new URL(href, location.href);
   if (url.origin !== location.origin) return;
+  // Same route + a hash → an in-page anchor on the current page; let the browser
+  // scroll to it natively instead of hijacking it as a route navigation.
+  if (url.hash && normalize(url.pathname) === currentPath()) return;
   e.preventDefault();
   history.pushState({}, '', url.pathname + url.search + url.hash);
   render();

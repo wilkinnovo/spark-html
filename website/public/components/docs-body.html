@@ -5,6 +5,7 @@
     <p class="aside-title">Documentation</p>
     <a href="#concept">The concept</a>
     <a href="#install">Installation</a>
+    <a href="#no-build">No build / CDN</a>
     <a href="#components">Components</a>
     <a href="#syntax">Template syntax</a>
     <a href="#slots">Slots</a>
@@ -35,6 +36,22 @@
     <p>Then <code>cd yourapp &amp;&amp; npm install &amp;&amp; npm run dev</code>. Or add Spark to an existing project:</p>
     <pre spark-ignore>npm install spark-html</pre>
     <p>Spark is a runtime library plus an optional Vite plugin. There is no compile step — component files are fetched and booted in the browser.</p>
+
+    <h3 id="no-build">No build, no install</h3>
+    <p>Because components are fetched at runtime and the runtime is a single ES module, you can use Spark with <strong>zero tooling</strong> — straight from a CDN with an import map. No npm, no bundler, no compiler:</p>
+    <pre spark-ignore>&lt;script type="importmap"&gt;
+  { "imports": { "spark-html": "https://esm.sh/spark-html@0.21" } }
+&lt;/script&gt;
+
+&lt;div import="components/counter"&gt;&lt;/div&gt;
+
+&lt;script type="module"&gt;
+  import { mount } from 'spark-html';
+  mount();
+&lt;/script&gt;</pre>
+    <p>Serve the folder with any static server (<code>npx serve</code>, <code>python3 -m http.server</code>) and open it — that's the whole toolchain. Components are just files at a URL, so you can even import one straight from a CDN or another repo:</p>
+    <pre spark-ignore>&lt;div import="https://cdn.jsdelivr.net/gh/you/repo/card.html"&gt;&lt;/div&gt;</pre>
+    <p class="note">This is Spark's sharpest edge: the file you ship is the file that runs, and "install" can be a single <code>&lt;script&gt;</code> tag. A complete runnable example lives in <code>examples/no-build</code>, and the home page's <strong>URL import</strong> tab fetches a component from a CDN live.</p>
 
     <h2 id="components">Components</h2>
     <p>A component is a plain <code>.html</code> file containing markup, an optional <code>&lt;script&gt;</code>, and an optional <code>&lt;style&gt;</code>:</p>
@@ -226,7 +243,25 @@ npx spark-prerender dist/index.html dist/docs.html</pre>
 <script>
   let pageTitle = 'Spark — Documentation';
   let pageDescription = 'Spark docs — single-file reactive HTML components, props, stores, router, prerender.';
-  onMount(() => { if (typeof window !== 'undefined' && window.highlightAll) window.highlightAll(); });
+  onMount(() => {
+    if (typeof window !== 'undefined' && window.highlightAll) window.highlightAll();
+    // Scrollspy: highlight the TOC link for the section in view.
+    const links = [...document.querySelectorAll('.docs aside a')];
+    const byId = {};
+    links.forEach((a) => { byId[(a.getAttribute('href') || '').slice(1)] = a; });
+    const heads = [...document.querySelectorAll('.docs main [id]')];
+    if (typeof IntersectionObserver === 'undefined' || !heads.length) return;
+    const io = new IntersectionObserver((entries) => {
+      for (const en of entries) {
+        if (!en.isIntersecting) continue;
+        links.forEach((a) => a.classList.remove('active'));
+        const a = byId[en.target.id];
+        if (a) a.classList.add('active');
+      }
+    }, { rootMargin: '0px 0px -78% 0px', threshold: 0 });
+    heads.forEach((h) => io.observe(h));
+    return () => io.disconnect();
+  });
 </script>
 
 <style>
@@ -237,7 +272,8 @@ npx spark-prerender dist/index.html dist/docs.html</pre>
   aside { position: sticky; top: 24px; display: flex; flex-direction: column; gap: 1px; }
   .aside-title { font-size: 11px; text-transform: uppercase; letter-spacing: .12em; color: var(--muted-dim); margin-bottom: 12px; }
   aside a { color: var(--muted); font-size: 13.5px; padding: 5px 0; transition: color .12s; }
-  aside a:hover { color: var(--spark); }
+  aside a:hover { color: var(--text); }
+  aside a.active { color: var(--spark); font-weight: 700; }
   main { min-width: 0; }
   h1 { font-size: clamp(30px, 5vw, 40px); letter-spacing: -.03em; font-weight: 800; margin-bottom: 10px; }
   .intro { color: var(--muted); font-size: 16px; max-width: 62ch; }

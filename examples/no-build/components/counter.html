@@ -1,0 +1,15 @@
+<div class="counter">
+  <h2>Count: {count}</h2>
+  <button onclick="{inc}">+1</button>
+</div>
+
+<script>
+  let count = 0;
+  function inc() { count++; }
+</script>
+
+<style>
+  .counter { border: 1px solid #333; padding: 20px; margin-top: 24px; }
+  h2 { font-variant-numeric: tabular-nums; }
+  button { font-family: inherit; background: #ffd24a; color: #000; border: none; padding: 8px 18px; font-size: 15px; font-weight: 700; cursor: pointer; }
+</style>

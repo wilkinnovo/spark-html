@@ -56,6 +56,20 @@ mount();
 <div import="components/counter"></div>
 ```
 
+…or **no build at all** — straight from a CDN, no npm, no bundler:
+
+```html
+<script type="importmap">
+  { "imports": { "spark-html": "https://esm.sh/spark-html@0.21" } }
+</script>
+<div import="components/counter"></div>
+<script type="module">import { mount } from 'spark-html'; mount()</script>
+```
+
+Serve any static folder and open it — that's the whole toolchain. Components are
+just files at a URL, so you can even `import` one straight from a CDN. See
+[`examples/no-build`](examples/no-build).
+
 ## Packages
 
 | Package | What it does |

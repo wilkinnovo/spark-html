@@ -1,0 +1,27 @@
+<div class="uc">
+  <div class="uc-row"><span class="uc-dot">●</span> fetched from a URL · rendered at <b>{at}</b></div>
+  <button class="uc-btn" onclick="{ping}">pinged {pings}×</button>
+  <p class="uc-note">This whole component is a plain <code>.html</code> file on a CDN — no bundler touched it.</p>
+</div>
+
+<script>
+  // Self-contained so it renders anywhere it's imported from (incl. cross-origin).
+  let at = new Date().toLocaleTimeString();
+  let pings = 0;
+  function ping() { pings++; }
+  onMount(() => {
+    const t = setInterval(() => { at = new Date().toLocaleTimeString(); }, 1000);
+    return () => clearInterval(t);
+  });
+</script>
+
+<style>
+  .uc { display: flex; flex-direction: column; gap: 12px; }
+  .uc-row { font-size: 14px; color: var(--muted, #888); }
+  .uc-row b { color: var(--text, #fff); font-variant-numeric: tabular-nums; }
+  .uc-dot { color: #ffd24a; }
+  .uc-btn { align-self: flex-start; background: #ffd24a; color: #000; border: none; padding: 8px 18px; font-family: inherit; font-weight: 700; font-size: 14px; cursor: pointer; }
+  .uc-btn:active { transform: scale(.96); }
+  .uc-note { font-size: 12px; color: var(--muted-dim, #666); margin-top: 2px; }
+  .uc-note code { color: #ffd24a; }
+</style>

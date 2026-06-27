@@ -44,7 +44,7 @@ component('user', `<h1>User {uid}</h1><script>const route = useStore('route'); l
 component('me', `<h1>My profile</h1>`);
 
 parseHTML(`
-  <nav><a class="lnk-home" href="/">Home</a><a class="lnk-about" href="/about">About</a><a class="lnk-ext" href="https://x.com/p" target="_blank">ext</a></nav>
+  <nav><a class="lnk-home" href="/">Home</a><a class="lnk-about" href="/about">About</a><a class="lnk-ext" href="https://x.com/p" target="_blank">ext</a><a class="lnk-hash" href="#sec">Sec</a></nav>
   <template route="/"><div import="home"></div></template>
   <template route="/about"><div import="about"></div></template>
   <template route="/projects"><div import="projects"></div></template>
@@ -118,6 +118,14 @@ await test('clicking a same-origin <a> navigates (SPA, no reload)', async () => 
 await test('an external/_blank link is NOT intercepted', () => {
   const e = fireClick(body.querySelector('.lnk-ext'));
   assert.equal(e.defaultPrevented, false, 'external link left to the browser');
+});
+await test('an in-page #anchor is NOT intercepted and not marked active', async () => {
+  await navigate('/');
+  await tick();
+  const hash = body.querySelector('.lnk-hash');
+  const e = fireClick(hash);
+  assert.equal(e.defaultPrevented, false, 'hash link left to the browser (native scroll)');
+  assert.equal(hash.getAttribute('aria-current'), null, 'in-page anchor never gets aria-current');
 });
 await test('a dynamic route="/users/:id" captures the param into route.params', async () => {
   await navigate('/users/7');
