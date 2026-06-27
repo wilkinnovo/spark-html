@@ -1,6 +1,6 @@
 <!-- The docs are static reference content full of literal {brace} examples;
      spark-ignore keeps Spark (and the prerenderer) from interpolating them. -->
-<div class="layout" spark-ignore>
+<div class="docs" spark-ignore>
   <aside>
     <p class="aside-title">Documentation</p>
     <a href="#concept">The concept</a>
@@ -223,104 +223,42 @@ npx spark-prerender dist/index.html dist/docs.html</pre>
   </main>
 </div>
 
+<script>
+  let pageTitle = 'Spark — Documentation';
+  let pageDescription = 'Spark docs — single-file reactive HTML components, props, stores, router, prerender.';
+  onMount(() => { if (typeof window !== 'undefined' && window.highlightAll) window.highlightAll(); });
+</script>
+
 <style>
-  .layout {
-    max-width: 1080px;
-    margin: 0 auto;
-    padding: 48px 32px 90px;
-    display: grid;
-    grid-template-columns: 200px 1fr;
-    gap: 48px;
-    align-items: start;
+  .docs {
+    max-width: 1080px; margin: 0 auto; padding: 56px 0 90px;
+    display: grid; grid-template-columns: 190px 1fr; gap: 48px; align-items: start;
   }
-  aside {
-    position: sticky;
-    top: 90px;
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-  }
-  .aside-title {
-    font-family: var(--mono);
-    font-size: 11px;
-    text-transform: uppercase;
-    letter-spacing: .12em;
-    color: var(--muted);
-    margin-bottom: 10px;
-  }
-  aside a {
-    color: var(--muted);
-    text-decoration: none;
-    font-size: 14px;
-    padding: 6px 10px;
-    border-radius: 7px;
-    transition: all .12s;
-  }
-  aside a:hover { color: var(--text); background: var(--surface); }
+  aside { position: sticky; top: 24px; display: flex; flex-direction: column; gap: 1px; }
+  .aside-title { font-size: 11px; text-transform: uppercase; letter-spacing: .12em; color: var(--muted-dim); margin-bottom: 12px; }
+  aside a { color: var(--muted); font-size: 13.5px; padding: 5px 0; transition: color .12s; }
+  aside a:hover { color: var(--spark); }
   main { min-width: 0; }
-  h1 { font-size: 36px; letter-spacing: -0.02em; margin-bottom: 10px; }
-  .intro { color: var(--muted); font-size: 16px; max-width: 560px; }
-  h2 {
-    font-size: 21px;
-    margin: 48px 0 14px;
-    padding-top: 18px;
-    border-top: 1px solid var(--border);
-    letter-spacing: -0.01em;
-    scroll-margin-top: 90px;
-  }
-  p { margin: 10px 0; font-size: 15px; color: #c9c7d8; max-width: 640px; }
-  p strong { color: var(--text); }
-  .note {
-    border-left: 3px solid var(--spark);
-    background: var(--surface);
-    padding: 12px 16px;
-    border-radius: 0 8px 8px 0;
-    font-size: 14px;
-  }
-  code {
-    font-family: var(--mono);
-    font-size: 13px;
-    background: var(--surface-2);
-    padding: 2px 7px;
-    border-radius: 5px;
-    color: var(--spark);
-  }
-  pre {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    padding: 16px 18px;
-    font-family: var(--mono);
-    font-size: 13px;
-    line-height: 1.7;
-    color: #c5c2d6;
-    overflow-x: auto;
-    margin: 14px 0;
-  }
-  table {
-    width: 100%;
-    border-collapse: collapse;
-    margin: 16px 0;
-    font-size: 14px;
-  }
-  th, td {
-    text-align: left;
-    padding: 10px 14px;
-    border-bottom: 1px solid var(--border);
-    vertical-align: top;
-  }
-  th {
-    font-family: var(--mono);
-    font-size: 11px;
-    text-transform: uppercase;
-    letter-spacing: .1em;
-    color: var(--muted);
-    font-weight: 500;
-  }
+  h1 { font-size: clamp(30px, 5vw, 40px); letter-spacing: -.03em; font-weight: 800; margin-bottom: 10px; }
+  .intro { color: var(--muted); font-size: 16px; max-width: 62ch; }
+  h2 { font-size: 20px; margin: 46px 0 14px; padding-top: 22px; border-top: 1px solid var(--border); letter-spacing: -.01em; scroll-margin-top: 24px; font-weight: 700; }
+  h3 { font-size: 16px; margin: 26px 0 10px; font-weight: 700; }
+  p { margin: 10px 0; font-size: 14.5px; color: var(--muted); max-width: 70ch; line-height: 1.75; }
+  p strong { color: var(--text); font-weight: 600; }
+  ul { margin: 10px 0 10px 18px; color: var(--muted); font-size: 14.5px; max-width: 70ch; line-height: 1.75; }
+  li { margin: 6px 0; }
+  .note { border-left: 2px solid var(--spark); background: var(--surface); padding: 12px 16px; font-size: 14px; color: var(--muted); margin: 14px 0; }
+  code { font-size: 13px; background: var(--surface-2); padding: 2px 6px; color: var(--spark); }
+  pre { background: var(--surface); border: 1px solid var(--border); padding: 16px 18px; font-size: 13px; line-height: 1.7; color: var(--muted); overflow-x: auto; margin: 14px 0; white-space: pre; }
+  pre code { background: none; padding: 0; color: inherit; }
+  table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 14px; }
+  th, td { text-align: left; padding: 10px 14px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  th { font-size: 11px; text-transform: uppercase; letter-spacing: .1em; color: var(--muted-dim); font-weight: 500; }
   td:first-child { white-space: nowrap; color: var(--text); }
   td code { white-space: nowrap; }
   @media (max-width: 800px) {
-    .layout { grid-template-columns: 1fr; }
-    aside { position: static; flex-direction: row; flex-wrap: wrap; gap: 8px; }
+    .docs { grid-template-columns: 1fr; gap: 24px; }
+    aside { position: static; flex-direction: row; flex-wrap: wrap; gap: 6px 14px; }
+    aside a { padding: 2px 0; }
   }
 </style>

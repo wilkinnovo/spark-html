@@ -1,0 +1,64 @@
+<section class="page">
+  <header class="head">
+    <h1 class="page-title">Built with Spark</h1>
+    <p class="sub">Real sites shipping single-file Spark components. <a href="https://github.com/wilkinnovo/spark" target="_blank" rel="noopener">Add yours →</a></p>
+  </header>
+
+  <div class="grid">
+    <template each="s in sites">
+      <a class="card" href="{s.url}" target="_blank" rel="noopener">
+        <div class="thumb">
+          <img src="{app.base}/showcase/{s.slug}.webp" alt="{s.name}" loading="lazy" onerror="this.style.display='none'" />
+          <span class="stub">{s.name}</span>
+        </div>
+        <div class="meta">
+          <div class="nm">{s.name} <span class="arr">↗</span></div>
+          <div class="ds">{s.desc}</div>
+          <div class="tags">
+            <template each="t in s.tags"><span class="tag">{t}</span></template>
+          </div>
+        </div>
+      </a>
+    </template>
+
+    <a class="card add" href="https://github.com/wilkinnovo/spark" target="_blank" rel="noopener">
+      <div class="thumb"><span class="stub">+ add yours</span></div>
+      <div class="meta">
+        <div class="nm">Your site here</div>
+        <div class="ds">Built something with Spark? Open a PR adding an entry and a screenshot.</div>
+        <div class="tags"><span class="tag">PR welcome</span></div>
+      </div>
+    </a>
+  </div>
+</section>
+
+<script>
+  let pageTitle = 'Spark — Showcase';
+  let pageDescription = 'Sites built with Spark — single-file reactive HTML components.';
+  const app = useStore('app');
+  const showcase = useStore('showcase');
+  $: sites = showcase.sites || [];
+</script>
+
+<style>
+  .page { padding: 64px 0; min-height: calc(100vh - 220px); }
+  .head { margin-bottom: 36px; }
+  .page-title { font-size: clamp(30px, 5vw, 44px); font-weight: 800; letter-spacing: -.03em; }
+  .sub { color: var(--muted); margin-top: 10px; font-size: 15px; }
+  .sub a { color: var(--spark); }
+  .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 24px; }
+  .card { display: flex; flex-direction: column; }
+  .thumb { aspect-ratio: 2/1; border: 1px solid var(--border); position: relative; overflow: hidden; background: var(--surface-2); }
+  .thumb img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: 1; }
+  .thumb .stub { position: absolute; inset: 0; display: grid; place-items: center; color: var(--muted-dim); font-size: 13px; }
+  .card:hover .thumb { border-color: var(--border-strong); }
+  .meta { padding: 14px 2px 0; }
+  .nm { font-size: 16px; font-weight: 700; }
+  .nm .arr { color: var(--muted-dim); font-size: 13px; }
+  .card:hover .nm .arr { color: var(--spark); }
+  .ds { font-size: 13px; color: var(--muted); margin-top: 4px; }
+  .tags { display: flex; gap: 6px; margin-top: 12px; flex-wrap: wrap; }
+  .tag { font-size: 10.5px; color: var(--muted-nav); border: 1px solid var(--border); padding: 2px 8px; }
+  .add .stub { color: var(--muted-dim); }
+  @media (max-width: 720px) { .grid { grid-template-columns: 1fr; } }
+</style>

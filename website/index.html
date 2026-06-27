@@ -3,56 +3,79 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Spark — HTML that reacts!</title>
-    <meta
-      name="description"
-      content="Single-file HTML components with built-in reactivity. No compiler, no virtual DOM, no build step."
-    />
-    <link
-      rel="icon"
-      href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚡</text></svg>"
-    />
+    <title>Spark — HTML that reacts.</title>
+    <meta name="description" content="Single-file reactive HTML components. The .html you save is the component that runs — no compiler, no virtual DOM, no build step." />
+    <meta property="og:title" content="Spark — HTML that reacts." />
+    <meta property="og:description" content="Single-file reactive HTML components. No compiler, no virtual DOM, no build step." />
+    <meta property="og:type" content="website" />
+    <meta property="og:image" content="https://wilkinnovo.github.io/spark/og.png" />
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚡</text></svg>" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+    <script>
+      /* no flash of the wrong theme */
+      (function () {
+        try {
+          var m = localStorage.getItem('theme-mode') || 'system';
+          var dark = m === 'dark' || (m === 'system' && matchMedia('(prefers-color-scheme: dark)').matches);
+          document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+        } catch (e) { document.documentElement.dataset.theme = 'dark'; }
+      })();
+    </script>
     <style>
-      /* Base shell styles — everything else lives in components */
       *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
       :root {
-        --bg: #0c0c11;
-        --surface: #14141c;
-        --surface-2: #1b1b26;
-        --border: #26263a;
-        --text: #e8e6f0;
-        --muted: #8b89a0;
-        --accent: #8b7cff;
-        --accent-dim: #2a2545;
-        --spark: #ffd24a;
-        --radius: 12px;
-        --mono: ui-monospace, "SF Mono", "Cascadia Code", Menlo, Consolas, monospace;
+        --bg:#000; --surface:#0a0a0a; --surface-2:#101014;
+        --border:#1a1a1a; --border-strong:#333;
+        --text:#fff; --muted:#888; --muted-dim:#555; --muted-nav:#666;
+        --accent:#fff; --accent-dim:#16161c; --spark:#ffd24a;
+        --sk-dark:#111; --sk-mid:#1a1a1a; --sk-light:#222;
+        --sidebar-w:80px; --radius:0;
+        --font:"JetBrains Mono", ui-monospace, monospace;
+        --mono:"JetBrains Mono", ui-monospace, monospace;
       }
-      html { scroll-behavior: smooth; }
+      [data-theme="light"] {
+        --bg:#fff; --surface:#fafafa; --surface-2:#f4f4f5;
+        --border:#ededed; --border-strong:#d4d4d4;
+        --text:#1a1a1a; --muted:#666; --muted-dim:#999; --muted-nav:#888;
+        --accent:#111; --accent-dim:#f0f0f0; --spark:#ffd24a;
+        --sk-dark:#eee; --sk-mid:#e4e4e4; --sk-light:#dcdcdc;
+      }
+      [data-theme="light"] ::selection { background:#ffe9a8; color:#111; }
+      html { scroll-behavior:smooth; }
       body {
-        font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
-        background:
-          radial-gradient(ellipse 70% 45% at 50% -8%, rgba(139, 124, 255, .14), transparent),
-          linear-gradient(rgba(139,124,255,.035) 1px, transparent 1px),
-          linear-gradient(90deg, rgba(139,124,255,.035) 1px, transparent 1px),
-          var(--bg);
-        background-size: 100% 100%, 44px 44px, 44px 44px, 100% 100%;
-        color: var(--text);
-        line-height: 1.6;
+        font-family:var(--font); background:var(--bg); color:var(--text);
+        line-height:1.6; -webkit-font-smoothing:antialiased; min-height:100vh;
       }
-      ::selection { background: var(--accent); color: #0c0c11; }
+      ::selection { background:var(--spark); color:#000; }
+      a { color:inherit; text-decoration:none; }
+      [hidden] { display:none !important; }
+      .layout { display:flex; min-height:100vh; }
+      .content { flex:1; margin-left:var(--sidebar-w); min-width:0; }
+      .routes { padding:0 56px; }
+      .wrap { max-width:1040px; margin:0 auto; }
+      @media (max-width:860px) {
+        .content { margin-left:0; }
+        .routes { padding:0 22px; }
+      }
     </style>
   </head>
   <body>
-    <div import="components/site-nav"></div>
-    <div import="components/hero"></div>
-    <div import="components/features"></div>
-    <div import="components/philosophy"></div>
-    <div import="components/playground"></div>
-    <div import="components/store-demo"></div>
-    <div import="components/composition-demo"></div>
-    <div import="components/quickstart"></div>
-    <div import="components/site-footer"></div>
+    <!-- This entire site is built with Spark: a left-rail shell + one
+         <template route> per page, the router, and the theme helper. -->
+    <div class="layout">
+      <div import="components/sidebar"></div>
+      <div class="content">
+        <main class="routes wrap">
+          <template route="/"><div import="components/home"></div></template>
+          <template route="/docs"><div import="components/docs-body"></div></template>
+          <template route="/playground"><div import="components/playground"></div></template>
+          <template route="/showcase"><div import="components/showcase"></div></template>
+        </main>
+        <div import="components/footer"></div>
+      </div>
+    </div>
 
     <script type="module" src="/src/main.js"></script>
   </body>

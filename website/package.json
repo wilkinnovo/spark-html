@@ -9,7 +9,9 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "spark-html": "*"
+    "spark-html": "*",
+    "spark-html-router": "*",
+    "spark-html-theme": "*"
   },
   "devDependencies": {
     "spark-prerender": "*",

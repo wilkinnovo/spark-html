@@ -1,32 +1,16 @@
 <nav>
   <a class="brand" href="/">⚡ Spark</a>
-  <span class="tagline">write HTML · get reactivity · no build magic</span>
-  <a class="gh" href="https://github.com" target="_blank">GitHub</a>
+  <span class="tagline">HTML that reacts.</span>
+  <a class="gh" href="https://github.com/wilkinnovo/spark" target="_blank" rel="noopener">GitHub</a>
 </nav>
 
 <style>
   nav {
-    display: flex;
-    align-items: center;
-    gap: 14px;
-    padding: 14px 28px;
-    background: #fff;
-    border-bottom: 1px solid #e8e8ee;
+    display: flex; align-items: center; gap: 14px;
+    padding: 14px 28px; background: var(--surface); border-bottom: 1px solid var(--border);
   }
-  .brand {
-    font-weight: 700;
-    font-size: 17px;
-    color: #5b4ff7;
-    text-decoration: none;
-  }
-  .tagline { font-size: 12px; color: #999; flex: 1; }
-  .gh {
-    font-size: 13px;
-    color: #555;
-    text-decoration: none;
-    padding: 5px 14px;
-    border: 1px solid #ddd;
-    border-radius: 6px;
-  }
-  .gh:hover { background: #f5f5f5; }
+  .brand { font-weight: 800; font-size: 17px; color: var(--text); text-decoration: none; }
+  .tagline { font-size: 12px; color: var(--muted); flex: 1; }
+  .gh { font-size: 13px; color: var(--muted); text-decoration: none; padding: 6px 14px; border: 1px solid var(--border); }
+  .gh:hover { color: var(--spark); border-color: var(--border-strong); }
 </style>

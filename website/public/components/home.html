@@ -1,0 +1,171 @@
+<section class="hero">
+  <div class="hero-copy">
+    <p class="eyebrow"><span>no compiler</span><span class="d">·</span><span>no virtual DOM</span><span class="d">·</span><span>no build step</span></p>
+    <h1><span class="l1">HTML that</span> <em>reacts.</em></h1>
+    <p class="lede">The component <b>is</b> the file. Save <code>counter.html</code> and the browser runs it <b>byte-for-byte</b> — reactive, scoped, untouched. Nothing else does that.</p>
+    <div class="cli">
+      <span class="prompt">$</span><code>npx create-spark-html-app</code>
+      <button class="copy" onclick="{copy}">{copied ? 'copied' : 'copy'}</button>
+    </div>
+    <div class="ctas">
+      <a class="btn primary" href="{app.base}/docs">Get started</a>
+      <a class="btn" href="{app.base}/playground">Playground</a>
+    </div>
+  </div>
+
+  <div class="demo">
+    <div class="demo-bar"><i></i><i></i><i></i><b>counter.html</b></div>
+    <div class="demo-body">
+<pre class="code" spark-ignore>&lt;h2&gt;Count: <span class="k">{count}</span>&lt;/h2&gt;
+&lt;button onclick=<span class="k">{inc}</span>&gt;+1&lt;/button&gt;
+
+&lt;script&gt;
+  <span class="k">let</span> count = 0;
+  <span class="k">function</span> inc() { count++; }
+&lt;/script&gt;</pre>
+      <div class="live">
+        <p class="live-label">● live — the actual component</p>
+        <div class="live-row">
+          <span class="count">Count: {count}</span>
+          <button class="plus" onclick="{inc}">+1</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="chips">
+  <span class="chip"><b>0</b> build step</span>
+  <span class="chip"><b>~10kb</b> runtime</span>
+  <span class="chip"><b>0</b> dependencies</span>
+  <span class="chip"><b>190+</b> tests</span>
+  <span class="chip"><b>4</b> packages</span>
+</div>
+
+<section class="sec">
+  <p class="sec-eyebrow">What's in Spark</p>
+  <div class="bento">
+    <div class="cell"><h3>Single-file components<span class="dot">.</span></h3><p>Markup, script and style in one .html file. Nothing rewrites your code.</p></div>
+    <div class="cell"><h3>Surgical reactivity<span class="dot">.</span></h3><p>A change re-evaluates only the bindings that read it — not the page.</p></div>
+    <div class="cell"><h3>Shared stores<span class="dot">.</span></h3><p>Named stores let any two components share state. No providers.</p></div>
+    <div class="cell"><h3>Declarative router<span class="dot">.</span></h3><p>&lt;template route&gt; + router(). Active links and a route store, free.</p></div>
+    <div class="cell"><h3>SEO prerender<span class="dot">.</span></h3><p>Real HTML per route at build time. No SSR server, no app changes.</p></div>
+    <div class="cell"><h3>One-line theming<span class="dot">.</span></h3><p>theme() — dark / light / system, persisted, no flash.</p></div>
+  </div>
+</section>
+
+<section class="sec">
+  <div class="sec-head">
+    <p class="sec-eyebrow">Built with Spark</p>
+    <a class="more" href="{app.base}/showcase">View all →</a>
+  </div>
+  <div class="show">
+    <template each="s in sites">
+      <a class="card" href="{s.url}" target="_blank" rel="noopener">
+        <div class="thumb"><img src="{app.base}/showcase/{s.slug}.webp" alt="{s.name}" loading="lazy" onerror="this.style.display='none'" /><span class="stub">{s.name}</span></div>
+        <div class="nm">{s.name}</div>
+        <div class="ds">{s.desc}</div>
+      </a>
+    </template>
+    <a class="card add" href="https://github.com/wilkinnovo/spark" target="_blank" rel="noopener">
+      <div class="thumb"><span class="stub">+ add yours</span></div>
+      <div class="nm">Your site here</div>
+      <div class="ds">Open a PR to add your build.</div>
+    </a>
+  </div>
+</section>
+
+<script>
+  const app = useStore('app');
+  const showcase = useStore('showcase');
+  $: sites = showcase.sites || [];
+
+  let count = 0;
+  function inc() { count++; }
+
+  let copied = false;
+  let ct;
+  function copy() {
+    try { navigator.clipboard.writeText('npx create-spark-html-app'); } catch (e) {}
+    copied = true;
+    clearTimeout(ct);
+    ct = setTimeout(() => { copied = false; }, 1400);
+  }
+</script>
+
+<style>
+  .hero { display: grid; grid-template-columns: 1.25fr 1fr; gap: 48px; align-items: center; padding: 88px 0 56px; }
+  .eyebrow { font-size: 12px; letter-spacing: .16em; text-transform: uppercase; color: var(--spark); margin-bottom: 18px; }
+  .eyebrow span { display: inline-block; margin: 0 3px; opacity: 0; animation: fadeUp .55s cubic-bezier(.2,.7,.2,1) forwards; }
+  .eyebrow .d { color: var(--muted-dim); }
+  .eyebrow span:nth-child(1){animation-delay:.06s}.eyebrow span:nth-child(2){animation-delay:.14s}
+  .eyebrow span:nth-child(3){animation-delay:.22s}.eyebrow span:nth-child(4){animation-delay:.30s}
+  .eyebrow span:nth-child(5){animation-delay:.38s}
+  h1 { font-size: clamp(40px, 6vw, 68px); line-height: 1.04; letter-spacing: -.03em; font-weight: 800; }
+  h1 .l1 { display: inline-block; opacity: 0; animation: fadeUp .6s cubic-bezier(.2,.7,.2,1) .46s forwards; }
+  h1 em {
+    font-style: normal; color: var(--spark); display: inline-block; opacity: 0;
+    animation: fadeUp .6s cubic-bezier(.2,.7,.2,1) .66s forwards, sparkOn 1.05s ease-in-out 1.2s 1;
+  }
+  @keyframes fadeUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: none; } }
+  @keyframes sparkOn {
+    0% { opacity: .25; text-shadow: none; } 10% { opacity: 1; } 14% { opacity: .4; }
+    20% { opacity: 1; text-shadow: 0 0 24px rgba(255,210,74,.7); } 30% { opacity: .7; }
+    38% { opacity: 1; text-shadow: 0 0 10px rgba(255,210,74,.4); } 100% { opacity: 1; text-shadow: 0 0 0 transparent; }
+  }
+  @media (prefers-reduced-motion: reduce) { .eyebrow span, h1 .l1, h1 em, .lede { animation: none !important; opacity: 1 !important; transform: none !important; } }
+  .lede { color: var(--muted); font-size: 16px; max-width: 46ch; margin: 20px 0 26px; opacity: 0; animation: fadeUp .6s cubic-bezier(.2,.7,.2,1) .9s forwards; }
+  .lede b { color: var(--text); font-weight: 600; }
+  .lede code { color: var(--spark); background: var(--surface-2); padding: 1px 6px; }
+  .cli { display: flex; align-items: center; gap: 12px; background: var(--surface); border: 1px solid var(--border); padding: 12px 14px; width: fit-content; max-width: 100%; margin-bottom: 22px; }
+  .cli .prompt { color: var(--muted-dim); }
+  .cli code { font-size: 14px; }
+  .cli .copy { margin-left: 6px; color: var(--muted-nav); border: 1px solid var(--border); padding: 2px 8px; font-size: 11px; cursor: pointer; background: none; font-family: var(--font); }
+  .cli .copy:hover { color: var(--text); border-color: var(--border-strong); }
+  .ctas { display: flex; gap: 12px; flex-wrap: wrap; }
+  .btn { padding: 12px 26px; font-size: 14px; font-weight: 600; cursor: pointer; border: 1px solid var(--border-strong); background: transparent; color: var(--text); transition: .2s; }
+  .btn.primary { background: var(--text); color: var(--bg); border-color: var(--text); }
+  .btn:hover { border-color: var(--spark); color: var(--spark); }
+  .btn.primary:hover { background: var(--spark); color: #000; border-color: var(--spark); }
+
+  .demo { background: var(--surface); border: 1px solid var(--border); }
+  .demo-bar { display: flex; align-items: center; gap: 7px; padding: 11px 14px; border-bottom: 1px solid var(--border); }
+  .demo-bar i { width: 10px; height: 10px; border-radius: 50%; background: var(--border-strong); }
+  .demo-bar b { margin-left: auto; font-weight: 400; font-size: 11px; color: var(--muted); }
+  .demo-body { padding: 22px; }
+  pre.code { font-size: 13px; line-height: 1.7; color: var(--muted); white-space: pre-wrap; }
+  pre.code .k { color: var(--spark); }
+  .live { margin-top: 18px; padding-top: 18px; border-top: 1px dashed var(--border); }
+  .live-label { font-size: 11px; color: var(--spark); margin-bottom: 10px; }
+  .live-row { display: flex; align-items: center; gap: 16px; }
+  .count { font-size: 26px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .plus { padding: 8px 18px; background: var(--spark); color: #000; border: none; font-family: var(--font); font-weight: 700; font-size: 15px; cursor: pointer; }
+  .plus:active { transform: scale(.95); }
+
+  .chips { display: flex; flex-wrap: wrap; gap: 10px; padding: 4px 0 56px; }
+  .chip { border: 1px solid var(--border); padding: 8px 14px; font-size: 13px; color: var(--muted); }
+  .chip b { color: var(--text); font-weight: 600; }
+
+  .sec { padding: 52px 0; border-top: 1px solid var(--border); }
+  .sec-head { display: flex; justify-content: space-between; align-items: baseline; }
+  .sec-eyebrow { font-size: 12px; letter-spacing: .14em; text-transform: uppercase; color: var(--muted-dim); margin-bottom: 24px; }
+  .more { font-size: 13px; color: var(--muted); }
+  .more:hover { color: var(--spark); }
+  .bento { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; background: var(--border); border: 1px solid var(--border); }
+  .cell { background: var(--bg); padding: 26px 24px; transition: background .2s; }
+  .cell:hover { background: var(--surface); }
+  .cell h3 { font-size: 16px; font-weight: 700; margin-bottom: 8px; }
+  .cell h3 .dot { color: var(--spark); }
+  .cell p { font-size: 13.5px; color: var(--muted); }
+
+  .show { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+  .card { display: flex; flex-direction: column; }
+  .thumb { aspect-ratio: 2/1; border: 1px solid var(--border); position: relative; overflow: hidden; background: var(--surface-2); }
+  .thumb img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: 1; }
+  .thumb .stub { position: absolute; inset: 0; display: grid; place-items: center; color: var(--muted-dim); font-size: 12px; }
+  .card:hover .thumb { border-color: var(--border-strong); }
+  .card .nm { padding: 12px 2px 2px; font-size: 15px; font-weight: 600; }
+  .card .ds { font-size: 12.5px; color: var(--muted); }
+
+  @media (max-width: 860px) { .hero, .bento, .show { grid-template-columns: 1fr; } .hero { padding: 48px 0 40px; } }
+</style>

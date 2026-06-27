@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700;800&display=swap" rel="stylesheet" />
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  :root{--bg:#000;--text:#fff;--muted:#888;--muted-dim:#555;--border:#1c1c1c;--surface:#0b0b0b;--spark:#ffd24a;--font:"JetBrains Mono",ui-monospace,monospace}
+  html,body{width:1200px;height:630px;overflow:hidden}
+  body{
+    background:
+      radial-gradient(ellipse 60% 50% at 22% 18%, rgba(255,210,74,.10), transparent 70%),
+      linear-gradient(var(--border) 1px, transparent 1px),
+      linear-gradient(90deg, var(--border) 1px, transparent 1px),
+      var(--bg);
+    background-size:100% 100%, 48px 48px, 48px 48px, 100% 100%;
+    color:var(--text);font-family:var(--font);
+    display:grid;grid-template-columns:1.15fr .85fr;align-items:center;gap:56px;padding:0 72px;
+  }
+  .badge{display:inline-flex;align-items:center;gap:10px;border:1px solid var(--border);padding:7px 13px;font-size:13px;color:var(--muted);margin-bottom:26px}
+  .badge .b{width:30px;height:30px;border-radius:50%;background:var(--text);color:var(--spark);display:grid;place-items:center;font-size:17px;margin-left:-5px}
+  .eyebrow{font-size:13px;letter-spacing:.18em;text-transform:uppercase;color:var(--spark);margin-bottom:18px}
+  h1{font-size:78px;line-height:1;letter-spacing:-.04em;font-weight:800}
+  h1 em{font-style:normal;color:var(--spark)}
+  .sub{margin-top:22px;color:var(--muted);font-size:18px;line-height:1.55;max-width:30ch}
+  .sub b{color:var(--text);font-weight:500}
+  .npx{margin-top:26px;display:inline-flex;gap:10px;border:1px solid var(--border);background:var(--surface);padding:11px 15px;font-size:15px}
+  .npx .p{color:var(--muted-dim)}
+  .card{background:var(--surface);border:1px solid var(--border)}
+  .bar{display:flex;align-items:center;gap:7px;padding:12px 15px;border-bottom:1px solid var(--border)}
+  .bar i{width:11px;height:11px;border-radius:50%;background:#2a2a2a}
+  .bar b{margin-left:auto;font-weight:400;font-size:13px;color:var(--muted)}
+  pre{padding:22px;font-size:16px;line-height:1.75;color:var(--muted);white-space:pre}
+  pre .k{color:var(--spark)}
+  .live{border-top:1px dashed var(--border);margin-top:6px;padding:18px 22px}
+  .ll{font-size:12px;color:var(--spark);margin-bottom:12px}
+  .lr{display:flex;align-items:center;gap:16px}
+  .ct{font-size:28px;font-weight:700}
+  .pl{padding:8px 18px;background:var(--spark);color:#000;font-weight:700;font-size:17px}
+</style>
+</head>
+<body>
+  <div>
+    <div class="badge"><span class="b">⚡</span> spark-html</div>
+    <p class="eyebrow">no compiler · no virtual DOM · no build step</p>
+    <h1>HTML that<br><em>reacts.</em></h1>
+    <p class="sub">Single-file reactive components. The <b>.html</b> you save is the component that runs.</p>
+    <div class="npx"><span class="p">$</span> npx create-spark-html-app</div>
+  </div>
+  <div class="card">
+    <div class="bar"><i></i><i></i><i></i><b>counter.html</b></div>
+    <pre>&lt;h2&gt;Count: <span class="k">{count}</span>&lt;/h2&gt;
+&lt;button onclick=<span class="k">{inc}</span>&gt;+1&lt;/button&gt;
+
+&lt;script&gt;
+  <span class="k">let</span> count = 0;
+  <span class="k">function</span> inc() { count++; }
+&lt;/script&gt;</pre>
+    <div class="live">
+      <div class="ll">● live</div>
+      <div class="lr"><span class="ct">Count: 3</span><span class="pl">+1</span></div>
+    </div>
+  </div>
+</body>
+</html>

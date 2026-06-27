@@ -4,30 +4,6 @@
   <div import="components/welcome"></div>
 
   <section>
-    <h2 class="section-title">Videos</h2>
-    <div class="stack">
-      <div
-        import="components/video"
-        src="https://placehold.co/120"
-        title="video1"
-        description="Lorem ipsum dolor sit."
-      ></div>
-      <div
-        import="components/video"
-        src="https://placehold.co/120"
-        title="video2"
-        description="Sed do eiusmod."
-      ></div>
-      <div
-        import="components/video"
-        src="https://placehold.co/120"
-        title="video3"
-        description="Ut enim ad minim veniam."
-      ></div>
-    </div>
-  </section>
-
-  <section>
     <h2 class="section-title">Props</h2>
     <div class="stack">
       <div
@@ -81,33 +57,16 @@
 <div import="components/footer"></div>
 
 <style>
-  :global(*),
-  :global(*::before),
-  :global(*::after) {
-    box-sizing: border-box;
-    margin: 0;
-    padding: 0;
+  :global(*), :global(*::before), :global(*::after) { box-sizing: border-box; margin: 0; padding: 0; }
+  /* Brand tokens — matches the Spark website (light theme). */
+  :global(:root) {
+    --bg: #fff; --surface: #fafafa; --border: #ededed; --border-strong: #d4d4d4;
+    --text: #1a1a1a; --muted: #666; --muted-dim: #999; --spark: #ffd24a;
+    --font: "JetBrains Mono", ui-monospace, monospace;
   }
-  :global(body) {
-    font-family: system-ui, -apple-system, sans-serif;
-    background: #f5f5f7;
-    color: #1a1a2e;
-  }
-  .page {
-    max-width: 760px;
-    margin: 0 auto;
-    padding: 40px 24px 80px;
-    display: flex;
-    flex-direction: column;
-    gap: 40px;
-  }
-  .section-title {
-    font-size: 13px;
-    text-transform: uppercase;
-    letter-spacing: .08em;
-    color: #999;
-    margin-bottom: 14px;
-  }
+  :global(body) { font-family: var(--font); background: var(--bg); color: var(--text); -webkit-font-smoothing: antialiased; }
+  :global(::selection) { background: #ffe9a8; color: #111; }
+  .page { max-width: 820px; margin: 0 auto; padding: 44px 24px 80px; display: flex; flex-direction: column; gap: 44px; }
+  .section-title { font-size: 12px; text-transform: uppercase; letter-spacing: .12em; color: var(--muted-dim); margin-bottom: 14px; }
   .stack { display: flex; flex-direction: column; gap: 18px; }
-  /* .videos { display: flex; gap: 9px;} */
 </style>

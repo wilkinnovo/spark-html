@@ -1,12 +1,31 @@
-import { mount, store } from 'spark-html';
+import { store } from 'spark-html';
+import { router } from 'spark-html-router';
+import { theme } from 'spark-html-theme';
 import { highlightAll } from './highlight.js';
 
-// Shared store powering the cross-component demo on the landing page
-store('demo', { clicks: 0 });
-
-// Exposed so demos that fetch their own source at runtime can re-highlight
-// after injecting it (see components/composition-demo.html).
+// Code samples on Docs/Playground call this from their onMount (idempotent —
+// already-highlighted <pre> are skipped), so it re-runs per route.
 window.highlightAll = highlightAll;
 
-await mount();
-highlightAll();
+// Served from "/" in dev and "/spark/" on GitHub Pages — links read this.
+const base = (import.meta.env.BASE_URL || '/').replace(/\/$/, '');
+store('app', { base });
+
+// Dark/light/system theming (the ⚡ logo toggles it).
+theme();
+
+// Sites built with Spark — rendered on /showcase and teased on Home.
+store('showcase', {
+  sites: [
+    { slug: 'novo', name: 'novo.ws', url: 'https://novo.ws',
+      desc: 'Design studio — the reference Spark build.',
+      tags: ['router', 'theme', 'prerender'] },
+    { slug: 'spark', name: 'This site', url: 'https://wilkinnovo.github.io/spark/',
+      desc: 'Every section is a Spark component.',
+      tags: ['router', 'theme', 'prerender'] },
+  ],
+});
+
+// One call: mounts the chrome + active route once, intercepts <a> clicks for
+// SPA nav, marks the active link, and exposes a reactive `route` store.
+router({ base });

@@ -1,0 +1,29 @@
+<footer class="f">
+  <span class="brand">⚡ SPARK</span>
+  <span class="sp">·</span>
+  <a href="https://www.npmjs.com/package/spark-html" target="_blank" rel="noopener">spark-html</a>
+  <a href="https://www.npmjs.com/package/spark-html-router" target="_blank" rel="noopener">router</a>
+  <a href="https://www.npmjs.com/package/spark-html-theme" target="_blank" rel="noopener">theme</a>
+  <a href="https://www.npmjs.com/package/spark-prerender" target="_blank" rel="noopener">prerender</a>
+  <span class="sp">·</span>
+  <a href="https://github.com/wilkinnovo/spark" target="_blank" rel="noopener">GitHub</a>
+  <span class="grow"></span>
+  <span class="lic">MIT — built with Spark</span>
+</footer>
+
+<style>
+  .f {
+    border-top: 1px solid var(--border);
+    margin: 40px 56px 0;
+    padding: 26px 0 48px;
+    display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px;
+    font-size: 13px; color: var(--muted);
+  }
+  .f .brand { font-weight: 800; color: var(--text); letter-spacing: .03em; }
+  .f a { color: var(--muted); }
+  .f a:hover { color: var(--spark); }
+  .f .sp { color: var(--border-strong); }
+  .f .grow { flex: 1; }
+  .f .lic { color: var(--muted-dim); }
+  @media (max-width: 860px) { .f { margin: 32px 22px 0; } .f .grow { display: none; } }
+</style>

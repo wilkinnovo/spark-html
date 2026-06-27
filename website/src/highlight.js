@@ -162,18 +162,20 @@ export function highlightAll() {
   if (!document.getElementById('spark-hl')) {
     const s = document.createElement('style');
     s.id = 'spark-hl';
+    // Brand-matched + theme-aware: amber for the Spark-y tokens (keywords,
+    // bindings, builtins, $:), neutral greys for everything else.
     s.textContent = `
-      .tok-tag      { color: #ff7eb6; }
-      .tok-punct    { color: #6f6d85; }
-      .tok-attr     { color: #82cfff; }
-      .tok-string   { color: #b8e986; }
-      .tok-binding  { color: #ffd24a; font-weight: 600; }
-      .tok-keyword  { color: #c89bff; }
-      .tok-fn       { color: #82cfff; }
-      .tok-builtin  { color: #ffd24a; }
-      .tok-number   { color: #ffab70; }
-      .tok-reactive { color: #ff7eb6; font-weight: 700; }
-      .tok-comment  { color: #6f6d85; font-style: italic; }
+      .tok-tag      { color: var(--text); }
+      .tok-punct    { color: var(--muted-dim); }
+      .tok-attr     { color: var(--muted); }
+      .tok-string   { color: var(--muted); }
+      .tok-binding  { color: var(--spark); font-weight: 600; }
+      .tok-keyword  { color: var(--spark); }
+      .tok-fn       { color: var(--text); }
+      .tok-builtin  { color: var(--spark); }
+      .tok-number   { color: var(--muted); }
+      .tok-reactive { color: var(--spark); font-weight: 700; }
+      .tok-comment  { color: var(--muted-dim); font-style: italic; }
     `;
     document.head.appendChild(s);
   }
