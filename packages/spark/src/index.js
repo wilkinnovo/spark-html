@@ -1267,6 +1267,16 @@ function walkNode(node, scope, isRoot = false) {
     return;
   }
 
+  // <template await="promise"> — async block. Shows its loading content while
+  // the promise is pending, then swaps to <template then> (await = resolved
+  // value) or <template catch> (await = error). Like if/each, the anchor drives
+  // dynamic structure and is gated by the keys it reads in dirty mode.
+  if (node.hasAttribute('await')) {
+    if (gDirtyMode && !shouldEval(node)) return;
+    withSink(node, () => patchAwait(node, scope));
+    return;
+  }
+
   patchElement(node, scope);
 
   // A node is static only if it has no live binding of its own AND every
@@ -1351,6 +1361,204 @@ function patchIf(el, scope) {
       if (n.parentNode) walkNode(n, scope, false);
     });
   }
+}
+
+// ─── <template await="promise"> async blocks ──────────────────────────
+// Declarative async, the Spark way: no compiler, reuse the same template +
+// scope-proxy + dependency-tracking machinery the each/if blocks ride on.
+//
+//   <template await="expr">
+//     <p>Loading…</p>                       <!-- pending (default) -->
+//     <template then>  {await.value} </template>   <!-- await = resolved value -->
+//     <template catch> {await.message} </template> <!-- await = error -->
+//   </template>
+//
+// • await="expr"        re-evaluates when a scalar dependency changes (like $:),
+//                       cancels the prior promise, and shows pending again.
+// • await="once(expr)"  fires on mount only (never re-fires).
+// A non-thenable expr is treated as an already-resolved value (then branch).
+
+// A child scope where the identifier `await` resolves to the settled value
+// (resolved value in `then`, error in `catch`) — same shape as the loop scope.
+function awaitScope(scope, value) {
+  return new Proxy(scope, {
+    get(t, k) {
+      if (k === 'await') return value;
+      if (k === Symbol.unscopables) return undefined;
+      return t[k];
+    },
+    has(t, k) { return k === 'await' || k in t; },
+    set(t, k, v) { if (k === 'await') return true; t[k] = v; return true; },
+  });
+}
+
+function parseAwait(el) {
+  let expr = (el.getAttribute('await') || '').trim();
+  // once(expr): one-shot — evaluate on mount only. Greedy capture so inner
+  // parens (once(load())) round-trip.
+  const m = expr.match(/^once\(([\s\S]*)\)$/);
+  el.__sparkAwaitOnce = !!m;
+  el.__sparkAwaitExpr = (m ? m[1] : expr).trim();
+
+  const content = el.tagName.toLowerCase() === 'template'
+    ? [...el.content.childNodes]
+    : [...el.childNodes];
+
+  const pending = [], thenNodes = [], catchNodes = [];
+  for (const n of content) {
+    const isTpl = n.nodeType === Node.ELEMENT_NODE && n.tagName === 'TEMPLATE';
+    if (isTpl && n.hasAttribute('then')) thenNodes.push(...n.content.childNodes);
+    else if (isTpl && n.hasAttribute('catch')) catchNodes.push(...n.content.childNodes);
+    else pending.push(n);
+  }
+  const clone = (nodes) => nodes.map((n) => n.cloneNode(true));
+  el.__sparkPendingTpl = clone(pending);
+  el.__sparkThenTpl = clone(thenNodes);
+  el.__sparkCatchTpl = clone(catchNodes);
+  if (el.tagName.toLowerCase() !== 'template') el.innerHTML = '';
+  el.__sparkAwaitParsed = true;
+
+  // Hydration: drop any branch content a prerender baked as live siblings
+  // (tagged data-spark-await) so the client re-runs the promise and renders
+  // once — no duplicate. The crawler still got the resolved HTML.
+  if (!(typeof globalThis !== 'undefined' && globalThis.__SPARK_PRERENDER__)) {
+    let probe = el.nextSibling;
+    while (probe && probe.nodeType !== Node.ELEMENT_NODE) probe = probe.nextSibling;
+    if (probe && probe.hasAttribute && probe.hasAttribute('data-spark-await')) {
+      let n = el.nextSibling;
+      while (n) {
+        const next = n.nextSibling;
+        if (n.nodeType === Node.ELEMENT_NODE && !(n.hasAttribute && n.hasAttribute('data-spark-await'))) break;
+        destroyComponent(n);
+        if (n.parentNode) n.parentNode.removeChild(n);
+        n = next;
+      }
+    }
+  }
+}
+
+// Tear down the current branch's DOM and render the branch for the current
+// state, walking it with the right scope (await-bound for then/catch).
+function applyAwaitState(el, scope) {
+  if (el.__sparkAwaitRendered) {
+    for (const n of el.__sparkAwaitRendered) {
+      destroyComponent(n);
+      if (n.parentNode) n.parentNode.removeChild(n);
+    }
+  }
+  el.__sparkAwaitRendered = [];
+  const state = el.__sparkAwaitState;
+  const tpl = state === 'then' ? el.__sparkThenTpl
+    : state === 'catch' ? el.__sparkCatchTpl
+    : el.__sparkPendingTpl;
+  const branchScope = state === 'then' ? awaitScope(scope, el.__sparkAwaitValue)
+    : state === 'catch' ? awaitScope(scope, el.__sparkAwaitError)
+    : scope;
+  // Tag baked branch nodes during prerender so a client mount can clear them
+  // (see parseAwait) and re-render without duplicating.
+  const tag = (typeof globalThis !== 'undefined' && globalThis.__SPARK_PRERENDER__) && state !== 'pending';
+  let insertAfter = el;
+  for (const t of tpl) {
+    const c = t.cloneNode(true);
+    c.__sparkManaged = true; // owned by this await-block, not the parent walk
+    if (tag && c.nodeType === Node.ELEMENT_NODE && c.setAttribute) c.setAttribute('data-spark-await', '');
+    insertAfter.after(c);
+    insertAfter = c;
+    el.__sparkAwaitRendered.push(c);
+    walkNode(c, branchScope, false);
+  }
+  hydrateBlockImports(el.__sparkAwaitRendered, branchScope);
+  el.__sparkAwaitRenderedState = state;
+}
+
+// Keep the current branch's reactive bindings fresh on later patches.
+function refreshAwait(el, scope) {
+  if (!el.__sparkAwaitRendered) return;
+  const state = el.__sparkAwaitRenderedState;
+  const branchScope = state === 'then' ? awaitScope(scope, el.__sparkAwaitValue)
+    : state === 'catch' ? awaitScope(scope, el.__sparkAwaitError)
+    : scope;
+  for (const n of el.__sparkAwaitRendered) if (n.parentNode) walkNode(n, branchScope, false);
+}
+
+// (Re)start the block on a new promise/value: show pending, then settle into
+// then/catch. Stale promises (superseded by a newer evaluation) are ignored.
+function startAwait(el, source, scope) {
+  el.__sparkAwaitSource = source;
+  const thenable = source && typeof source.then === 'function';
+  if (!thenable) {
+    // A plain value (or nullish) — resolved immediately.
+    el.__sparkAwaitState = 'then';
+    el.__sparkAwaitValue = source;
+    applyAwaitState(el, scope);
+    return;
+  }
+  const p = source;
+  el.__sparkAwaitPromise = p;
+  el.__sparkAwaitState = 'pending';
+  applyAwaitState(el, scope); // loading, now
+
+  // During prerender, let the settle loop wait for the promise (like load()),
+  // so :then content is in the serialized HTML.
+  if (typeof globalThis !== 'undefined' && globalThis.__SPARK_PRERENDER__ && Array.isArray(globalThis.__SPARK_AWAITS__)) {
+    globalThis.__SPARK_AWAITS__.push(p);
+  }
+
+  const settle = (state, payload) => {
+    if (el.__sparkAwaitPromise !== p) return; // superseded — drop
+    el.__sparkAwaitState = state;
+    if (state === 'then') el.__sparkAwaitValue = payload;
+    else el.__sparkAwaitError = payload;
+    // Re-render through the owning component's batched flush when present (so a
+    // burst of settles collapses into one patch). Crucially that flush re-walks
+    // in FULL mode, which does NOT re-evaluate the await expr (avoiding promise
+    // churn for inline exprs like fetch()) — it only applies the new state.
+    const comp = el.__sparkAwaitComp;
+    if (comp && comp.__sparkScheduleFull && comp.isConnected) comp.__sparkScheduleFull();
+    else applyAwaitState(el, el.__sparkAwaitScope || scope);
+  };
+  p.then((v) => settle('then', v), (e) => settle('catch', e));
+}
+
+function patchAwait(el, scope) {
+  if (!el.__sparkAwaitParsed) parseAwait(el);
+  if (!el.parentNode) return;
+  el.__sparkAwaitScope = scope; // latest scope for async settles + refresh
+  if (el.__sparkAwaitComp === undefined) el.__sparkAwaitComp = closestComponent(el);
+
+  const firstTime = !el.__sparkAwaitStarted;
+  const exprKeys = el.__sparkAwaitExprKeys;
+  // Re-evaluate the expr (and maybe restart) only on first sight, or — unless
+  // it's once() — in a dirty pass where one of the expr's own deps changed.
+  // Never in a full pass: that's where async settles re-render, and re-running
+  // an inline expr (fetch(url)) there would mint a new promise every time.
+  const reEval = firstTime
+    || (!el.__sparkAwaitOnce && gDirtyMode && setsIntersect(exprKeys, gDirtyKeys));
+
+  if (reEval) {
+    let set = el.__sparkAwaitExprKeys;
+    set = set ? (set.clear(), set) : new Set();
+    const prev = captureSet;
+    captureSet = set; // record THIS expr's deps (also flows to the block sink)
+    let result;
+    try { result = evaluate(el.__sparkAwaitExpr, scope); }
+    finally { captureSet = prev; }
+    el.__sparkAwaitExprKeys = set.size ? set : null;
+
+    if (firstTime || result !== el.__sparkAwaitSource) {
+      el.__sparkAwaitStarted = true;
+      startAwait(el, result, scope);
+      return;
+    }
+  } else if (exprKeys && captureSink) {
+    // Not re-evaluating this pass — still keep the block's gating deps.
+    for (const k of exprKeys) captureSink.add(k);
+  }
+
+  // State may have advanced asynchronously since the last walk → swap branch;
+  // otherwise just refresh the current branch's reactive content.
+  if (el.__sparkAwaitState !== el.__sparkAwaitRenderedState) applyAwaitState(el, scope);
+  else refreshAwait(el, scope);
 }
 
 // ─── each="item in array" loops ───────────────────────────────────────

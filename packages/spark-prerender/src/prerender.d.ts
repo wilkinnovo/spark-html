@@ -62,9 +62,10 @@ export function vercelConfigFor(routes: string[]): string;
 
 /**
  * Prerender a single entry HTML file to a fully-rendered HTML string:
- * interpolations resolved, `each`/`if` and nested imports rendered, scoped
- * styles inlined, and metadata injected into `<head>`. An async `load()`
- * declared in a component is awaited so its data lands in the HTML.
+ * interpolations resolved, `each`/`if`/`await` and nested imports rendered,
+ * scoped styles inlined, and metadata injected into `<head>`. An async
+ * `load()` declared in a component — and any `<template await>` promise — is
+ * awaited so its resolved data/`:then` content lands in the HTML.
  */
 export function prerender(entryPath: string, options?: PrerenderOptions): Promise<string>;
 

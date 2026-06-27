@@ -1,0 +1,11 @@
+<template await="thing">
+  <p>Loading…</p>
+  <template then><h1>Loaded: {await.title}</h1></template>
+  <template catch><p>Error: {await.message}</p></template>
+</template>
+
+<script>
+  // A promise that resolves to data — the prerender settle loop should wait
+  // for it and bake the :then content into the HTML.
+  let thing = Promise.resolve({ title: 'Hello SSG' });
+</script>

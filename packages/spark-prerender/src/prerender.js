@@ -353,8 +353,13 @@ export async function prerender(entryPath, options = {}) {
     return p;
   };
 
+  // Collector for <template await> promises. The runtime pushes each pending
+  // promise here during prerender; the settle loop drains + awaits them (like
+  // load()) so :then content lands in the serialized HTML.
+  const awaits = [];
+
   return withGlobals(
-    { window, document, Node: window.Node, requestAnimationFrame, fetch, __SPARK_PRERENDER__: true, ...stubs },
+    { window, document, Node: window.Node, requestAnimationFrame, fetch, __SPARK_PRERENDER__: true, __SPARK_AWAITS__: awaits, ...stubs },
     async () => {
       // Import the runtime FRESH per page (cache-busted) so its module-load
       // cloak + caches bind to THIS document, and pages stay isolated.
@@ -375,8 +380,14 @@ export async function prerender(entryPath, options = {}) {
           const drained = drainRaf();
           const hadPending = pending.size > 0;
           if (hadPending) await Promise.all([...pending]);
+          // Drain <template await> promises: wait for the batch to settle so
+          // their :then/:catch content renders (settles may queue more rAF /
+          // fetches / awaits, which the next pass picks up).
+          const hadAwaits = awaits.length > 0;
+          if (hadAwaits) await Promise.allSettled(awaits.splice(0));
           for (let t = 0; t < 4; t++) await microtaskTurn();
-          const quiet = drained === 0 && !hadPending && pending.size === 0 && rafQueue.length === 0;
+          const quiet = drained === 0 && !hadPending && !hadAwaits
+            && pending.size === 0 && rafQueue.length === 0 && awaits.length === 0;
           if (quiet) { if (++idle >= 2) break; } else { idle = 0; }
         }
       };

@@ -78,10 +78,43 @@ The plugin serves component fragments raw and full-reloads when they change.
 | Two-way binding     | `bind:value` (text/number/select/contenteditable), `bind:checked`, `bind:group` (radio) |
 | Reactive statements | `$: doubled = count * 2` — re-runs on change      |
 | Conditional blocks  | `<template if="show">…</template>`                |
+| Async blocks        | `<template await="promise">` + `<template then>` / `<template catch>` |
 | Slots               | `<slot>` / `<slot name="title">` — project caller content |
 | Lifecycle           | `onMount(fn)` builtin; return a fn for cleanup    |
 | Literal brace       | `\{` / `\}` — escape a brace in text               |
 | Escape hatch        | `spark-ignore` attribute — subtree never patched  |
+
+### Async blocks (`<template await>`)
+
+Render a promise declaratively — loading, resolved, and error states — with no
+manual flags:
+
+```html
+<template await="loadUser(id)">
+  <p>Loading…</p>                                   <!-- pending -->
+  <template then>  <h1>Hi {await.name}</h1>  </template>   <!-- await = resolved value -->
+  <template catch> <p>Failed: {await.message}</p> </template> <!-- await = error -->
+</template>
+
+<script>
+  let id = 1;
+  async function loadUser(id) {
+    const r = await fetch(`/api/users/${id}`);
+    if (!r.ok) throw new Error('not found');
+    return r.json();
+  }
+</script>
+```
+
+- `await="expr"` is reactive like `$:` — when a value it reads changes it
+  re-evaluates, cancels the prior promise, and shows the loading state again.
+- Inside `<template then>` the identifier `await` is the resolved value; inside
+  `<template catch>` it's the error.
+- `await="once(expr)"` fires on mount only (never re-fires).
+- A non-promise expression renders the `then` branch immediately.
+- With [`spark-prerender`](https://www.npmjs.com/package/spark-prerender) the
+  build waits for the promise and bakes the resolved `:then` content into the
+  static HTML (SEO); the client re-runs it on hydration.
 
 ### Literal braces
 

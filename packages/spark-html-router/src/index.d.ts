@@ -1,6 +1,18 @@
 /**
- * spark-router — declarative <template route> client routing for spark-html.
+ * spark-html-router — declarative <template route> client routing for spark-html.
+ *
+ * The router publishes the active route to a built-in reactive `route` store,
+ * so any component can react to navigation without manual history wiring:
+ *
+ *   const route = useStore<RouteState>('route');
+ *   $: active = route.path === '/about';
  */
+
+/** Shape of the built-in `route` store the router maintains. */
+export interface RouteState {
+  /** The active, base-stripped, no-trailing-slash path (e.g. "/about"). */
+  path: string;
+}
 
 export interface RouterOptions {
   /**
