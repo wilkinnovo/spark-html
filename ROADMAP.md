@@ -28,7 +28,7 @@ is `spark-html-*`.
 | 2 | Editor + dev tooling | ◻ Not started |
 | 3 | Ergonomic papercuts in core | ◻ Not started |
 | 4 | Capability gaps (motion, nested routes, head helper) | ⏳ Partial |
-| 5 | Trust & quality (e2e, size guard) | ◻ Not started |
+| 5 | Trust & quality — size guard ✅ / e2e ◻ | ⏳ Partial |
 
 ## Priorities
 
@@ -63,9 +63,10 @@ The sharpest differentiator, now productized and live:
 - ◻ A `head`/meta helper (hand-rolled in novo + the website — wants to be a package).
 - ◻ `Map`/`Set` reactivity (only if demanded).
 
-### 5. Trust & quality — ◻ NOT STARTED
+### 5. Trust & quality — ⏳ PARTIAL
+- ✅ CI bundle-size guard — `npm run size` (and part of `npm test`) fails if the
+  minified+gzipped runtime exceeds 12 KB. Currently ~9.9 KB.
 - ◻ One real-browser e2e (Playwright): mount → hydrate → router → theme.
-- ◻ CI bundle-size guard (fail if `spark-html` gzip exceeds budget).
 
 ## Guardrails — what to refuse (this is how Spark stays unique)
 
