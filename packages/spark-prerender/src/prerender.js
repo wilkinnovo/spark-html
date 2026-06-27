@@ -54,6 +54,42 @@ async function withGlobals(values, fn) {
 // A microtask turn — lets queued patches (queueMicrotask(flush)) run.
 const microtaskTurn = () => new Promise((r) => queueMicrotask(r));
 
+// Components often touch browser-only globals at script top level
+// (matchMedia, localStorage, IntersectionObserver…). On the server those are
+// absent, so the script would throw and the component would degrade to empty.
+// Stub the common ones (no-ops / in-memory) so more components prerender.
+// Opt out with `stubBrowserGlobals: false`, or extend via `stubs`.
+function makeStorage() {
+  const m = new Map();
+  return {
+    getItem: (k) => (m.has(String(k)) ? m.get(String(k)) : null),
+    setItem: (k, v) => void m.set(String(k), String(v)),
+    removeItem: (k) => void m.delete(String(k)),
+    clear: () => m.clear(),
+    key: (i) => [...m.keys()][i] ?? null,
+    get length() { return m.size; },
+  };
+}
+function makeBrowserStubs() {
+  const NoopObserver = class {
+    observe() {} unobserve() {} disconnect() {} takeRecords() { return []; }
+  };
+  return {
+    matchMedia: (q) => ({
+      matches: false, media: String(q || ''), onchange: null,
+      addEventListener() {}, removeEventListener() {},
+      addListener() {}, removeListener() {}, dispatchEvent() { return false; },
+    }),
+    localStorage: makeStorage(),
+    sessionStorage: makeStorage(),
+    IntersectionObserver: NoopObserver,
+    ResizeObserver: NoopObserver,
+    requestIdleCallback: (fn) => { try { fn({ didTimeout: false, timeRemaining: () => 0 }); } catch { /* ignore */ } return 0; },
+    cancelIdleCallback: () => {},
+    scrollTo: () => {}, scroll: () => {},
+  };
+}
+
 // Default metadata convention: read these off component scopes, write them
 // into <head>. `kind:'title'` → <title>; `name`/`property` → a <meta>.
 const DEFAULT_META = [
@@ -123,6 +159,11 @@ function serialize(document) {
  *                                           requests a `load()` hook makes —
  *                                           point it at fixtures or a local API.
  *                                           Defaults to the real global fetch.
+ * @param {boolean} [options.stubBrowserGlobals=true] Stub matchMedia,
+ *                                           localStorage, IntersectionObserver,
+ *                                           etc. so components that touch them
+ *                                           prerender instead of degrading.
+ * @param {object} [options.stubs]           Extra/override global stubs.
  * @returns {Promise<string>} the prerendered HTML.
  */
 export async function prerender(entryPath, options = {}) {
@@ -143,6 +184,15 @@ export async function prerender(entryPath, options = {}) {
   const { window, document } = parseHTML(source);
   // mount() awaits DOMContentLoaded only when readyState === 'loading'.
   try { if (document.readyState === 'loading') document.readyState = 'complete'; } catch { /* read-only is fine */ }
+
+  // Browser-global stubs (set on window for `window.x`, and exposed as globals
+  // below for bare-identifier access). Only fill what's absent.
+  const stubs = options.stubBrowserGlobals === false
+    ? {}
+    : { ...makeBrowserStubs(), ...(options.stubs || {}) };
+  for (const [k, v] of Object.entries(stubs)) {
+    if (window[k] === undefined) { try { window[k] = v; } catch { /* read-only */ } }
+  }
 
   // ── Drainable rAF: bootComponent defers its reveal + onMount here. We run
   //    these synchronously between settle passes instead of on a frame timer.
@@ -176,7 +226,7 @@ export async function prerender(entryPath, options = {}) {
   };
 
   return withGlobals(
-    { window, document, Node: window.Node, requestAnimationFrame, fetch },
+    { window, document, Node: window.Node, requestAnimationFrame, fetch, ...stubs },
     async () => {
       // Import the runtime FRESH per page (cache-busted) so its module-load
       // cloak + caches bind to THIS document, and pages stay isolated.

@@ -35,6 +35,27 @@ vite build
 npx spark-prerender dist/index.html dist/docs.html
 ```
 
+### Vite plugin (auto on build)
+
+Or let it run automatically as part of `vite build`:
+
+```js
+// vite.config.js
+import spark from 'spark-html/vite';
+import prerender from 'spark-prerender/vite';
+
+export default {
+  plugins: [
+    spark(),
+    prerender({ pages: ['index.html', 'docs.html'] }),
+  ],
+};
+```
+
+It runs in `closeBundle`, rewriting each page in place. A page that fails is
+logged and skipped — the build still succeeds with the client-rendered HTML,
+so it never breaks your build.
+
 ### Options
 
 | Flag | Meaning |
@@ -104,6 +125,12 @@ do zero extra work, and the client still re-runs it normally in the browser.
 What it captures: a component's **initial scope** (interpolations, `each`/`if`,
 nested imports, scoped styles, metadata vars) **plus** async data via `load()`
 above. This covers marketing, docs, landing pages, and data-backed content.
+
+**Browser-only globals are stubbed** (`matchMedia`, `localStorage`,
+`sessionStorage`, `IntersectionObserver`, `ResizeObserver`, `requestIdleCallback`,
+`scrollTo`) so components that touch them at script top level prerender instead
+of throwing. Disable with `stubBrowserGlobals: false`, or extend/override with
+`stubs: { … }`.
 
 Honest limitations:
 

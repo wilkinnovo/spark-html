@@ -1,0 +1,12 @@
+<p class="theme">theme: {theme}</p>
+<p class="seen">{seen}</p>
+
+<script>
+  // These are browser-only globals; the prerenderer stubs them so this
+  // component renders at build time instead of throwing and degrading.
+  let stored = localStorage.getItem('visited');
+  let seen = stored ? 'returning' : 'first visit';
+  let dark = matchMedia('(prefers-color-scheme: dark)').matches;
+  let theme = dark ? 'dark' : 'light';
+  localStorage.setItem('visited', '1');
+</script>

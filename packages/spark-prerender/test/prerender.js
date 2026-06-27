@@ -133,5 +133,28 @@ await test('without options.fetch, Phase 1 pages are unaffected', async () => {
   assert.ok(again.includes('My Tasks') && again.includes('built with spark'));
 });
 
+// ── Browser-global stubs ──
+console.log('\nspark-prerender — browser-global stubs');
+
+const stubEntry = join(here, 'fixture', 'stub.html');
+const stubHtml = await prerender(stubEntry);
+
+await test('components using matchMedia/localStorage prerender (stubs on by default)', () => {
+  assert.ok(stubHtml.includes('theme: light'), 'matchMedia stub → light');
+  assert.ok(stubHtml.includes('first visit'), 'localStorage stub → first visit');
+});
+
+await test('custom stubs override the defaults (deterministic)', async () => {
+  const dark = await prerender(stubEntry, {
+    stubs: {
+      matchMedia: () => ({
+        matches: true, media: '', addEventListener() {}, removeEventListener() {},
+        addListener() {}, removeListener() {},
+      }),
+    },
+  });
+  assert.ok(dark.includes('theme: dark'), 'custom matchMedia stub → dark');
+});
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);
