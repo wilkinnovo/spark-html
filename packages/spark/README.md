@@ -145,6 +145,21 @@ component('hello', `
 `);
 ```
 
+## Error handling
+
+Failures are **isolated to the component** that caused them — a broken
+component never blanks the page or stops a sibling from rendering. Broken
+expressions, `$:` statements, event handlers, a `<script>` that throws, boot,
+and patch are all caught and logged (deduped) with the component named.
+
+For development, opt into a full-screen **error overlay** (message, failing
+component, and stack) — off by default:
+
+```js
+import { mount } from 'spark-html';
+mount(document.body, { devOverlay: true });   // or set globalThis.__SPARK_DEV_OVERLAY__
+```
+
 ## How it works
 
 1. `mount()` finds `<div import="...">` placeholders and fetches each file.

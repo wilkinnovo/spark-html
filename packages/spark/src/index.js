@@ -30,6 +30,110 @@ function warnOnce(key, ...args) {
   console.warn(...args);
 }
 
+// ─── Fault isolation + dev error overlay ──────────────────────────────
+// A failure in one component must never blank the page or take down a
+// sibling. Every catch site routes through reportError(), which warns once
+// (deduped) and — when the opt-in dev overlay is enabled — surfaces the
+// error, the failing component, a detail, and a stack in a dismissible
+// full-screen panel. The overlay is OFF by default (Spark has no dev/prod
+// split): enable with mount(el, { devOverlay: true }) or a global flag.
+let devOverlay = false;
+const overlaySeen = new Set();
+const overlayErrors = [];
+let overlayEl = null;
+
+function reportError(err, ctx = {}) {
+  const msg = (err && err.message) || String(err);
+  const where = ctx.component ? ` in "${ctx.component}"` : '';
+  const detail = ctx.detail ? ` — ${ctx.detail}` : '';
+  warnOnce(
+    `rt:${ctx.phase || ''}:${ctx.component || ''}:${ctx.detail || ''}:${msg}`,
+    `[spark] ${ctx.phase || 'error'}${where} — ${msg}${detail}`,
+  );
+  reportToOverlay(err, ctx, msg);
+}
+
+function reportToOverlay(err, ctx, msg) {
+  if (!devOverlay) return;
+  if (typeof document === 'undefined' || !document.body) return;
+  const key = `${ctx.component || ''}|${ctx.detail || ''}|${msg}`;
+  if (overlaySeen.has(key)) return;
+  overlaySeen.add(key);
+  overlayErrors.push({
+    message: msg,
+    component: ctx.component || '(unknown)',
+    phase: ctx.phase || 'error',
+    detail: ctx.detail || '',
+    stack: (err && err.stack) || '',
+  });
+  renderOverlay();
+}
+
+function renderOverlay() {
+  const make = (tag, style, text) => {
+    const el = document.createElement(tag);
+    if (style) el.setAttribute('style', style);
+    if (text != null) el.textContent = text;
+    return el;
+  };
+  if (!overlayEl) {
+    overlayEl = make(
+      'div',
+      'position:fixed;inset:0;z-index:2147483647;overflow:auto;' +
+        'background:rgba(20,2,2,.96);color:#ffd9d9;' +
+        'font:13px/1.5 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;' +
+        'padding:24px;box-sizing:border-box',
+    );
+    // Never let Spark patch its own overlay.
+    overlayEl.setAttribute('spark-ignore', '');
+    overlayEl.setAttribute('data-spark-overlay', '');
+    document.body.appendChild(overlayEl);
+  }
+  overlayEl.innerHTML = '';
+  const head = make(
+    'div',
+    'display:flex;align-items:center;gap:12px;margin-bottom:16px;' +
+      'border-bottom:1px solid #5a1a1a;padding-bottom:12px',
+  );
+  head.appendChild(
+    make('strong', 'color:#ff6b6b;font-size:15px', `⚡ spark — ${overlayErrors.length} error(s)`),
+  );
+  const dismiss = make(
+    'button',
+    'margin-left:auto;background:#3a0d0d;color:#ffd9d9;border:1px solid #6a2020;' +
+      'border-radius:6px;padding:4px 12px;cursor:pointer;font:inherit',
+    'dismiss',
+  );
+  dismiss.addEventListener('click', dismissOverlay);
+  head.appendChild(dismiss);
+  overlayEl.appendChild(head);
+
+  for (const e of overlayErrors) {
+    const card = make('div', 'margin-bottom:18px;padding-bottom:14px;border-bottom:1px solid #3a1414');
+    card.appendChild(make('div', 'color:#ff8a8a;font-weight:700;font-size:14px', e.message));
+    card.appendChild(make('div', 'color:#e89a9a;margin:4px 0', `in component: ${e.component}  ·  ${e.phase}`));
+    if (e.detail) {
+      card.appendChild(
+        make('pre', 'margin:8px 0 0;white-space:pre-wrap;color:#ffc2c2', e.detail),
+      );
+    }
+    if (e.stack) {
+      card.appendChild(
+        make('pre', 'margin:8px 0 0;white-space:pre-wrap;color:#b98a8a;font-size:12px', e.stack),
+      );
+    }
+    overlayEl.appendChild(card);
+  }
+}
+
+function dismissOverlay() {
+  if (overlayEl && overlayEl.parentNode) overlayEl.parentNode.removeChild(overlayEl);
+  overlayEl = null;
+  overlayErrors.length = 0;
+  // Keep `overlaySeen` so the same errors don't immediately re-pop; a NEW
+  // distinct error will create a fresh overlay.
+}
+
 // ─── Expression evaluation ─────────────────────────────────────────────
 // Compiling `new Function(...)` is the single most expensive thing the
 // runtime does, and the same expressions are evaluated on every patch.
@@ -80,7 +184,7 @@ function evaluate(code, scope) {
   }
 }
 
-function execute(code, scope, event = null, __val__ = undefined) {
+function execute(code, scope, event = null, __val__ = undefined, ctx = null) {
   try {
     // `event` is a real parameter — handlers receive it directly, with no
     // proxy writes (which would trigger a re-patch mid-click) and no
@@ -88,8 +192,19 @@ function execute(code, scope, event = null, __val__ = undefined) {
     // `__val__` carries the element value for two-way bindings.
     compileStmt(code)(scope, event, __val__);
   } catch (e) {
-    console.warn(`[spark] Error in "${code}":`, e.message);
+    if (ctx) reportError(e, { phase: ctx.phase || 'handler', component: ctx.component, detail: ctx.detail || code });
+    else console.warn(`[spark] Error in "${code}":`, e.message);
   }
+}
+
+// Name of the component that owns `el` (nearest [name] ancestor, or itself).
+function componentNameFor(el) {
+  let n = el;
+  while (n) {
+    if (n.getAttribute && n.hasAttribute && n.hasAttribute('name')) return n.getAttribute('name');
+    n = n.parentNode;
+  }
+  return undefined;
 }
 
 function interpolate(template, scope) {
@@ -764,8 +879,10 @@ function makeScope(rawCode, componentEl, props = {}) {
       try {
         compileStmt(eff.src)(scope);
       } catch (e) {
-        // Runs on every state change — warn once per statement.
-        warnOnce(`react:${eff.src}`, `[spark] Error in reactive "$: ${eff.src}" — ${e.message}`);
+        // Runs on every state change — report once per statement.
+        reportError(e, {
+          phase: 'reactive', component: componentEl.getAttribute('name'), detail: '$: ' + eff.src,
+        });
       }
     });
   }
@@ -823,21 +940,20 @@ function makeScope(rawCode, componentEl, props = {}) {
     if (!componentEl.isConnected) return;
 
     // Dirty mode only when the change set is fully attributable to keys.
-    if (!wasFull && keys) {
-      gDirtyMode = true;
-      gDirtyKeys = keys;
-      try {
-        runReactive();
-        patch(componentEl, scope);
-        patchSlots();
-      } finally {
-        gDirtyMode = false;
-        gDirtyKeys = null;
-      }
-    } else {
+    // The whole update is wrapped: an unforeseen throw in patch/walkNode is
+    // contained to THIS component (logged + overlay) instead of escaping as
+    // an uncaught microtask and silently wedging it.
+    gDirtyMode = !wasFull && !!keys;
+    gDirtyKeys = gDirtyMode ? keys : null;
+    try {
       runReactive();
       patch(componentEl, scope);
       patchSlots();
+    } catch (e) {
+      reportError(e, { phase: 'update', component: componentEl.getAttribute('name') });
+    } finally {
+      gDirtyMode = false;
+      gDirtyKeys = null;
     }
   }
   function schedule() {
@@ -861,9 +977,10 @@ function makeScope(rawCode, componentEl, props = {}) {
   } catch (e) {
     // A throw here means the whole <script> failed to run, so none of the
     // component's state/handlers exist — make that unmistakable.
-    console.warn(
-      `[spark] <script> in component "${componentEl.getAttribute('name')}" failed to run — ${e.message}. The component's state and handlers are unavailable.`,
-    );
+    reportError(e, {
+      phase: 'script', component: componentEl.getAttribute('name'),
+      detail: 'the <script> failed to run — state and handlers are unavailable',
+    });
   }
   return scope;
 }
@@ -1207,7 +1324,9 @@ function buildElementPlan(el) {
       el.addEventListener(eventName, () => {
         // Simple identifiers and member paths both work:
         // bind:value="draft" / bind:value="form.email" / bind:value="row.text"
-        execute(`${expr} = __val__`, el.__sparkScopeRef, null, el[prop]);
+        execute(`${expr} = __val__`, el.__sparkScopeRef, null, el[prop], {
+          phase: 'bind', component: componentNameFor(el), detail: name + '="' + expr + '"',
+        });
         // Member writes don't trip the scope proxy, so re-render explicitly.
         scheduleRerender(el);
       });
@@ -1220,7 +1339,9 @@ function buildElementPlan(el) {
     if (/^on\w+$/.test(name) && value.startsWith('{') && value.endsWith('}')) {
       const fnExpr = value.slice(1, -1).trim();
       el.addEventListener(name.slice(2), (e) => {
-        execute(`${fnExpr}(event)`, el.__sparkScopeRef, e);
+        execute(`${fnExpr}(event)`, el.__sparkScopeRef, e, undefined, {
+          phase: 'handler', component: componentNameFor(el), detail: name + '={' + fnExpr + '}',
+        });
       });
       el.removeAttribute(name);
       live = true;
@@ -1306,41 +1427,54 @@ function bootComponent(el) {
 
   const tag = el.getAttribute('name');
 
-  // Script/style come from the SFC parser (preferred), or fall back to
-  // legacy DOM children for old-style wrapped components.
-  let scriptSrc = el.__sparkScriptSrc || '';
-  let styleSrc = el.__sparkStyleSrc || '';
+  // Whole boot is wrapped: scopeCss / makeScope setup run outside makeScope's
+  // own try, so a throw here would otherwise abort mount()'s boot loop and
+  // leave every later component unbooted (a blank page). Contain it instead —
+  // this component degrades, siblings boot, and it's revealed (never cloaked).
+  try {
+    // Script/style come from the SFC parser (preferred), or fall back to
+    // legacy DOM children for old-style wrapped components.
+    let scriptSrc = el.__sparkScriptSrc || '';
+    let styleSrc = el.__sparkStyleSrc || '';
 
-  const domScript = el.querySelector(':scope > script');
-  const domStyle = el.querySelector(':scope > style');
-  if (domScript) {
-    scriptSrc = scriptSrc || domScript.textContent;
-    domScript.remove();
-  }
-  if (domStyle) {
-    styleSrc = styleSrc || domStyle.textContent;
-    domStyle.remove();
-  }
-
-  if (styleSrc) {
-    if (tag && !document.querySelector(`style[data-spark="${tag}"]`)) {
-      const s = document.createElement('style');
-      s.dataset.spark = tag;
-      // Scope every selector to this component automatically.
-      s.textContent = scopeCss(styleSrc, tag);
-      document.head.appendChild(s);
+    const domScript = el.querySelector(':scope > script');
+    const domStyle = el.querySelector(':scope > style');
+    if (domScript) {
+      scriptSrc = scriptSrc || domScript.textContent;
+      domScript.remove();
     }
-  }
+    if (domStyle) {
+      styleSrc = styleSrc || domStyle.textContent;
+      domStyle.remove();
+    }
 
-  if (scriptSrc) {
-    el.__sparkScope = makeScope(scriptSrc, el, el.__sparkProps || {});
-  } else {
-    el.__sparkScope = {};
-    patch(el, el.__sparkScope);
+    if (styleSrc) {
+      if (tag && !document.querySelector(`style[data-spark="${tag}"]`)) {
+        const s = document.createElement('style');
+        s.dataset.spark = tag;
+        // Scope every selector to this component automatically.
+        s.textContent = scopeCss(styleSrc, tag);
+        document.head.appendChild(s);
+      }
+    }
+
+    if (scriptSrc) {
+      el.__sparkScope = makeScope(scriptSrc, el, el.__sparkProps || {});
+    } else {
+      el.__sparkScope = {};
+      patch(el, el.__sparkScope);
+    }
+  } catch (e) {
+    reportError(e, { phase: 'boot', component: tag });
+    reveal(el); // don't strand a failed component cloaked/invisible
   }
 
   requestAnimationFrame(() => {
-    patch(el, el.__sparkScope);
+    try {
+      patch(el, el.__sparkScope || {});
+    } catch (e) {
+      reportError(e, { phase: 'patch', component: tag });
+    }
     // onMount fires once, after the first paint-ready patch.
     (el.__sparkOnMount || []).forEach((fn) => {
       try {
@@ -1349,7 +1483,7 @@ function bootComponent(el) {
           (el.__sparkOnDestroy ||= []).push(cleanup);
         }
       } catch (e) {
-        console.warn('[spark] onMount error:', e.message);
+        reportError(e, { phase: 'onMount', component: tag });
       }
     });
     el.__sparkOnMount = [];
@@ -1608,10 +1742,19 @@ function scopeCss(css, tag) {
  *   mount();                         // whole document
  *   mount('#app');                   // a subtree
  *   mount(document.querySelector('#app'));
+ *   mount(document.body, { devOverlay: true });  // dev error overlay
+ *
+ * Options:
+ *   devOverlay — show a full-screen error overlay (message + component +
+ *   stack) when a component fails. Off by default; also enabled by the global
+ *   `globalThis.__SPARK_DEV_OVERLAY__`. Intended for development only.
  *
  * Returns a promise that resolves when everything is booted.
  */
-async function mount(root = document.body) {
+async function mount(root = document.body, options = {}) {
+  if (options.devOverlay || (typeof globalThis !== 'undefined' && globalThis.__SPARK_DEV_OVERLAY__)) {
+    devOverlay = true;
+  }
   if (typeof root === 'string') root = document.querySelector(root);
   if (!root) throw new Error('[spark] mount target not found');
 
