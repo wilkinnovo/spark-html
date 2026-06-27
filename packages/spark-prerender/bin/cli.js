@@ -15,9 +15,9 @@
  *                   entry file's directory; also tries <root>/public, /dist).
  *   -h, --help      Show this help.
  */
-import { writeFile, mkdir } from 'node:fs/promises';
+import { writeFile, mkdir, readFile } from 'node:fs/promises';
 import { resolve, dirname, join, basename } from 'node:path';
-import { prerender } from '../src/prerender.js';
+import { prerender, routesOf, routeToFile, redirectsFor, vercelConfigFor } from '../src/prerender.js';
 
 function parseArgs(argv) {
   const entries = [];
@@ -53,15 +53,30 @@ async function main() {
   let failures = 0;
   for (const entry of entries) {
     const entryAbs = resolve(entry);
+    const outDir = opts.out ? resolve(opts.out) : dirname(entryAbs);
     try {
+      // A routed entry (spark-html-router) expands to one file per route.
+      const routes = routesOf(await readFile(entryAbs, 'utf8'));
+      if (routes.length) {
+        const all = routes.includes('/') ? routes : ['/', ...routes];
+        for (const route of all) {
+          const html = await prerender(entryAbs, { root: opts.root, route });
+          const dest = join(outDir, routeToFile(route));
+          await mkdir(dirname(dest), { recursive: true });
+          await writeFile(dest, html, 'utf8');
+          console.log(`✓ ${entry} [${route}] → ${routeToFile(route)} (${Buffer.byteLength(html)} bytes)`);
+        }
+        await writeFile(join(outDir, '_redirects'), redirectsFor(all), 'utf8');
+        await writeFile(join(outDir, 'vercel.json'), vercelConfigFor(all), 'utf8');
+        console.log(`✓ wrote _redirects + vercel.json (${all.length} routes)`);
+        continue;
+      }
+
       const html = await prerender(entryAbs, { root: opts.root });
-      const dest = opts.out
-        ? join(resolve(opts.out), basename(entryAbs))
-        : entryAbs;
+      const dest = opts.out ? join(outDir, basename(entryAbs)) : entryAbs;
       if (opts.out) await mkdir(dirname(dest), { recursive: true });
       await writeFile(dest, html, 'utf8');
-      const bytes = Buffer.byteLength(html);
-      console.log(`✓ ${entry} → ${opts.out ? dest : 'in place'} (${bytes} bytes)`);
+      console.log(`✓ ${entry} → ${opts.out ? dest : 'in place'} (${Buffer.byteLength(html)} bytes)`);
     } catch (e) {
       failures++;
       console.error(`✗ ${entry} — ${e.message}`);

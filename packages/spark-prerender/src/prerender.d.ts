@@ -43,7 +43,22 @@ export interface PrerenderOptions {
    * Set false for pure-static output (no client takeover).
    */
   hydratable?: boolean;
+  /**
+   * Render a specific `<template route>` (spark-html-router). The matching
+   * route's content is activated (with an adoptable `data-spark-route` marker)
+   * before mount. Falls back to `route="*"` for unknown paths.
+   */
+  route?: string;
 }
+
+/** The concrete routes declared by `<template route>` in an HTML string (the catch-all `*` excluded). */
+export function routesOf(html: string): string[];
+/** Map a route to its static file: `/` → `index.html`, `/about` → `about.html`. */
+export function routeToFile(route: string): string;
+/** Netlify/Cloudflare `_redirects` body: clean-URL rewrites + an `index.html` SPA fallback. */
+export function redirectsFor(routes: string[]): string;
+/** `vercel.json` body with the equivalent rewrites. */
+export function vercelConfigFor(routes: string[]): string;
 
 /**
  * Prerender a single entry HTML file to a fully-rendered HTML string:

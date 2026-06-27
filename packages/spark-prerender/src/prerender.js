@@ -239,6 +239,30 @@ export async function prerender(entryPath, options = {}) {
   // mount() awaits DOMContentLoaded only when readyState === 'loading'.
   try { if (document.readyState === 'loading') document.readyState = 'complete'; } catch { /* read-only is fine */ }
 
+  // Routed page (spark-html-router): activate the requested route by cloning
+  // the matching <template route> content into an outlet the client adopts
+  // (data-spark-route → no flash). mount() below resolves its imports.
+  if (options.route != null) {
+    const want = normalizeRoute(options.route);
+    const templates = [...document.querySelectorAll('template[route]')];
+    let matched = null;
+    let fallback = null;
+    for (const t of templates) {
+      const r = t.getAttribute('route');
+      if (r === '*') { fallback = t; continue; }
+      if (normalizeRoute(r) === want) { matched = t; break; }
+    }
+    matched = matched || fallback;
+    if (matched) {
+      const outlet = document.createElement('div');
+      outlet.setAttribute('data-spark-route', want);
+      for (const child of [...matched.content.childNodes]) {
+        outlet.appendChild(child.cloneNode(true));
+      }
+      matched.after(outlet);
+    }
+  }
+
   // Timer handling during prerender. A component that starts a repeating
   // setInterval in onMount would keep the build process alive forever, so we
   // no-op intervals (they're live-only — no value at build time). But
@@ -369,4 +393,50 @@ export async function prerender(entryPath, options = {}) {
   );
 }
 
-export default { prerender };
+// ─── Routes (spark-html-router) ────────────────────────────────────────
+
+// Normalize a route to a no-trailing-slash key ("/" stays "/").
+function normalizeRoute(p) {
+  let s = String(p || '/');
+  if (!s.startsWith('/')) s = '/' + s;
+  if (s.length > 1 && s.endsWith('/')) s = s.slice(0, -1);
+  return s || '/';
+}
+
+// The concrete routes declared by <template route> in an entry's HTML
+// (the catch-all "*" is excluded — it has no own URL to prerender).
+export function routesOf(html) {
+  const { document } = parseHTML(html);
+  return [...document.querySelectorAll('template[route]')]
+    .map((t) => t.getAttribute('route'))
+    .filter((r) => r && r !== '*')
+    .map(normalizeRoute);
+}
+
+// Map a route to the static file it should be written as.
+//   "/" -> "index.html", "/about" -> "about.html", "/a/b" -> "a/b.html"
+export function routeToFile(route) {
+  const r = normalizeRoute(route);
+  if (r === '/') return 'index.html';
+  return r.replace(/^\//, '') + '.html';
+}
+
+// Host rewrite rules so /about serves about.html, with an index.html SPA
+// fallback for anything unmatched (the client router shows the catch-all).
+export function redirectsFor(routes) {
+  const lines = routes
+    .filter((r) => normalizeRoute(r) !== '/')
+    .map((r) => `${normalizeRoute(r)}  ${'/' + routeToFile(r)}  200`);
+  lines.push('/*  /index.html  200');
+  return lines.join('\n') + '\n';
+}
+
+export function vercelConfigFor(routes) {
+  const rewrites = routes
+    .filter((r) => normalizeRoute(r) !== '/')
+    .map((r) => ({ source: normalizeRoute(r), destination: '/' + routeToFile(r) }));
+  rewrites.push({ source: '/(.*)', destination: '/index.html' });
+  return JSON.stringify({ rewrites }, null, 2) + '\n';
+}
+
+export default { prerender, routesOf, routeToFile, redirectsFor, vercelConfigFor };

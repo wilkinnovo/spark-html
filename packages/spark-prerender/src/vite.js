@@ -18,9 +18,9 @@
  * the un-prerendered (client-rendered) HTML, so SEO degrades gracefully and
  * never breaks the build.
  */
-import { resolve, join } from 'node:path';
-import { writeFile } from 'node:fs/promises';
-import { prerender } from './prerender.js';
+import { resolve, join, dirname } from 'node:path';
+import { writeFile, mkdir, readFile } from 'node:fs/promises';
+import { prerender, routesOf, routeToFile, redirectsFor, vercelConfigFor } from './prerender.js';
 
 /**
  * @param {object} [options]
@@ -41,6 +41,22 @@ export default function sparkPrerender(options = {}) {
       for (const page of pages) {
         const file = join(root, page);
         try {
+          // A routed page (spark-html-router) expands to one file per route +
+          // host rewrite rules.
+          const routes = routesOf(await readFile(file, 'utf8'));
+          if (routes.length) {
+            const all = routes.includes('/') ? routes : ['/', ...routes];
+            for (const route of all) {
+              const out = await prerender(file, { root, route, ...(options.prerender || {}) });
+              const dest = join(root, routeToFile(route));
+              await mkdir(dirname(dest), { recursive: true });
+              await writeFile(dest, out, 'utf8');
+            }
+            await writeFile(join(root, '_redirects'), redirectsFor(all), 'utf8');
+            await writeFile(join(root, 'vercel.json'), vercelConfigFor(all), 'utf8');
+            console.log(`[spark-prerender] prerendered ${all.length} routes from ${page} (+ _redirects, vercel.json)`);
+            continue;
+          }
           const html = await prerender(file, { root, ...(options.prerender || {}) });
           await writeFile(file, html, 'utf8');
           console.log(`[spark-prerender] prerendered ${page}`);

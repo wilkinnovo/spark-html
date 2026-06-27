@@ -120,6 +120,24 @@ await prerender('dist/index.html', {
 `load()` runs only at build time and only if declared — components without it
 do zero extra work, and the client still re-runs it normally in the browser.
 
+## Routes (spark-html-router)
+
+If your entry uses [`spark-html-router`](https://www.npmjs.com/package/spark-html-router)
+(`<template route>` blocks), prerendering **expands automatically** to one
+fully-rendered HTML file per route — no extra config:
+
+```bash
+spark-prerender dist/index.html
+# → index.html, about.html, projects.html …
+#   + _redirects and vercel.json (clean-URL rewrites + SPA fallback)
+```
+
+Each route's content is baked in with an adoptable `data-spark-route` marker,
+so the client router **adopts** it in place — crawlers get real content per
+URL, users get no flash. The Vite plugin does the same on `vite build`.
+Programmatic helpers: `routesOf(html)`, `routeToFile(route)`,
+`redirectsFor(routes)`, `vercelConfigFor(routes)`.
+
 ## Scope
 
 What it captures: a component's **initial scope** (interpolations, `each`/`if`,
