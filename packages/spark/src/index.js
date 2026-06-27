@@ -234,26 +234,38 @@ function parseTemplate(template) {
   if (segs) return segs;
   segs = [];
   let i = 0;
-  let last = 0;
+  let lit = '';
+  const flush = () => { if (lit) { segs.push(lit); lit = ''; } };
   while (i < template.length) {
-    if (template[i] === '{') {
+    const c = template[i];
+    // Escape: `\{` / `\}` render a LITERAL brace (so you can write `{` in
+    // prose without it being read as an interpolation). Entities don't work —
+    // the browser decodes them before Spark sees the text — but a backslash
+    // survives. For code blocks, prefer the spark-ignore attribute.
+    if (c === '\\' && (template[i + 1] === '{' || template[i + 1] === '}')) {
+      lit += template[i + 1];
+      i += 2;
+      continue;
+    }
+    if (c === '{') {
       const end = interpEnd(template, i + 1);
-      if (end === -1) break; // unbalanced — leave the rest as a literal
-      if (i > last) segs.push(template.slice(last, i));
+      if (end === -1) { lit += c; i++; continue; } // unbalanced → literal
+      flush();
       segs.push({ code: template.slice(i + 1, end).trim() });
       i = end + 1;
-      last = i;
-    } else {
-      i++;
+      continue;
     }
+    lit += c;
+    i++;
   }
-  if (last < template.length) segs.push(template.slice(last));
+  flush();
   templateCache.set(template, segs);
   return segs;
 }
 
 function interpolate(template, scope) {
-  if (!template.includes('{')) return template;
+  // Fast path: no braces and no backslash-escape → nothing to do.
+  if (!template.includes('{') && !template.includes('\\')) return template;
   let out = '';
   for (const s of parseTemplate(template)) {
     if (typeof s === 'string') {

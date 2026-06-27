@@ -80,7 +80,21 @@ The plugin serves component fragments raw and full-reloads when they change.
 | Conditional blocks  | `<template if="show">…</template>`                |
 | Slots               | `<slot>` / `<slot name="title">` — project caller content |
 | Lifecycle           | `onMount(fn)` builtin; return a fn for cleanup    |
+| Literal brace       | `\{` / `\}` — escape a brace in text               |
 | Escape hatch        | `spark-ignore` attribute — subtree never patched  |
+
+### Literal braces
+
+`{…}` in any text is read as an expression. To show a literal brace, escape it
+with a backslash — `\{` and `\}`:
+
+```html
+<p>press \{enter\} to submit</p>   <!-- press {enter} to submit -->
+```
+
+HTML entities (`&#123;`) don't work — the browser decodes them before Spark
+sees the text. For a whole block of literal content (code samples), use
+`spark-ignore` so Spark skips the subtree entirely.
 
 ### Props
 

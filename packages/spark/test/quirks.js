@@ -25,6 +25,13 @@ await test('object literal inside {…}', () => {
 await test('multiple exprs + literals', () => {
   assert.equal(interpolate('a={x}, b={y}', { x: 1, y: 2 }), 'a=1, b=2');
 });
+await test('\\{ \\} escape a literal brace (entities cannot)', () => {
+  assert.equal(interpolate('press \\{enter\\}', {}), 'press {enter}');
+  assert.equal(interpolate('\\{x\\} shows {x}', { x: 5 }), '{x} shows 5');
+  assert.equal(interpolate('lone \\} brace', {}), 'lone } brace');
+  // a backslash not before a brace is untouched
+  assert.equal(interpolate('path C:\\\\dir', {}), 'path C:\\\\dir');
+});
 
 console.log('\ncomma-separated let');
 component('commalet', `
@@ -67,6 +74,15 @@ await test(':class update re-merges with the static class', async () => {
   fire(body.querySelector('[name="clsmerge"] .go'), 'click');
   await tick();
   assert.equal(body.querySelector('[name="clsmerge"] div').getAttribute('class'), 'card big done');
+});
+
+console.log('\nliteral braces in a component');
+component('literalbrace', `<p class="o">use \\{name\\} for {label}</p><script>let label = 'the field';</script>`);
+parseHTML('<div import="literalbrace"></div>', body);
+await mount();
+await tick();
+await test('\\{…\\} renders literal braces alongside real interpolation', () => {
+  assert.equal(txt(body.querySelector('[name="literalbrace"] .o')), 'use {name} for the field');
 });
 
 console.log(`\n${pass} passed, ${fail} failed`);

@@ -73,6 +73,15 @@
     </table>
     <p class="note">Loops live on <code>&lt;template&gt;</code> so they're valid HTML anywhere — including inside <code>&lt;ul&gt;</code> and <code>&lt;table&gt;</code>. Loops <strong>reconcile</strong> rather than rebuild — existing rows keep their DOM nodes (and focus, scroll, and CSS transitions) across updates, so you can safely place a <code>bind:value</code> input inside a loop. Add <code>key="…"</code> when items reorder, to reuse nodes by identity.</p>
 
+    <h3 id="literal-braces">Literal braces</h3>
+    <p>Spark reads <code>{…}</code> in any text as an expression. To show a literal brace, <strong>escape it with a backslash</strong> — <code>\{</code> and <code>\}</code>:</p>
+    <pre spark-ignore>&lt;p&gt;press \{enter\} to submit&lt;/p&gt;   &lt;!-- renders: press {enter} to submit --&gt;</pre>
+    <p>HTML entities like <code>&amp;#123;</code> do <em>not</em> work — the browser decodes them back to <code>{</code> before Spark sees the text. For a whole block of literal content (code samples, docs), use the <code>spark-ignore</code> attribute so Spark skips the subtree entirely:</p>
+    <pre spark-ignore>&lt;pre spark-ignore&gt;
+  function greet() { return `Hi ${name}`; }
+&lt;/pre&gt;</pre>
+    <p class="note">A string expression also works for one-off braces: <code>{'{'}</code> renders <code>{</code>. The backslash escape is usually cleaner in prose.</p>
+
     <h2 id="slots">Slots</h2>
     <p>Slots let a component wrap content the <em>caller</em> provides — the key to reusable wrappers like cards, modals, and layouts. A component marks insertion points with the real <code>&lt;slot&gt;</code> element:</p>
     <pre spark-ignore>&lt;!-- components/card.html --&gt;
