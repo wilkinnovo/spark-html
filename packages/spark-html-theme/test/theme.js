@@ -52,16 +52,31 @@ test('set(mode) updates the store, attribute, and localStorage', () => {
   assert.equal(mem.get('theme-mode'), 'light', 'persisted');
 });
 
-test('toggle() cycles system → light → dark and persists', () => {
+test('cycle() advances system → light → dark → system and persists', () => {
   t.set('system');
   assert.equal(t.mode, 'system');
-  t.toggle();
+  t.cycle();
   assert.equal(t.mode, 'light', 'system → light');
-  t.toggle();
+  t.cycle();
   assert.equal(t.mode, 'dark', 'light → dark');
-  t.toggle();
+  t.cycle();
   assert.equal(t.mode, 'system', 'dark → system');
   assert.equal(mem.get('theme-mode'), 'system');
+});
+
+test('toggle() always flips the VISIBLE theme (the double-click bug)', () => {
+  // OS prefers dark; start in system → resolves dark.
+  mqMatches = true;
+  t.set('system');
+  assert.equal(t.resolved, 'dark', 'system resolves dark');
+  // One toggle must visibly flip to light — not land on an identical state.
+  t.toggle();
+  assert.equal(t.resolved, 'light', 'first toggle flips dark → light');
+  assert.equal(dataTheme(), 'light');
+  t.toggle();
+  assert.equal(t.resolved, 'dark', 'second toggle flips light → dark');
+  assert.equal(dataTheme(), 'dark');
+  mqMatches = false;
 });
 
 test('system mode follows the OS preference (resolved)', () => {

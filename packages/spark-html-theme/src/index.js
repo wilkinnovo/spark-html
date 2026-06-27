@@ -17,9 +17,10 @@
  *   </script>
  *
  * `mode` is the user's choice ('system' | 'light' | 'dark'); `resolved` is what
- * actually applies ('light' | 'dark'); `toggle()` cycles through `modes`;
- * `set(mode)` jumps to one. The chosen `resolved` is written to
- * `document.documentElement` as `data-theme`.
+ * actually applies ('light' | 'dark'); `toggle()` flips the visible theme
+ * (light↔dark — always a visible change); `cycle()` advances through `modes`
+ * (tri-state, including 'system'); `set(mode)` jumps to one. The chosen
+ * `resolved` is written to `document.documentElement` as `data-theme`.
  *
  * No-flash tip: a deferred module runs after first paint, so to avoid a flash of
  * the wrong theme add this tiny inline script to <head> (it mirrors the same
@@ -70,11 +71,20 @@ export function theme(options = {}) {
     write(mode);
     apply();
   }
+  // Flip the VISIBLE theme. Always changes appearance on every call — the right
+  // behaviour for a single toggle button. (A naive system→light→dark cycle can
+  // land on two visually-identical states in a row — e.g. explicit "dark" then
+  // "system" when the OS is dark — which feels like the click did nothing.)
   function toggle() {
+    set(s.resolved === 'dark' ? 'light' : 'dark');
+  }
+  // Advance through `modes` (includes 'system'). Use for a tri-state control;
+  // note adjacent modes can resolve to the same appearance.
+  function cycle() {
     set(modes[(modes.indexOf(s.mode) + 1) % modes.length]);
   }
 
-  const s = store(name, { mode: initial, resolved: resolve(initial), toggle, set });
+  const s = store(name, { mode: initial, resolved: resolve(initial), toggle, cycle, set });
 
   apply();
   if (mq && mq.addEventListener) mq.addEventListener('change', apply);

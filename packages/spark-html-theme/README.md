@@ -39,7 +39,8 @@ npm install spark-html-theme
 |--------------|---------|
 | `mode`       | The user's choice: `'system'` \| `'light'` \| `'dark'`. |
 | `resolved`   | What actually applies right now: `'light'` \| `'dark'`. |
-| `toggle()`   | Cycle to the next mode (in `modes` order) and persist. |
+| `toggle()`   | Flip the visible theme (light↔dark) — **always a visible change**. Best for a single toggle button. Persists. |
+| `cycle()`    | Advance through `modes` (tri-state, includes `'system'`). Adjacent modes can look identical. Persists. |
 | `set(mode)`  | Jump to a specific mode and persist. |
 
 Both `mode` and `resolved` are reactive — read them in any component via

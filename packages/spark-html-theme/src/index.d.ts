@@ -8,8 +8,10 @@ export interface ThemeStore {
   mode: string;
   /** What actually applies right now: 'light' | 'dark'. */
   resolved: string;
-  /** Cycle to the next mode (in `modes` order) and persist. */
+  /** Flip the visible theme (light↔dark) — always a visible change. Persists. */
   toggle(): void;
+  /** Advance through `modes` (tri-state incl. 'system'); persists. */
+  cycle(): void;
   /** Jump to a specific mode and persist. */
   set(mode: string): void;
 }
