@@ -26,9 +26,14 @@
     "src",
     "bin"
   ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/wilkinnovo/spark.git",
+    "directory": "packages/spark-prerender"
+  },
   "dependencies": {
     "linkedom": "^0.18.12",
-    "spark-html": "*"
+    "spark-html": "^0.19.1"
   },
   "keywords": [
     "spark-html",
