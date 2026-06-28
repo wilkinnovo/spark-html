@@ -1,0 +1,35 @@
+<div class="card">
+  <h2>Async &lt;template await&gt;</h2>
+  <p class="hint">Declarative promises — <code>pending</code> / <code>then</code> / <code>catch</code> branches, re-run when a dependency changes.</p>
+  <button class="primary" onclick="{seed++}">Reload</button>
+  <template await="load(seed)">
+    <p class="muted">Loading…</p>
+    <template then>
+      <p class="ok">✓ {await}</p>
+    </template>
+    <template catch>
+      <p class="err">✗ {await.message}</p>
+    </template>
+  </template>
+</div>
+
+<script>
+  let seed = 0;
+  // `seed` is read in the await expression, so bumping it re-runs the promise.
+  function load(_n) {
+    return new Promise((resolve, reject) => {
+      setTimeout(() => {
+        Math.random() > 0.25
+          ? resolve('Loaded at ' + new Date().toLocaleTimeString())
+          : reject(new Error('Random failure — hit reload'));
+      }, 700);
+    });
+  }
+</script>
+
+<style>
+  button { margin-bottom: 14px; }
+  .muted { color: var(--muted); font-size: 14px; }
+  .ok { color: var(--spark); font-size: 14px; }
+  .err { color: #ff6b6b; font-size: 14px; }
+</style>

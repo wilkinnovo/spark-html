@@ -64,63 +64,31 @@
 </script>
 
 <style>
-  .card {
-    background: white;
-    border: 1px solid #e0e0e0;
-    border-radius: 10px;
-    padding: 20px;
-  }
   h2 { margin-bottom: 14px; }
   .input-group { display: flex; gap: 10px; }
-  input {
-    flex: 1;
-    padding: 8px 12px;
-    border: 1px solid #ddd;
-    border-radius: 7px;
-    font-size: 14px;
-    font-family: inherit;
-  }
-  button {
-    padding: 8px 20px;
-    border: 1px solid #ddd;
-    border-radius: 7px;
-    background: #fafafa;
-    font-size: 14px;
-    cursor: pointer;
-    font-family: inherit;
-    transition: background .12s;
-  }
-  button:hover { background: #f0eeff; border-color: #5b4ff7; }
-  button:disabled { opacity: .4; cursor: not-allowed; }
-  .reset { color: #c0392b; }
+  .input-group input { flex: 1; }
+  .reset { color: #ff6b6b; }
+  .reset:hover { border-color: #ff6b6b; color: #ff6b6b; }
   .todos { list-style: none; padding: 0; margin-top: 14px; }
   .todo {
     display: flex;
     justify-content: space-between;
     align-items: center;
     padding: 8px 12px;
-    border-bottom: 1px solid #eee;
+    border-bottom: 1px solid var(--border);
   }
   .todo:last-child { border-bottom: none; }
   .todo .text { cursor: pointer; flex: 1; }
-  .todo .text:hover { color: #5b4ff7; }
-  .todo .edit {
-    flex: 1;
-    padding: 4px 8px;
-    border: 1px solid #5b4ff7;
-    border-radius: 6px;
-    font-size: 14px;
-    font-family: inherit;
-  }
-  .todo .edit:focus { outline: none; box-shadow: 0 0 0 3px #eceaff; }
-  .hint { font-size: 12px; color: #aaa; margin-top: 10px; }
+  .todo .text:hover { color: var(--spark); }
+  .todo .edit { flex: 1; }
   .remove {
     padding: 2px 8px;
     font-size: 11px;
-    color: #bbb;
+    color: var(--muted-dim);
     border: none;
     background: none;
   }
-  .remove:hover { color: #c0392b; background: none; border: none; }
-  .empty { font-size: 13px; color: #aaa; margin-top: 12px; text-align: center; }
+  .remove:hover { color: #ff6b6b; background: none; border: none; }
+  .hint { font-size: 12px; color: var(--muted-dim); margin-top: 10px; margin-bottom: 0; }
+  .empty { font-size: 13px; color: var(--muted-dim); margin-top: 12px; text-align: center; }
 </style>

@@ -18,32 +18,18 @@
 </script>
 
 <style>
-  .card {
-    background: white;
-    border: 1px solid #e0e0e0;
-    border-radius: 10px;
-    padding: 20px;
-  }
   h2 { margin-bottom: 14px; }
-  .tabbar { display: flex; gap: 4px; border-bottom: 1px solid #eee; }
+  .tabbar { display: flex; gap: 4px; border-bottom: 1px solid var(--border); }
   .tab {
     padding: 8px 18px;
     border: none;
+    border-radius: 0;
     background: none;
-    font-size: 14px;
-    font-family: inherit;
-    color: #888;
-    cursor: pointer;
+    color: var(--muted);
     border-bottom: 2px solid transparent;
     margin-bottom: -1px;
   }
-  .tab.current { color: #5b4ff7; border-bottom-color: #5b4ff7; font-weight: 600; }
-  .panel { padding: 16px 4px 4px; font-size: 14px; color: #444; }
-  code {
-    background: #f0eeff;
-    color: #5b4ff7;
-    padding: 1px 5px;
-    border-radius: 4px;
-    font-size: 12px;
-  }
+  .tab:hover { color: var(--text); border-bottom-color: transparent; }
+  .tab.current { color: var(--spark); border-bottom-color: var(--spark); font-weight: 700; }
+  .panel { padding: 16px 4px 4px; font-size: 14px; color: var(--muted); }
 </style>

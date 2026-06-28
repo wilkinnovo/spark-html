@@ -1,0 +1,57 @@
+<div class="card">
+  <h2>Transitions</h2>
+  <p class="hint">spark-html-motion animates each/if enter &amp; leave. 0 deps, opt-in per element with <code>transition="…"</code>.</p>
+
+  <div class="row">
+    <button class="primary" onclick="{add}">Add item</button>
+    <button onclick="{showPanel = !showPanel}">Toggle panel</button>
+  </div>
+
+  <ul class="list">
+    <template each="item in items" key="item.id">
+      <li transition="slide">
+        <span>{item.label}</span>
+        <button class="x" onclick="{remove(item.id)}" aria-label="remove">✕</button>
+      </li>
+    </template>
+  </ul>
+  <p class="empty" :hidden="items.length > 0">All gone — add one back.</p>
+
+  <template if="showPanel">
+    <div class="panel" transition="fade">This conditional block fades in and out.</div>
+  </template>
+</div>
+
+<script>
+  let nextId = 4;
+  let items = [
+    { id: 1, label: 'First' },
+    { id: 2, label: 'Second' },
+    { id: 3, label: 'Third' },
+  ];
+  let showPanel = false;
+
+  function add() {
+    items = [...items, { id: nextId, label: 'Item ' + nextId }];
+    nextId++;
+  }
+  function remove(id) {
+    items = items.filter((i) => i.id !== id);
+  }
+</script>
+
+<style>
+  .row { margin-bottom: 14px; }
+  .list { list-style: none; display: flex; flex-direction: column; gap: 6px; }
+  .list li {
+    display: flex; align-items: center; justify-content: space-between;
+    background: var(--surface-2); border: 1px solid var(--border); border-radius: 8px; padding: 9px 12px;
+  }
+  .list .x { background: transparent; border-color: transparent; color: var(--muted); padding: 2px 8px; font-size: 13px; }
+  .list .x:hover { color: #ff6b6b; border-color: transparent; }
+  .empty { font-size: 13px; color: var(--muted-dim); padding: 6px 0; }
+  .panel {
+    margin-top: 12px; padding: 12px; border-radius: 8px;
+    background: var(--surface-2); border: 1px solid var(--border); color: var(--spark); font-size: 13px;
+  }
+</style>

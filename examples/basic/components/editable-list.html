@@ -55,34 +55,18 @@
 </script>
 
 <style>
-  .card { background: white; border: 1px solid #e0e0e0; border-radius: 10px; padding: 20px; }
-  h2 { margin-bottom: 6px; }
-  .hint { font-size: 13px; color: #888; margin-bottom: 16px; }
-  .hint code { background: #f0eeff; color: #5b4ff7; padding: 1px 5px; border-radius: 4px; font-size: 12px; }
   .rows { list-style: none; padding: 0; display: flex; flex-direction: column; gap: 8px; }
-  .row { display: flex; align-items: center; gap: 8px; }
+  .row { flex-wrap: nowrap; }
   .num {
     width: 22px; height: 22px; flex: none;
     display: grid; place-items: center;
-    background: #f0eeff; color: #5b4ff7;
+    background: var(--surface-2); color: var(--spark);
     border-radius: 6px; font-size: 12px; font-weight: 600;
   }
-  input {
-    flex: 1; min-width: 0;
-    padding: 7px 11px;
-    border: 1px solid #ddd; border-radius: 7px;
-    font-size: 14px; font-family: inherit;
-  }
-  input:focus { outline: none; border-color: #5b4ff7; box-shadow: 0 0 0 3px #eceaff; }
-  button {
-    padding: 7px 12px;
-    border: 1px solid #ddd; border-radius: 7px;
-    background: #fafafa; font-size: 13px; cursor: pointer; font-family: inherit;
-    transition: background .12s;
-  }
-  button:hover { background: #f0eeff; border-color: #5b4ff7; }
-  button:disabled { opacity: .4; cursor: not-allowed; }
-  .del { color: #c0392b; }
+  .rows input { flex: 1; min-width: 0; }
+  .del { color: #ff6b6b; }
+  .del:hover { border-color: #ff6b6b; color: #ff6b6b; }
   .add { display: flex; gap: 8px; margin-top: 14px; }
-  .preview { margin-top: 12px; font-size: 12px; color: #aaa; }
+  .add input { flex: 1; }
+  .preview { margin-top: 12px; font-size: 12px; color: var(--muted-dim); }
 </style>

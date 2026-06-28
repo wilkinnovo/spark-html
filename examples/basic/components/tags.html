@@ -1,0 +1,23 @@
+<div class="card">
+  <h2>Set reactivity</h2>
+  <p class="hint">Mutating a <code>Set</code> in place (<code>add</code> / <code>delete</code>) re-renders — no reassignment needed. Same for <code>Map</code>.</p>
+  <div class="row">
+    <template each="t in all">
+      <button :class="picked.has(t) ? 'tag on' : 'tag'" onclick="{toggle(t)}">{t}</button>
+    </template>
+  </div>
+  <p class="echo">{picked.size} selected — {[...picked].join(', ') || 'none'}</p>
+</div>
+
+<script>
+  let all = ['html', 'css', 'js', 'spark'];
+  let picked = new Set(['spark']);
+  function toggle(t) {
+    picked.has(t) ? picked.delete(t) : picked.add(t);
+  }
+</script>
+
+<style>
+  .tag.on { background: var(--spark); color: #000; border-color: var(--spark); font-weight: 700; }
+  .echo { margin-top: 16px; font-size: 13px; color: var(--muted); }
+</style>

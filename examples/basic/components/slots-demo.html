@@ -29,15 +29,8 @@
 <style>
   .wrap { display: flex; flex-direction: column; gap: 12px; }
   h2 { margin-bottom: 2px; }
-  .hint { font-size: 13px; color: #888; }
-  .hint code { background: #f0eeff; color: #5b4ff7; padding: 1px 5px; border-radius: 4px; font-size: 12px; }
-  .muted { color: #aaa; font-size: 14px; }
-  button {
-    padding: 7px 14px; border-radius: 7px; font-size: 13px; cursor: pointer;
-    font-family: inherit; border: 1px solid #ddd;
-  }
-  .ghost { background: #fafafa; }
-  .ghost:hover:not(:disabled) { background: #f0eeff; border-color: #5b4ff7; }
-  .solid { background: #5b4ff7; color: white; border-color: #5b4ff7; }
-  button:disabled { opacity: .4; cursor: not-allowed; }
+  .hint { margin-bottom: 0; }
+  .muted { color: var(--muted-dim); font-size: 14px; }
+  .solid { background: var(--spark); color: #000; border-color: var(--spark); font-weight: 700; }
+  .solid:hover { color: #000; filter: brightness(1.06); }
 </style>

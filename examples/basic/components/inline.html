@@ -1,0 +1,23 @@
+<div class="card">
+  <h2>Inline handlers</h2>
+  <p class="hint">Put the statement right in the attribute — <code>onclick="{count++}"</code>. No named function needed. A bare <code>{fn}</code> still gets the event.</p>
+  <div class="row">
+    <button onclick="{count--}">−</button>
+    <span class="big">{count}</span>
+    <button onclick="{count++}">+</button>
+    <button onclick="{count = 0}">Reset</button>
+  </div>
+  <input :value="msg" oninput="{msg = event.target.value}" placeholder="type your name…" />
+  <p class="echo">{msg ? 'Hello, ' + msg + ' 👋' : 'oninput="{msg = event.target.value}" runs as a statement.'}</p>
+</div>
+
+<script>
+  let count = 0;
+  let msg = '';
+</script>
+
+<style>
+  .big { font-size: 22px; font-weight: 700; min-width: 44px; text-align: center; color: var(--spark); }
+  input { margin: 16px 0 10px; }
+  .echo { font-size: 13px; color: var(--muted); }
+</style>
