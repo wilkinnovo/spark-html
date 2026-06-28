@@ -23,25 +23,40 @@ Zed fetches the grammar pinned in `extension.toml` and loads the queries in
 
 ## Format on save
 
-The extension declares `prettier_parser_name = "html"`, so Spark files format
-with Zed's **bundled Prettier** (HTML parser — it pretty-prints the markup and
-leaves `{interpolations}` untouched). Prettier is opt-in per language in Zed, so
-enable it once in your Zed `settings.json`:
+Spark is a **hybrid** syntax: HTML-style quoted attributes (`:value="x"`,
+`onclick="{fn}"`) plus Svelte-style `{interpolations}`. No off-the-shelf
+Prettier parser handles both safely — Prettier's `html` parser rewrites
+`onclick="{fn}"` into broken multi-line JS and word-wraps string literals
+*inside* `{…}`, and its `svelte` parser flat-out rejects `:attr="…"`. Either one
+can silently produce invalid Spark.
+
+So Spark ships its own Prettier plugin,
+[`prettier-plugin-spark`](https://www.npmjs.com/package/prettier-plugin-spark):
+it formats the embedded **`<script>` (JS) and `<style>` (CSS)** blocks and
+leaves your **markup byte-for-byte untouched** — exactly in line with Spark's
+“the file you write is what runs.” Your `{…}` and `onclick="{…}"` can never be
+corrupted.
+
+The extension already sets `prettier_parser_name = "spark"`; enable Prettier +
+the plugin once in your Zed `settings.json`:
 
 ```json
 {
   "languages": {
     "Spark": {
-      "prettier": { "allowed": true }
+      "prettier": {
+        "allowed": true,
+        "plugins": ["prettier-plugin-spark"]
+      }
     }
   }
 }
 ```
 
-That's it — `format_on_save` is already `"on"` by Zed default, so saving a
-`.html` Spark component now formats it. (No external tooling: Zed ships Prettier;
-nothing to `npm install`.) To wire your own formatter instead, point
-`"formatter"` at an external command in the same block.
+That's it — Zed bundles Prettier and installs the listed plugin automatically,
+and `format_on_save` is already `"on"` by Zed default, so saving a `.html` Spark
+component formats its script/style and preserves the markup. (Prefer your own
+formatter? Point `"formatter"` at an external command in the same block.)
 
 ## Publish (Zed extension registry)
 

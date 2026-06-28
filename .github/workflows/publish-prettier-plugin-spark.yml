@@ -1,0 +1,45 @@
+name: Publish prettier-plugin-spark to npm
+
+on:
+  push:
+    tags:
+      - 'prettier-plugin-v*' # e.g. git tag prettier-plugin-v0.1.0 && git push --tags
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write # npm provenance
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          registry-url: https://registry.npmjs.org
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run tests
+        run: npm test
+
+      - name: Verify tag matches package version
+        if: startsWith(github.ref, 'refs/tags/prettier-plugin-v')
+        run: |
+          PKG_VERSION=$(node -p "require('./packages/prettier-plugin-spark/package.json').version")
+          TAG_VERSION="${GITHUB_REF_NAME#prettier-plugin-v}"
+          if [ "$PKG_VERSION" != "$TAG_VERSION" ]; then
+            echo "Tag prettier-plugin-v$TAG_VERSION does not match package version $PKG_VERSION" >&2
+            exit 1
+          fi
+
+      - name: Publish
+        run: npm publish --provenance --access public
+        working-directory: packages/prettier-plugin-spark
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

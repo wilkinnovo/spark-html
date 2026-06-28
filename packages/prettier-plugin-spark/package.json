@@ -1,0 +1,30 @@
+{
+  "name": "prettier-plugin-spark",
+  "version": "0.1.0",
+  "description": "Prettier plugin for spark-html single-file components — formats the <script> and <style> blocks and leaves your markup byte-for-byte untouched (so {interpolations} and onclick={handlers} are never corrupted).",
+  "type": "module",
+  "main": "index.js",
+  "exports": "./index.js",
+  "files": [
+    "index.js",
+    "README.md"
+  ],
+  "keywords": [
+    "prettier",
+    "prettier-plugin",
+    "spark",
+    "spark-html",
+    "formatter"
+  ],
+  "license": "MIT",
+  "author": "Wilkin Novo",
+  "homepage": "https://github.com/wilkinnovo/spark/tree/main/packages/prettier-plugin-spark",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/wilkinnovo/spark.git",
+    "directory": "packages/prettier-plugin-spark"
+  },
+  "peerDependencies": {
+    "prettier": "^3.0.0"
+  }
+}
