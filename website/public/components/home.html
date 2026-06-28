@@ -147,7 +147,7 @@
 <style>
   .hero { display: grid; grid-template-columns: 1.25fr 1fr; gap: 48px; align-items: center; padding: 88px 0 56px; }
   .hero-copy, .demo { min-width: 0; }
-  .eyebrow { font-size: 12px; letter-spacing: .16em; text-transform: uppercase; color: var(--spark); margin-bottom: 18px; }
+  .eyebrow { font-size: 12px; letter-spacing: .16em; text-transform: uppercase; color: var(--spark); text-shadow: var(--spark-shadow, none); margin-bottom: 18px; }
   .eyebrow span { display: inline-block; margin: 0 3px; opacity: 0; animation: fadeUp .55s cubic-bezier(.2,.7,.2,1) forwards; }
   .eyebrow .d { color: var(--muted-dim); }
   .eyebrow span:nth-child(1){animation-delay:.06s}.eyebrow span:nth-child(2){animation-delay:.14s}
@@ -156,7 +156,7 @@
   h1 { font-size: clamp(40px, 6vw, 68px); line-height: 1.04; letter-spacing: -.03em; font-weight: 800; }
   h1 .l1 { display: inline-block; opacity: 0; animation: fadeUp .6s cubic-bezier(.2,.7,.2,1) .46s forwards; }
   h1 em {
-    font-style: normal; color: var(--spark); display: inline-block; opacity: 0;
+    font-style: normal; color: var(--spark); text-shadow: var(--spark-shadow, none); display: inline-block; opacity: 0;
     animation: fadeUp .6s cubic-bezier(.2,.7,.2,1) .66s forwards, sparkOn 1.05s ease-in-out 1.2s 1;
   }
   @keyframes fadeUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: none; } }
@@ -168,7 +168,7 @@
   @media (prefers-reduced-motion: reduce) { .eyebrow span, h1 .l1, h1 em, .lede { animation: none !important; opacity: 1 !important; transform: none !important; } }
   .lede { color: var(--muted); font-size: 16px; max-width: 46ch; margin: 20px 0 26px; }
   .lede b { color: var(--text); font-weight: 600; }
-  .lede code { color: var(--spark); background: var(--surface-2); padding: 1px 6px; }
+  .lede code { color: var(--spark); text-shadow: var(--spark-shadow, none); background: var(--surface-2); padding: 1px 6px; }
   .cli { display: flex; align-items: center; gap: 12px; background: var(--surface); border: 1px solid var(--border); padding: 12px 14px; width: fit-content; max-width: 100%; margin-bottom: 22px; }
   .cli .prompt { color: var(--muted-dim); }
   .cli code { font-size: 14px; }
@@ -177,19 +177,19 @@
   .ctas { display: flex; gap: 12px; flex-wrap: wrap; }
   .btn { padding: 12px 26px; font-size: 14px; font-weight: 600; cursor: pointer; border: 1px solid var(--border-strong); background: transparent; color: var(--text); transition: .2s; }
   .btn.primary { background: var(--text); color: var(--bg); border-color: var(--text); }
-  .btn:hover { border-color: var(--spark); color: var(--spark); }
+  .btn:hover { border-color: var(--spark); color: var(--spark); text-shadow: var(--spark-shadow, none); }
   .btn.primary:hover { background: var(--spark); color: #000; border-color: var(--spark); }
 
   .demo { background: var(--surface); border: 1px solid var(--border); }
   .demo-tabs { display: flex; border-bottom: 1px solid var(--border); }
   .dt { font-family: var(--font); font-size: 12px; padding: 11px 16px; background: none; border: none; border-right: 1px solid var(--border); color: var(--muted); cursor: pointer; transition: .15s; }
-  .dt.on { color: var(--spark); font-weight: 700; background: var(--bg); }
+  .dt.on { color: var(--spark); text-shadow: var(--spark-shadow, none); font-weight: 700; background: var(--bg); }
   .dt:hover { color: var(--text); }
   .demo-body { padding: 22px; }
   pre.code { font-size: 13px; line-height: 1.7; color: var(--muted); white-space: pre-wrap; overflow-wrap: anywhere; }
-  pre.code .k { color: var(--spark); }
+  pre.code .k { color: var(--spark); text-shadow: var(--spark-shadow, none); }
   .live { margin-top: 18px; padding-top: 18px; border-top: 1px dashed var(--border); }
-  .live-label { font-size: 11px; color: var(--spark); margin-bottom: 10px; }
+  .live-label { font-size: 11px; color: var(--spark); text-shadow: var(--spark-shadow, none); margin-bottom: 10px; }
   .live-row { display: flex; align-items: center; gap: 16px; }
   .count { font-size: 26px; font-weight: 700; font-variant-numeric: tabular-nums; }
   .plus { padding: 8px 18px; background: var(--spark); color: #000; border: none; font-family: var(--font); font-weight: 700; font-size: 15px; cursor: pointer; }
@@ -203,12 +203,12 @@
   .sec-head { display: flex; justify-content: space-between; align-items: baseline; }
   .sec-eyebrow { font-size: 12px; letter-spacing: .14em; text-transform: uppercase; color: var(--muted-dim); margin-bottom: 24px; }
   .more { font-size: 13px; color: var(--muted); }
-  .more:hover { color: var(--spark); }
+  .more:hover { color: var(--spark); text-shadow: var(--spark-shadow, none); }
   .bento { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; background: var(--border); border: 1px solid var(--border); }
   .cell { background: var(--bg); padding: 26px 24px; transition: background .2s; }
   .cell:hover { background: var(--surface); }
   .cell h3 { font-size: 16px; font-weight: 700; margin-bottom: 8px; }
-  .cell h3 .dot { color: var(--spark); }
+  .cell h3 .dot { color: var(--spark); text-shadow: var(--spark-shadow, none); }
   .cell p { font-size: 13.5px; color: var(--muted); }
 
   .use-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
@@ -216,10 +216,10 @@
   .use-h { display: flex; align-items: center; gap: 10px; padding: 12px 16px; border-bottom: 1px solid var(--border); font-size: 13px; font-weight: 600; }
   .use-n { width: 20px; height: 20px; display: grid; place-items: center; background: var(--spark); color: #000; font-size: 12px; font-weight: 700; flex-shrink: 0; }
   .ucode { padding: 16px 18px; font-size: 12.5px; line-height: 1.7; color: var(--muted); white-space: pre-wrap; overflow-wrap: anywhere; }
-  .ucode .k { color: var(--spark); }
+  .ucode .k { color: var(--spark); text-shadow: var(--spark-shadow, none); }
   .use-note { margin-top: 16px; font-size: 13px; color: var(--muted); }
-  .use-note code { color: var(--spark); background: var(--surface-2); padding: 1px 6px; }
-  .use-note a { color: var(--spark); }
+  .use-note code { color: var(--spark); text-shadow: var(--spark-shadow, none); background: var(--surface-2); padding: 1px 6px; }
+  .use-note a { color: var(--spark); text-shadow: var(--spark-shadow, none); }
   @media (max-width: 860px) { .use-grid { grid-template-columns: 1fr; } }
 
   .show { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }

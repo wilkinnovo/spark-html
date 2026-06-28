@@ -30,6 +30,8 @@
         --border:#1a1a1a; --border-strong:#333;
         --text:#fff; --muted:#888; --muted-dim:#555; --muted-nav:#666;
         --accent:#fff; --accent-dim:#16161c; --spark:#ffd24a;
+        /* dark theme: the yellow reads fine on dark, no shadow needed */
+        --spark-shadow:none;
         --sk-dark:#111; --sk-mid:#1a1a1a; --sk-light:#222;
         --sidebar-w:80px; --radius:0;
         --font:"JetBrains Mono", ui-monospace, monospace;
@@ -40,6 +42,9 @@
         --border:#ededed; --border-strong:#d4d4d4;
         --text:#1a1a1a; --muted:#666; --muted-dim:#999; --muted-nav:#888;
         --accent:#111; --accent-dim:#f0f0f0; --spark:#ffd24a;
+        /* light theme: #ffd24a on a light bg is low-contrast, so give the
+           yellow text a thin dark outline so it stays legible. */
+        --spark-shadow:0 0 1px rgba(0,0,0,.55), 0 1px 1px rgba(0,0,0,.45);
         --sk-dark:#eee; --sk-mid:#e4e4e4; --sk-light:#dcdcdc;
       }
       [data-theme="light"] ::selection { background:#ffe9a8; color:#111; }
