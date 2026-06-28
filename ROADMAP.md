@@ -25,7 +25,7 @@ is `spark-html-*`.
 | 1 | Zero-build / CDN / URL-import | ✅ **Done** |
 | — | Router: active links + dynamic `:params` + anchor fix | ✅ Done (bonus) |
 | — | `spark-html-theme` package | ✅ Done (bonus) |
-| 2 | Editor + dev tooling — VS Code ✅, HMR ✅, Zed (scaffold) ⏳ / DevTools ◻ | ⏳ Partial |
+| 2 | Editor + dev tooling — VS Code ✅, HMR ✅, DevTools ✅ (Zed `{}` grammar ⏳) | ✅ Done* |
 | 3 | Ergonomic papercuts — inline handlers ✅ | ⏳ Partial |
 | 4 | Capability gaps — `spark-html-head` ✅, dynamic routes ✅ / motion, nested ◻ | ⏳ Partial |
 | 5 | Trust & quality — size guard ✅ / e2e ◻ | ⏳ Partial |
@@ -51,7 +51,13 @@ The sharpest differentiator, now productized and live:
 - ✅ **HMR**: editing a component re-renders just its instances in place —
   sibling component state is preserved, no full reload. Slotted / loop-managed
   hosts fall back to a full reload (always correct). (spark-html 0.21.3)
-- ◻ **Spark DevTools**: component tree + store state + which bindings re-evaluated.  ← next
+- ✅ **Spark DevTools** (`spark-html-devtools`): in-page panel — live store state,
+  component tree + state, patch counter, and an amber flash on the component that
+  just re-rendered. (0.1.0; uses `inspectStores()` added in spark-html 0.21.4.)
+
+> #2 is done bar the Zed `{}`-interpolation grammar, which needs a dedicated
+> `tree-sitter-spark` parser (a separate, larger effort — VS Code already covers
+> `{}` highlighting).
 
 ### 3. Ergonomic papercuts in core — ⏳ PARTIAL
 - ✅ **Inline event expressions**: `onclick={count++}` / `{x = e.target.value}` /

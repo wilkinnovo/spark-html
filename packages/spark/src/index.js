@@ -2276,5 +2276,13 @@ function unmount(el) {
   destroyComponent(el);
 }
 
-export { mount, unmount, component, store, evaluate, interpolate, parseSFC, scopeCss };
+// Introspection for tooling (spark-html-devtools). Returns a live snapshot of
+// every named store's state — `{ storeName: state }`. Not needed by apps.
+function inspectStores() {
+  const out = {};
+  for (const [name, entry] of stores) out[name] = entry.state;
+  return out;
+}
+
+export { mount, unmount, component, store, evaluate, interpolate, parseSFC, scopeCss, inspectStores };
 export default { mount, unmount, component, store };

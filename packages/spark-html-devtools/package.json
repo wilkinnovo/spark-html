@@ -1,0 +1,36 @@
+{
+  "name": "spark-html-devtools",
+  "version": "0.1.0",
+  "description": "A tiny in-page devtools panel for spark-html — live store state, component tree, and patch activity.",
+  "type": "module",
+  "main": "./src/index.js",
+  "types": "./src/index.d.ts",
+  "homepage": "https://wilkinnovo.github.io/spark",
+  "exports": {
+    ".": {
+      "types": "./src/index.d.ts",
+      "default": "./src/index.js"
+    }
+  },
+  "scripts": {
+    "test": "node test/devtools.js"
+  },
+  "files": [
+    "src"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/wilkinnovo/spark.git",
+    "directory": "packages/spark-html-devtools"
+  },
+  "dependencies": {
+    "spark-html": "^0.21.4"
+  },
+  "keywords": [
+    "spark-html",
+    "devtools",
+    "debug",
+    "inspector"
+  ],
+  "license": "MIT"
+}
