@@ -111,6 +111,18 @@ export function parseSFC(source: string): {
  */
 export function scopeCss(css: string, tag: string): string;
 
+/**
+ * Register enter/leave lifecycle hooks for `<template if>` / `<template each>`
+ * blocks. Optional animation packages (e.g. `spark-html-motion`) plug in here:
+ * `enter` runs after a node is inserted; `leave(node, remove)` runs before one
+ * is removed and may defer `remove()` until an exit transition finishes. With
+ * no hook set, nodes are added/removed synchronously. Pass `{}` to clear.
+ */
+export function lifecycle(hooks?: {
+  enter?: (node: Element) => void;
+  leave?: (node: Element, remove: () => void) => void;
+}): void;
+
 declare const _default: {
   mount: typeof mount;
   unmount: typeof unmount;

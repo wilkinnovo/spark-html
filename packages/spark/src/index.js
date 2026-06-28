@@ -1347,6 +1347,33 @@ function patchText(node, scope) {
 }
 
 // ─── <template if="expr"> conditional blocks ──────────────────────────
+// ─── enter/leave lifecycle hooks ──────────────────────────────────────
+// Tiny seam for optional animation packages (spark-html-motion). When a
+// hook is registered, if/each blocks call enter() after inserting a node and
+// leave(node, remove) before removing one — the hook may defer `remove` until
+// an exit transition finishes. With no hook set this is a no-op: nodes are
+// inserted and removed synchronously, exactly as before. Core ships nothing
+// that animates; it just exposes the seam.
+let enterHook = null;
+let leaveHook = null;
+function lifecycle(hooks = {}) {
+  enterHook = typeof hooks.enter === 'function' ? hooks.enter : null;
+  leaveHook = typeof hooks.leave === 'function' ? hooks.leave : null;
+}
+function enterNode(n) {
+  if (enterHook && n && n.nodeType === 1) enterHook(n);
+}
+// Run component cleanups now (the node is leaving and goes inert), then let the
+// leave hook animate before it actually detaches; no hook ⇒ remove immediately.
+function leaveNode(n) {
+  destroyComponent(n);
+  const remove = () => {
+    if (n.parentNode) n.parentNode.removeChild(n);
+  };
+  if (leaveHook && n.nodeType === 1) leaveHook(n, remove);
+  else remove();
+}
+
 function patchIf(el, scope) {
   if (!el.__sparkIfParsed) {
     el.__sparkIfExpr = el.getAttribute('if').trim();
@@ -1375,14 +1402,12 @@ function patchIf(el, scope) {
       insertAfter = clone;
       el.__sparkIfRendered.push(clone);
       walkNode(clone, scope, false);
+      enterNode(clone);
     });
     // Resolve any [import] placeholders cloned into the branch (async).
     hydrateBlockImports(el.__sparkIfRendered, scope);
   } else if (!show && isShown) {
-    el.__sparkIfRendered.forEach((n) => {
-      destroyComponent(n); // run cleanups for any nested components
-      if (n.parentNode) n.parentNode.removeChild(n);
-    });
+    el.__sparkIfRendered.forEach(leaveNode); // cleanups + (optional) exit anim
     el.__sparkIfRendered = [];
   } else if (show && isShown) {
     // keep contents fresh
@@ -1714,6 +1739,7 @@ function patchEach(el, scope) {
         cursor = clone;
         nodes.push(clone);
         walkNode(clone, loopScope, false);
+        enterNode(clone);
       }
       // Resolve any [import] placeholders cloned into this block (async),
       // swapping them for booted hosts; mutates `nodes` so reconciliation
@@ -1729,10 +1755,7 @@ function patchEach(el, scope) {
 
   // Anything left in oldByKey was dropped from the array — clean it up.
   for (const b of oldByKey.values()) {
-    for (const n of b.nodes) {
-      destroyComponent(n);
-      if (n.parentNode) n.parentNode.removeChild(n);
-    }
+    for (const n of b.nodes) leaveNode(n); // cleanups + (optional) exit anim
   }
 
   el.__sparkEachBlocks = newBlocks;
@@ -2312,5 +2335,5 @@ function inspectStores() {
   return out;
 }
 
-export { mount, unmount, component, store, evaluate, interpolate, parseSFC, scopeCss, inspectStores };
+export { mount, unmount, component, store, evaluate, interpolate, parseSFC, scopeCss, inspectStores, lifecycle };
 export default { mount, unmount, component, store };
