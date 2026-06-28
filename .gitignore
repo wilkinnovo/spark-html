@@ -2,6 +2,11 @@ node_modules
 dist
 future.md
 
+# Playwright e2e artifacts
+test-results
+playwright-report
+.last-run.json
+
 # npm's package-lock.json is the single source of truth (CI uses `npm ci`).
 # Don't commit bun's lockfile — it can drift from package-lock.json.
 bun.lock
