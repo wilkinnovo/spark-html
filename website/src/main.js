@@ -34,7 +34,7 @@ store('showcase', {
       desc: 'Design studio — the reference Spark build.',
       tags: ['router', 'theme', 'prerender'] },
     { slug: 'dat-taxi', name: 'dat.taxi', url: 'https://dat.taxi',
-      desc: 'Taxi booking, built with Spark.',
+      desc: "NYC's premium ride service, on demand since 1992.",
       tags: ['router', 'prerender'] },
     { slug: 'spark', name: 'This site', url: 'https://wilkinnovo.github.io/spark/',
       desc: 'Every section is a Spark component.',
