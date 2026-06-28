@@ -1,13 +1,14 @@
 id = "spark-html"
 name = "Spark"
-version = "0.1.0"
+version = "0.2.0"
 schema_version = 1
 authors = ["Wilkin Novo"]
-description = "spark-html single-file component support for Zed (https://zed.dev)."
+description = "spark-html single-file component support for Zed (https://zed.dev) — HTML + {interpolation} + scoped <script>/<style>."
 repository = "https://github.com/wilkinnovo/spark"
 
-# Reuses the HTML tree-sitter grammar; the language config + queries live in
-# languages/spark/. See README.md for the dedicated-grammar follow-up.
-[grammars.html]
-repository = "https://github.com/tree-sitter/tree-sitter-html"
-rev = "v0.20.4"
+# spark-html components are syntactically a near-subset of Svelte (HTML +
+# {expr} + <script>/<style>), so we reuse the well-tested Svelte tree-sitter
+# grammar — which gives real interpolation nodes, so {…} highlights as JS.
+[grammars.svelte]
+repository = "https://github.com/tree-sitter-grammars/tree-sitter-svelte"
+rev = "ae5199db47757f785e43a14b332118a5474de1a2"

@@ -1,26 +1,34 @@
 # Spark for Zed
 
 [spark-html](https://github.com/wilkinnovo/spark) single-file component support
-for [Zed](https://zed.dev). It registers a **Spark** language for `.html`
-components on top of the HTML tree-sitter grammar, with `<script>` highlighted as
-JavaScript and `<style>` as CSS (the standard SFC layout).
+for [Zed](https://zed.dev), with **full highlighting**:
+
+- **`{interpolation}`** highlighted as JavaScript — `{count * 2}`, `{ok ? a : b}`.
+- `<script>` as JavaScript, `<style>` as CSS.
+- HTML tags, attributes, and comments.
+
+It's backed by the well-tested **tree-sitter-svelte** grammar — Spark components
+are syntactically a near-subset of Svelte (HTML + `{expr}` + `<script>`/`<style>`),
+so interpolations get real grammar nodes and highlight correctly. (Spark uses
+`<template if/each/await>` instead of Svelte's `{#if}` blocks, so none of the
+Svelte-specific block syntax appears.)
 
 ## Install (dev extension)
 
 1. Zed → command palette → **`zed: install dev extension`**
 2. Select this `editors/zed` folder.
 
-Zed will fetch the HTML grammar pinned in `extension.toml` and load the queries
-in `languages/spark/`.
+Zed fetches the grammar pinned in `extension.toml` and loads the queries in
+`languages/spark/`.
 
-## Scope & follow-up
+## Publish (Zed extension registry)
 
-- ✅ HTML + embedded JS/CSS highlighting for `.html` components.
-- ◻ **`{interpolation}` highlighting** (`{count * 2}` as JS) needs a dedicated
-  `tree-sitter-spark` grammar — the HTML grammar parses `{…}` as plain text, so
-  it can't inject JS into just that span. This is tracked in the repo
-  [`ROADMAP.md`](../../ROADMAP.md) under editor tooling. The VS Code extension
-  (`editors/vscode`) already does `{…}` highlighting via a TextMate injection.
+There's no `zed publish` CLI — it's a registry PR:
+
+1. Fork **`zed-industries/extensions`**.
+2. Add this repo as a git submodule under `extensions/` and an entry in
+   `extensions.toml` pointing at the `editors/zed` directory + this version.
+3. Open a PR; Zed CI builds and lists it.
 
 `path_suffixes = ["html"]` makes Zed treat all `.html` files as Spark while the
-extension is enabled; scope it to your components if you prefer.
+extension is enabled — scope it to your components directory if you prefer.

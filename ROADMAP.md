@@ -25,7 +25,7 @@ is `spark-html-*`.
 | 1 | Zero-build / CDN / URL-import | ✅ **Done** |
 | — | Router: active links + dynamic `:params` + anchor fix | ✅ Done (bonus) |
 | — | `spark-html-theme` package | ✅ Done (bonus) |
-| 2 | Editor + dev tooling — VS Code ✅, HMR ✅, DevTools ✅ (Zed `{}` grammar ⏳) | ✅ Done* |
+| 2 | Editor + dev tooling — VS Code ✅, HMR ✅, DevTools ✅, Zed ✅ | ✅ Done |
 | 3 | Ergonomic papercuts — inline handlers ✅, quirks fixed + tested ✅ | ✅ Done |
 | 4 | Capability gaps — head ✅, dynamic routes ✅, Map/Set ✅, nested routes ✅ / motion ◻ | ⏳ Partial |
 | 5 | Trust & quality — size guard ✅ / e2e ◻ | ⏳ Partial |
@@ -46,8 +46,9 @@ The sharpest differentiator, now productized and live:
 ### 2. Editor + dev tooling — ⏳ PARTIAL
 - ✅ **VS Code extension** (`editors/vscode`): TextMate injection that
   JS-highlights `{interpolations}` on top of HTML.
-- ⏳ **Zed extension** (`editors/zed`): HTML grammar + script/style injections;
-  `{…}` highlighting needs a dedicated `tree-sitter-spark` grammar (follow-up).
+- ✅ **Zed extension** (`editors/zed`): full highlighting — `{interpolation}` as
+  JS, `<script>`/`<style>` injected, HTML structure — backed by the
+  tree-sitter-svelte grammar (Spark is a syntactic subset of Svelte).
 - ✅ **HMR**: editing a component re-renders just its instances in place —
   sibling component state is preserved, no full reload. Slotted / loop-managed
   hosts fall back to a full reload (always correct). (spark-html 0.21.3)
@@ -55,9 +56,6 @@ The sharpest differentiator, now productized and live:
   component tree + state, patch counter, and an amber flash on the component that
   just re-rendered. (0.1.0; uses `inspectStores()` added in spark-html 0.21.4.)
 
-> #2 is done bar the Zed `{}`-interpolation grammar, which needs a dedicated
-> `tree-sitter-spark` parser (a separate, larger effort — VS Code already covers
-> `{}` highlighting).
 
 ### 3. Ergonomic papercuts in core — ✅ DONE
 - ✅ **Inline event expressions**: `onclick={count++}` / `{x = e.target.value}` /
