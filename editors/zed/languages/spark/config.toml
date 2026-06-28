@@ -2,6 +2,10 @@ name = "Spark"
 grammar = "svelte"
 path_suffixes = ["html"]
 autoclose_before = ";:.,=}])>"
+# Format Spark files with Prettier's HTML parser (it preserves {interpolations}
+# as text). Prettier is opt-in per language in Zed, so enable it once in your
+# settings — see the extension README. Format-on-save then just works.
+prettier_parser_name = "html"
 brackets = [
   { start = "<", end = ">", close = true, newline = false },
   { start = "{", end = "}", close = true, newline = false },

@@ -21,6 +21,28 @@ Svelte-specific block syntax appears.)
 Zed fetches the grammar pinned in `extension.toml` and loads the queries in
 `languages/spark/`.
 
+## Format on save
+
+The extension declares `prettier_parser_name = "html"`, so Spark files format
+with Zed's **bundled Prettier** (HTML parser — it pretty-prints the markup and
+leaves `{interpolations}` untouched). Prettier is opt-in per language in Zed, so
+enable it once in your Zed `settings.json`:
+
+```json
+{
+  "languages": {
+    "Spark": {
+      "prettier": { "allowed": true }
+    }
+  }
+}
+```
+
+That's it — `format_on_save` is already `"on"` by Zed default, so saving a
+`.html` Spark component now formats it. (No external tooling: Zed ships Prettier;
+nothing to `npm install`.) To wire your own formatter instead, point
+`"formatter"` at an external command in the same block.
+
 ## Publish (Zed extension registry)
 
 There's no `zed publish` CLI — it's a registry PR:
