@@ -470,6 +470,7 @@ async function resolveImportNode(node, scope = null) {
       props[attr.name] = coerce(val);
     }
     host.__sparkProps = props;
+    host.__sparkHadSlots = slotted.length > 0; // lets dev HMR skip slotted hosts (full-reload instead)
     host.innerHTML = markup; // markup contains no <script>/<style> now
 
     // stash extracted source on the element — bootComponent reads these

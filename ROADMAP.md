@@ -25,7 +25,7 @@ is `spark-html-*`.
 | 1 | Zero-build / CDN / URL-import | ✅ **Done** |
 | — | Router: active links + dynamic `:params` + anchor fix | ✅ Done (bonus) |
 | — | `spark-html-theme` package | ✅ Done (bonus) |
-| 2 | Editor tooling — VS Code ✅, Zed (scaffold) ⏳ / HMR, DevTools ◻ | ⏳ Partial |
+| 2 | Editor + dev tooling — VS Code ✅, HMR ✅, Zed (scaffold) ⏳ / DevTools ◻ | ⏳ Partial |
 | 3 | Ergonomic papercuts — inline handlers ✅ | ⏳ Partial |
 | 4 | Capability gaps — `spark-html-head` ✅, dynamic routes ✅ / motion, nested ◻ | ⏳ Partial |
 | 5 | Trust & quality — size guard ✅ / e2e ◻ | ⏳ Partial |
@@ -48,9 +48,10 @@ The sharpest differentiator, now productized and live:
   JS-highlights `{interpolations}` on top of HTML.
 - ⏳ **Zed extension** (`editors/zed`): HTML grammar + script/style injections;
   `{…}` highlighting needs a dedicated `tree-sitter-spark` grammar (follow-up).
-- ◻ **True HMR**: the Vite plugin still does `full-reload` (state lost on edit) —
-  swap-in-place is a dev-only win.  ← recommended next
-- ◻ **Spark DevTools**: component tree + store state + which bindings re-evaluated.
+- ✅ **HMR**: editing a component re-renders just its instances in place —
+  sibling component state is preserved, no full reload. Slotted / loop-managed
+  hosts fall back to a full reload (always correct). (spark-html 0.21.3)
+- ◻ **Spark DevTools**: component tree + store state + which bindings re-evaluated.  ← next
 
 ### 3. Ergonomic papercuts in core — ⏳ PARTIAL
 - ✅ **Inline event expressions**: `onclick={count++}` / `{x = e.target.value}` /
