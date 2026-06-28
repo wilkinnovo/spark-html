@@ -1,10 +1,5 @@
 <p align="center">
-  <img src="website/public/banner.png" alt="Spark — HTML that reacts." width="840" />
-</p>
-
-<p align="center">
-  <b>HTML that reacts.</b><br />
-  Single-file reactive components — no compiler, no virtual DOM, no build step.
+  <img src="website/public/banner.svg" alt="Spark — HTML that reacts. Single-file reactive components: no compiler, no virtual DOM, no build step." width="880" />
 </p>
 
 <p align="center">
@@ -72,13 +67,30 @@ just files at a URL, so you can even `import` one straight from a CDN. See
 
 ## Packages
 
+**Runtime**
+
 | Package | What it does |
 |---|---|
-| [`spark-html`](packages/spark/README.md) | The runtime — `mount()`, components, reactivity, stores, scoped styles. ~10kb gzip, 0 deps. |
+| [`spark-html`](packages/spark/README.md) | The runtime — `mount()`, components, reactivity, `store`/`derived`, `bind:form`, scoped styles. ~10kb gzip, 0 deps. |
+
+**Optional sibling packages** (add only what you use)
+
+| Package | What it does |
+|---|---|
 | [`spark-html-router`](packages/spark-html-router/README.md) | Declarative routing — `<template route>` + `router()`, active links, a reactive `route` store. |
 | [`spark-html-theme`](packages/spark-html-theme/README.md) | One-line dark/light/system theming — `theme()`, persisted, no flash. |
+| [`spark-html-head`](packages/spark-html-head/README.md) | Reactive document `<title>`/`<meta>` per route — one line, 0 deps. |
+| [`spark-html-motion`](packages/spark-html-motion/README.md) | Declarative enter/leave transitions — `transition="fade\|slide\|scale"` on if/each blocks. |
 | [`spark-html-query`](packages/spark-html-query/README.md) | Declarative async data — a self-fetching reactive store (`loading`/`error`/`data`/`refetch`). |
+| [`spark-html-devtools`](packages/spark-html-devtools/README.md) | In-page devtools panel — live store state, component tree, patch counter, re-render flash. |
+
+**Build &amp; tooling**
+
+| Package | What it does |
+|---|---|
 | [`spark-prerender`](packages/spark-prerender/README.md) | Build-time SEO prerender — real HTML per route, no SSR server, no app changes. |
+| [`prettier-plugin-spark`](packages/prettier-plugin-spark/README.md) | Prettier plugin — formats the `<script>`/`<style>` blocks, leaves markup byte-for-byte. |
+| [`create-spark-html-app`](packages/create-spark-html-app/README.md) | Scaffold a Vite + spark-html app — `npm create spark-html-app`. |
 
 ## This repo
 
