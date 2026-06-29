@@ -2,7 +2,11 @@ import { store } from 'spark-html';
 import { router } from 'spark-html-router';
 import { theme } from 'spark-html-theme';
 import { head } from 'spark-html-head';
+import stats from 'virtual:spark-stats';
 import { highlightAll } from './highlight.js';
+
+// Hero stats, computed at build time (see vite.config.js) — never hand-edited.
+store('stats', stats);
 
 // Code samples on Docs/Playground call this from their onMount (idempotent —
 // already-highlighted <pre> are skipped), so it re-runs per route.

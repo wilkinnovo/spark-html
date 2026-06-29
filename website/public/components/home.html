@@ -54,11 +54,11 @@
 </section>
 
 <div class="chips">
-  <span class="chip"><b>0</b> build step</span>
-  <span class="chip"><b>~11kb</b> runtime</span>
-  <span class="chip"><b>0</b> dependencies</span>
-  <span class="chip"><b>210+</b> tests</span>
-  <span class="chip"><b>10</b> packages</span>
+  <span class="chip"><b>{stats.build}</b> build step</span>
+  <span class="chip"><b>~{stats.runtimeKb}kb</b> runtime</span>
+  <span class="chip"><b>{stats.deps}</b> dependencies</span>
+  <span class="chip"><b>{stats.tests}+</b> tests</span>
+  <span class="chip"><b>{stats.packages}</b> packages</span>
 </div>
 
 <section class="sec">
@@ -125,6 +125,7 @@
 <script>
   const app = useStore('app');
   const showcase = useStore('showcase');
+  const stats = useStore('stats'); // computed at build time, see vite.config.js
   $: sites = showcase.sites || [];
 
   let tab = 'url'; // URL-import demo shown first
