@@ -103,6 +103,13 @@ export function derived<T extends object>(
 ): Readonly<T>;
 
 /**
+ * Subscribe to a named store from outside a component — `fn` runs after every
+ * change. Returns an unsubscribe function. Useful for persistence, logging, or
+ * syncing a store elsewhere. Creates the store if it doesn't exist.
+ */
+export function subscribe(name: string, fn: () => void): () => void;
+
+/**
  * Evaluate a single JS expression against a scope object. Returns `''` if the
  * expression throws or fails to compile (Spark renders broken expressions as
  * empty). Primarily an internal/advanced helper.

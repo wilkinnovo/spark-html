@@ -619,6 +619,18 @@ function store(name, initial) {
   return entry.proxy;
 }
 
+/**
+ * Subscribe to a named store from outside a component (e.g. to persist it, log
+ * it, or sync it elsewhere). `fn` runs after every change. Returns an
+ * unsubscribe function. Creates the store if it doesn't exist yet.
+ */
+function subscribe(name, fn) {
+  let entry = stores.get(name);
+  if (!entry) { store(name, {}); entry = stores.get(name); }
+  entry.subscribers.add(fn);
+  return () => entry.subscribers.delete(fn);
+}
+
 // Subscribe a component element to a store; returns the store proxy.
 // The subscriber is tracked on the element so destroyComponent() can remove
 // it — otherwise the closure (and the whole component scope it captures)
@@ -2577,5 +2589,5 @@ function inspectStores() {
   return out;
 }
 
-export { mount, unmount, component, store, derived, evaluate, interpolate, parseSFC, scopeCss, inspectStores, lifecycle };
+export { mount, unmount, component, store, derived, subscribe, evaluate, interpolate, parseSFC, scopeCss, inspectStores, lifecycle };
 export default { mount, unmount, component, store, derived };

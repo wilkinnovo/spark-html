@@ -82,6 +82,7 @@ just files at a URL, so you can even `import` one straight from a CDN. See
 | [`spark-html-head`](packages/spark-html-head/README.md) | Reactive document `<title>`/`<meta>` per route — one line, 0 deps. |
 | [`spark-html-motion`](packages/spark-html-motion/README.md) | Declarative enter/leave transitions — `transition="fade\|slide\|scale"` on if/each blocks. |
 | [`spark-html-query`](packages/spark-html-query/README.md) | Declarative async data — a self-fetching reactive store (`loading`/`error`/`data`/`refetch`). |
+| [`spark-html-persist`](packages/spark-html-persist/README.md) | Persist a store across reloads in one line — hydrate from localStorage, save on change. |
 | [`spark-html-devtools`](packages/spark-html-devtools/README.md) | In-page devtools panel — live store state, component tree, patch counter, re-render flash. |
 
 **Build &amp; tooling**

@@ -1,0 +1,38 @@
+{
+  "name": "spark-html-persist",
+  "version": "0.1.0",
+  "description": "Persist a spark-html store across reloads in one line — hydrate from localStorage/sessionStorage, save on every change.",
+  "type": "module",
+  "main": "./src/index.js",
+  "types": "./src/index.d.ts",
+  "homepage": "https://wilkinnovo.github.io/spark",
+  "exports": {
+    ".": {
+      "types": "./src/index.d.ts",
+      "default": "./src/index.js"
+    }
+  },
+  "scripts": {
+    "test": "node test/persist.js"
+  },
+  "files": [
+    "src"
+  ],
+  "peerDependencies": {
+    "spark-html": ">=0.22.2"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/wilkinnovo/spark.git",
+    "directory": "packages/spark-html-persist"
+  },
+  "keywords": [
+    "spark-html",
+    "persist",
+    "localStorage",
+    "store",
+    "state",
+    "reactive"
+  ],
+  "license": "MIT"
+}
