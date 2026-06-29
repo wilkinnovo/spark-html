@@ -7,7 +7,7 @@
 
 **The `.html` you save is the component that runs — byte-for-byte.**
 - No compiler, no proprietary file format, no virtual DOM, view-source-readable.
-- ~10KB gzip, **0 runtime dependencies**.
+- ~11KB gzip, **0 runtime dependencies**.
 - Mental model = HTML + JS. A component is a file; state is a variable; an update
   is an assignment.
 
@@ -99,7 +99,7 @@ The sharpest differentiator, now productized and live:
 
 ### 5. Trust & quality — ✅ DONE
 - ✅ CI bundle-size guard — `npm run size` (and part of `npm test`) fails if the
-  minified+gzipped runtime exceeds 12 KB. Currently ~10.2 KB.
+  minified+gzipped runtime exceeds 13 KB. Currently ~11.2 KB.
 - ✅ One real-browser e2e (Playwright): builds the site and drives Chromium
   through mount → hydrate → router → theme (`npm run e2e`, `e2e` CI workflow).
 

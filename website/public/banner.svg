@@ -43,7 +43,7 @@
   <g font-size="13" font-weight="600">
     <g>
       <rect x="160" y="258" width="132" height="36" rx="8" fill="#0b0b0b" stroke="#1c1c1c"/>
-      <text x="226" y="281" text-anchor="middle"><tspan fill="#ffd24a">~10KB</tspan><tspan fill="#888888"> gzip</tspan></text>
+      <text x="226" y="281" text-anchor="middle"><tspan fill="#ffd24a">~11KB</tspan><tspan fill="#888888"> gzip</tspan></text>
     </g>
     <g>
       <rect x="304" y="258" width="120" height="36" rx="8" fill="#0b0b0b" stroke="#1c1c1c"/>
@@ -51,7 +51,7 @@
     </g>
     <g>
       <rect x="436" y="258" width="140" height="36" rx="8" fill="#0b0b0b" stroke="#1c1c1c"/>
-      <text x="506" y="281" text-anchor="middle"><tspan fill="#ffd24a">10</tspan><tspan fill="#888888"> packages</tspan></text>
+      <text x="506" y="281" text-anchor="middle"><tspan fill="#ffd24a">11</tspan><tspan fill="#888888"> packages</tspan></text>
     </g>
     <g>
       <rect x="588" y="258" width="132" height="36" rx="8" fill="#0b0b0b" stroke="#1c1c1c"/>

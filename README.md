@@ -71,7 +71,7 @@ just files at a URL, so you can even `import` one straight from a CDN. See
 
 | Package | What it does |
 |---|---|
-| [`spark-html`](packages/spark/README.md) | The runtime — `mount()`, components, reactivity, `store`/`derived`, `bind:form`, scoped styles. ~10kb gzip, 0 deps. |
+| [`spark-html`](packages/spark/README.md) | The runtime — `mount()`, components, reactivity, `store`/`derived`, `bind:form`, scoped styles. ~11kb gzip, 0 deps. |
 
 **Optional sibling packages** (add only what you use)
 
@@ -96,7 +96,7 @@ just files at a URL, so you can even `import` one straight from a CDN. See
 ## This repo
 
 ```
-packages/        the four published packages (+ create-spark-html-app)
+packages/        spark-html + the sibling/tooling packages (& create-spark-html-app)
 examples/basic   a minimal Vite app consuming spark-html
 website/         the showcase + docs site — built with Spark, the router & theme
 ```
