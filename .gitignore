@@ -1,6 +1,7 @@
 node_modules
 dist
 future.md
+new-roadmap.md
 
 # Playwright e2e artifacts
 test-results

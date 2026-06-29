@@ -11,7 +11,7 @@ import { gzipSync } from 'node:zlib';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
-const LIMIT_KB = 12; // budget for spark-html (minified + gzipped). Currently ~10KB.
+const LIMIT_KB = 13; // frozen budget for spark-html (minified + gzipped). ~11.2KB after 0.22.x; headroom for the content-addressed roadmap (integrity, fine-grained if/await).
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const entry = join(root, 'packages/spark/src/index.js');

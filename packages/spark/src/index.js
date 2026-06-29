@@ -30,6 +30,13 @@ function warnOnce(key, ...args) {
   console.warn(...args);
 }
 
+// DOM nodeType literals — avoids depending on a global `Node` (smaller, and one
+// fewer thing the prerender env must define).
+const ELEMENT_NODE = 1, TEXT_NODE = 3;
+// True while spark-prerender drives (server DOM). `globalThis` is guaranteed in
+// every env Spark runs (it needs Proxy + import maps anyway), so no typeof guard.
+const isPrerender = () => globalThis.__SPARK_PRERENDER__;
+
 // ─── Fault isolation + dev error overlay ──────────────────────────────
 // A failure in one component must never blank the page or take down a
 // sibling. Every catch site routes through reportError(), which warns once
@@ -431,7 +438,7 @@ async function resolveImportNode(node, scope = null) {
     if (hydrate) {
       const tpl = [...node.childNodes].find(
         (c) =>
-          c.nodeType === Node.ELEMENT_NODE &&
+          c.nodeType === ELEMENT_NODE &&
           c.tagName === 'TEMPLATE' &&
           c.hasAttribute('data-spark-slots'),
       );
@@ -481,7 +488,7 @@ async function resolveImportNode(node, scope = null) {
     // prerenderer can serialize it for the client to re-project on hydration
     // (the projected originals get consumed + rendered otherwise). Browser-only
     // work is skipped — this only runs at build time.
-    if (typeof globalThis !== 'undefined' && globalThis.__SPARK_PRERENDER__ && slotted.length) {
+    if (isPrerender() && slotted.length) {
       host.__sparkSlotted = slotted.map((n) => (n.cloneNode ? n.cloneNode(true) : n));
     }
 
@@ -525,7 +532,7 @@ async function resolveImports(root) {
 function hydrateBlockImports(nodes, scope) {
   for (let idx = 0; idx < nodes.length; idx++) {
     const node = nodes[idx];
-    if (node.nodeType !== Node.ELEMENT_NODE) continue;
+    if (node.nodeType !== ELEMENT_NODE) continue;
 
     // The cloned node IS itself an import placeholder.
     if (node.hasAttribute('import')) {
@@ -641,7 +648,7 @@ function subscribeStore(name, componentEl, scopeRef) {
     // During prerender the page's bootstrap (which calls store()) hasn't run,
     // so an absent store is EXPECTED — auto-create it silently. In the browser
     // it's a real mistake, so warn there.
-    if (!(typeof globalThis !== 'undefined' && globalThis.__SPARK_PRERENDER__)) {
+    if (!(isPrerender())) {
       console.warn(`[spark] useStore("${name}") — store not created. Call store("${name}", initial) before mount().`);
     }
     store(name, {});
@@ -1141,14 +1148,14 @@ function makeScope(rawCode, componentEl, props = {}) {
   const scope = new Proxy(raw, {
     has(target, key) {
       if (typeof key !== 'string') return false;
-      if (Object.prototype.hasOwnProperty.call(builtins, key)) return true;
+      if (Object.hasOwn(builtins, key)) return true;
       // own-property check: stops window built-ins (name, status, length,
       // location…) from shadowing or escaping component state.
-      return Object.prototype.hasOwnProperty.call(target, key);
+      return Object.hasOwn(target, key);
     },
     get(target, key) {
       if (key === Symbol.unscopables) return undefined;
-      if (Object.prototype.hasOwnProperty.call(builtins, key)) return builtins[key];
+      if (Object.hasOwn(builtins, key)) return builtins[key];
       // Record this read for the binding currently being evaluated (Tier 2),
       // and for any enclosing each/if block collecting its full dep set.
       if (typeof key === 'string') {
@@ -1308,7 +1315,7 @@ function makeScope(rawCode, componentEl, props = {}) {
     // Props override `export let` defaults.
     for (const [key, value] of Object.entries(props)) {
       if (propNames.has(key)) raw[key] = value;
-      else if (!Object.prototype.hasOwnProperty.call(raw, key)) raw[key] = value;
+      else if (!Object.hasOwn(raw, key)) raw[key] = value;
     }
     runReactive();
     patch(componentEl, scope);
@@ -1329,7 +1336,7 @@ function patch(el, scope) {
   walkNode(el, scope, true);
   // Optional observation seam (used by the test suite to assert batching).
   // No-op in normal use — nothing sets this hook in the browser.
-  if (typeof globalThis !== 'undefined' && globalThis.__sparkTestOnPatch) {
+  if (globalThis.__sparkTestOnPatch) {
     globalThis.__sparkTestOnPatch(el);
   }
 }
@@ -1430,19 +1437,19 @@ function setupFormBinding(form, stateName, handlerAttr) {
 // comments qualify. An each/if anchor (never marked static) and any element
 // with a live binding do not, so the parent keeps descending into them.
 function isStaticNode(n) {
-  if (n.nodeType === Node.TEXT_NODE) {
+  if (n.nodeType === TEXT_NODE) {
     return !(n.__sparkTpl && n.__sparkTpl.includes('{'));
   }
-  if (n.nodeType !== Node.ELEMENT_NODE) return true;
+  if (n.nodeType !== ELEMENT_NODE) return true;
   return n.__sparkStatic === true;
 }
 
 function walkNode(node, scope, isRoot = false) {
-  if (node.nodeType === Node.TEXT_NODE) {
+  if (node.nodeType === TEXT_NODE) {
     patchText(node, scope);
     return;
   }
-  if (node.nodeType !== Node.ELEMENT_NODE) return;
+  if (node.nodeType !== ELEMENT_NODE) return;
 
   // Known-static subtree from a previous walk: nothing in it ever changes,
   // so skip the whole branch in one check. The component root (isRoot) is
@@ -1651,7 +1658,7 @@ function parseAwait(el) {
 
   const pending = [], thenNodes = [], catchNodes = [];
   for (const n of content) {
-    const isTpl = n.nodeType === Node.ELEMENT_NODE && n.tagName === 'TEMPLATE';
+    const isTpl = n.nodeType === ELEMENT_NODE && n.tagName === 'TEMPLATE';
     if (isTpl && n.hasAttribute('then')) thenNodes.push(...n.content.childNodes);
     else if (isTpl && n.hasAttribute('catch')) catchNodes.push(...n.content.childNodes);
     else pending.push(n);
@@ -1666,14 +1673,14 @@ function parseAwait(el) {
   // Hydration: drop any branch content a prerender baked as live siblings
   // (tagged data-spark-await) so the client re-runs the promise and renders
   // once — no duplicate. The crawler still got the resolved HTML.
-  if (!(typeof globalThis !== 'undefined' && globalThis.__SPARK_PRERENDER__)) {
+  if (!(isPrerender())) {
     let probe = el.nextSibling;
-    while (probe && probe.nodeType !== Node.ELEMENT_NODE) probe = probe.nextSibling;
+    while (probe && probe.nodeType !== ELEMENT_NODE) probe = probe.nextSibling;
     if (probe && probe.hasAttribute && probe.hasAttribute('data-spark-await')) {
       let n = el.nextSibling;
       while (n) {
         const next = n.nextSibling;
-        if (n.nodeType === Node.ELEMENT_NODE && !(n.hasAttribute && n.hasAttribute('data-spark-await'))) break;
+        if (n.nodeType === ELEMENT_NODE && !(n.hasAttribute && n.hasAttribute('data-spark-await'))) break;
         destroyComponent(n);
         if (n.parentNode) n.parentNode.removeChild(n);
         n = next;
@@ -1701,12 +1708,12 @@ function applyAwaitState(el, scope) {
     : scope;
   // Tag baked branch nodes during prerender so a client mount can clear them
   // (see parseAwait) and re-render without duplicating.
-  const tag = (typeof globalThis !== 'undefined' && globalThis.__SPARK_PRERENDER__) && state !== 'pending';
+  const tag = (isPrerender()) && state !== 'pending';
   let insertAfter = el;
   for (const t of tpl) {
     const c = t.cloneNode(true);
     c.__sparkManaged = true; // owned by this await-block, not the parent walk
-    if (tag && c.nodeType === Node.ELEMENT_NODE && c.setAttribute) c.setAttribute('data-spark-await', '');
+    if (tag && c.nodeType === ELEMENT_NODE && c.setAttribute) c.setAttribute('data-spark-await', '');
     insertAfter.after(c);
     insertAfter = c;
     el.__sparkAwaitRendered.push(c);
@@ -1745,7 +1752,7 @@ function startAwait(el, source, scope) {
 
   // During prerender, let the settle loop wait for the promise (like load()),
   // so :then content is in the serialized HTML.
-  if (typeof globalThis !== 'undefined' && globalThis.__SPARK_PRERENDER__ && Array.isArray(globalThis.__SPARK_AWAITS__)) {
+  if (isPrerender() && Array.isArray(globalThis.__SPARK_AWAITS__)) {
     globalThis.__SPARK_AWAITS__.push(p);
   }
 
@@ -2174,7 +2181,7 @@ function isSparkComponent(el) {
   if (el.__sparkStyleSrc !== undefined) return true;
   if (el.childNodes) {                                  // legacy inline component
     for (const c of el.childNodes) {
-      if (c.nodeType === Node.ELEMENT_NODE && (c.tagName === 'SCRIPT' || c.tagName === 'STYLE')) return true;
+      if (c.nodeType === ELEMENT_NODE && (c.tagName === 'SCRIPT' || c.tagName === 'STYLE')) return true;
     }
   }
   return false;
@@ -2257,7 +2264,7 @@ function bootComponent(el) {
 // unmount(). Without this, cleanups never ran and store subscribers
 // (which capture the whole component scope) leaked forever.
 function destroyComponent(node) {
-  if (!node || node.nodeType !== Node.ELEMENT_NODE) return;
+  if (!node || node.nodeType !== ELEMENT_NODE) return;
   const comps = [];
   if (node.hasAttribute && node.hasAttribute('name')) comps.push(node);
   if (node.querySelectorAll) comps.push(...node.querySelectorAll('[name]'));
@@ -2515,7 +2522,7 @@ function scopeCss(css, tag) {
  * Returns a promise that resolves when everything is booted.
  */
 async function mount(root = document.body, options = {}) {
-  if (options.devOverlay || (typeof globalThis !== 'undefined' && globalThis.__SPARK_DEV_OVERLAY__)) {
+  if (options.devOverlay || (globalThis.__SPARK_DEV_OVERLAY__)) {
     devOverlay = true;
   }
   if (typeof root === 'string') root = document.querySelector(root);
@@ -2531,7 +2538,7 @@ async function mount(root = document.body, options = {}) {
     if (root.querySelectorAll) {
       root.querySelectorAll('[data-spark-cloak]').forEach(reveal);
     }
-    if (!options.quiet && !(typeof globalThis !== 'undefined' && globalThis.__SPARK_PRERENDER__)) {
+    if (!options.quiet && !(isPrerender())) {
       // Count genuine components only — a booted component carries __sparkScope,
       // so a form field's native `name=` doesn't inflate the tally.
       const count = [...root.querySelectorAll('[name]')].filter((e) => e.__sparkScope !== undefined).length;
