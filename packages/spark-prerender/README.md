@@ -56,12 +56,18 @@ It runs in `closeBundle`, rewriting each page in place. A page that fails is
 logged and skipped — the build still succeeds with the client-rendered HTML,
 so it never breaks your build.
 
+For a routed entry, `_redirects` is written into the build output dir (Netlify
+reads it from the deployed output), but `vercel.json` is written to the
+**project root** — Vercel reads its config from the repo root, not the build
+output, so a copy under `dist/` would be silently ignored.
+
 ### Options
 
 | Flag | Meaning |
 |------|---------|
 | `--out <dir>` | Write `<dir>/<basename>` instead of rewriting the entry in place. |
 | `--root <dir>` | Base dir for resolving `import="components/x"` (default: the entry's dir; also tries `<root>/public` and `<root>/dist`). |
+| `--vercel-root <dir>` | Where to write `vercel.json` for a routed entry (default: cwd). Vercel reads its config from the project root, not the build output. |
 | `-h`, `--help` | Show help. |
 
 ### Programmatic API
@@ -129,7 +135,9 @@ fully-rendered HTML file per route — no extra config:
 ```bash
 spark-prerender dist/index.html
 # → index.html, about.html, projects.html …
-#   + _redirects and vercel.json (clean-URL rewrites + SPA fallback)
+#   + dist/_redirects (Netlify) and ./vercel.json at the project root
+#     (clean-URL rewrites + SPA fallback). Override its location with
+#     --vercel-root <dir>.
 ```
 
 Each route's content is baked in with an adoptable `data-spark-route` marker,

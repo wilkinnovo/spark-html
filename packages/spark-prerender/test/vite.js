@@ -6,7 +6,7 @@
 import { strict as assert } from 'node:assert';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
-import { mkdtempSync, cpSync, readFileSync, copyFileSync } from 'node:fs';
+import { mkdtempSync, cpSync, readFileSync, copyFileSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import sparkPrerender from '../src/vite.js';
 
@@ -51,12 +51,13 @@ await test('a missing page is skipped without throwing', async () => {
 await test('routed entry: each route file is isolated (no home leak)', async () => {
   // A <template route> entry as index.html — the "/" output IS this file, so a
   // naive in-loop write would clobber it and leak the home route into the rest.
-  const rdist = mkdtempSync(join(tmpdir(), 'spark-routed-'));
+  const proot = mkdtempSync(join(tmpdir(), 'spark-routed-'));
+  const rdist = join(proot, 'dist');
   cpSync(join(here, 'fixture'), rdist, { recursive: true });
   copyFileSync(join(here, 'fixture', 'routed.html'), join(rdist, 'index.html'));
 
   const p = sparkPrerender({ pages: ['index.html'] });
-  p.configResolved({ build: { outDir: rdist } });
+  p.configResolved({ root: proot, build: { outDir: rdist } });
   await p.closeBundle();
 
   const about = readFileSync(join(rdist, 'about.html'), 'utf8');
@@ -67,6 +68,12 @@ await test('routed entry: each route file is isolated (no home leak)', async () 
   const index = readFileSync(join(rdist, 'index.html'), 'utf8');
   assert.ok(index.includes('home page'), 'index.html has the home route');
   assert.ok(!index.includes('about page'), 'index.html must NOT leak the about route');
+
+  // _redirects ships in the output dir; vercel.json must land at the project
+  // root (Vercel ignores it under dist/).
+  assert.ok(existsSync(join(rdist, '_redirects')), '_redirects in the output dir');
+  assert.ok(existsSync(join(proot, 'vercel.json')), 'vercel.json at the project root');
+  assert.ok(!existsSync(join(rdist, 'vercel.json')), 'vercel.json must NOT be in dist/');
 });
 
 console.log(`\n${pass} passed, ${fail} failed`);

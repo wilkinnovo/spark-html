@@ -10,10 +10,12 @@
  * pass --out <dir> to write copies elsewhere instead.
  *
  * Options:
- *   --out <dir>     Write output to <dir>/<basename> instead of in place.
- *   --root <dir>    Base dir for resolving import="components/x" (default: the
- *                   entry file's directory; also tries <root>/public, /dist).
- *   -h, --help      Show this help.
+ *   --out <dir>          Write output to <dir>/<basename> instead of in place.
+ *   --root <dir>         Base dir for resolving import="components/x" (default:
+ *                        the entry file's dir; also tries <root>/public, /dist).
+ *   --vercel-root <dir>  Where to write vercel.json (default: cwd). Vercel reads
+ *                        its config from the project root, not the build output.
+ *   -h, --help           Show this help.
  */
 import { writeFile, mkdir, readFile } from 'node:fs/promises';
 import { resolve, dirname, join, basename } from 'node:path';
@@ -27,6 +29,7 @@ function parseArgs(argv) {
     if (a === '-h' || a === '--help') opts.help = true;
     else if (a === '--out') opts.out = argv[++i];
     else if (a === '--root') opts.root = argv[++i];
+    else if (a === '--vercel-root') opts.vercelRoot = argv[++i];
     else if (a.startsWith('--')) { console.error(`Unknown option: ${a}`); process.exit(2); }
     else entries.push(a);
   }
@@ -36,7 +39,7 @@ function parseArgs(argv) {
 const HELP = `spark-prerender — SEO prerender for spark-html
 
 Usage:
-  spark-prerender <page.html> [more.html ...] [--out <dir>] [--root <dir>]
+  spark-prerender <page.html> [more.html ...] [--out <dir>] [--root <dir>] [--vercel-root <dir>]
 
 Examples:
   spark-prerender dist/index.html dist/docs.html
@@ -72,9 +75,14 @@ async function main() {
           await writeFile(dest, html, 'utf8');
           console.log(`✓ ${entry} [${route}] → ${name} (${Buffer.byteLength(html)} bytes)`);
         }
+        // _redirects ships in the publish dir (Netlify reads it from the
+        // deployed output); vercel.json must live at the PROJECT ROOT — Vercel
+        // reads it from the repo, not the build output, so a copy under the out
+        // dir is silently ignored. Default to cwd; override with --vercel-root.
+        const vercelRoot = opts.vercelRoot ? resolve(opts.vercelRoot) : process.cwd();
         await writeFile(join(outDir, '_redirects'), redirectsFor(all), 'utf8');
-        await writeFile(join(outDir, 'vercel.json'), vercelConfigFor(all), 'utf8');
-        console.log(`✓ wrote _redirects + vercel.json (${all.length} routes)`);
+        await writeFile(join(vercelRoot, 'vercel.json'), vercelConfigFor(all), 'utf8');
+        console.log(`✓ wrote _redirects (${outDir}) + vercel.json (${vercelRoot}) — ${all.length} routes`);
         continue;
       }
 

@@ -30,11 +30,13 @@ import { prerender, routesOf, routeToFile, redirectsFor, vercelConfigFor } from 
 export default function sparkPrerender(options = {}) {
   const pages = options.pages || ['index.html'];
   let outDir = 'dist';
+  let projectRoot = process.cwd();
   return {
     name: 'spark-prerender',
     apply: 'build',
     configResolved(config) {
       if (config && config.build && config.build.outDir) outDir = config.build.outDir;
+      if (config && config.root) projectRoot = config.root;
     },
     async closeBundle() {
       const root = resolve(outDir);
@@ -59,9 +61,13 @@ export default function sparkPrerender(options = {}) {
               await mkdir(dirname(dest), { recursive: true });
               await writeFile(dest, out, 'utf8');
             }
+            // _redirects ships in the publish dir (Netlify reads it from the
+            // deployed output); vercel.json must live at the PROJECT ROOT —
+            // Vercel reads it from the repo, not the build output, so a copy
+            // under dist/ is silently ignored.
             await writeFile(join(root, '_redirects'), redirectsFor(all), 'utf8');
-            await writeFile(join(root, 'vercel.json'), vercelConfigFor(all), 'utf8');
-            console.log(`[spark-prerender] prerendered ${all.length} routes from ${page} (+ _redirects, vercel.json)`);
+            await writeFile(join(resolve(projectRoot), 'vercel.json'), vercelConfigFor(all), 'utf8');
+            console.log(`[spark-prerender] prerendered ${all.length} routes from ${page} (+ dist/_redirects, vercel.json)`);
             continue;
           }
           const html = await prerender(file, { root, ...(options.prerender || {}) });

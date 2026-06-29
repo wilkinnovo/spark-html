@@ -1,6 +1,6 @@
 {
   "name": "spark-prerender",
-  "version": "0.3.3",
+  "version": "0.4.0",
   "description": "Build-time prerender (SEO) for spark-html \u2014 reuses the real runtime, no SSR server, no app-code changes.",
   "type": "module",
   "main": "./src/prerender.js",
@@ -20,7 +20,7 @@
     "spark-prerender": "bin/cli.js"
   },
   "scripts": {
-    "test": "node test/prerender.js && node test/vite.js && node test/hydrate.js && node test/props-slots.js && node test/robustness.js && node test/routes.js"
+    "test": "node test/prerender.js && node test/vite.js && node test/hydrate.js && node test/props-slots.js && node test/robustness.js && node test/routes.js && node test/cli.js"
   },
   "files": [
     "src",
