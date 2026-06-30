@@ -1632,15 +1632,15 @@ function patchIf(el, scope) {
 
 // A child scope where the identifier `await` resolves to the settled value
 // (resolved value in `then`, error in `catch`) — same shape as the loop scope.
-function awaitScope(scope, value) {
+function awaitScope(scope, value, asName) {
   return new Proxy(scope, {
     get(t, k) {
-      if (k === 'await') return value;
+      if (k === 'await' || (asName && k === asName)) return value;
       if (k === Symbol.unscopables) return undefined;
       return t[k];
     },
-    has(t, k) { return k === 'await' || k in t; },
-    set(t, k, v) { if (k === 'await') return true; t[k] = v; return true; },
+    has(t, k) { return k === 'await' || (asName && k === asName) || k in t; },
+    set(t, k, v) { if (k === 'await' || (asName && k === asName)) return true; t[k] = v; return true; },
   });
 }
 
@@ -1651,6 +1651,7 @@ function parseAwait(el) {
   const m = expr.match(/^once\(([\s\S]*)\)$/);
   el.__sparkAwaitOnce = !!m;
   el.__sparkAwaitExpr = (m ? m[1] : expr).trim();
+  el.__sparkAwaitAs = el.getAttribute('as') || null;
 
   const content = el.tagName.toLowerCase() === 'template'
     ? [...el.content.childNodes]
@@ -1703,8 +1704,8 @@ function applyAwaitState(el, scope) {
   const tpl = state === 'then' ? el.__sparkThenTpl
     : state === 'catch' ? el.__sparkCatchTpl
     : el.__sparkPendingTpl;
-  const branchScope = state === 'then' ? awaitScope(scope, el.__sparkAwaitValue)
-    : state === 'catch' ? awaitScope(scope, el.__sparkAwaitError)
+  const branchScope = state === 'then' ? awaitScope(scope, el.__sparkAwaitValue, el.__sparkAwaitAs)
+    : state === 'catch' ? awaitScope(scope, el.__sparkAwaitError, el.__sparkAwaitAs)
     : scope;
   // Tag baked branch nodes during prerender so a client mount can clear them
   // (see parseAwait) and re-render without duplicating.
@@ -1727,8 +1728,8 @@ function applyAwaitState(el, scope) {
 function refreshAwait(el, scope) {
   if (!el.__sparkAwaitRendered) return;
   const state = el.__sparkAwaitRenderedState;
-  const branchScope = state === 'then' ? awaitScope(scope, el.__sparkAwaitValue)
-    : state === 'catch' ? awaitScope(scope, el.__sparkAwaitError)
+  const branchScope = state === 'then' ? awaitScope(scope, el.__sparkAwaitValue, el.__sparkAwaitAs)
+    : state === 'catch' ? awaitScope(scope, el.__sparkAwaitError, el.__sparkAwaitAs)
     : scope;
   for (const n of el.__sparkAwaitRendered) if (n.parentNode) walkNode(n, branchScope, false);
 }

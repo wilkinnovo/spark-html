@@ -32,6 +32,11 @@ export interface MountOptions {
    * Intended for development only.
    */
   devOverlay?: boolean;
+  /**
+   * Suppress the "⚡ ready" console line for repeated subtree mounts (e.g. the
+   * router booting each route). The initial app mount still logs once.
+   */
+  quiet?: boolean;
 }
 
 export function mount(
