@@ -1,6 +1,6 @@
 {
   "name": "spark-html-motion",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Declarative enter/leave transitions for spark-html \u2014 transition=\"fade|slide|scale\" on if/each blocks, Web Animations API, 0 deps, no compiler.",
   "type": "module",
   "main": "./src/index.js",
@@ -24,7 +24,7 @@
     "directory": "packages/spark-html-motion"
   },
   "dependencies": {
-    "spark-html": "^0.22.0"
+    "spark-html": "^0.23.0"
   },
   "keywords": [
     "spark-html",
