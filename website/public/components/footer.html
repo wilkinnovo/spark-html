@@ -1,33 +1,31 @@
 <footer class="f">
   <span class="brand">⚡ SPARK</span>
-  <span class="pkg-list">
-    <a href="https://www.npmjs.com/package/spark-html" target="_blank" rel="noopener">core</a>
-    <span class="sp">·</span>
-    <a href="https://www.npmjs.com/package/spark-html-router" target="_blank" rel="noopener">router</a>
-    <span class="sp">·</span>
-    <a href="https://www.npmjs.com/package/spark-html-theme" target="_blank" rel="noopener">theme</a>
-    <span class="sp">·</span>
-    <a href="https://www.npmjs.com/package/spark-html-motion" target="_blank" rel="noopener">motion</a>
-    <span class="sp">·</span>
-    <a href="https://www.npmjs.com/package/spark-html-head" target="_blank" rel="noopener">head</a>
-    <span class="sp">·</span>
-    <a href="https://www.npmjs.com/package/spark-html-devtools" target="_blank" rel="noopener">devtools</a>
-    <span class="sp">·</span>
-    <a href="https://www.npmjs.com/package/spark-html-persist" target="_blank" rel="noopener">persist</a>
-    <span class="sp">·</span>
-    <a href="https://www.npmjs.com/package/spark-html-query" target="_blank" rel="noopener">query</a>
-    <span class="sp">·</span>
-    <a href="https://www.npmjs.com/package/spark-prerender" target="_blank" rel="noopener">prerender</a>
-    <span class="sp">·</span>
-    <a href="https://www.npmjs.com/package/create-spark-html-app" target="_blank" rel="noopener">create</a>
-    <span class="sp">·</span>
-    <a href="https://www.npmjs.com/package/prettier-plugin-spark" target="_blank" rel="noopener">prettier</a>
-  </span>
+  <span class="sp">·</span>
+  <a href="https://www.npmjs.com/package/spark-html" target="_blank" rel="noopener">core</a>
+  <span class="sp">·</span>
+  <a href="https://www.npmjs.com/package/spark-html-router" target="_blank" rel="noopener">router</a>
+  <span class="sp">·</span>
+  <a href="https://www.npmjs.com/package/spark-html-theme" target="_blank" rel="noopener">theme</a>
+  <span class="sp">·</span>
+  <a href="https://www.npmjs.com/package/spark-html-motion" target="_blank" rel="noopener">motion</a>
+  <span class="sp">·</span>
+  <a href="https://www.npmjs.com/package/spark-html-head" target="_blank" rel="noopener">head</a>
+  <span class="sp">·</span>
+  <a href="https://www.npmjs.com/package/spark-html-devtools" target="_blank" rel="noopener">devtools</a>
+  <span class="sp">·</span>
+  <a href="https://www.npmjs.com/package/spark-html-persist" target="_blank" rel="noopener">persist</a>
+  <span class="sp">·</span>
+  <a href="https://www.npmjs.com/package/spark-html-query" target="_blank" rel="noopener">query</a>
+  <span class="sp">·</span>
+  <a href="https://www.npmjs.com/package/spark-prerender" target="_blank" rel="noopener">prerender</a>
+  <span class="sp">·</span>
+  <a href="https://www.npmjs.com/package/create-spark-html-app" target="_blank" rel="noopener">create</a>
+  <span class="sp">·</span>
+  <a href="https://www.npmjs.com/package/prettier-plugin-spark" target="_blank" rel="noopener">prettier</a>
+  <span class="sp">·</span>
+  <a href="https://github.com/wilkinnovo/spark" target="_blank" rel="noopener">GitHub</a>
   <span class="grow"></span>
-  <span class="tail">
-    <a href="https://github.com/wilkinnovo/spark" target="_blank" rel="noopener">GitHub</a>
-    <span class="lic">· MIT — built with Spark</span>
-  </span>
+  <span class="lic">MIT — built with Spark</span>
 </footer>
 
 <style>
@@ -35,20 +33,14 @@
     border-top: 1px solid var(--border);
     margin: 40px 56px 0;
     padding: 26px 0 48px;
-    display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px;
+    display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px;
     font-size: 13px; color: var(--muted);
   }
-  .f .brand { font-weight: 800; color: var(--text); letter-spacing: .03em; flex-shrink: 0; }
-  .f .pkg-list { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0; }
-  .f .tail { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0; white-space: nowrap; }
+  .f .brand { font-weight: 800; color: var(--text); letter-spacing: .03em; }
   .f a { color: var(--muted); }
   .f a:hover { color: var(--spark-ink); }
-  .f .sp { color: var(--border-strong); padding: 0 4px; }
-  .f .grow { flex: 1; min-width: 12px; }
+  .f .sp { color: var(--border-strong); }
+  .f .grow { flex: 1; }
   .f .lic { color: var(--muted-dim); }
-  @media (max-width: 600px) {
-    .f { margin: 32px 22px 0; flex-direction: column; align-items: flex-start; gap: 6px; }
-    .f .grow { display: none; }
-    .f .pkg-list { line-height: 1.8; }
-  }
+  @media (max-width: 860px) { .f { margin: 32px 22px 0; } .f .grow { display: none; } }
 </style>
