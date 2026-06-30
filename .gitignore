@@ -8,6 +8,9 @@ test-results
 playwright-report
 .last-run.json
 
+# Bug tracking notes (internal, not for version control)
+packages/spark-html-router/bugs.md
+
 # npm's package-lock.json is the single source of truth (CI uses `npm ci`).
 # Don't commit bun's lockfile — it can drift from package-lock.json.
 bun.lock

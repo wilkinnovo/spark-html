@@ -307,7 +307,7 @@ export async function router(options = {}) {
   if (typeof window !== 'undefined') window.addEventListener('popstate', () => render({ isPop: true }));
 
   prepareInitial();      // put the active route's outlet in the DOM (adopt/clone)
-  await mount(rootEl);   // ONE mount: chrome + the active route, booted once
+  await mount(rootEl, options);   // ONE mount: chrome + the active route, booted once
   markActiveLinks();     // highlight the matching <a> (aria-current="page")
 }
 
