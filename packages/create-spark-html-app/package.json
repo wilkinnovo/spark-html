@@ -1,6 +1,6 @@
 {
   "name": "create-spark-html-app",
-  "version": "0.5.2",
+  "version": "0.5.3",
   "description": "Scaffold a Vite + spark-html",
   "type": "module",
   "bin": {

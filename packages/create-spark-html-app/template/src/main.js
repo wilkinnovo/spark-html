@@ -21,4 +21,4 @@ theme();
 
 // Client-side router: reads <template route> blocks, intercepts <a> clicks,
 // and manages SPA navigation. Call it once — replaces mount().
-router({ devOverlay: dev });
+router({ devOverlay: dev, quiet: !dev });
