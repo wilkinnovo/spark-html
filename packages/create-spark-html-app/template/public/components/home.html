@@ -1,0 +1,48 @@
+<div import="components/hero"></div>
+
+<section class="demos">
+  <h2 class="section-title">Explore <span class="grad">Spark</span></h2>
+  <p class="section-desc">
+    Every demo is a real component — open <code>public/components/</code> to see how it works.
+  </p>
+
+  <div class="grid">
+    <div import="components/demo-todo"></div>
+    <div import="components/demo-props"></div>
+  </div>
+
+  <div import="components/demo-await"></div>
+</section>
+
+<style>
+  .demos {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    padding: 48px 0 64px;
+  }
+  .section-title {
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: -.02em;
+  }
+  .section-desc {
+    font-size: 13px;
+    color: var(--muted);
+    margin-top: -12px;
+  }
+  .grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 18px;
+    align-items: start;
+  }
+  .grad {
+    background: linear-gradient(110deg, var(--text), var(--spark));
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+  @media (max-width: 700px) {
+    .grid { grid-template-columns: 1fr; }
+    .demos { padding-top: 36px; gap: 36px; }
+  }
+</style>

@@ -1,0 +1,41 @@
+<article class="about">
+  <h1>About <span class="grad">Spark</span></h1>
+  <p class="about-desc">
+    Single-file reactive HTML components. The <code>.html</code> you save is the component
+    that runs — no compiler, no virtual DOM, no build step.
+  </p>
+
+  <div class="features">
+    <div import="components/feature-card" title="Reactive $: declarations" description="Prefix any variable with $: to create a derived value — it recomputes automatically when its dependencies change. No subscriptions, no selectors." color="#ffd24a">
+      <span slot="icon">⚡</span>
+    </div>
+    <div import="components/feature-card" title="Two-way bindings" description="Use bind:value to sync inputs with state. Type in the Todo demo and watch the list update — live, with no event wiring." color="#7c3aed">
+      <span slot="icon">↔</span>
+    </div>
+    <div import="components/feature-card" title="Shared stores" description="Call useStore('name') in any component to share state without providers, prop drilling, or context. Updates propagate to every subscriber." color="#10b981">
+      <span slot="icon">📦</span>
+    </div>
+    <div import="components/feature-card" title="Props &amp; slots" description="Export a variable to make it a component prop. Use &lt;slot&gt; to project children from the parent. See demo-props for a live example." color="#f59e0b">
+      <span slot="icon">🔌</span>
+    </div>
+    <div import="components/feature-card" title="Client routing" description="Write routes as &lt;template route=&quot;…&quot;&gt; blocks in your HTML and call router(). SPA navigation, nested layouts, dynamic params, and prerender support — all declarative." color="#ef4444">
+      <span slot="icon">🗺</span>
+    </div>
+    <div import="components/feature-card" title="onMount / onDestroy" description="Lifecycle hooks that fire when a component enters or leaves the DOM. Perfect for timers, subscriptions, and third-party library setup." color="#06b6d4">
+      <span slot="icon">⏱</span>
+    </div>
+  </div>
+</article>
+
+<style>
+  .about { padding: 48px 0 64px; }
+  h1 { font-size: clamp(28px, 5vw, 40px); font-weight: 800; letter-spacing: -.03em; margin-bottom: 10px; }
+  .grad {
+    background: linear-gradient(110deg, var(--text), var(--spark));
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+  .about-desc { font-size: 14px; color: var(--muted); max-width: 540px; margin-bottom: 32px; }
+  .about-desc code { font-size: 12px; }
+  .features { display: flex; flex-direction: column; gap: 12px; }
+  @media (max-width: 700px) { .about { padding-top: 36px; } }
+</style>

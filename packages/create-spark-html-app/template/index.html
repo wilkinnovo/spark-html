@@ -9,82 +9,198 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
-    <script>
-      /* Apply the saved theme before paint — no flash of the wrong theme. */
-      (function () {
-        try {
-          var m = localStorage.getItem('theme-mode') || 'system';
-          var dark = m === 'dark' || (m === 'system' && matchMedia('(prefers-color-scheme: dark)').matches);
-          document.documentElement.dataset.theme = dark ? 'dark' : 'light';
-        } catch (e) { document.documentElement.dataset.theme = 'dark'; }
-      })();
-    </script>
     <style>
       /* Design system — the same palette and monospace type as the Spark
-         website. Tokens + base + a shared card/button/input system live here in
-         <head> so they apply globally before any component boots. Light & dark
-         are driven by [data-theme] (spark-html-theme writes it). */
-      *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+               website. Tokens + base + a shared card/button/input system live here in
+               <head> so they apply globally before any component boots. Light & dark
+               are driven by [data-theme] (spark-html-theme writes it). */
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
       :root {
-        --bg:#000; --surface:#0a0a0a; --surface-2:#101014;
-        --border:#1a1a1a; --border-strong:#333;
-        --text:#fff; --muted:#888; --muted-dim:#555;
-        --spark:#ffd24a; --spark-ink:#ffd24a; --danger:#ff6b6b;
-        --radius:12px;
-        --font:"JetBrains Mono", ui-monospace, monospace;
+        --bg: #000;
+        --surface: #0a0a0a;
+        --surface-2: #101014;
+        --border: #1a1a1a;
+        --border-strong: #333;
+        --text: #fff;
+        --muted: #888;
+        --muted-dim: #555;
+        --spark: #ffd24a;
+        --spark-ink: #ffd24a;
+        --danger: #ff6b6b;
+        --radius: 12px;
+        --font: "JetBrains Mono", ui-monospace, monospace;
       }
       [data-theme="light"] {
-        --bg:#fff; --surface:#fafafa; --surface-2:#f4f4f5;
-        --border:#ededed; --border-strong:#d4d4d4;
-        --text:#1a1a1a; --muted:#666; --muted-dim:#999;
-        --spark:#ffd24a; --spark-ink:#9a6a00; --danger:#d63b3b;
+        --bg: #fff;
+        --surface: #fafafa;
+        --surface-2: #f4f4f5;
+        --border: #ededed;
+        --border-strong: #d4d4d4;
+        --text: #1a1a1a;
+        --muted: #666;
+        --muted-dim: #999;
+        --spark: #ffd24a;
+        --spark-ink: #9a6a00;
+        --danger: #d63b3b;
       }
-      html { scroll-behavior:smooth; }
+      html {
+        scroll-behavior: smooth;
+      }
       body {
-        font-family:var(--font); background:var(--bg); color:var(--text);
-        line-height:1.6; -webkit-font-smoothing:antialiased; min-height:100vh;
+        font-family: var(--font);
+        background: var(--bg);
+        color: var(--text);
+        line-height: 1.6;
+        -webkit-font-smoothing: antialiased;
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
       }
-      ::selection { background:var(--spark); color:#000; }
-      [data-theme="light"] ::selection { background:#ffe9a8; color:#111; }
-      a { color:var(--spark-ink); text-decoration:none; }
-      [hidden] { display:none !important; }
+      ::selection {
+        background: var(--spark);
+        color: #000;
+      }
+      [data-theme="light"] ::selection {
+        background: #ffe9a8;
+        color: #111;
+      }
+      a {
+        color: var(--spark-ink);
+        text-decoration: none;
+      }
+      [hidden] {
+        display: none !important;
+      }
+      .routes {
+        flex: 1;
+        width: 100%;
+        max-width: 960px;
+        margin: 0 auto;
+        padding: 0 24px;
+      }
 
       /* Shared component system — components lean on these instead of each
-         redefining a card/button/input. */
+               redefining a card/button/input. */
       .card {
-        background:var(--surface); border:1px solid var(--border);
-        border-radius:var(--radius); padding:22px;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 22px;
       }
-      .card h2 { font-size:16px; font-weight:700; margin-bottom:4px; letter-spacing:-.01em; display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
-      .tag { font-size:10px; font-weight:500; color:var(--spark-ink); border:1px solid var(--border-strong); padding:1px 7px; border-radius:999px; }
-      .hint { font-size:12.5px; color:var(--muted); margin-bottom:16px; line-height:1.5; }
-      code { background:var(--surface-2); color:var(--spark-ink); padding:1px 6px; border-radius:4px; font-size:12px; }
-      .row { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+      .card h2 {
+        font-size: 16px;
+        font-weight: 700;
+        margin-bottom: 4px;
+        letter-spacing: -0.01em;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+      .tag {
+        font-size: 10px;
+        font-weight: 500;
+        color: var(--spark-ink);
+        border: 1px solid var(--border-strong);
+        padding: 1px 7px;
+        border-radius: 999px;
+      }
+      .hint {
+        font-size: 12.5px;
+        color: var(--muted);
+        margin-bottom: 16px;
+        line-height: 1.5;
+      }
+      code {
+        background: var(--surface-2);
+        color: var(--spark-ink);
+        padding: 1px 6px;
+        border-radius: 4px;
+        font-size: 12px;
+      }
+      .row {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        flex-wrap: wrap;
+      }
 
-      button, .btn {
-        font-family:inherit; font-size:13px; cursor:pointer;
-        padding:8px 15px; border-radius:8px;
-        border:1px solid var(--border-strong); background:var(--surface-2); color:var(--text);
-        transition:border-color .12s, background .12s, color .12s, transform .08s;
+      button,
+      .btn {
+        font-family: inherit;
+        font-size: 13px;
+        cursor: pointer;
+        padding: 8px 15px;
+        border-radius: 8px;
+        border: 1px solid var(--border-strong);
+        background: var(--surface-2);
+        color: var(--text);
+        transition:
+          border-color 0.12s,
+          background 0.12s,
+          color 0.12s,
+          transform 0.08s;
       }
-      button:hover:not(:disabled) { border-color:var(--spark); color:var(--spark-ink); }
-      button:active:not(:disabled) { transform:scale(.97); }
-      button:disabled { opacity:.4; cursor:not-allowed; }
-      button.primary { background:var(--spark); color:#000; border-color:var(--spark); font-weight:700; }
-      button.primary:hover:not(:disabled) { color:#000; filter:brightness(1.06); }
+      button:hover:not(:disabled) {
+        border-color: var(--spark);
+        color: var(--spark-ink);
+      }
+      button:active:not(:disabled) {
+        transform: scale(0.97);
+      }
+      button:disabled {
+        opacity: 0.4;
+        cursor: not-allowed;
+      }
+      button.primary {
+        background: var(--spark);
+        color: #000;
+        border-color: var(--spark);
+        font-weight: 700;
+      }
+      button.primary:hover:not(:disabled) {
+        color: #000;
+        filter: brightness(1.06);
+      }
 
-      label { display:flex; flex-direction:column; gap:4px; font-size:12px; color:var(--muted); }
-      input, textarea {
-        font-family:inherit; font-size:14px; width:100%;
-        background:var(--bg); color:var(--text);
-        border:1px solid var(--border-strong); border-radius:8px; padding:9px 12px;
+      label {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        font-size: 12px;
+        color: var(--muted);
       }
-      input:focus, textarea:focus { outline:none; border-color:var(--spark); }
+      input,
+      textarea {
+        font-family: inherit;
+        font-size: 14px;
+        width: 100%;
+        background: var(--bg);
+        color: var(--text);
+        border: 1px solid var(--border-strong);
+        border-radius: 8px;
+        padding: 9px 12px;
+      }
+      input:focus,
+      textarea:focus {
+        outline: none;
+        border-color: var(--spark);
+      }
     </style>
   </head>
   <body>
-    <!-- Each placeholder is replaced by the component file it names. -->
-    <div import="components/app"></div>
+    <div import="components/nav"></div>
+    <main class="routes">
+      <template route="/"><div import="components/home"></div></template>
+      <template route="/about"><div import="components/about"></div></template>
+    </main>
+    <div import="components/footer"></div>
 
     <script type="module" src="/src/main.js"></script>
   </body>

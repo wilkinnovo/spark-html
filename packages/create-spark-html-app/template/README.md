@@ -3,15 +3,18 @@
 A starter built with [spark-html](https://github.com/wilkinnovo/spark) — single-file
 HTML components with built-in reactivity. No compiler, no virtual DOM, no build step.
 
-The scaffold is a live tour of Spark's core features — edit any component and
-save to see it update instantly.
+The scaffold is a **multi-page SPA** with client-side routing, live demos, and a
+shared design system — edit any component and save to see it update instantly.
 
 ## Develop
 
 ```bash
 npm install
-npm run dev
+npm run dev          # dev server with HMR
 ```
+
+In dev mode, `spark-html-devtools` adds a debugging overlay — inspect
+component state, stores, and the mounted tree live.
 
 ## Build (SEO-ready)
 
@@ -24,16 +27,22 @@ npm run preview   # preview the production build locally
 Vite plugin runs your app at build time and writes fully-rendered HTML into
 `dist/` — so crawlers and AI tools read real content (headings, text, links),
 not empty placeholders. The browser still hydrates over it for full
-interactivity. Set page metadata as plain component state:
+interactivity.
 
-```html
-<script>
-  let pageTitle = 'My App — does a thing';
-  let pageDescription = 'A short, crawlable description of the page.';
-</script>
-```
+Per-route `<title>` and `<meta>` tags are set reactively via
+`spark-html-head` in `src/main.js` — no per-component boilerplate.
 
 Don't need SEO? Remove the `prerender(...)` plugin from `vite.config.js`.
+
+## Architecture
+
+Client routing is set up in `src/main.js` — `router()` (from
+`spark-html-router`) replaces `mount()` and discovers your routes from
+`<template route>` blocks in `index.html`. Per-route `<title>` and `<meta>`
+are handled by `head()` (from `spark-html-head`), and `spark-html-devtools`
+provides a live debugging overlay in dev mode.
+
+Each route is just an HTML file in `public/components/`.
 
 ## What's inside
 
@@ -42,11 +51,15 @@ The scaffold's components in `public/components/` each demonstrate a Spark featu
 
 | Component | Features shown |
 |---|---|
-| `hero.html` | Local state, `$:` reactive statements, stores (`useStore`), theme toggle |
+| `nav.html` | Client routing (active link highlight via `aria-current="page"`), theme toggle via `useStore('theme')` |
+| `hero.html` | Local state, `$:` reactive declarations, shared store (`useStore('app')`) |
+| `home.html` | Page composition — imports `hero` + demo components for the `/` route |
+| `about.html` | Page composition — uses `feature-card` with props and slots for the `/about` route |
 | `demo-todo.html` | `bind:value`/`bind:checked`, `<template each>` with `key`, `$:` derived counts |
 | `demo-props.html` | `export let` props, named `<slot>`, component composition |
 | `demo-await.html` | `<template await>` with `once()`, `onMount`, loading/then/catch states |
-| `feature-card.html` | Reusable card via `export let` + `<slot>`, used by `demo-props` |
+| `feature-card.html` | Reusable card via `export let` + `<slot>`, used by `about` and `demo-props` |
+| `footer.html` | Static content component, imported by the shell |
 
 A component is a `.html` file with optional `<script>` and `<style>`. Top-level
 variables are reactive state — assigning to one re-patches that component's DOM.

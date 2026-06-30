@@ -1,11 +1,23 @@
-import { mount, store } from 'spark-html';
-import { theme } from 'spark-html-theme';
+import { store } from "spark-html";
+import { router } from "spark-html-router";
+import { theme } from "spark-html-theme";
+import { head } from "spark-html-head";
+import { devtools } from "spark-html-devtools";
+
+if (import.meta.env?.DEV) devtools(); // dev only
+
+head({
+  title: { "/": "Home", "/about": "About", "*": "Not found" },
+  titleTemplate: (t) => `${t} · My Site`,
+  meta: { description: (path) => `The ${path} page` },
+});
 
 // Shared stores connect components without providers or prop drilling.
-store('app', { sparks: 0 });
+store("app", { sparks: 0 });
 
 // One-line dark/light/system theming (the ⚡ logo toggles it).
 theme();
 
-// Resolve every <div import="..."> placeholder and boot the components.
-mount();
+// Client-side router: reads <template route> blocks, intercepts <a> clicks,
+// and manages SPA navigation. Call it once — replaces mount().
+router();

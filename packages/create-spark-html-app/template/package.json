@@ -10,10 +10,12 @@
   },
   "dependencies": {
     "spark-html": "latest",
+    "spark-html-router": "latest",
     "spark-html-theme": "latest"
   },
   "devDependencies": {
     "spark-prerender": "latest",
-    "vite": "^5.0.0"
+    "spark-html-devtools": "latest",
+    "vite": "^8.1.0"
   }
 }

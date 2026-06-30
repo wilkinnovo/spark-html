@@ -1,0 +1,83 @@
+<nav class="nav">
+  <div class="nav-inner">
+    <a class="nav-brand" href="/">
+      <span class="bolt">⚡</span>
+      <span class="name">Spark</span>
+    </a>
+    <div class="nav-links">
+      <a href="/">Home</a>
+      <a href="/about">About</a>
+    </div>
+    <button class="theme" onclick="{theme.toggle}" title="Toggle theme">
+      {theme.resolved === 'dark' ? '☾' : '☀'}
+    </button>
+  </div>
+</nav>
+
+<script>
+  const theme = useStore('theme');
+</script>
+
+<style>
+  .nav {
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+  }
+  .nav-inner {
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 0 24px;
+    display: flex;
+    align-items: center;
+    height: 56px;
+    gap: 24px;
+  }
+  .nav-brand {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--text) !important;
+  }
+  .bolt {
+    font-size: 18px;
+    line-height: 1;
+    filter: drop-shadow(0 0 10px rgba(255, 210, 74, .35));
+  }
+  .name {
+    font-size: 14px;
+    font-weight: 700;
+  }
+  .nav-links {
+    display: flex;
+    gap: 4px;
+  }
+  .nav-links a {
+    color: var(--muted) !important;
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 13px;
+    transition: color .12s, background .12s;
+  }
+  .nav-links a:hover {
+    color: var(--text) !important;
+    background: var(--surface-2);
+  }
+  .nav-links a[aria-current="page"] {
+    color: var(--spark-ink) !important;
+    background: var(--surface-2);
+  }
+  .theme {
+    margin-left: auto;
+    width: 34px;
+    height: 34px;
+    padding: 0;
+    border-radius: 8px;
+    font-size: 15px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  @media (max-width: 500px) {
+    .nav-links a { font-size: 12px; padding: 6px 8px; }
+  }
+</style>

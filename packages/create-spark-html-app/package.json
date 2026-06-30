@@ -1,7 +1,7 @@
 {
   "name": "create-spark-html-app",
-  "version": "0.4.0",
-  "description": "Scaffold a Vite + spark-html app — a live tour of Spark's best features in the website's dark/light design.",
+  "version": "0.5.0",
+  "description": "Scaffold a Vite + spark-html",
   "type": "module",
   "bin": {
     "create-spark-html-app": "bin/index.js"
