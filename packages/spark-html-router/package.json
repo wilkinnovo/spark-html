@@ -1,6 +1,6 @@
 {
   "name": "spark-html-router",
-  "version": "0.7.4",
+  "version": "0.7.5",
   "description": "Declarative <template route> client routing for spark-html \u2014 no JS config, just markup.",
   "type": "module",
   "main": "./src/index.js",
@@ -24,7 +24,7 @@
     "directory": "packages/spark-html-router"
   },
   "dependencies": {
-    "spark-html": "^0.23.0"
+    "spark-html": "^0.23.1"
   },
   "keywords": [
     "spark-html",
