@@ -231,6 +231,28 @@ function interpEnd(src, start) {
   return -1;
 }
 
+// Convert `;` to `,` outside of strings so statement-like expressions
+// (e.g. `a = 1; b = 2`) work with compileExpr's `return (...)` wrapper.
+function exprSemicolons(code) {
+  let out = '';
+  let i = 0;
+  while (i < code.length) {
+    const c = code[i];
+    if (c === '"' || c === "'" || c === '`') {
+      const end = skipString(code, i);
+      out += code.slice(i, end);
+      i = end;
+    } else if (c === ';') {
+      out += ',';
+      i++;
+    } else {
+      out += c;
+      i++;
+    }
+  }
+  return out;
+}
+
 // Parse a template into a flat list of literal strings and { code } exprs,
 // cached per template string. The old regex (`\{([^}]+)\}`) broke on any `}`
 // inside an expression (template literals, object literals); this doesn't, and
@@ -258,8 +280,8 @@ function parseTemplate(template) {
       const end = interpEnd(template, i + 1);
       if (end === -1) { lit += c; i++; continue; } // unbalanced → literal
       flush();
-      const code = template.slice(i + 1, end).trim().replace(/;\s*$/, '');
-      if (code) segs.push({ code });
+      const code = template.slice(i + 1, end).trim().replace(/(?:;\s*)+$/, '');
+      if (code) segs.push({ code: exprSemicolons(code) });
       i = end + 1;
       continue;
     }
@@ -2057,7 +2079,7 @@ function buildElementPlan(el) {
     if (/^on\w+$/.test(name) && trimmedValue.startsWith('{') && trimmedValue.endsWith('}')) {
       // (A <form bind:form>'s onsubmit was already captured + stripped by the
       // pre-scan above, so it never reaches here.)
-      const fnExpr = trimmedValue.slice(1, -1).trim().replace(/;\s*$/, '');
+      const fnExpr = trimmedValue.slice(1, -1).trim().replace(/(?:;\s*)+$/, '');
       const isRef = /^[a-zA-Z_$][\w$]*(?:\.[a-zA-Z_$][\w$]*)*$/.test(fnExpr);
       const code = isRef ? `${fnExpr}(event)` : fnExpr;
       const evt = name.slice(2);

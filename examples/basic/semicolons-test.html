@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Semicolons in expressions test</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+    <style>
+      *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+      :root { --bg: #000; --surface: #0a0a0a; --surface-2: #101014; --border: #1a1a1a; --border-strong: #333; --text: #fff; --muted: #888; --muted-dim: #555; --spark: #ffd24a; --font: "JetBrains Mono", ui-monospace, monospace; }
+      body { font-family: var(--font); background: var(--bg); color: var(--text); line-height: 1.6; -webkit-font-smoothing: antialiased; padding: 40px 24px; display: flex; justify-content: center; }
+      ::selection { background: var(--spark); color: #000; }
+      .card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 22px; max-width: 480px; width: 100%; }
+      .card h2 { font-size: 17px; font-weight: 700; margin-bottom: 6px; }
+      .hint { font-size: 13px; color: var(--muted); margin-bottom: 16px; line-height: 1.5; }
+      code { background: var(--surface-2); color: var(--spark); padding: 1px 6px; border-radius: 4px; font-size: 12px; }
+      .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+      button { font-family: inherit; font-size: 14px; cursor: pointer; padding: 8px 16px; border-radius: 8px; border: 1px solid var(--border-strong); background: var(--surface-2); color: var(--text); transition: border-color .12s; }
+      button:hover { border-color: var(--spark); color: var(--spark); }
+      button:disabled { opacity: .4; cursor: not-allowed; }
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <div import="components/semicolons"></div>
+    </div>
+    <script type="module">
+      import { mount } from 'spark-html';
+      mount();
+    </script>
+  </body>
+</html>

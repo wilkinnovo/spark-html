@@ -1,0 +1,148 @@
+<div class="card">
+  <h2>Semicolons in <code>{...}</code></h2>
+  <p class="hint">
+    Trailing <code>;;</code>, mid-expression <code>;</code> → comma operator,
+    and <code>;</code> inside strings — zero syntax errors.
+  </p>
+
+  <!-- 1. bare ref with trailing ; -->
+  <div class="row">
+    <span class="num">{val;}</span>
+    <span class="tag">trailing ;</span>
+  </div>
+
+  <!-- 2. double trailing ;; -->
+  <div class="row sect">
+    <span class="num">{val;;}</span>
+    <span class="tag">double ;;</span>
+  </div>
+
+  <!-- 3. mid ; → comma: {a; b} renders b -->
+  <div class="row sect">
+    <span class="num">{a; b}</span>
+    <span class="tag">mid ; → comma</span>
+  </div>
+
+  <!-- 4. ; inside a string preserved -->
+  <div class="row sect">
+    <span class="num">{greeting}</span>
+    <span class="tag">; in string</span>
+  </div>
+
+  <!-- 5. empty {;;} produces nothing -->
+  <div class="row sect">
+    <span class="num">x{;;}y</span>
+    <span class="tag">empty {;;}</span>
+  </div>
+
+  <!-- 6. ; in template literal -->
+  <div class="row sect">
+    <span class="num">{`${a};${b}`}</span>
+    <span class="tag">; in template lit</span>
+  </div>
+
+  <!-- 7. event handler with ;;; still calls the function -->
+  <div class="row sect">
+    <button onclick="{bump;;;}" title="handler with triple ;">bump</button>
+    <span class="num">{count}</span>
+    <span class="tag">handler ;;;</span>
+  </div>
+
+  <!-- 8. mid ; with operator: {sum + 5; sum * 2} renders 10 -->
+  <div class="row sect">
+    <span class="num">{sum + 5; sum * 2}</span>
+    <span class="tag">expr; expr</span>
+  </div>
+
+  <!-- 9. mixed trailing ;; + mid ;: {sum; val;;} renders val -->
+  <div class="row sect">
+    <span class="num">{sum; val;;}</span>
+    <span class="tag">mid + trailing ;;</span>
+  </div>
+</div>
+
+<script>
+  let val = 42;
+  let a = 10;
+  let b = 20;
+  let sum = 5;
+  let count = 0;
+  let greeting = "hello; world";
+
+  function bump() {
+    count++;
+  }
+</script>
+
+<style>
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 22px;
+    max-width: 480px;
+    width: 100%;
+  }
+  .card h2 {
+    font-size: 17px;
+    font-weight: 700;
+    margin-bottom: 6px;
+  }
+  .hint {
+    font-size: 13px;
+    color: var(--muted);
+    margin-bottom: 16px;
+    line-height: 1.5;
+  }
+  code {
+    background: var(--surface-2);
+    color: var(--spark);
+    padding: 1px 6px;
+    border-radius: 4px;
+    font-size: 12px;
+  }
+  .row {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+  .sect {
+    margin-top: 14px;
+    padding-top: 14px;
+    border-top: 1px solid var(--border);
+  }
+  .num {
+    font-size: 28px;
+    font-weight: 700;
+    min-width: 40px;
+    text-align: center;
+    font-variant-numeric: tabular-nums;
+  }
+  .tag {
+    font-size: 10px;
+    color: var(--muted-dim);
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    margin-left: auto;
+  }
+  button {
+    font-family: inherit;
+    font-size: 13px;
+    cursor: pointer;
+    padding: 6px 14px;
+    border-radius: 8px;
+    border: 1px solid var(--border-strong);
+    background: var(--surface-2);
+    color: var(--text);
+    transition: border-color 0.12s;
+  }
+  button:hover {
+    border-color: var(--spark);
+    color: var(--spark);
+  }
+  button:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+</style>
