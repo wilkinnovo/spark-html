@@ -223,15 +223,12 @@ function serialize(document) {
 export async function prerender(entryPath, options = {}) {
   const entryAbs = resolve(entryPath);
   const baseRoot = options.root ? resolve(options.root) : dirname(entryAbs);
-  const roots = [
-    ...(options.componentRoots || [
-      baseRoot,
-      join(baseRoot, 'public'),
-      join(baseRoot, 'dist'),
-      dirname(entryAbs),
-    ]),
-    ...(options.projectRoot ? [resolve(options.projectRoot)] : []),
-  ].filter((v, i, a) => a.indexOf(v) === i);
+  const roots = (options.componentRoots || [
+    baseRoot,
+    join(baseRoot, 'public'),
+    join(baseRoot, 'dist'),
+    dirname(entryAbs),
+  ]).filter((v, i, a) => a.indexOf(v) === i);
   const metaMap = options.meta || DEFAULT_META;
   const maxPasses = options.maxPasses ?? 100;
   // For data requests a load() hook makes (not component files).

@@ -156,29 +156,5 @@ await test('custom stubs override the defaults (deterministic)', async () => {
   assert.ok(dark.includes('theme: dark'), 'custom matchMedia stub → dark');
 });
 
-// ── JS imports in <script> tags ──
-console.log('\nspark-prerender — JS imports');
-
-const jsImportEntry = join(here, 'fixture', 'jsimport.html');
-const jsImportHtml = await prerender(jsImportEntry);
-const jihas = (s) => assert.ok(jsImportHtml.includes(s), `expected jsimport output to include: ${s}`);
-
-await test('component with JS import renders template (imports skipped during prerender)', () => {
-  jihas('class="imported"');
-  jihas('class="greeting"');
-  jihas('class="count"');
-});
-
-await test('host has [import] for client-side hydration of imported values', () => {
-  jihas('name="imported"');
-  jihas('import="components/imported.html"');
-});
-
-await test('prerender does NOT throw on import statements in <script>', async () => {
-  // If this test passes (no throw), the import transformation worked.
-  const html = await prerender(jsImportEntry);
-  assert.ok(html.includes('class="imported"'), 'rendered despite JS imports');
-});
-
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

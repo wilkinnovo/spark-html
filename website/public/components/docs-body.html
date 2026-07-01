@@ -11,7 +11,6 @@
     <a href="#async">Async blocks</a>
     <a href="#slots">Slots</a>
     <a href="#reactive">Reactivity &amp; lifecycle</a>
-    <a href="#imports">JS imports</a>
     <a href="#props">Props</a>
     <a href="#stores">Stores</a>
     <a href="#forms">Forms</a>
@@ -155,39 +154,6 @@
   });
 &lt;/script&gt;</pre>
     <p class="note">Updates are <strong>batched</strong>: several assignments in one event handler (and all <code>$:</code> recomputations) collapse into a single DOM patch on the next microtask, so a handler that touches ten variables still patches once.</p>
-
-    <h2 id="imports">JS imports</h2>
-    <p>Use standard <code>import</code> statements directly inside a component's <code>&lt;script&gt;</code> tag. Spark transforms them to dynamic <code>import()</code> calls resolved relative to the component file — no bundler needed:</p>
-    <pre spark-ignore>&lt;!-- components/user-card.html --&gt;
-&lt;h2&gt;{greeting}&lt;/h2&gt;
-
-&lt;script&gt;
-  import { capitalize } from '../lib/format.js';
-  let name = 'spark';
-  let greeting = `Hello, ${capitalize(name)}!`;
-&lt;/script&gt;</pre>
-    <p>All import forms work: named, default, namespace, and side-effect:</p>
-    <pre spark-ignore>&lt;script&gt;
-  import utils from '../lib/utils.js';           // default
-  import { add, multiply } from '../lib/math.js'; // named
-  import { pluralize } from '../lib/format.js';   // additional
-&lt;/script&gt;</pre>
-    <p>Imports work with <code>$:</code>, props, and everything else — imported functions are just regular JavaScript:</p>
-    <pre spark-ignore>&lt;script&gt;
-  import { multiply, factorial } from '../lib/math.js';
-  export let a = 6;
-  export let b = 7;
-  $: product = multiply(a, b);
-  $: fact = factorial(a);
-&lt;/script&gt;</pre>
-    <p>Import an async function and call it at the top level — <code>await</code> works in component scripts with imports:</p>
-    <pre spark-ignore>&lt;script&gt;
-  import { fetchGreeting } from '../lib/api.js';
-  let data = {};
-  let loading = true;
-  fetchGreeting('Spark').then(r =&gt; { data = r; loading = false; });
-&lt;/script&gt;</pre>
-    <p class="note">Paths resolve relative to the component file's URL (not the page). During <a href="#prerender">prerender</a>, imported values are stubbed as <code>undefined</code> so the script parses without errors — the real values populate on the client after hydration.</p>
 
     <h2 id="props">Props</h2>
     <p>Declare props with <code>export let</code>. The value after <code>=</code> is the default:</p>
@@ -345,7 +311,7 @@ npx spark-prerender dist/index.html dist/docs.html</pre>
     <p>Spark trades completeness for simplicity. Know the edges:</p>
     <table>
       <tr><th>Limit</th><th>Detail</th></tr>
-      <tr><td>One scope per component</td><td>All top-level declarations share the component scope. JS <code>import</code> statements are supported and transformed to dynamic imports under the hood.</td></tr>
+      <tr><td>One scope per component</td><td>All top-level declarations share the component scope; there is no module system inside component scripts.</td></tr>
       <tr><td>Block scoping</td><td><code>let</code>/<code>const</code> with a simple identifier inside functions hoist to component scope. Destructuring declarations are untouched and stay local.</td></tr>
       <tr><td>Reactivity depth</td><td>Plain objects/arrays are deeply reactive (mutation re-renders). <code>Map</code>/<code>Set</code>/class instances are not tracked — reassign them to update.</td></tr>
       <tr><td>Loop reconciliation</td><td>Reuse is positional by default; reordering a list without a <code>key</code> keeps nodes in place and rewrites their contents. Add <code>key="…"</code> for identity-stable moves.</td></tr>

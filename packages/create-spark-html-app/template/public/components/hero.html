@@ -11,20 +11,18 @@
     <button class="round" onclick="{count = Math.max(0, count - 1)}" :disabled="count <= 0" aria-label="decrement">–</button>
     <div class="readout">
       <span class="num">{count}</span>
-      <span class="sub">doubled is {doubled} · {capitalize(mood)}</span>
+      <span class="sub">doubled is {doubled} · {mood}</span>
     </div>
     <button class="round plus" onclick="{count++}" aria-label="increment">+</button>
   </div>
 
   <p class="store-line">
     You've struck the bolt <strong>{app.sparks}</strong>
-    {pluralize(app.sparks, 'time')} — that lives in a shared store.
+    time{app.sparks === 1 ? '' : 's'} — that lives in a shared store.
   </p>
 </header>
 
 <script>
-  import { capitalize, pluralize } from '../lib/format.js';
-
   let count = 0;
   let igniting = false;
 

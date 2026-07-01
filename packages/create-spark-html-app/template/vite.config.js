@@ -12,11 +12,6 @@ import prerender from 'spark-prerender/vite';
 // tools read real content; the browser still hydrates over it). Remove it
 // if you don't need SEO. List every page you ship in `pages`.
 export default defineConfig({
-  optimizeDeps: {
-    // Ensure spark-html is pre-bundled so all modules share the same stores Map.
-    // Without this, file: references can create duplicate runtime instances.
-    include: ['spark-html'],
-  },
   plugins: [
     spark(),
     prerender({ pages: ['index.html'] }),

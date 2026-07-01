@@ -54,7 +54,7 @@ export default function sparkPrerender(options = {}) {
             // the home route into about.html etc.).
             const rendered = [];
             for (const route of all) {
-              rendered.push([routeToFile(route), await prerender(file, { root, route, projectRoot, ...(options.prerender || {}) })]);
+              rendered.push([routeToFile(route), await prerender(file, { root, route, ...(options.prerender || {}) })]);
             }
             for (const [name, out] of rendered) {
               const dest = join(root, name);
@@ -70,7 +70,7 @@ export default function sparkPrerender(options = {}) {
             console.log(`[spark-prerender] prerendered ${all.length} routes from ${page} (+ dist/_redirects, vercel.json)`);
             continue;
           }
-          const html = await prerender(file, { root, projectRoot, ...(options.prerender || {}) });
+          const html = await prerender(file, { root, ...(options.prerender || {}) });
           await writeFile(file, html, 'utf8');
           console.log(`[spark-prerender] prerendered ${page}`);
         } catch (e) {

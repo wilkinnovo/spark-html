@@ -1,7 +1,7 @@
 <section class="card">
   <header class="card-header">
     <h2>Todos <span class="tag">bind:value + each + $:</span></h2>
-    <span class="badge">{doneCount}/{todos.length} {pluralize(todos.length, 'item')}</span>
+    <span class="badge">{doneCount}/{todos.length}</span>
   </header>
   <p class="hint">Two-way binding, keyed reconciliation, and reactive statements in action.</p>
 
@@ -26,8 +26,6 @@
 </section>
 
 <script>
-  import { pluralize } from '../lib/format.js';
-
   let draft = '';
   let todos = [
     { id: 1, text: 'Learn Spark', done: true },
