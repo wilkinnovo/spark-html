@@ -1741,10 +1741,25 @@ function walkNode(node, scope, isRoot = false) {
 
   // <template if="expr"> — conditional block. Content is inserted after
   // the template when truthy, removed when falsy. Unlike :hidden, the
-  // nodes genuinely leave the DOM.
+  // nodes genuinely leave the DOM. May be followed by <template else-if>
+  // / <template else> siblings — the whole chain is driven from this head.
   if (node.hasAttribute('if')) {
     if (gDirtyMode && !shouldEval(node)) return;
     withSink(node, () => patchIf(node, scope));
+    return;
+  }
+
+  // else-if / else chain members render via their head's patchIf — the
+  // anchor itself never changes, so it's static from the parent's view.
+  // (Its rendered content is inserted as managed siblings, like if/each.)
+  if (node.hasAttribute('else-if') || node.hasAttribute('else')) {
+    if (!node.__sparkIfManagedBy) {
+      warnOnce(
+        `orphan-else:${node.getAttribute('else-if') || 'else'}`,
+        '[spark] <template else-if>/<template else> must directly follow a <template if> (or another else-if). Branch ignored.',
+      );
+    }
+    if (!isRoot) node.__sparkStatic = true;
     return;
   }
 
@@ -1826,46 +1841,102 @@ function leaveNode(n) {
   else remove();
 }
 
-function patchIf(el, scope) {
-  if (!el.__sparkIfParsed) {
-    el.__sparkIfExpr = el.getAttribute('if').trim();
-    if (el.tagName.toLowerCase() === 'template') {
-      el.__sparkIfTemplate = [...el.content.childNodes].map((n) =>
-        n.cloneNode(true),
-      );
-    } else {
-      el.__sparkIfTemplate = [...el.childNodes].map((n) => n.cloneNode(true));
-      el.innerHTML = '';
+// Parse one chain member's expr + content template. The head carries if=,
+// followers carry else-if= (an expr) or a bare else (expr stays null).
+function parseIfMember(el) {
+  if (el.__sparkIfParsed) return;
+  el.__sparkIfExpr = el.hasAttribute('if')
+    ? el.getAttribute('if').trim()
+    : el.hasAttribute('else-if')
+      ? el.getAttribute('else-if').trim()
+      : null; // bare else
+  if (el.tagName.toLowerCase() === 'template') {
+    el.__sparkIfTemplate = [...el.content.childNodes].map((n) =>
+      n.cloneNode(true),
+    );
+  } else {
+    el.__sparkIfTemplate = [...el.childNodes].map((n) => n.cloneNode(true));
+    el.innerHTML = '';
+  }
+  el.__sparkIfParsed = true;
+}
+
+// Collect the if / else-if / else chain headed at `el` (computed once, cached
+// on the head). Followers are the consecutive element siblings carrying
+// else-if / else, with only blank text or comments between; a bare else ends
+// the chain. Followers are marked managed so walkNode leaves them to this
+// head — they render nothing on their own.
+function ifChain(el) {
+  let chain = el.__sparkIfChain;
+  if (chain) return chain;
+  chain = [el];
+  let n = el.nextSibling;
+  while (n) {
+    if (n.nodeType === TEXT_NODE) {
+      if ((n.textContent || '').trim()) break; // real prose interrupts the chain
+      n = n.nextSibling;
+      continue;
     }
-    el.__sparkIfParsed = true;
+    if (n.nodeType !== ELEMENT_NODE) { n = n.nextSibling; continue; } // comments
+    if (n.hasAttribute('if') || !(n.hasAttribute('else-if') || n.hasAttribute('else'))) break;
+    n.__sparkIfManagedBy = el;
+    chain.push(n);
+    if (!n.hasAttribute('else-if')) break; // bare else — nothing may follow
+    n = n.nextSibling;
+  }
+  el.__sparkIfChain = chain;
+  return chain;
+}
+
+function patchIf(el, scope) {
+  if (!el.parentNode) return;
+  const chain = ifChain(el);
+
+  // Exactly one branch is active: the first truthy if / else-if, or the bare
+  // else when none was. Short-circuit like real if/else — branches after the
+  // active one aren't evaluated, and dependency capture naturally records
+  // only the exprs that actually ran this pass.
+  let active = -1;
+  for (let i = 0; i < chain.length; i++) {
+    parseIfMember(chain[i]);
+    const expr = chain[i].__sparkIfExpr;
+    if (expr === null || Boolean(evaluate(expr, scope))) { active = i; break; }
   }
 
-  if (!el.parentNode) return;
-  const show = Boolean(evaluate(el.__sparkIfExpr, scope));
-  const isShown = Boolean(el.__sparkIfRendered && el.__sparkIfRendered.length);
+  for (let i = 0; i < chain.length; i++) {
+    const m = chain[i];
+    if (i > 0 && !m.parentNode) continue;
+    parseIfMember(m);
+    const show = i === active;
+    const isShown = Boolean(m.__sparkIfRendered && m.__sparkIfRendered.length);
 
-  if (show && !isShown) {
-    el.__sparkIfRendered = [];
-    let insertAfter = el;
-    el.__sparkIfTemplate.forEach((tpl) => {
-      const clone = tpl.cloneNode(true);
-      clone.__sparkManaged = true; // owned by this if-block, not the parent walk
-      insertAfter.after(clone);
-      insertAfter = clone;
-      el.__sparkIfRendered.push(clone);
-      walkNode(clone, scope, false);
-      enterNode(clone);
-    });
-    // Resolve any [import] placeholders cloned into the branch (async).
-    hydrateBlockImports(el.__sparkIfRendered, scope);
-  } else if (!show && isShown) {
-    el.__sparkIfRendered.forEach(leaveNode); // cleanups + (optional) exit anim
-    el.__sparkIfRendered = [];
-  } else if (show && isShown) {
-    // keep contents fresh
-    el.__sparkIfRendered.forEach((n) => {
-      if (n.parentNode) walkNode(n, scope, false);
-    });
+    if (show && !isShown) {
+      m.__sparkIfRendered = [];
+      // Insert the whole branch FIRST, then walk it: an if/else chain nested
+      // in the content needs its followers present when its head first runs.
+      let insertAfter = m;
+      for (const tpl of m.__sparkIfTemplate) {
+        const clone = tpl.cloneNode(true);
+        clone.__sparkManaged = true; // owned by this if-block, not the parent walk
+        insertAfter.after(clone);
+        insertAfter = clone;
+        m.__sparkIfRendered.push(clone);
+      }
+      for (const clone of m.__sparkIfRendered) {
+        walkNode(clone, scope, false);
+        enterNode(clone);
+      }
+      // Resolve any [import] placeholders cloned into the branch (async).
+      hydrateBlockImports(m.__sparkIfRendered, scope);
+    } else if (!show && isShown) {
+      m.__sparkIfRendered.forEach(leaveNode); // cleanups + (optional) exit anim
+      m.__sparkIfRendered = [];
+    } else if (show && isShown) {
+      // keep contents fresh
+      m.__sparkIfRendered.forEach((n) => {
+        if (n.parentNode) walkNode(n, scope, false);
+      });
+    }
   }
 }
 
@@ -1972,8 +2043,10 @@ function applyAwaitState(el, scope) {
     insertAfter.after(c);
     insertAfter = c;
     el.__sparkAwaitRendered.push(c);
-    walkNode(c, branchScope, false);
   }
+  // Walk after the whole branch is inserted (see patchEach — nested if/else
+  // chains need their followers present when the head first patches).
+  for (const c of el.__sparkAwaitRendered) walkNode(c, branchScope, false);
   hydrateBlockImports(el.__sparkAwaitRendered, branchScope);
   el.__sparkAwaitRenderedState = state;
 }
@@ -2079,6 +2152,47 @@ function patchAwait(el, scope) {
 //
 // Optional explicit key for identity-stable reconciliation across reorders:
 //   <template each="todo in todos" key="todo.id"> … </template>
+
+// Siblings OWNED by an anchor node — the rendered output of an if/else
+// chain member, an await block, or a nested each. They sit after the anchor
+// in the DOM but belong to it, so a row move must carry them along.
+function anchorOwnedNodes(n) {
+  if (n.__sparkIfRendered && n.__sparkIfRendered.length) return n.__sparkIfRendered;
+  if (n.__sparkAwaitRendered && n.__sparkAwaitRendered.length) return n.__sparkAwaitRendered;
+  if (n.__sparkEachBlocks && n.__sparkEachBlocks.length) {
+    const out = [];
+    for (const b of n.__sparkEachBlocks) out.push(...b.nodes);
+    return out;
+  }
+  return null;
+}
+
+// The physically-last node of `n`'s span: `n` itself, or the deep end of the
+// last owned sibling its anchor rendered.
+function blockEnd(n) {
+  const owned = anchorOwnedNodes(n);
+  if (owned) {
+    for (let i = owned.length - 1; i >= 0; i--) {
+      if (owned[i].parentNode) return blockEnd(owned[i]);
+    }
+  }
+  return n;
+}
+
+// Ensure `n` sits right after `cursor` (moving it only when needed), then its
+// owned rendered siblings after it, recursively. Returns the new cursor.
+function placeWithRendered(cursor, n) {
+  if (cursor.nextSibling !== n) cursor.after(n);
+  cursor = n;
+  const owned = anchorOwnedNodes(n);
+  if (owned) {
+    for (const r of owned) {
+      if (r.parentNode) cursor = placeWithRendered(cursor, r);
+    }
+  }
+  return cursor;
+}
+
 function patchEach(el, scope) {
   if (!el.__sparkEachParsed) {
     const expr = el.getAttribute('each').trim();
@@ -2183,11 +2297,13 @@ function patchEach(el, scope) {
     if (block) {
       oldByKey.delete(key);
       // Reuse the existing nodes — only move them if they're not already in
-      // the right spot, so a focused input is left untouched.
+      // the right spot, so a focused input is left untouched. An anchor's
+      // OWN rendered content (an if/else chain, await branch, or nested
+      // each inside this row) lives as siblings after it — reposition it
+      // along with the anchor, or reordering rows would strand it.
       let cursor = insertAfter;
       for (const n of block.nodes) {
-        if (cursor.nextSibling !== n) cursor.after(n);
-        cursor = n;
+        cursor = placeWithRendered(cursor, n);
       }
       // Pure-row pass (gDirtyItems set): only re-walk a row whose item was
       // mutated this tick. Otherwise nothing it reads changed, so skip it —
@@ -2204,6 +2320,10 @@ function patchEach(el, scope) {
         cursor.after(clone);
         cursor = clone;
         nodes.push(clone);
+      }
+      // Walk AFTER the whole block is inserted — an if/else chain cloned into
+      // this row must see its follower templates when its head first patches.
+      for (const clone of nodes) {
         walkNode(clone, loopScope, false);
         enterNode(clone);
       }
@@ -2216,7 +2336,9 @@ function patchEach(el, scope) {
 
     newBlocks.push(block);
     const last = block.nodes[block.nodes.length - 1];
-    if (last) insertAfter = last;
+    // The next block starts after this row's LAST node — including any
+    // content its trailing anchor rendered (if/await/nested-each output).
+    if (last) insertAfter = blockEnd(last);
   });
 
   // Anything left in oldByKey was dropped from the array — clean it up.

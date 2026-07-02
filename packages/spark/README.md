@@ -74,6 +74,7 @@ That's it. No build step, no framework CLI — `mount()` finds every `<div impor
 | Loop with index | `<template each="todo, i in todos">…</template>` |
 | Keyed loops | `<template each="row in rows" key="row.id">…` |
 | Conditionals | `<template if="show">…</template>` |
+| Else branches | `<template else-if="score > 60">` / `<template else>` — chain directly after an `if`; first truthy branch renders |
 | Async blocks | `<template await="promise"> + <template then> / <template catch>` |
 | Two-way binding | `bind:value`, `bind:checked`, `bind:group`, `bind:form` |
 | Reactive statements | `$: doubled = count * 2` |

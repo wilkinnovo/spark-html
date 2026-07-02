@@ -89,6 +89,7 @@
       <tr><td>Dynamic class</td><td><code>&lt;li :class="done ? 'item done' : 'item'"&gt;</code></td></tr>
       <tr><td>Two-way binding</td><td><code>bind:value</code> (text, number, <code>&lt;select&gt;</code>, contenteditable), <code>bind:checked</code> (checkbox), <code>bind:group</code> (radio)</td></tr>
       <tr><td>Conditional blocks</td><td><code>&lt;template if="show"&gt;…&lt;/template&gt;</code> — nodes enter/leave the DOM</td></tr>
+      <tr><td>Else branches</td><td><code>&lt;template else-if="…"&gt;</code> / <code>&lt;template else&gt;</code> — chained directly after an <code>if</code>; the first truthy branch renders</td></tr>
       <tr><td>Async blocks</td><td><code>&lt;template await="promise"&gt;…&lt;/template&gt;</code> — pending / then / catch</td></tr>
       <tr><td>Name the awaited value</td><td><code>&lt;template await="load(id)" as="user"&gt;</code> — use <code>{user.name}</code> instead of <code>{await.name}</code></td></tr>
       <tr><td>Slots</td><td><code>&lt;slot&gt;&lt;/slot&gt;</code> &nbsp; <code>&lt;slot name="title"&gt;&lt;/slot&gt;</code> — project caller content</td></tr>
@@ -104,6 +105,13 @@
   function greet() { return `Hi ${name}`; }
 &lt;/pre&gt;</pre>
     <p class="note">A string expression also works for one-off braces: <code>{'{'}</code> renders <code>{</code>. The backslash escape is usually cleaner in prose.</p>
+
+    <h3 id="conditionals">Conditional chains (<code>if</code> / <code>else-if</code> / <code>else</code>)</h3>
+    <p>Consecutive sibling templates form a chain: one <code>if</code> head, any number of <code>else-if</code> branches, and an optional bare <code>else</code>. Exactly one branch renders — the first whose expression is truthy, or the <code>else</code> when none is:</p>
+    <pre spark-ignore>&lt;template if="score &gt; 90"&gt;&lt;p&gt;Excellent&lt;/p&gt;&lt;/template&gt;
+&lt;template else-if="score &gt; 60"&gt;&lt;p&gt;Passed&lt;/p&gt;&lt;/template&gt;
+&lt;template else&gt;&lt;p&gt;Try again&lt;/p&gt;&lt;/template&gt;</pre>
+    <p class="note">Branches must follow each other directly (whitespace and comments between are fine — other content breaks the chain). Expressions short-circuit like real <code>if</code>/<code>else</code>: branches after the active one aren't evaluated. Works inside <code>each</code> rows, nested chains, and with <a href="#prerender">prerender</a> and enter/leave transitions (spark-html-motion) like a plain <code>if</code>.</p>
 
     <h3 id="async">Async blocks (<code>&lt;template await&gt;</code>)</h3>
     <p>Render a promise declaratively — loading, resolved, and error states — with no manual flags:</p>
