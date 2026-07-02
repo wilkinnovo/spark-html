@@ -1,0 +1,40 @@
+{
+  "name": "spark-html-font",
+  "version": "0.1.0",
+  "description": "Font loading optimizer for spark-html sites — @font-face + preload + size-adjusted fallbacks in one config, no FOUT, no layout shift. Zero dependencies.",
+  "type": "module",
+  "main": "./src/index.js",
+  "types": "./src/index.d.ts",
+  "homepage": "https://wilkinnovo.github.io/spark",
+  "exports": {
+    ".": {
+      "types": "./src/index.d.ts",
+      "default": "./src/index.js"
+    },
+    "./vite": {
+      "types": "./src/index.d.ts",
+      "default": "./src/vite.js"
+    }
+  },
+  "scripts": {
+    "test": "node test/font.js"
+  },
+  "files": [
+    "src"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/wilkinnovo/spark.git",
+    "directory": "packages/spark-html-font"
+  },
+  "keywords": [
+    "spark-html",
+    "fonts",
+    "font-display",
+    "preload",
+    "cls",
+    "layout-shift",
+    "vite-plugin"
+  ],
+  "license": "MIT"
+}

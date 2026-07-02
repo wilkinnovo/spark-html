@@ -1,0 +1,38 @@
+{
+  "name": "spark-html-websocket",
+  "version": "0.1.0",
+  "description": "Declarative WebSocket for spark-html — a reactive store with auto-reconnect, JSON parsing, status, and send(). Zero dependencies.",
+  "type": "module",
+  "main": "./src/index.js",
+  "types": "./src/index.d.ts",
+  "homepage": "https://wilkinnovo.github.io/spark",
+  "exports": {
+    ".": {
+      "types": "./src/index.d.ts",
+      "default": "./src/index.js"
+    }
+  },
+  "scripts": {
+    "test": "node test/websocket.js"
+  },
+  "files": [
+    "src"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/wilkinnovo/spark.git",
+    "directory": "packages/spark-html-websocket"
+  },
+  "peerDependencies": {
+    "spark-html": ">=0.23.1"
+  },
+  "keywords": [
+    "spark-html",
+    "websocket",
+    "realtime",
+    "reactive",
+    "store",
+    "reconnect"
+  ],
+  "license": "MIT"
+}
