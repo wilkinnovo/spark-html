@@ -1,6 +1,6 @@
 {
   "name": "spark-html-router",
-  "version": "0.8.0",
+  "version": "0.9.0",
   "description": "Declarative <template route> client routing for spark-html — no JS config, just markup.",
   "type": "module",
   "main": "./src/index.js",
