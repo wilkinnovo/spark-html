@@ -18,6 +18,8 @@ import {
   readdirSync,
   readFileSync,
   renameSync,
+  rmSync,
+  statSync,
   writeFileSync,
 } from 'node:fs';
 import { createInterface } from 'node:readline/promises';
@@ -96,6 +98,86 @@ async function prompt(question, fallback) {
   }
 }
 
+// ── optional features ──────────────────────────────────────────────────
+// The template ships with EVERYTHING wired; excluded features are stripped
+// out of the copied files via `@spark:<name>` … `@spark:end` marker blocks
+// (`@spark:!name` blocks are kept only when the feature is OFF).
+const FEATURES = [
+  { key: 'router', question: 'Include router (multi-page SPA)?', def: true, deps: ['spark-html-router'], files: ['public/components/about.html'] },
+  { key: 'theme', question: 'Include theme (dark/light toggle)?', def: true, deps: ['spark-html-theme'], files: [] },
+  { key: 'image', question: 'Include image optimization?', def: true, deps: ['spark-html-image'], files: ['public/components/demo-image.html', 'public/sample.jpg'] },
+  { key: 'sri', question: 'Include SRI integrity checks?', def: true, deps: ['spark-html-sri'], files: [] },
+  { key: 'pwa', question: 'Include PWA support (manifest + offline shell)?', def: false, deps: ['spark-html-manifest'], files: ['public/icon.png'] },
+];
+
+async function pickFeatures() {
+  const flags = argv.slice(3);
+  const on = {};
+  for (const f of FEATURES) on[f.key] = f.def;
+  if (flags.includes('--all')) for (const f of FEATURES) on[f.key] = true;
+  if (flags.includes('--minimal')) for (const f of FEATURES) on[f.key] = false;
+  for (const f of FEATURES) {
+    if (flags.includes(`--${f.key}`)) on[f.key] = true;
+    if (flags.includes(`--no-${f.key}`)) on[f.key] = false;
+  }
+  // Interactive only on a TTY, and only when no preset flag was given.
+  const preset = flags.some((a) => /^--(yes|all|minimal|(no-)?(router|theme|image|sri|pwa))$/.test(a));
+  if (stdin.isTTY && !preset) {
+    for (const f of FEATURES) {
+      const hint = f.def ? '(Y/n)' : '(y/N)';
+      const a = (await prompt(`${c.accent('?')} ${f.question} ${c.dim(hint)} `, '')).toLowerCase();
+      if (a) on[f.key] = /^y(es)?$/.test(a);
+    }
+  }
+  return on;
+}
+
+// Remove `@spark:` marker blocks for excluded features (and the marker
+// lines themselves for included ones) across every copied text file.
+function stripMarkers(text, on) {
+  const out = [];
+  let skipDepth = 0;
+  for (const line of text.split('\n')) {
+    const open = line.match(/@spark:(!?)([a-z]+)\s*(-->)?\s*$/);
+    if (open && open[2] !== 'end') {
+      const keep = open[1] === '!' ? !on[open[2]] : !!on[open[2]];
+      if (skipDepth || !keep) skipDepth++;
+      continue; // marker lines never ship
+    }
+    if (/@spark:end/.test(line)) {
+      if (skipDepth) skipDepth--;
+      continue;
+    }
+    if (!skipDepth) out.push(line);
+  }
+  return out.join('\n');
+}
+
+function walkFiles(dir) {
+  const out = [];
+  for (const name of readdirSync(dir)) {
+    const full = join(dir, name);
+    if (statSync(full).isDirectory()) out.push(...walkFiles(full));
+    else out.push(full);
+  }
+  return out;
+}
+
+function applyFeatures(targetDir, on) {
+  // 1 ─ strip marker blocks in every text file.
+  for (const file of walkFiles(targetDir)) {
+    if (!/\.(js|html|css)$/.test(file)) continue;
+    const text = readFileSync(file, 'utf8');
+    if (!text.includes('@spark:')) continue;
+    writeFileSync(file, stripMarkers(text, on), 'utf8');
+  }
+  // 2 ─ delete files that belong to excluded features.
+  for (const f of FEATURES) {
+    if (on[f.key]) continue;
+    for (const rel of f.files) rmSync(join(targetDir, rel), { force: true });
+  }
+}
+
 async function main() {
   stdout.write(`\n${BOLT} ${c.bold('create-spark-html-app')}\n`);
   stdout.write(`${c.dim('   HTML that reacts — no compiler, no virtual DOM.')}\n\n`);
@@ -123,9 +205,11 @@ async function main() {
     if (!/^y(es)?$/i.test(ok)) bail('Aborted — nothing was written.');
   }
 
-  // 3 ─ copy the template ──────────────────────────────────────────────
+  // 3 ─ pick features, copy the template, strip what's excluded ────────
+  const features = await pickFeatures();
   mkdirSync(targetDir, { recursive: true });
   cpSync(templateDir, targetDir, { recursive: true });
+  applyFeatures(targetDir, features);
 
   // npm renames/strips dotfiles on publish, so the template ships them
   // with safe underscore prefixes. Restore the real names here.
@@ -142,6 +226,19 @@ async function main() {
   const pkgPath = join(targetDir, 'package.json');
   const pkg = JSON.parse(readFileSync(pkgPath, 'utf8'));
   pkg.name = projectName;
+  // Drop dependencies that belong to excluded features.
+  for (const f of FEATURES) {
+    if (features[f.key]) continue;
+    for (const dep of f.deps) {
+      if (pkg.dependencies) delete pkg.dependencies[dep];
+      if (pkg.devDependencies) delete pkg.devDependencies[dep];
+    }
+  }
+  // PWA config carries the app's display name.
+  if (features.pwa) {
+    const vitePath = join(targetDir, 'vite.config.js');
+    writeFileSync(vitePath, readFileSync(vitePath, 'utf8').replace("name: 'Spark App'", `name: '${projectName}'`), 'utf8');
+  }
   // Always start on the newest published versions of the spark packages. If the
   // registry can't be reached (or a package isn't published yet), the template's
   // "latest" default still resolves on install.
@@ -161,7 +258,8 @@ async function main() {
 
   // 5 ─ celebrate + print next steps ───────────────────────────────────
   const rel = relative(process.cwd(), targetDir) || '.';
-  stdout.write(`\n${c.green('✔')} Scaffolded ${c.bold(projectName)} in ${c.cyan(rel)}\n\n`);
+  const picked = FEATURES.filter((f) => features[f.key]).map((f) => f.key).join(', ') || 'core only';
+  stdout.write(`\n${c.green('✔')} Scaffolded ${c.bold(projectName)} in ${c.cyan(rel)} ${c.dim(`(head, persist, prerender, devtools + ${picked})`)}\n\n`);
   stdout.write(`${c.bold('Next steps:')}\n`);
   if (rel !== '.') stdout.write(`  ${c.dim('1.')} cd ${rel}\n`);
   stdout.write(`  ${c.dim(rel !== '.' ? '2.' : '1.')} npm install\n`);

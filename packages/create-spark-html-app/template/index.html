@@ -197,8 +197,13 @@
   <body>
     <div import="components/nav"></div>
     <main class="routes">
+      <!-- @spark:router -->
       <template route="/"><div import="components/home"></div></template>
       <template route="/about"><div import="components/about"></div></template>
+      <!-- @spark:end -->
+      <!-- @spark:!router -->
+      <div import="components/home"></div>
+      <!-- @spark:end -->
     </main>
     <div import="components/footer"></div>
 

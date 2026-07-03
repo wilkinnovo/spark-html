@@ -1,0 +1,39 @@
+<p class="row">This very site is prerendered — every route ships as real HTML, plus:</p>
+
+<div class="btns">
+  <button class="add" onclick="{loadSitemap}">fetch sitemap.xml</button>
+  <a class="ghost" :href="app.base + '/robots.txt'" target="_blank" rel="noopener">robots.txt ↗</a>
+</div>
+
+<textarea class="out" bind:value="sitemap" readonly rows="8" spellcheck="false" :hidden="!sitemap"></textarea>
+<p class="meta">crawlers and AI tools read fully-rendered pages; the browser hydrates over the same HTML. sitemap.xml + robots.txt are generated from your &lt;template route&gt; blocks at build time</p>
+
+<script>
+  const app = useStore('app');
+  let sitemap = '';
+
+  async function loadSitemap() {
+    const res = await fetch(`${app.base}/sitemap.xml`);
+    sitemap = res.ok ? await res.text() : `(${res.status} — run a production build to generate it)`;
+  }
+</script>
+
+<style>
+  .row { font-size: 13.5px; margin-bottom: 12px; }
+  .btns { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 10px; }
+  .out {
+    background: var(--bg); border: 1px solid var(--border); border-radius: 0;
+    padding: 12px; font-size: 10.5px; line-height: 1.5; color: var(--muted);
+    width: 100%; resize: vertical; white-space: pre; font-family: var(--mono);
+  }
+  .out:focus { outline: none; }
+  .meta { font-size: 11.5px; color: var(--muted); margin-top: 10px; }
+  .add, .ghost {
+    font-family: var(--mono); font-size: 13px;
+    border: none; border-radius: 8px; padding: 9px 16px;
+    font-weight: 700; cursor: pointer; transition: transform .08s;
+  }
+  .add { background: var(--spark); color: #000; }
+  .ghost { background: transparent; color: var(--muted); border: 1px solid var(--border-strong); display: inline-block; }
+  .add:active { transform: scale(.94); }
+</style>

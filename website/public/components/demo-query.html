@@ -1,0 +1,38 @@
+<p class="row wait" :hidden="!fact.loading">⏳ loading…</p>
+<p class="row" :hidden="fact.loading">
+  🎲 <b>{fact.data?.value}</b>
+  <span class="dim" :hidden="!fact.fetching">refetching…</span>
+</p>
+<p class="row err" :hidden="!fact.error">✘ {fact.error?.message}</p>
+
+<div class="btns">
+  <button class="add" onclick="{fact.refetch}">refetch()</button>
+  <button class="ghost" onclick="{optimistic}">mutate()</button>
+</div>
+<p class="meta">loading · fetching · error · data — every state is just store state (every 5th fetch fails on purpose)</p>
+
+<script>
+  // Created once in main.js:
+  //   query('pg-fact', flakyFactFetcher)
+  const fact = useStore('pg-fact');
+
+  function optimistic() { fact.mutate({ value: 'optimistic!' }); }
+</script>
+
+<style>
+  .row { font-size: 14px; margin-bottom: 8px; min-height: 22px; }
+  .row b { color: var(--spark-ink); }
+  .wait, .dim { color: var(--muted); }
+  .dim { font-size: 11px; margin-left: 8px; }
+  .err { color: #ff6b6b; }
+  .btns { display: flex; gap: 8px; flex-wrap: wrap; margin: 4px 0 8px; }
+  .meta { font-size: 11.5px; color: var(--muted); }
+  .add, .ghost {
+    font-family: var(--mono);
+    border: none; border-radius: 8px; padding: 9px 16px;
+    font-weight: 700; cursor: pointer; transition: transform .08s;
+  }
+  .add { background: var(--spark); color: #000; }
+  .ghost { background: transparent; color: var(--muted); border: 1px solid var(--border-strong); }
+  .add:active, .ghost:active { transform: scale(.94); }
+</style>

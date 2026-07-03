@@ -1,0 +1,30 @@
+<section class="card">
+  <header class="card-header">
+    <h2>Persist <span class="tag">spark-html-persist</span></h2>
+  </header>
+  <p class="hint">
+    This store lives in <code>localStorage</code> — change it, then <b>reload the page</b>.
+  </p>
+
+  <p class="visits">You've loaded this app <b>{visits}</b> {visits === 1 ? 'time' : 'times'}.</p>
+  <label>
+    A note that survives reloads
+    <input bind:value="prefs.name" placeholder="type something, then hit reload" />
+  </label>
+</section>
+
+<script>
+  // Created in src/main.js: persist('prefs', { name: '', visits: 0 })
+  const prefs = useStore('prefs');
+  let visits = 0;
+
+  onMount(() => {
+    prefs.visits++;          // saved to localStorage immediately
+    visits = prefs.visits;   // local mirror for this render
+  });
+</script>
+
+<style>
+  .visits { font-size: 13.5px; margin-bottom: 14px; }
+  .visits b { color: var(--spark-ink); }
+</style>

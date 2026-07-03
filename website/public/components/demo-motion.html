@@ -1,0 +1,49 @@
+<div class="btns">
+  <button class="add" onclick="{add}">add card</button>
+  <button class="ghost" onclick="{pop}" :disabled="!cards.length">remove card</button>
+  <button class="ghost" onclick="{toggle}">{open ? 'hide' : 'show'} panel</button>
+</div>
+
+<template if="open">
+  <div class="panel-demo" transition="fade">panel — transition="fade"</div>
+</template>
+
+<div class="cards">
+  <template each="c in cards">
+    <div class="mini" transition="slide" transition-duration="250">#{c}</div>
+  </template>
+</div>
+<p class="meta">leaving elements are held in the DOM until their exit animation ends; prefers-reduced-motion is honored</p>
+
+<script>
+  let open = true;
+  let cards = [1, 2];
+  let n = 2;
+
+  function add() { n++; cards = [...cards, n]; }
+  function pop() { cards = cards.slice(0, -1); }
+  function toggle() { open = !open; }
+</script>
+
+<style>
+  .btns { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+  .panel-demo {
+    border: 1px dashed var(--border-strong); border-radius: 8px;
+    padding: 10px 14px; font-size: 12.5px; color: var(--muted); margin-bottom: 12px;
+  }
+  .cards { display: flex; gap: 8px; flex-wrap: wrap; min-height: 44px; }
+  .mini {
+    background: var(--surface-2); border: 1px solid var(--border-strong);
+    border-radius: 8px; padding: 10px 14px; font-size: 13px; color: var(--spark-ink);
+  }
+  .meta { font-size: 11.5px; color: var(--muted); margin-top: 10px; }
+  .add, .ghost {
+    font-family: var(--mono);
+    border: none; border-radius: 8px; padding: 9px 16px;
+    font-weight: 700; cursor: pointer; transition: transform .08s;
+  }
+  .add { background: var(--spark); color: #000; }
+  .ghost { background: transparent; color: var(--muted); border: 1px solid var(--border-strong); }
+  .ghost:disabled { opacity: .4; cursor: not-allowed; }
+  .add:active, .ghost:active:not(:disabled) { transform: scale(.94); }
+</style>

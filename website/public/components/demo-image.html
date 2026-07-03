@@ -1,0 +1,27 @@
+<p class="side">you write</p>
+<pre class="code">&lt;img src="/hero.jpg" alt="Hero" /&gt;</pre>
+
+<p class="side">the build ships</p>
+<pre class="code">&lt;picture&gt;
+  &lt;source type="image/avif" srcset="/hero-480.avif 480w, /hero-960.avif 960w, /hero-1920.avif 1920w" /&gt;
+  &lt;source type="image/webp" srcset="/hero-480.webp 480w, /hero-960.webp 960w, /hero-1920.webp 1920w" /&gt;
+  &lt;img src="/hero.jpg" alt="Hero" width="1920" height="1080" loading="lazy" decoding="async" /&gt;
+&lt;/picture&gt;</pre>
+
+<p class="meta">spark-html-image is a build-time vite plugin (sharp does the conversion), so there's nothing to run in the browser — the payload win is real though: avif is typically <b>~50–70% smaller</b> than the same jpg, and width/height kill layout shift</p>
+
+<script>
+  // Build-time only — shown, not simulated.
+</script>
+
+<style>
+  .side { font-size: 10.5px; text-transform: uppercase; letter-spacing: .1em; color: var(--muted-dim); margin: 10px 0 6px; }
+  .side:first-child { margin-top: 0; }
+  .code {
+    background: var(--bg); border: 1px solid var(--border);
+    padding: 10px 12px; font-size: 11px; line-height: 1.55; color: var(--muted);
+    overflow-x: auto; white-space: pre;
+  }
+  .meta { font-size: 11.5px; color: var(--muted); margin-top: 12px; }
+  .meta b { color: var(--spark-ink); }
+</style>

@@ -1,0 +1,32 @@
+<label class="lbl">Would the worker cache this request? (paste any URL)</label>
+<input bind:value="url" />
+
+<p class="row">
+  <b :class="cached ? 'ok' : 'no'">{cached ? '✓ cached — survives a dead CDN' : '– passed through untouched'}</b>
+</p>
+<p class="meta">the exact shouldHandle() rule the worker runs: cross-origin imports are cached (cache-first, refreshed in background); your own origin{origin ? ' (' + origin + ')' : ''} and APIs are never touched</p>
+
+<script>
+  let url = 'https://esm.sh/some-pkg/card.html';
+  let cached = false;
+  let origin = '';
+
+  onMount(() => { origin = location.origin; });
+
+  // The exact matcher the service worker embeds (exposed via main.js).
+  $: cached = origin ? window.__pgOffline(url, origin) : false;
+</script>
+
+<style>
+  .lbl { display: block; font-size: 12px; color: var(--muted); margin-bottom: 8px; }
+  input {
+    font-family: var(--mono); font-size: 13px; width: 100%;
+    background: var(--bg); color: var(--text);
+    border: 1px solid var(--border-strong); border-radius: 8px; padding: 9px 12px;
+  }
+  input:focus { outline: none; border-color: var(--spark); }
+  .row { font-size: 13.5px; margin-top: 12px; }
+  .ok { color: #38c172; }
+  .no { color: var(--muted); }
+  .meta { font-size: 11.5px; color: var(--muted); margin-top: 10px; }
+</style>

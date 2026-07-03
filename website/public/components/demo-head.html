@@ -1,0 +1,24 @@
+<label class="lbl">Type — the browser tab title follows:</label>
+<input bind:value="draft" placeholder="Spark — Playground" />
+<p class="meta">head.title = <b>{head.title || '(config default)'}</b> — overrides clear on the next route change</p>
+
+<script>
+  const head = useStore('head');
+  let draft = '';
+
+  // Reactive per-component metadata: the head store wins over the
+  // head() config until the next navigation resets it.
+  $: head.title = draft ? `${draft} · Spark` : undefined;
+</script>
+
+<style>
+  .lbl { display: block; font-size: 12px; color: var(--muted); margin-bottom: 8px; }
+  input {
+    font-family: var(--mono); font-size: 14px; width: 100%;
+    background: var(--bg); color: var(--text);
+    border: 1px solid var(--border-strong); border-radius: 8px; padding: 9px 12px;
+  }
+  input:focus { outline: none; border-color: var(--spark); }
+  .meta { font-size: 11.5px; color: var(--muted); margin-top: 10px; word-break: break-all; }
+  .meta b { color: var(--spark-ink); }
+</style>

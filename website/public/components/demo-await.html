@@ -1,0 +1,50 @@
+<button class="add" onclick="{reload}">Fetch again</button>
+
+<template await="data">
+  <p class="row wait">⏳ loading…</p>
+  <template then>
+    <p class="row">👤 <b>{await.name}</b> — {await.role}</p>
+  </template>
+  <template catch>
+    <p class="row err">✘ {await.message} (every 4th try fails — try again)</p>
+  </template>
+</template>
+
+<script>
+  // The block re-fires whenever `data` is reassigned; an in-flight
+  // older promise is cancelled automatically.
+  function load(n) {
+    return new Promise((resolve, reject) => {
+      const done = () => {
+        if (n % 4 === 0) reject(new Error('flaky network'));
+        else resolve({ name: `Ada #${n}`, role: 'engineer' });
+      };
+      // instant at prerender (build timers are unref'd), 700ms "network" live
+      globalThis.__SPARK_PRERENDER__ ? done() : setTimeout(done, 700);
+    });
+  }
+
+  let attempt = 1;
+  let data = load(1);
+
+  function reload() { attempt++; data = load(attempt); }
+</script>
+
+<style>
+  .row { margin-top: 14px; font-size: 14px; }
+  .row b { color: var(--spark-ink); }
+  .wait { color: var(--muted); }
+  .err { color: #ff6b6b; }
+  .add {
+    font-family: var(--mono);
+    background: var(--spark);
+    color: #000;
+    border: none;
+    border-radius: 8px;
+    padding: 10px 20px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: transform .08s;
+  }
+  .add:active { transform: scale(.94); }
+</style>

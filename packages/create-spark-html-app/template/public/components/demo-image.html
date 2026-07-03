@@ -1,0 +1,21 @@
+<section class="card">
+  <header class="card-header">
+    <h2>Images <span class="tag">spark-html-image</span></h2>
+  </header>
+  <p class="hint">
+    A plain <code>&lt;img&gt;</code> — at build time it becomes a
+    <code>&lt;picture&gt;</code> with webp/avif srcset, width/height, and lazy
+    loading. Run <code>npm run build</code> and inspect <code>dist/</code>.
+  </p>
+
+  <img class="shot" src="/sample.jpg" alt="Sample image — optimized at build time" />
+</section>
+
+<style>
+  .shot {
+    width: 100%;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    display: block;
+  }
+</style>

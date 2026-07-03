@@ -12,7 +12,14 @@
     "spark-html": "*",
     "spark-html-router": "*",
     "spark-html-theme": "*",
-    "spark-html-head": "*"
+    "spark-html-head": "*",
+    "spark-html-motion": "*",
+    "spark-html-query": "*",
+    "spark-html-persist": "*",
+    "spark-html-sri": "*",
+    "spark-html-manifest": "*",
+    "spark-html-offline": "*",
+    "spark-html-devtools": "*"
   },
   "devDependencies": {
     "spark-prerender": "*",

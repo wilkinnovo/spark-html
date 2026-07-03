@@ -1,0 +1,41 @@
+<div class="grid">
+  <label class="lbl">name
+    <input bind:value="name" />
+  </label>
+  <label class="lbl">theme color
+    <input bind:value="color" />
+  </label>
+</div>
+
+<textarea class="out" bind:value="json" readonly rows="12" spellcheck="false"></textarea>
+<p class="meta">manifestJson() live — at build time the vite plugin also resizes your icon to every size, injects the &lt;head&gt; tags, and (optionally) emits an offline app-shell worker</p>
+
+<script>
+  let name = 'My Spark App';
+  let color = '#ffd24a';
+  let json = '';
+
+  // The exact manifestJson() the vite plugin calls (exposed via main.js).
+  // Guarded: prerender runs this component without main.js.
+  $: json = typeof window !== 'undefined' && window.__pgManifest
+    ? JSON.stringify(window.__pgManifest({ name, themeColor: color, icon: 'public/icon.png' }), null, 2)
+    : '';
+</script>
+
+<style>
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; }
+  .lbl { font-size: 11px; color: var(--muted); display: flex; flex-direction: column; gap: 5px; }
+  input {
+    font-family: var(--mono); font-size: 13px; width: 100%;
+    background: var(--bg); color: var(--text);
+    border: 1px solid var(--border-strong); border-radius: 8px; padding: 8px 10px;
+  }
+  input:focus { outline: none; border-color: var(--spark); }
+  .out {
+    background: var(--bg); border: 1px solid var(--border); border-radius: 0;
+    padding: 12px; font-size: 11px; line-height: 1.5; color: var(--muted);
+    width: 100%; resize: vertical; white-space: pre; font-family: var(--mono);
+  }
+  .out:focus { outline: none; }
+  .meta { font-size: 11.5px; color: var(--muted); margin-top: 10px; }
+</style>

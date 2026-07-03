@@ -6,16 +6,22 @@
     </a>
     <div class="nav-links">
       <a href="/">Home</a>
+      <!-- @spark:router -->
       <a href="/about">About</a>
+      <!-- @spark:end -->
     </div>
+    <!-- @spark:theme -->
     <button class="theme" onclick="{theme.toggle}" title="Toggle theme">
       {theme.resolved === 'dark' ? '☾' : '☀'}
     </button>
+    <!-- @spark:end -->
   </div>
 </nav>
 
 <script>
+  // @spark:theme
   const theme = useStore('theme');
+  // @spark:end
 </script>
 
 <style>

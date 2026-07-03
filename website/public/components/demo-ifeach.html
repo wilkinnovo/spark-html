@@ -1,0 +1,38 @@
+<button class="add" onclick="{toggle}">{open ? 'Hide' : 'Show'} the list</button>
+<button class="ghost" onclick="{shuffle}" :disabled="!open">Shuffle</button>
+
+<template if="open">
+  <ul>
+    <template each="fruit, i in fruits">
+      <li><span class="idx">{i + 1}.</span> {fruit}</li>
+    </template>
+  </ul>
+  <p class="meta">{fruits.length} items — blocks mount/unmount for real (check devtools)</p>
+</template>
+<template else>
+  <p class="meta">list unmounted — nothing hidden with CSS, the nodes are gone</p>
+</template>
+
+<script>
+  let open = true;
+  let fruits = ['🍋 lemon', '🍑 peach', '🫐 blueberry', '🥝 kiwi'];
+
+  function toggle() { open = !open; }
+  function shuffle() { fruits = [...fruits].sort(() => Math.random() - 0.5); }
+</script>
+
+<style>
+  ul { list-style: none; margin: 14px 0 6px; }
+  li { padding: 4px 0; font-size: 14px; }
+  .idx { color: var(--muted-dim); }
+  .meta { font-size: 11.5px; color: var(--muted); margin-top: 8px; }
+  .add, .ghost {
+    font-family: var(--mono);
+    border: none; border-radius: 8px; padding: 10px 20px;
+    font-weight: 700; cursor: pointer; transition: transform .08s;
+  }
+  .add { background: var(--spark); color: #000; }
+  .ghost { background: transparent; color: var(--muted); border: 1px solid var(--border-strong); }
+  .ghost:disabled { opacity: .4; cursor: not-allowed; }
+  .add:active, .ghost:active:not(:disabled) { transform: scale(.94); }
+</style>

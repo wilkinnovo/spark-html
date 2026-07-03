@@ -5,6 +5,11 @@ HTML components with built-in reactivity. No compiler, no virtual DOM, no build 
 
 The scaffold is a **multi-page SPA** with client-side routing, live demos, and a
 shared design system — edit any component and save to see it update instantly.
+Depending on the options you picked at scaffold time it also wires up
+`spark-html-theme` (dark/light), `spark-html-image` (build-time webp/avif),
+`spark-html-sri` (integrity checks), and `spark-html-manifest` (PWA manifest +
+icons + offline app shell). `spark-html-head`, `spark-html-persist`,
+`spark-prerender`, and `spark-html-devtools` are always included.
 
 ## Develop
 

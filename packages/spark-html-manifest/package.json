@@ -1,0 +1,43 @@
+{
+  "name": "spark-html-manifest",
+  "version": "0.1.0",
+  "description": "PWA manifest + icons + offline app shell for spark-html sites from a single config — a Vite plugin that generates manifest.webmanifest, resizes icons, injects the head tags, and optionally emits a minimal service worker.",
+  "type": "module",
+  "main": "./src/index.js",
+  "types": "./src/index.d.ts",
+  "homepage": "https://wilkinnovo.github.io/spark",
+  "exports": {
+    ".": {
+      "types": "./src/index.d.ts",
+      "default": "./src/index.js"
+    },
+    "./vite": {
+      "types": "./src/vite.d.ts",
+      "default": "./src/vite.js"
+    }
+  },
+  "scripts": {
+    "test": "node test/manifest.js"
+  },
+  "files": [
+    "src"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/wilkinnovo/spark.git",
+    "directory": "packages/spark-html-manifest"
+  },
+  "dependencies": {
+    "sharp": "^0.34.0"
+  },
+  "keywords": [
+    "spark-html",
+    "pwa",
+    "manifest",
+    "webmanifest",
+    "icons",
+    "service-worker",
+    "vite-plugin"
+  ],
+  "license": "MIT"
+}
