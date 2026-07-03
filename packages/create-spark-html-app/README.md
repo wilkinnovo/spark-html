@@ -7,9 +7,7 @@ Bun-powered project (dev / build / preview via `spark-html-bun`) wired to
 ## Usage
 
 ```bash
-bun create spark-html-app my-app
-# or
-bunx create-spark-html-app my-app
+bunx create-spark-html-app@latest my-app
 ```
 
 Then:
@@ -23,7 +21,7 @@ bun run dev
 Run it with no name to be prompted:
 
 ```bash
-bun create spark-html-app
+bunx create-spark-html-app@latest
 ```
 
 ## What you get
@@ -44,10 +42,10 @@ Every included feature ships with a live demo component, ready to run.
 Non-interactive? Pass flags instead of answering prompts:
 
 ```bash
-bunx create-spark-html-app my-app --yes       # accept the defaults
-bunx create-spark-html-app my-app --all       # everything on
-bunx create-spark-html-app my-app --minimal   # core only
-bunx create-spark-html-app my-app --pwa --no-image   # per-feature
+bunx create-spark-html-app@latest my-app --yes       # accept the defaults
+bunx create-spark-html-app@latest my-app --all       # everything on
+bunx create-spark-html-app@latest my-app --minimal   # core only
+bunx create-spark-html-app@latest my-app --pwa --no-image   # per-feature
 ```
 
 Everything is plain HTML and JavaScript — no compiler, no virtual DOM, no

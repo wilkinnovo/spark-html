@@ -34,7 +34,7 @@ a tree per frame. The file you write is what runs — 13 kB gzipped, zero depend
 ## Quick start
 
 ```bash
-bunx create-spark-html-app myapp
+bunx create-spark-html-app@latest myapp
 cd myapp && bun install && bun dev
 ```
 
@@ -179,7 +179,7 @@ Spark trades completeness for simplicity — these are deliberate edges, not roa
 
 | Package | What it does |
 |---|---|
-| [`create-spark-html-app`](packages/create-spark-html-app/README.md) | Scaffold a spark-html app — `bun create spark-html-app`. |
+| [`create-spark-html-app`](packages/create-spark-html-app/README.md) | Scaffold a spark-html app — `bunx create-spark-html-app@latest`. |
 | [`prettier-plugin-spark`](packages/prettier-plugin-spark/README.md) | Prettier plugin — formats the `<script>`/`<style>` blocks, leaves markup byte-for-byte. |
 | [`spark-html-language-server`](packages/spark-html-language-server/README.md) | LSP for components — diagnostics, go-to-definition, prop autocomplete, hover docs for every directive. |
 

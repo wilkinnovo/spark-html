@@ -22,7 +22,7 @@ Single-file HTML components with built-in reactivity. No compiler, no virtual DO
 ## Install
 
 ```bash
-bun create spark-html-app myapp
+bunx create-spark-html-app@latest myapp
 cd myapp && bun install && bun dev
 ```
 

@@ -5,7 +5,7 @@
     <p class="lede" :hidden="tab !== 'url'">Import a component <b>straight from a URL</b> — no install, no bundler. The browser fetches the <code>.html</code> and boots it live. Components are just files, anywhere. <b>Nothing else does that.</b></p>
     <p class="lede" :hidden="tab !== 'counter'">The component <b>is</b> the file. Save <code>counter.html</code> and the browser runs it <b>byte-for-byte</b> — reactive, scoped, untouched. Nothing else does that.</p>
     <div class="cli">
-      <span class="prompt">$</span><code>bunx create-spark-html-app</code>
+      <span class="prompt">$</span><code>bunx create-spark-html-app@latest</code>
       <button class="copy" onclick="{copy}">{copied ? 'copied' : 'copy'}</button>
     </div>
     <div class="ctas">
@@ -138,7 +138,7 @@
   let copied = false;
   let ct;
   function copy() {
-    try { navigator.clipboard.writeText('bunx create-spark-html-app'); } catch (e) {}
+    try { navigator.clipboard.writeText('bunx create-spark-html-app@latest'); } catch (e) {}
     copied = true;
     clearTimeout(ct);
     ct = setTimeout(() => { copied = false; }, 1400);
