@@ -100,20 +100,22 @@ function frameUrl() {
 }
 
 function buildSrcdoc(files, theme) {
-  const dark = theme !== 'light';
   // In dev the frame script is served raw and imports 'spark-html' bare, so
   // the iframe needs the same import map the dev server injected into this
   // page. In the built site the frame bundle has no bare imports — no map.
   const importMap = document.querySelector('script[type="importmap"]');
   const json = JSON.stringify(files).replace(/</g, '\\u003c');
+  // Both themes ship as [data-theme] rules so a later site-theme toggle can
+  // flip the frame IN PLACE (setPreviewTheme) — no rebuild, state preserved.
   return (
-    '<!doctype html><html><head><meta charset="utf-8">' +
+    '<!doctype html><html data-theme="' + (theme === 'light' ? 'light' : 'dark') + '">' +
+    '<head><meta charset="utf-8">' +
     (importMap ? importMap.outerHTML : '') + FONT_LINKS +
     '<style>' +
-    'body{font:13.5px/1.6 "JetBrains Mono",ui-monospace,monospace;padding:20px;' +
-    (dark ? 'background:#0a0a0a;color:#fff;' : 'background:#fff;color:#1a1a1a;') + '}' +
-    'button,input,select,textarea{font:inherit;color:inherit;background:' +
-    (dark ? '#16161c' : '#f4f4f5') + ';border:1px solid ' + (dark ? '#333' : '#d4d4d4') + ';padding:6px 12px;cursor:pointer;}' +
+    'body{font:13.5px/1.6 "JetBrains Mono",ui-monospace,monospace;padding:20px;background:#fff;color:#1a1a1a;}' +
+    'button,input,select,textarea{font:inherit;color:inherit;background:#f4f4f5;border:1px solid #d4d4d4;padding:6px 12px;cursor:pointer;}' +
+    '[data-theme="dark"] body{background:#0a0a0a;color:#fff;}' +
+    '[data-theme="dark"] button,[data-theme="dark"] input,[data-theme="dark"] select,[data-theme="dark"] textarea{background:#16161c;border-color:#333;}' +
     'input{cursor:text;}' +
     '</style></head><body>' +
     '<div import="app"></div>' +
@@ -143,9 +145,23 @@ export function setupPlayground() {
     });
   });
 
-  // Re-render the preview when the site theme flips, so it always matches.
+  // Keep the preview's theme in sync with the site. The theme store notifies
+  // BEFORE it stamps data-theme on <html>, so defer a microtask and read the
+  // settled value; then flip the frame's own data-theme in place (the srcdoc
+  // carries both themes as CSS rules) — no rebuild, preview state preserved.
+  let themeQueued = false;
   subscribe('theme', () => {
-    if (lastHost && lastHost.isConnected && lastFiles) window.__pgRun(lastHost, lastFiles);
+    if (themeQueued) return;
+    themeQueued = true;
+    queueMicrotask(() => {
+      themeQueued = false;
+      if (!lastHost || !lastHost.isConnected) return;
+      const t = document.documentElement.dataset.theme === 'light' ? 'light' : 'dark';
+      const iframe = lastHost.querySelector('iframe');
+      const doc = iframe && iframe.contentDocument;
+      if (doc && doc.documentElement) doc.documentElement.setAttribute('data-theme', t);
+      else if (lastFiles) window.__pgRun(lastHost, lastFiles); // frame not up yet — rebuild
+    });
   });
 
   // Fresh copies so edits never mutate the defaults.
