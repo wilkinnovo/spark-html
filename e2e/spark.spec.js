@@ -34,3 +34,24 @@ test('mount → hydrate → router → theme', async ({ page }) => {
     .poll(() => page.locator('html').getAttribute('data-theme'))
     .not.toBe(startTheme);
 });
+
+// The /tutorials live editor: prerendered shell hydrates, the store-fed
+// lesson list renders, the preview mounts a REAL component, lesson switching
+// re-mounts, and typing re-runs the source through component()/mount().
+test('tutorials: live editor mounts, switches, and re-runs lessons', async ({ page }) => {
+  await page.goto('/tutorials');
+
+  // hydration: lesson nav + first lesson mounted for real
+  await expect(page.locator('button.lesson')).toHaveCount(15);
+  await expect(page.locator('#tut-preview h1')).toContainText('Hello World');
+
+  // switching lessons re-mounts the preview; its handlers are live
+  await page.locator('button.lesson', { hasText: '2. Events' }).click();
+  await expect(page.locator('#tut-preview button')).toContainText('+1');
+  await page.locator('#tut-preview button').click();
+  await expect(page.locator('#tut-preview b')).toHaveText('1');
+
+  // editing the source re-runs it (debounced) — the edit is what renders
+  await page.fill('.editor', '<h1>E2E {name}</h1>\n<script>\n  let name = "live";\n</script>');
+  await expect(page.locator('#tut-preview h1')).toContainText('E2E live');
+});

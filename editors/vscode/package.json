@@ -1,19 +1,35 @@
 {
   "name": "spark-html",
   "displayName": "Spark (spark-html)",
-  "description": "Syntax highlighting for spark-html single-file components — {interpolations}, bind:, $:, and template directives, on top of HTML.",
-  "version": "0.1.0",
+  "description": "Spark single-file components — syntax highlighting for {interpolations}, bind:, $:, and template directives, plus IDE features (diagnostics, go-to-definition, prop autocomplete, hover docs) via spark-html-language-server.",
+  "version": "0.2.0",
   "publisher": "wilkinnovo",
   "engines": { "vscode": "^1.70.0" },
-  "categories": ["Programming Languages"],
-  "keywords": ["spark", "spark-html", "html", "reactive", "components"],
+  "categories": ["Programming Languages", "Linters"],
+  "keywords": ["spark", "spark-html", "html", "reactive", "components", "lsp"],
   "repository": {
     "type": "git",
     "url": "https://github.com/wilkinnovo/spark",
     "directory": "editors/vscode"
   },
   "license": "MIT",
+  "main": "./extension.js",
+  "activationEvents": ["onLanguage:html"],
+  "dependencies": {
+    "vscode-languageclient": "^9.0.0"
+  },
   "contributes": {
+    "configuration": {
+      "title": "Spark (spark-html)",
+      "properties": {
+        "spark.lsp.enable": {
+          "type": ["string", "boolean"],
+          "enum": ["auto", "on", "off"],
+          "default": "auto",
+          "description": "Start the Spark language server. \"auto\" starts it only in workspaces that depend on spark-html; \"on\" always; \"off\" never (syntax highlighting still works)."
+        }
+      }
+    },
     "grammars": [
       {
         "scopeName": "spark.injection",

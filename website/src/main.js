@@ -1,4 +1,4 @@
-import { store } from 'spark-html';
+import { store, component, mount, unmount } from 'spark-html';
 import { router, navigate } from 'spark-html-router';
 import { theme } from 'spark-html-theme';
 import { head } from 'spark-html-head';
@@ -10,6 +10,7 @@ import { manifestJson } from 'spark-html-manifest';
 import { shouldHandle } from 'spark-html-offline';
 import stats from 'virtual:spark-stats';
 import { highlightAll } from './highlight.js';
+import { TUTORIAL_LESSONS } from './tutorial-lessons.js';
 
 // Hero stats, computed at build time (see vite.config.js) — never hand-edited.
 store('stats', stats);
@@ -32,6 +33,7 @@ head({
     '/': 'Spark — HTML that reacts.',
     '/docs': 'Spark — Documentation',
     '/playground': 'Spark — Playground',
+    '/tutorials': 'Spark — Tutorials',
     '/showcase': 'Spark — Showcase',
     '*': 'Spark — HTML that reacts.',
   },
@@ -83,6 +85,62 @@ window.__pgDevtools = async (opts) => {        // devtools demo: loaded on deman
   const { devtools } = await import('spark-html-devtools');
   return devtools(opts);
 };
+
+// ── Tutorials wiring — the live editor runs the REAL runtime ───────────
+// Lesson data lives in tutorial-lessons.js (bundled JS — component scripts
+// would get their declaration keywords rewritten inside the code strings).
+store('tutorial', { list: TUTORIAL_LESSONS });
+
+// Each edit re-registers the source under a fresh name (component() caches by
+// name), tears down the previous mount, and mounts again. Errors come back to
+// the lesson component as a string for the ✘ bar.
+let tutorialSeq = 0;
+window.__tutorialRun = async (host, src) => {
+  if (!host) return null;
+  const name = `tutorial-lesson-${++tutorialSeq}`;
+  // Spark never throws on a broken component — it warns and renders what it
+  // can. Capture those warnings so the lesson can show them in its ✘ bar.
+  const warnings = [];
+  const origWarn = console.warn;
+  console.warn = (...args) => {
+    const line = args.join(' ');
+    if (line.startsWith('[spark]')) warnings.push(line.replace(/^\[spark\]\s*/, ''));
+    origWarn(...args);
+  };
+  try {
+    component(name, src);
+    unmount(host);
+    host.innerHTML = `<div import="${name}"></div>`;
+    await mount(host, { quiet: true });
+    return warnings[0] || null;
+  } catch (e) {
+    return e.message || String(e);
+  } finally {
+    console.warn = origWarn;
+  }
+};
+
+// Pre-registered helpers for the props and slots lessons (components can only
+// import other components, not define them inline).
+component('tut-badge', `<span class="b" :style="'background: hsl(' + hue + ', 90%, 65%)'">{label}</span>
+<script>
+  export let label = 'badge';
+  export let hue = 48;
+<\/script>
+<style>
+  .b { display: inline-block; color: #000; font-weight: 700; font-size: 12px;
+       padding: 4px 10px; border-radius: 999px; margin: 0 6px 6px 0; }
+</style>`);
+component('tut-card', `<div class="card">
+  <h3><slot name="title">Untitled</slot></h3>
+  <slot><p>(empty card)</p></slot>
+</div>
+<script>
+<\/script>
+<style>
+  .card { border: 1px solid var(--border-strong); border-radius: 10px; padding: 14px 18px; }
+  .card h3 { margin-bottom: 8px; font-size: 15px; }
+</style>`);
 
 // One call: mounts the chrome + active route once, intercepts <a> clicks for
 // SPA nav, marks the active link, and exposes a reactive `route` store.

@@ -9,6 +9,10 @@
       "destination": "/playground.html"
     },
     {
+      "source": "/tutorials",
+      "destination": "/tutorials.html"
+    },
+    {
       "source": "/showcase",
       "destination": "/showcase.html"
     },
