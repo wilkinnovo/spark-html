@@ -173,6 +173,29 @@ await test('build: a URL that is a suffix of another entry URL is not corrupted'
   assert.notEqual(refs[0], refs[1], 'each entry mapped to its own hashed file');
 });
 
+await test('build: the same file referenced twice maps both tags to one bundle', async () => {
+  const r = mkdtempSync(join(tmpdir(), 'spark-bun-dup-'));
+  writeFileSync(join(r, 'app.js'), 'export const a = 1;');
+  writeFileSync(join(r, 'other.js'), 'export const b = 2;');
+  // "/app.js" and "./app.js" resolve to the SAME file — Bun.build dedupes the
+  // entrypoint, so index-based output mapping would splice other.js's bundle
+  // into the second tag and leave /other.js unrewritten (a 404 in prod).
+  writeFileSync(join(r, 'index.html'),
+    '<!doctype html><html><head></head><body>' +
+    '<script type="module" src="/app.js"></script>' +
+    '<script type="module" src="./app.js"></script>' +
+    '<script type="module" src="/other.js"></script>' +
+    '</body></html>');
+  writeFileSync(join(r, 'package.json'), JSON.stringify({ name: 'x', type: 'module' }));
+  await build({ root: r, quiet: true });
+  const html = readFileSync(join(r, 'dist', 'index.html'), 'utf8');
+  const refs = [...html.matchAll(/src="([^"]+)"/g)].map((m) => m[1]);
+  assert.equal(refs.length, 3, 'all three script srcs remain');
+  assert.ok(refs.every((u) => /^\/assets\/[\w-]+\.js$/.test(u)), 'every tag rewritten to a hashed asset');
+  assert.equal(refs[0], refs[1], 'both spellings of the same file share one bundle');
+  assert.ok(/^\/assets\/other-[\w-]+\.js$/.test(refs[2]), 'the other entry keeps its own bundle');
+});
+
 // ── preview ─────────────────────────────────────────────────────────────
 writeFileSync(join(buildRoot, 'dist', 'about.html'), '<h1>about</h1>');
 writeFileSync(join(buildRoot, 'dist', '404.html'), '<h1>nope</h1>');

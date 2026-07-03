@@ -60,6 +60,13 @@ function decodePath(pathname) {
   try { return decodeURIComponent(pathname); } catch { return null; }
 }
 
+// One stat instead of existsSync + statSync — this runs per request candidate
+// on the dev/preview hot path.
+function isFile(p) {
+  const s = statSync(p, { throwIfNoEntry: false });
+  return s !== undefined && s.isFile();
+}
+
 const MIME = {
   '.html': 'text/html', '.js': 'text/javascript', '.mjs': 'text/javascript',
   '.css': 'text/css', '.json': 'application/json', '.svg': 'image/svg+xml',
@@ -253,7 +260,7 @@ export async function dev(overrides = {}) {
       let file = null;
       for (const b of [projectRoot, pub]) {
         const c = safeJoin(b, rel);
-        if (c && existsSync(c) && statSync(c).isFile()) { file = c; break; }
+        if (c && isFile(c)) { file = c; break; }
       }
 
       // SPA fallback: extensionless paths serve the app shell (the router
@@ -343,12 +350,17 @@ export async function build(overrides = {}) {
       const file = clean.startsWith('/') ? join(projectRoot, clean.slice(1)) : join(entryDir, clean);
       // Only bundle files that live in the PROJECT (src/…) — anything served
       // from publicDir ships verbatim and its URL already works.
-      if (existsSync(file) && !file.startsWith(pub + '/')) found.push({ url, file });
+      if (existsSync(file) && !file.startsWith(pub + sep)) found.push({ url, file });
     }
 
     if (found.length) {
+      // Bun.build DEDUPES duplicate entrypoints (the same file listed twice —
+      // or reached via two URL spellings — yields ONE output), so bundle the
+      // UNIQUE files and map file → hashed name; never map outputs back by
+      // found-index, which would splice the wrong asset URL into the page.
+      const files = [...new Set(found.map((f) => f.file))];
       const result = await Bun.build({
-        entrypoints: found.map((f) => f.file),
+        entrypoints: files,
         outdir: join(outDir, 'assets'),
         minify: true,
         splitting: true,
@@ -362,17 +374,19 @@ export async function build(overrides = {}) {
         throw new Error(`[spark] build failed:\n${msgs}`);
       }
       // Entry outputs come back in entrypoint order (verified for Bun's
-      // splitting output, incl. same-basename entries) — map each to its URL.
+      // splitting output, incl. same-basename entries) — map each unique
+      // file to its hashed name, then rewrite every tag that referenced it.
       const entryOuts = result.outputs.filter((o) => o.kind === 'entry-point');
-      found.forEach((f, i) => {
-        const name = entryOuts[i] && basename(entryOuts[i].path);
-        if (!name) return;
+      const outName = new Map(files.map((file, i) => [file, entryOuts[i] && basename(entryOuts[i].path)]));
+      for (const f of found) {
+        const name = outName.get(f.file);
+        if (!name) continue;
         const to = `${base}assets/${name}`;
         // Replace only the quoted attribute value, so a longer URL that ends
         // with this one (e.g. /lib/app.js vs /app.js) is never corrupted the
         // way a bare replaceAll(url) would corrupt it.
         for (const q of ['"', "'"]) html = html.split(`${q}${f.url}${q}`).join(`${q}${to}${q}`);
-      });
+      }
     }
     await Bun.write(join(outDir, config.entry.split('/').pop()), html);
   }
@@ -411,7 +425,7 @@ export async function preview(overrides = {}) {
         rel !== '' && rel.endsWith('/') ? safeJoin(outDir, join(rel, 'index.html')) : null,
       ].filter(Boolean);
       for (const f of tryFiles) {
-        if (existsSync(f) && statSync(f).isFile()) {
+        if (isFile(f)) {
           return new Response(Bun.file(f), { headers: { 'Content-Type': mime(f) } });
         }
       }
