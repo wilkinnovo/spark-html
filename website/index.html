@@ -62,6 +62,12 @@
       .content { flex:1; margin-left:var(--sidebar-w); min-width:0; display:flex; flex-direction:column; }
       .routes { flex:1; padding:0 56px; }
       .wrap { max-width:1040px; margin:0 auto; }
+      /* The playground REPL wants the whole content width — release the
+         1040px cap on that route only (the section is in the prerendered
+         HTML, so there's no layout shift on hydration). */
+      /* width:100% too — .wrap's auto margins would otherwise shrink the
+         (now uncapped) flex item to fit-content instead of stretching. */
+      main.routes:has(#playground-repl) { max-width:none; width:100%; }
       @media (max-width:860px) {
         .layout { flex-direction:column; }   /* sidebar becomes a top bar */
         .content { margin-left:0; }
@@ -87,5 +93,9 @@
     </div>
 
     <script type="module" src="/src/main.js"></script>
+    <!-- The playground's result-iframe runner. On this page it's a no-op
+         (guarded by __SPARK_PG__); the tag exists so the build emits it as
+         its own hashed entry and playground.js can discover that URL. -->
+    <script type="module" src="/src/playground-frame.js" data-spark-pg-frame></script>
   </body>
 </html>

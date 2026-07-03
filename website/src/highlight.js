@@ -140,6 +140,65 @@ function highlightHTML(escapedSource) {
   return out;
 }
 
+// Minimal CSS tokenizer (for the playground's CSS-output pane): comments,
+// selectors, at-rules, property names. Values stay neutral.
+function highlightCSS(code) {
+  let out = '';
+  let i = 0;
+  while (i < code.length) {
+    const rest = code.slice(i);
+    const com = rest.match(/^\/\*[\s\S]*?\*\//);
+    if (com) { out += span('comment', com[0]); i += com[0].length; continue; }
+    const at = rest.match(/^@[\w-]+[^{;\n]*/);
+    if (at) { out += span('keyword', at[0]); i += at[0].length; continue; }
+    const sel = rest.match(/^[^\s{}@\/;][^{};]*(?=\{)/);
+    if (sel) { out += span('tag', sel[0]); i += sel[0].length; continue; }
+    const prop = rest.match(/^([\w-]+)(\s*:)/);
+    if (prop) { out += span('attr', prop[1]) + prop[2]; i += prop[0].length; continue; }
+    out += code[i];
+    i += 1;
+  }
+  return out;
+}
+
+const escapeHtml = (s) =>
+  s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+/**
+ * Highlight a raw source string (used by the playground's editor overlay and
+ * output panes). `lang`: 'html' (Spark component), 'js', or 'css'. Returns
+ * HTML with the same tok-* spans highlightAll() produces.
+ */
+export function highlightSource(source, lang = 'html') {
+  injectTokenStyles();
+  const esc = escapeHtml(source);
+  if (lang === 'js') return highlightJS(esc);
+  if (lang === 'css') return highlightCSS(esc);
+  return highlightHTML(esc);
+}
+
+function injectTokenStyles() {
+  if (document.getElementById('spark-hl')) return;
+  const s = document.createElement('style');
+  s.id = 'spark-hl';
+  // Brand-matched + theme-aware: amber for the Spark-y tokens (keywords,
+  // bindings, builtins, $:), neutral greys for everything else.
+  s.textContent = `
+    .tok-tag      { color: var(--text); }
+    .tok-punct    { color: var(--muted-dim); }
+    .tok-attr     { color: var(--muted); }
+    .tok-string   { color: var(--muted); }
+    .tok-binding  { color: var(--spark); font-weight: 600; }
+    .tok-keyword  { color: var(--spark); }
+    .tok-fn       { color: var(--text); }
+    .tok-builtin  { color: var(--spark); }
+    .tok-number   { color: var(--muted); }
+    .tok-reactive { color: var(--spark); font-weight: 700; }
+    .tok-comment  { color: var(--muted-dim); font-style: italic; }
+  `;
+  document.head.appendChild(s);
+}
+
 export function highlightAll() {
   document.querySelectorAll('pre').forEach((pre) => {
     if (pre.__highlighted) return;
@@ -158,25 +217,5 @@ export function highlightAll() {
     pre.innerHTML = header + highlightHTML(source);
   });
 
-  // inject token colors once
-  if (!document.getElementById('spark-hl')) {
-    const s = document.createElement('style');
-    s.id = 'spark-hl';
-    // Brand-matched + theme-aware: amber for the Spark-y tokens (keywords,
-    // bindings, builtins, $:), neutral greys for everything else.
-    s.textContent = `
-      .tok-tag      { color: var(--text); }
-      .tok-punct    { color: var(--muted-dim); }
-      .tok-attr     { color: var(--muted); }
-      .tok-string   { color: var(--muted); }
-      .tok-binding  { color: var(--spark); font-weight: 600; }
-      .tok-keyword  { color: var(--spark); }
-      .tok-fn       { color: var(--text); }
-      .tok-builtin  { color: var(--spark); }
-      .tok-number   { color: var(--muted); }
-      .tok-reactive { color: var(--spark); font-weight: 700; }
-      .tok-comment  { color: var(--muted-dim); font-style: italic; }
-    `;
-    document.head.appendChild(s);
-  }
+  injectTokenStyles();
 }

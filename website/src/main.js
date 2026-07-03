@@ -11,6 +11,7 @@ import { shouldHandle } from 'spark-html-offline';
 import stats from './stats.js';
 import { highlightAll } from './highlight.js';
 import { TUTORIAL_LESSONS } from './tutorial-lessons.js';
+import { setupPlayground } from './playground.js';
 
 // Hero stats, computed from live source (see scripts/gen-stats.js) — never hand-edited.
 store('stats', stats);
@@ -54,7 +55,11 @@ store('showcase', {
   ],
 });
 
-// ── Playground wiring — every demo runs the real package ──────────────
+// ── Playground (the multi-file REPL on /playground) ───────────────────
+setupPlayground();
+
+// ── Live-demos wiring (the gallery on /tutorials) — every demo runs the
+//    real package ─────────────────────────────────────────────────────────
 // Enter/leave transitions for the motion demo (opt-in via `transition`).
 motion();
 

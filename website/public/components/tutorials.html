@@ -26,7 +26,7 @@
           <li><button :class="l.i === current ? 'lesson on' : 'lesson'" :data-i="l.i" onclick="{select}">{l.i + 1}. {l.title}</button></li>
         </template>
       </ul>
-      <p class="more">Build-time packages (prerender, image, SRI, manifest, offline) are demoed on the <a href="{app.base}/playground">Playground</a>.</p>
+      <p class="more">Every feature and package — including the build-time ones (prerender, image, SRI, manifest, offline) — runs live in the <a href="#demos">demos section below</a>. Want a blank slate? Open the <a href="{app.base}/playground">Playground</a>.</p>
     </nav>
 
     <div class="work">
@@ -51,6 +51,10 @@
       </div>
     </div>
   </div>
+
+  <!-- The live demo gallery (formerly the whole /playground page): every
+       feature and every package, running the exact code shown. -->
+  <div import="components/demos"></div>
 </section>
 
 <script>

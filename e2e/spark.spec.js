@@ -35,6 +35,37 @@ test('mount → hydrate → router → theme', async ({ page }) => {
     .not.toBe(startTheme);
 });
 
+// The /playground multi-file REPL: the default project runs in the result
+// iframe (components + a JS-module import), the console pane captures the
+// frame's console.*, the JS/CSS output tabs show extracted + scoped source,
+// and files can be added.
+test('playground: REPL runs, console captures, outputs + files work', async ({ page }) => {
+  await page.goto('/playground');
+
+  // default project mounted in the result iframe (app.html + card.html + utils.js)
+  await expect(page.locator('.ftab')).toHaveCount(3);
+  const frame = page.frameLocator('#pg-frame-host iframe');
+  await expect(frame.locator('h1')).toContainText('Hello world!');
+  await expect(frame.locator('[name="card"] b')).toContainText('multi-file');
+
+  // clicking in the result logs through the JS-module import → console pane
+  await frame.locator('button').click();
+  await expect(page.locator('.crow').first()).toContainText('HELLO WORLD! · clicks: 1');
+
+  // JS output = extracted <script>; CSS output = the runtime's scoped CSS
+  await page.locator('button[data-v="js"]').click();
+  await expect(page.locator('#pg-js')).toContainText('let count = 0');
+  await page.locator('button[data-v="css"]').click();
+  await expect(page.locator('#pg-css')).toContainText('[name="card"] .card');
+
+  // add a file: + → name it → Enter → new tab selected
+  await page.locator('.fadd').click();
+  await page.fill('.fnew', 'extra.html');
+  await page.press('.fnew', 'Enter');
+  await expect(page.locator('.ftab')).toHaveCount(4);
+  await expect(page.locator('.ftab.on .fbtn')).toHaveText('extra.html');
+});
+
 // The /tutorials live editor: prerendered shell hydrates, the store-fed
 // lesson list renders, the preview mounts a REAL component, lesson switching
 // re-mounts, and typing re-runs the source through component()/mount().
