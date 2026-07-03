@@ -121,7 +121,15 @@ export default function sparkImage(options = {}) {
           let m = meta.get(file);
           if (!m) {
             const info = await sharp(file).metadata();
-            m = { width: info.width || 0, height: info.height || 0 };
+            // EXIF orientations 5–8 display the image rotated 90° — the
+            // metadata reports the SENSOR dimensions, so swap to get the
+            // dimensions the page actually renders (and that the rotated
+            // variants below will have).
+            const swap = (info.orientation || 1) >= 5;
+            m = {
+              width: (swap ? info.height : info.width) || 0,
+              height: (swap ? info.width : info.height) || 0,
+            };
             meta.set(file, m);
           }
           // Widths strictly below the intrinsic width, plus the intrinsic
@@ -138,7 +146,10 @@ export default function sparkImage(options = {}) {
                 const dest = destUrl.startsWith('/')
                   ? join(root, destUrl.slice(1))
                   : join(dirname(file), posix.basename(destUrl));
-                let img = sharp(file);
+                // .rotate() with no args bakes the EXIF orientation into the
+                // pixels — webp/avif output drops the EXIF tag, so without
+                // this every phone photo would render sideways.
+                let img = sharp(file).rotate();
                 if (w) img = img.resize({ width: w });
                 await img[format]({ quality }).toFile(dest);
                 converted.set(key, url);

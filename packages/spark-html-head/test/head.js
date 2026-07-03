@@ -106,5 +106,29 @@ test('a store write for the CURRENT route re-applies immediately', () => {
   assert.equal(headStore.description, undefined, 'other keys untouched');
 });
 
+test('store-only meta additions are REMOVED on route change (no stale leak)', () => {
+  nav('/about');
+  headStore['og:image'] = 'https://x/about-img.png';
+  assert.equal(
+    document.querySelector('meta[property="og:image"]').getAttribute('content'),
+    'https://x/about-img.png', 'added while on /about');
+  nav('/');
+  assert.ok(!document.querySelector('meta[property="og:image"]'),
+    'the created og:image element is gone on the next route');
+});
+
+test('a store override of a PRE-EXISTING meta is restored on route change', () => {
+  const pre = document.createElement('meta');
+  pre.setAttribute('property', 'og:type');
+  pre.setAttribute('content', 'website');
+  document.head.appendChild(pre);
+  nav('/about');
+  headStore['og:type'] = 'article';
+  assert.equal(pre.getAttribute('content'), 'article', 'store override applied');
+  nav('/');
+  assert.equal(pre.getAttribute('content'), 'website',
+    'author-written content restored, element kept');
+});
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

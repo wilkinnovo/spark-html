@@ -343,11 +343,15 @@ function analyzeTemplate(text, tpl) {
     });
   }
 
-  // <template await="expr"> — `await` is in scope inside (then/catch included).
+  // <template await="expr"> — `await` is in scope inside (then/catch included),
+  // and an `as="user"` alias binds that name inside the block too.
   const awaitRe = /<template\b[^>]*\bawait\s*=\s*"([^"]*)"/gi;
   while ((m = awaitRe.exec(tpl)) !== null) {
     const content = templateContentRange(tpl, m.index);
-    if (content) awaitBlocks.push({ content });
+    const tagEnd = tpl.indexOf('>', m.index);
+    const tag = tpl.slice(m.index, tagEnd === -1 ? tpl.length : tagEnd);
+    const asName = tag.match(/\bas\s*=\s*"\s*([A-Za-z_$][\w$]*)\s*"/)?.[1] || null;
+    if (content) awaitBlocks.push({ content, asName });
     let expr = m[1];
     let exprOffset = m.index + m[0].length - m[1].length - 1;
     const once = expr.match(/^once\(([\s\S]*)\)$/);
@@ -420,6 +424,11 @@ export function analyze(text) {
     for (const b of t.eachBlocks) {
       if (b.content && offset < b.content.start && offset >= b.attrOffset &&
           (name === b.itemVar || name === b.indexVar)) return true;
+    }
+    // <template await … as="user"> binds the alias inside the block.
+    for (const b of t.awaitBlocks) {
+      if (b.asName === name && b.content &&
+          offset >= b.content.start && offset < b.content.end) return true;
     }
     return false;
   };

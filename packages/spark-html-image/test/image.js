@@ -97,5 +97,27 @@ await test('a second run is idempotent (srcset already present → skipped)', as
   assert.equal(readFileSync(join(dist, 'index.html'), 'utf8'), before);
 });
 
+await test('EXIF-rotated photos: orientation baked in, display dimensions written', async () => {
+  const dist3 = mkdtempSync(join(tmpdir(), 'spark-img-'));
+  mkdirSync(join(dist3, 'img'));
+  // A landscape sensor frame (1600×900) tagged orientation 6 — cameras store
+  // portrait shots this way; browsers DISPLAY it rotated as 900×1600.
+  await sharp({ create: { width: 1600, height: 900, channels: 3, background: { r: 40, g: 200, b: 40 } } })
+    .jpeg().withMetadata({ orientation: 6 }).toFile(join(dist3, 'img', 'photo.jpg'));
+  writeFileSync(join(dist3, 'index.html'),
+    '<!doctype html><html><head></head><body><img src="/img/photo.jpg" alt="p"></body></html>', 'utf8');
+  const p3 = sparkImage({ widths: [640] });
+  p3.configResolved({ build: { outDir: dist3 } });
+  await p3.closeBundle.handler();
+  const html = readFileSync(join(dist3, 'index.html'), 'utf8');
+  assert.ok(html.includes('width="900"') && html.includes('height="1600"'),
+    'width/height match what the browser renders, not the sensor frame');
+  assert.ok(html.includes('/img/photo.webp 900w'), 'intrinsic descriptor uses display width');
+  const out = await sharp(join(dist3, 'img', 'photo.webp')).metadata();
+  assert.equal(`${out.width}x${out.height}`, '900x1600', 'webp pixels are actually rotated');
+  const resized = await sharp(join(dist3, 'img', 'photo-640.webp')).metadata();
+  assert.equal(resized.width, 640, 'resized variant targets display width');
+});
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

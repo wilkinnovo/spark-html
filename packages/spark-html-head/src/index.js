@@ -63,15 +63,35 @@ function currentPath(base) {
 }
 
 // name="description" → <meta name>; anything with a colon (og:title) → property.
-function upsertMeta(key, content) {
+// `managed` remembers what we wrote (and what was there before), so a key that
+// stops being provided — a store-only addition after a route change — can be
+// cleaned up instead of leaking its stale content into the next route.
+function upsertMeta(key, content, managed) {
   const attr = key.includes(':') ? 'property' : 'name';
   let el = document.querySelector(`meta[${attr}="${key}"]`);
+  let created = false;
   if (!el) {
     el = document.createElement('meta');
     el.setAttribute(attr, key);
     document.head.appendChild(el);
+    created = true;
+  }
+  if (!managed.has(key)) {
+    managed.set(key, { el, created, original: created ? null : el.getAttribute('content') });
   }
   el.setAttribute('content', content);
+}
+
+// Drop every managed <meta> whose key is no longer provided: an element we
+// created is removed; a pre-existing one gets its original content back.
+function pruneMeta(managed, meta) {
+  for (const [key, info] of managed) {
+    if (meta[key] != null) continue;
+    if (info.created) info.el.remove();
+    else if (info.original != null) info.el.setAttribute('content', info.original);
+    else info.el.removeAttribute('content');
+    managed.delete(key);
+  }
 }
 
 /**
@@ -98,6 +118,8 @@ export function head(options = {}) {
   const headStore = store('head', {});
   let lastPath = null;
   let clearing = false; // the reset loop below writes the store — don't recurse
+  const managed = new Map(); // meta keys we wrote → { el, created, original }
+  let titleBefore = null;    // document.title before the first store override
 
   function apply() {
     if (typeof document === 'undefined' || clearing) return;
@@ -115,12 +137,19 @@ export function head(options = {}) {
     // component composes the final string); config titles keep the template.
     const storeTitle = headStore.title;
     if (storeTitle != null) {
+      if (titleBefore === null) titleBefore = document.title;
       document.title = String(storeTitle);
     } else {
       let title = resolveTitle(path);
       if (title != null) {
         if (typeof options.titleTemplate === 'function') title = options.titleTemplate(title);
         document.title = title;
+        titleBefore = null; // config took over — nothing to restore later
+      } else if (titleBefore !== null) {
+        // A store title was cleared (route change) and the config has none for
+        // this path — restore what was there, don't leak the old route's title.
+        document.title = titleBefore;
+        titleBefore = null;
       }
     }
     // Meta: config first, store overrides win; store-only keys are additions.
@@ -133,8 +162,11 @@ export function head(options = {}) {
     for (const [key, v] of Object.entries(headStore)) {
       if (key !== 'title' && v != null) meta[key] = v;
     }
+    // Keys we wrote before but that nothing provides now (a store-only
+    // addition from the previous route) are removed/restored — never stale.
+    pruneMeta(managed, meta);
     for (const [key, val] of Object.entries(meta)) {
-      if (val != null) upsertMeta(key, String(val));
+      if (val != null) upsertMeta(key, String(val), managed);
     }
   }
 

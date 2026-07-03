@@ -71,6 +71,22 @@ await test('each scope: item + index defined inside, not outside; key expr sees 
   assert.deepEqual(un.map((d) => d.message.match(/'(\w+)'/)[1]), ['todo'], 'only the {todo} outside the block');
 });
 
+await test('await as="…" alias is in scope inside the block, not outside', () => {
+  const a = analyze(`<template await="loadUser(id)" as="user">
+  <p>Loading…</p>
+  <template then><h1>Hi {user.name}</h1></template>
+  <template catch><p>{user.message}</p></template>
+</template>
+<p>{user}</p>
+<script>
+  let id = 1;
+  async function loadUser(id) { return { name: 'x' }; }
+</script>`);
+  const un = byCode(a, 'undefined-binding');
+  assert.deepEqual(un.map((d) => d.message.match(/'(\w+)'/)[1]), ['user'],
+    'only the {user} outside the await block is flagged');
+});
+
 await test('each without key= is a hint; malformed each is an error', () => {
   const ok = analyze(`<template each="t in items"><li>{t}</li></template>
 <script>let items = [];</script>`);
