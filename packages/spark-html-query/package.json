@@ -1,6 +1,6 @@
 {
   "name": "spark-html-query",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "Declarative async data for spark-html — a self-fetching reactive store with loading/error/refetch. One dependency.",
   "type": "module",
   "main": "./src/index.js",

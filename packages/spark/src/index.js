@@ -1212,7 +1212,7 @@ function makeImporter(componentEl) {
       const base = new URL(componentEl.__sparkImportPath || '.', document.baseURI || location.href);
       resolved = new URL(spec, base).href;
     }
-    return import(/* @vite-ignore */ resolved);
+    return import(resolved);
   };
 }
 

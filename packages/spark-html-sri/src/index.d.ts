@@ -16,7 +16,7 @@ export function verify(
 ): Promise<boolean>;
 
 export interface SriOptions {
-  /** path → SRI string. Default: the manifest the vite plugin baked into the page. */
+  /** path → SRI string. Default: the manifest the build step baked into the page. */
   manifest?: Record<string, string>;
   /** Allowed remote hosts for URL imports (subdomains included). */
   allow?: string[];

@@ -1,6 +1,6 @@
 /**
  * spark-html-sri — hashing, verification, the runtime fetch guard
- * (manifest, allow list, TOFU), and the vite plugin's stamping pass.
+ * (manifest, allow list, TOFU), and the spark-html-bun step's stamping pass.
  */
 import { strict as assert } from 'node:assert';
 import { createHash } from 'node:crypto';
@@ -8,7 +8,7 @@ import { mkdtempSync, mkdirSync, writeFileSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { integrity, verify, sri, resetTofu, DEFAULT_ALLOW } from '../src/index.js';
-import sparkSri from '../src/vite.js';
+import sparkSri from '../src/bun.js';
 
 let pass = 0, fail = 0;
 async function test(name, fn) {
@@ -133,7 +133,7 @@ await test('enforce:false fails open — warns, observes, but never blocks', asy
   off();
 });
 
-await test('vite plugin stamps integrity + crossorigin, bakes the manifest, skips remote tags', async () => {
+await test('bun step stamps integrity + crossorigin, bakes the manifest, skips remote tags', async () => {
   const dist = mkdtempSync(join(tmpdir(), 'spark-sri-'));
   mkdirSync(join(dist, 'assets'));
   mkdirSync(join(dist, 'components'));
@@ -150,8 +150,7 @@ await test('vite plugin stamps integrity + crossorigin, bakes the manifest, skip
     '</head><body><div import="components/nav"></div></body></html>');
 
   const p = sparkSri();
-  p.configResolved({ build: { outDir: dist }, base: '/' });
-  await p.closeBundle.handler();
+  await p.run({ outDir: dist, base: '/' });
 
   const page = readFileSync(join(dist, 'index.html'), 'utf8');
   assert.ok(page.includes(`src="/assets/index-abc.js" integrity="${nodeSri(js)}" crossorigin="anonymous"`), 'script stamped');
@@ -163,11 +162,11 @@ await test('vite plugin stamps integrity + crossorigin, bakes the manifest, skip
   assert.ok(!('/index.html' in manifest), 'pages themselves are not manifest entries');
   assert.equal(readFileSync(join(dist, 'components', 'nav.html'), 'utf8'), frag, 'fragment untouched');
 
-  await p.closeBundle.handler();
+  await p.run({ outDir: dist, base: '/' });
   assert.equal(readFileSync(join(dist, 'index.html'), 'utf8'), page, 'idempotent across runs');
 });
 
-await test('vite plugin honors a non-root base (GitHub Pages)', async () => {
+await test('bun step honors a non-root base (GitHub Pages)', async () => {
   const dist = mkdtempSync(join(tmpdir(), 'spark-sri-base-'));
   mkdirSync(join(dist, 'assets'));
   const js = 'export {}';
@@ -176,8 +175,7 @@ await test('vite plugin honors a non-root base (GitHub Pages)', async () => {
     '<head><script type="module" src="/spark/assets/app.js"></script></head><body></body>');
 
   const p = sparkSri({ algorithm: 'sha512' });
-  p.configResolved({ build: { outDir: dist }, base: '/spark/' });
-  await p.closeBundle.handler();
+  await p.run({ outDir: dist, base: '/spark/' });
 
   const page = readFileSync(join(dist, 'index.html'), 'utf8');
   assert.ok(page.includes(`integrity="${nodeSri(js, 'sha512')}"`), 'base-prefixed href resolved + custom algorithm');
@@ -185,15 +183,14 @@ await test('vite plugin honors a non-root base (GitHub Pages)', async () => {
   assert.ok('/spark/assets/app.js' in manifest, 'manifest keys carry the base');
 });
 
-await test('runtime + plugin agree end-to-end: the baked manifest verifies a real fetch', async () => {
+await test('runtime + build step agree end-to-end: the baked manifest verifies a real fetch', async () => {
   const dist = mkdtempSync(join(tmpdir(), 'spark-sri-e2e-'));
   mkdirSync(join(dist, 'components'));
   const frag = '<h1>{msg}</h1>';
   writeFileSync(join(dist, 'components', 'hero.html'), frag);
   writeFileSync(join(dist, 'index.html'), '<head></head><body></body>');
   const p = sparkSri();
-  p.configResolved({ build: { outDir: dist }, base: '/' });
-  await p.closeBundle.handler();
+  await p.run({ outDir: dist, base: '/' });
   const manifest = JSON.parse(readFileSync(join(dist, 'index.html'), 'utf8').match(/data-spark-sri>(.*?)<\/script>/)[1]);
 
   globalThis.fetch = fakeFetch({

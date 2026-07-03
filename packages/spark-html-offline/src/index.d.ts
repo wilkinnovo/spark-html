@@ -1,4 +1,4 @@
-/** Options shared by the worker generator and the vite plugin. */
+/** Options shared by the worker generator and the build step. */
 export interface OfflineSwOptions {
   /** Same-origin URL substrings to cache too (e.g. ['/components/']). */
   include?: string[];
@@ -39,8 +39,8 @@ declare const _default: {
 };
 export default _default;
 
-/** Vite plugin: emits the worker in build, serves it in dev. */
-export interface OfflineVitePluginOptions extends OfflineSwOptions {
-  /** Emitted file name (default 'spark-sw.js'). */
+/** spark-html-bun build step: writes the worker in build, serves it in dev. */
+export interface OfflineBuildOptions extends OfflineSwOptions {
+  /** Written file name (default 'spark-sw.js'). */
   file?: string;
 }

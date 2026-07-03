@@ -28,31 +28,29 @@ npx spark-prerender dist/index.html dist/docs.html
 npx spark-prerender site/index.html --out build --root site
 ```
 
-As a post-build step over a Vite `dist/`:
+As a post-build step over any `dist/`:
 
 ```bash
-vite build
+spark build
 npx spark-prerender dist/index.html dist/docs.html
 ```
 
-### Vite plugin (auto on build)
+### spark-html-bun pipeline step (auto on build)
 
-Or let it run automatically as part of `vite build`:
+Or let it run automatically as part of `spark build`:
 
 ```js
-// vite.config.js
-import spark from 'spark-html/vite';
-import prerender from 'spark-prerender/vite';
+// spark.config.js
+import prerender from 'spark-prerender/bun';
 
 export default {
-  plugins: [
-    spark(),
+  pipeline: [
     prerender({ pages: ['index.html', 'docs.html'] }),
   ],
 };
 ```
 
-It runs in `closeBundle`, rewriting each page in place. A page that fails is
+It runs after the build, rewriting each page in place. A page that fails is
 logged and skipped — the build still succeeds with the client-rendered HTML,
 so it never breaks your build.
 
@@ -179,7 +177,7 @@ spark-prerender dist/index.html
 
 Each route's content is baked in with an adoptable `data-spark-route` marker,
 so the client router **adopts** it in place — crawlers get real content per
-URL, users get no flash. The Vite plugin does the same on `vite build`.
+URL, users get no flash. The pipeline step does the same on `spark build`.
 Programmatic helpers: `routesOf(html)`, `routeToFile(route)`,
 `redirectsFor(routes)`, `vercelConfigFor(routes)`.
 
@@ -237,6 +235,6 @@ virtual DOM, no build step required. Add only what you use.
 | [`spark-html-manifest`](https://www.npmjs.com/package/spark-html-manifest) | PWA manifest + icons + head tags (and optional service worker) from one config. |
 | [`spark-html-offline`](https://www.npmjs.com/package/spark-html-offline) | Offline URL imports — a service worker that caches CDN components. |
 | [`spark-html-sri`](https://www.npmjs.com/package/spark-html-sri) | Subresource Integrity — hash + verify assets and remote components. |
-| [`create-spark-html-app`](https://www.npmjs.com/package/create-spark-html-app) | Scaffold a Vite + spark-html app in one command. |
+| [`create-spark-html-app`](https://www.npmjs.com/package/create-spark-html-app) | Scaffold a spark-html app in one command. |
 | [`prettier-plugin-spark`](https://www.npmjs.com/package/prettier-plugin-spark) | Prettier for components — formats `<script>`/`<style>`, markup stays byte-for-byte. |
 | [`spark-html-language-server`](https://www.npmjs.com/package/spark-html-language-server) | LSP — diagnostics, go-to-definition, prop autocomplete, hover docs. |

@@ -17,11 +17,10 @@ offline();
 ```
 
 ```js
-// vite.config.js — emits /spark-sw.js in build, serves it in dev
-import spark from 'spark-html/vite';
-import offlineSw from 'spark-html-offline/vite';
+// spark.config.js — writes /spark-sw.js in build, serves it in dev
+import offlineSw from 'spark-html-offline/bun';
 
-export default { plugins: [spark(), offlineSw()] };
+export default { pipeline: [offlineSw()] };
 ```
 
 ```html
@@ -54,9 +53,9 @@ own assets behave exactly as before.
 ## Options
 
 ```js
-// vite.config.js
+// spark.config.js
 offlineSw({
-  file: 'spark-sw.js',        // emitted worker file name
+  file: 'spark-sw.js',        // written worker file name
   include: ['/components/'],  // ALSO cache these same-origin paths
   exclude: ['/api/'],         // never touch these (substring match)
   cacheName: 'spark-offline-v1',
@@ -77,7 +76,7 @@ just without the safety net.
 
 ## No build step?
 
-You don't need Vite. Generate the worker once and host it next to
+You don't need the build step. Generate the worker once and host it next to
 `index.html`:
 
 ```js
@@ -96,7 +95,7 @@ Then call `offline()` from any `<script type="module">`.
 | `swSource(options?)` | The full worker source as a string. |
 | `shouldHandle(url, origin, config?)` | The matching rule the worker uses (exported for tests/tooling). |
 | `CACHE_NAME` | Default cache bucket name (`'spark-offline-v1'`). |
-| `spark-html-offline/vite` | Vite plugin — emits the worker in build, serves it in dev. |
+| `spark-html-offline/bun` | Build step — writes the worker in build, serves it in dev. |
 
 ## The Spark family
 
@@ -120,7 +119,7 @@ virtual DOM, no build step required. Add only what you use.
 | [`spark-html-manifest`](https://www.npmjs.com/package/spark-html-manifest) | PWA manifest + icons + head tags (and optional service worker) from one config. |
 | [`spark-html-offline`](https://www.npmjs.com/package/spark-html-offline) | Offline URL imports — a service worker that caches CDN components. |
 | [`spark-html-sri`](https://www.npmjs.com/package/spark-html-sri) | Subresource Integrity — hash + verify assets and remote components. |
-| [`create-spark-html-app`](https://www.npmjs.com/package/create-spark-html-app) | Scaffold a Vite + spark-html app in one command. |
+| [`create-spark-html-app`](https://www.npmjs.com/package/create-spark-html-app) | Scaffold a spark-html app in one command. |
 | [`prettier-plugin-spark`](https://www.npmjs.com/package/prettier-plugin-spark) | Prettier for components — formats `<script>`/`<style>`, markup stays byte-for-byte. |
 | [`spark-html-language-server`](https://www.npmjs.com/package/spark-html-language-server) | LSP — diagnostics, go-to-definition, prop autocomplete, hover docs. |
 

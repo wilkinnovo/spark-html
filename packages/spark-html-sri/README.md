@@ -12,12 +12,11 @@ sri();
 ```
 
 ```js
-// vite.config.js — after prerender()
-import spark from 'spark-html/vite';
-import prerender from 'spark-prerender/vite';
-import sriPlugin from 'spark-html-sri/vite';
+// spark.config.js — sri() runs last, after prerender()
+import prerender from 'spark-prerender/bun';
+import sriPlugin from 'spark-html-sri/bun';
 
-export default { plugins: [spark(), prerender(), sriPlugin()] };
+export default { pipeline: [prerender(), sriPlugin()] };
 ```
 
 ## Install
@@ -28,8 +27,8 @@ npm install spark-html-sri
 
 ## What you get
 
-**Local files — fully automatic, zero config.** At build time the vite
-plugin hashes every JS/CSS file and every component fragment (SHA-384 by
+**Local files — fully automatic, zero config.** At build time the build
+step hashes every JS/CSS file and every component fragment (SHA-384 by
 default), stamps `integrity` + `crossorigin="anonymous"` onto the
 `<script>`/`<link>` tags (the browser enforces those natively), and bakes
 a path → hash manifest into each page. At runtime `sri()` verifies every
@@ -69,7 +68,7 @@ or `false` to override.
 
 ```js
 sri({
-  manifest: { '/components/nav.html': 'sha384-…' }, // default: baked in by the vite plugin
+  manifest: { '/components/nav.html': 'sha384-…' }, // default: baked in by the build step
   allow: ['esm.sh'],          // remote hosts (subdomains included)
   enforce: 'auto',            // true | false | 'auto' (auto = enforce unless localhost)
   onViolation: (msg, url) => report(msg, url),
@@ -89,7 +88,7 @@ sriPlugin({ algorithm: 'sha384' }); // 'sha256' | 'sha384' | 'sha512'
 | `verify(data, integrityString)` | Check data against an SRI string (space-separated list allowed). |
 | `resetTofu()` | Forget every remembered remote-component hash. |
 | `DEFAULT_ALLOW` | The default remote allow list. |
-| `spark-html-sri/vite` | Build plugin — hash, stamp, bake the manifest. |
+| `spark-html-sri/bun` | Build step — hash, stamp, bake the manifest. |
 
 ## Why not put this in the core?
 
@@ -119,7 +118,7 @@ virtual DOM, no build step required. Add only what you use.
 | [`spark-html-manifest`](https://www.npmjs.com/package/spark-html-manifest) | PWA manifest + icons + head tags (and optional service worker) from one config. |
 | [`spark-html-offline`](https://www.npmjs.com/package/spark-html-offline) | Offline URL imports — a service worker that caches CDN components. |
 | [`spark-html-sri`](https://www.npmjs.com/package/spark-html-sri) | Subresource Integrity — hash + verify assets and remote components. |
-| [`create-spark-html-app`](https://www.npmjs.com/package/create-spark-html-app) | Scaffold a Vite + spark-html app in one command. |
+| [`create-spark-html-app`](https://www.npmjs.com/package/create-spark-html-app) | Scaffold a spark-html app in one command. |
 | [`prettier-plugin-spark`](https://www.npmjs.com/package/prettier-plugin-spark) | Prettier for components — formats `<script>`/`<style>`, markup stays byte-for-byte. |
 | [`spark-html-language-server`](https://www.npmjs.com/package/spark-html-language-server) | LSP — diagnostics, go-to-definition, prop autocomplete, hover docs. |
 

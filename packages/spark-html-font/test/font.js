@@ -1,6 +1,6 @@
 /**
  * spark-html-font — @font-face/preload/fallback generation, runtime
- * injection, and the vite plugin's head insertion.
+ * injection, and the bun step's head insertion.
  */
 import '../../spark/test/dom-shim.js';
 import { strict as assert } from 'node:assert';
@@ -8,7 +8,7 @@ import { mkdtempSync, mkdirSync, writeFileSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { fonts, fontCss, fontLinks, fontHtml } from '../src/index.js';
-import sparkFont from '../src/vite.js';
+import sparkFont from '../src/bun.js';
 
 let pass = 0, fail = 0;
 async function test(name, fn) {
@@ -78,15 +78,14 @@ await test('fonts() injects into document.head once and stop() removes it', () =
   assert.equal(document.head.querySelectorAll('[data-spark-font]').length, 0, 'stop() cleans up');
 });
 
-await test('vite plugin injects before </head> in pages, skips fragments, idempotent', async () => {
+await test('bun step injects before </head> in pages, skips fragments, idempotent', async () => {
   const dist = mkdtempSync(join(tmpdir(), 'spark-font-'));
   mkdirSync(join(dist, 'components'));
   writeFileSync(join(dist, 'index.html'), '<!doctype html><html><head><title>t</title></head><body>hi</body></html>', 'utf8');
   writeFileSync(join(dist, 'components', 'card.html'), '<div class="card">{title}</div>', 'utf8');
 
   const p = sparkFont(config);
-  p.configResolved({ build: { outDir: dist } });
-  await p.closeBundle.handler();
+  await p.run({ outDir: dist });
 
   const page = readFileSync(join(dist, 'index.html'), 'utf8');
   assert.ok(page.includes('<style data-spark-font>'), 'style baked into the page');
@@ -94,7 +93,7 @@ await test('vite plugin injects before </head> in pages, skips fragments, idempo
   assert.ok(page.includes('rel="preload"'), 'preload link baked');
   assert.equal(readFileSync(join(dist, 'components', 'card.html'), 'utf8'), '<div class="card">{title}</div>', 'fragment untouched');
 
-  await p.closeBundle.handler(); // second run
+  await p.run({ outDir: dist }); // second run
   const again = readFileSync(join(dist, 'index.html'), 'utf8');
   assert.equal(again, page, 'idempotent across runs');
 });

@@ -8,14 +8,14 @@
 </div>
 
 <textarea class="out" bind:value="json" readonly rows="12" spellcheck="false"></textarea>
-<p class="meta">manifestJson() live — at build time the vite plugin also resizes your icon to every size, injects the &lt;head&gt; tags, and (optionally) emits an offline app-shell worker</p>
+<p class="meta">manifestJson() live — at build time the build step also resizes your icon to every size, injects the &lt;head&gt; tags, and (optionally) emits an offline app-shell worker</p>
 
 <script>
   let name = 'My Spark App';
   let color = '#ffd24a';
   let json = '';
 
-  // The exact manifestJson() the vite plugin calls (exposed via main.js).
+  // The exact manifestJson() the build step calls (exposed via main.js).
   // Guarded: prerender runs this component without main.js.
   $: json = typeof window !== 'undefined' && window.__pgManifest
     ? JSON.stringify(window.__pgManifest({ name, themeColor: color, icon: 'public/icon.png' }), null, 2)

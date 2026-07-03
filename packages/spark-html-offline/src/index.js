@@ -12,8 +12,8 @@
  *   import { offline } from 'spark-html-offline';
  *   offline();
  *
- *   // vite.config.js — emits + serves the worker file for you
- *   import offlineSw from 'spark-html-offline/vite';
+ *   // spark.config.js — writes + serves the worker file for you
+ *   import offlineSw from 'spark-html-offline/bun';
  *   plugins: [spark(), offlineSw()]
  *
  * Works with any CDN (esm.sh, unpkg, jsdelivr, your own). By default it
@@ -53,7 +53,7 @@ export function shouldHandle(url, origin, config) {
 
 /**
  * The service-worker source, as a string — write it to a file served from
- * your origin (the vite plugin does this for you as /spark-sw.js).
+ * your origin (the bun build step does this for you as /spark-sw.js).
  *
  * Strategy: cache-first with background revalidation (stale-while-
  * revalidate). First visit fetches + caches; every visit after serves

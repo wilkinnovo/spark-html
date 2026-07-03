@@ -384,13 +384,11 @@ persist('pg-prefs', { opens: 0, note: '' });
       <p class="demo-tag">● live · spark-prerender — this site's own build artifacts</p>
       <div import="components/demo-prerender"></div>
     </div>
-    <pre class="src" spark-ignore><span class="fname">vite.config.js — the whole SEO setup</span>
-import spark from 'spark-html/vite';
-import prerender from 'spark-prerender/vite';
+    <pre class="src" spark-ignore><span class="fname">spark.config.js — the whole SEO setup</span>
+import prerender from 'spark-prerender/bun';
 
 export default {
-  plugins: [
-    spark(),
+  pipeline: [
     prerender({
       site: 'https://wilkinnovo.github.io/spark',
       // routes are auto-detected from &lt;template route&gt; blocks;
@@ -405,13 +403,11 @@ export default {
       <p class="demo-tag">◆ build-time · spark-html-image — what the plugin does to your markup</p>
       <div import="components/demo-image"></div>
     </div>
-    <pre class="src" spark-ignore><span class="fname">vite.config.js — zero further config</span>
-import spark from 'spark-html/vite';
-import image from 'spark-html-image/vite';
+    <pre class="src" spark-ignore><span class="fname">spark.config.js — zero further config</span>
+import image from 'spark-html-image/bun';
 
 export default {
-  plugins: [
-    spark(),
+  pipeline: [
     image(), // every &lt;img&gt; in pages and components:
              //   · converted to webp + avif at multiple widths
              //   · wrapped in &lt;picture&gt; with srcset
@@ -444,14 +440,14 @@ if (import.meta.env?.DEV) devtools();
       <p class="demo-tag">● live · spark-html-offline — the worker's actual routing rule</p>
       <div import="components/demo-offline"></div>
     </div>
-    <pre class="src" spark-ignore><span class="fname">main.js + vite.config.js — the whole setup</span>
+    <pre class="src" spark-ignore><span class="fname">main.js + spark.config.js — the whole setup</span>
 // main.js — zero config
 import { offline } from 'spark-html-offline';
 offline();
 
-// vite.config.js — emits + serves /spark-sw.js
-import offlineSw from 'spark-html-offline/vite';
-plugins: [spark(), offlineSw()]
+// spark.config.js — writes + serves /spark-sw.js
+import offlineSw from 'spark-html-offline/bun';
+pipeline: [offlineSw()]
 
 // Now this works on a plane:
 //   &lt;div import="https://esm.sh/some-pkg/card.html"&gt;&lt;/div&gt;
@@ -464,15 +460,15 @@ plugins: [spark(), offlineSw()]
       <p class="demo-tag">● live · spark-html-sri — tamper with a "shipped" component and watch it get blocked</p>
       <div import="components/demo-sri"></div>
     </div>
-    <pre class="src" spark-ignore><span class="fname">main.js + vite.config.js — the whole setup</span>
+    <pre class="src" spark-ignore><span class="fname">main.js + spark.config.js — the whole setup</span>
 // main.js — before mount()/router()
 import { sri } from 'spark-html-sri';
 sri(); // verifies every component fetch against the
        // manifest the build baked into the page
 
-// vite.config.js — after prerender()
-import sriPlugin from 'spark-html-sri/vite';
-plugins: [spark(), prerender(), sriPlugin()]
+// spark.config.js — sri() runs last, after prerender()
+import sriPlugin from 'spark-html-sri/bun';
+pipeline: [prerender(), sriPlugin()]
 
 // Remote imports: allow list + trust-on-first-use —
 //   sri({ allow: ['esm.sh', 'unpkg.com'] })
@@ -484,10 +480,10 @@ plugins: [spark(), prerender(), sriPlugin()]
       <p class="demo-tag">● live · spark-html-manifest — the exact manifest the plugin would emit</p>
       <div import="components/demo-manifest"></div>
     </div>
-    <pre class="src" spark-ignore><span class="fname">vite.config.js — a full PWA from one config</span>
-import manifest from 'spark-html-manifest/vite';
+    <pre class="src" spark-ignore><span class="fname">spark.config.js — a full PWA from one config</span>
+import manifest from 'spark-html-manifest/bun';
 
-plugins: [spark(), prerender(), manifest({
+pipeline: [prerender(), manifest({
   name: 'My Spark App',
   themeColor: '#ffd24a',
   icon: 'public/icon.png', // one image → 192 + 512 png

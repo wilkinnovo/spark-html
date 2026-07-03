@@ -1,14 +1,15 @@
 # create-spark-html-app
 
-Scaffold a [Spark](https://github.com/wilkinnovo/spark) app in seconds — a Vite
-project wired to `spark-html` with live, reactive **Spark** components.
+Scaffold a [Spark](https://github.com/wilkinnovo/spark) app in seconds — a
+Bun-powered project (dev / build / preview via `spark-html-bun`) wired to
+`spark-html` with live, reactive **Spark** components.
 
 ## Usage
 
 ```bash
-npm create spark-html-app@latest my-app
+bun create spark-html-app my-app
 # or
-npx create-spark-html-app my-app
+bunx create-spark-html-app my-app
 ```
 
 Then:
@@ -74,7 +75,7 @@ virtual DOM, no build step required. Add only what you use.
 | [`spark-html-manifest`](https://www.npmjs.com/package/spark-html-manifest) | PWA manifest + icons + head tags (and optional service worker) from one config. |
 | [`spark-html-offline`](https://www.npmjs.com/package/spark-html-offline) | Offline URL imports — a service worker that caches CDN components. |
 | [`spark-html-sri`](https://www.npmjs.com/package/spark-html-sri) | Subresource Integrity — hash + verify assets and remote components. |
-| [`create-spark-html-app`](https://www.npmjs.com/package/create-spark-html-app) | Scaffold a Vite + spark-html app in one command. |
+| [`create-spark-html-app`](https://www.npmjs.com/package/create-spark-html-app) | Scaffold a spark-html app in one command. |
 | [`prettier-plugin-spark`](https://www.npmjs.com/package/prettier-plugin-spark) | Prettier for components — formats `<script>`/`<style>`, markup stays byte-for-byte. |
 | [`spark-html-language-server`](https://www.npmjs.com/package/spark-html-language-server) | LSP — diagnostics, go-to-definition, prop autocomplete, hover docs. |
 

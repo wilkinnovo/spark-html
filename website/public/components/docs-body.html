@@ -16,7 +16,7 @@
     <a href="#stores">Stores</a>
     <a href="#forms">Forms</a>
     <a href="#api">JavaScript API</a>
-    <a href="#vite">Vite plugin</a>
+    <a href="#build">Dev server &amp; build</a>
     <a href="#editors">Editor support</a>
     <a href="#how">How it works</a>
     <a href="#debugging">Debugging</a>
@@ -36,11 +36,12 @@
     <p>This is a deliberate scope, not a missing roadmap — Spark targets the very large class of sites and apps that need interactivity, components, and shared state without a compiler's ceiling of complexity.</p>
 
     <h2 id="install">Installation</h2>
-    <p>Scaffold a complete, ready-to-run app (Vite + the Spark plugin + a live welcome screen) in one command:</p>
-    <pre spark-ignore>npx create-spark-html-app yourapp</pre>
-    <p>Then <code>cd yourapp &amp;&amp; npm install &amp;&amp; npm run dev</code>. Or add Spark to an existing project:</p>
-    <pre spark-ignore>npm install spark-html</pre>
-    <p>Spark is a runtime library plus an optional Vite plugin. There is no compile step — component files are fetched and booted in the browser.</p>
+    <p>Scaffold a complete, ready-to-run app (Bun dev server + the Spark runtime + a live welcome screen) in one command:</p>
+    <pre spark-ignore>bunx create-spark-html-app yourapp</pre>
+    <p>Then <code>cd yourapp &amp;&amp; bun install &amp;&amp; bun dev</code>. Or add Spark to an existing project:</p>
+    <pre spark-ignore>bun add spark-html
+bun add -d spark-html-bun</pre>
+    <p>Spark is a runtime library plus an optional Bun-powered dev server and build (<code>spark-html-bun</code>). There is no compile step — component files are fetched and booted in the browser.</p>
 
     <h3 id="no-build">No build, no install</h3>
     <p>Because components are fetched at runtime and the runtime is a single ES module, you can use Spark with <strong>zero tooling</strong> — straight from a CDN with an import map. No npm, no bundler, no compiler:</p>
@@ -289,15 +290,22 @@ query('user', () =&gt; fetch('/api/user').then((r) =&gt; r.json()));</pre>
     </table>
     <p>Inside component scripts, the builtins <code>useStore(name)</code> and <code>props</code> (the raw props object) are always in scope.</p>
 
-    <h2 id="vite">Vite plugin</h2>
-    <pre spark-ignore>// vite.config.js
-import { defineConfig } from 'vite';
-import spark from 'spark-html/vite';
+    <h2 id="build">Dev server &amp; build</h2>
+    <pre spark-ignore>// package.json
+"scripts": {
+  "dev":     "spark dev",      // Bun dev server + scoped component HMR
+  "build":   "spark build",    // bundle the app shell + run the pipeline
+  "preview": "spark preview"   // serve dist/ like the deploy targets do
+}</pre>
+    <pre spark-ignore>// spark.config.js — optional; every field has a default
+import prerender from 'spark-prerender/bun';
 
-export default defineConfig({
-  plugins: [spark()],          // options: { componentsDir: 'components' }
-});</pre>
-    <p>The plugin serves component fragments raw (so Vite doesn't inject HMR scripts into them) and triggers a full page reload whenever a component file changes. Spark itself has no hard Vite dependency — any static file server works.</p>
+export default {
+  base: '/',                   // deploy prefix (GitHub Pages: '/repo/')
+  componentsDir: 'components', // where your .html fragments live
+  pipeline: [prerender()],     // post-build steps, in order
+};</pre>
+    <p><code>spark-html-bun</code> serves component fragments raw (no HMR script injected into them) and hot-reloads only the edited component, siblings' state preserved. The build bundles your app shell with Bun and runs the pipeline over <code>dist/</code>. Spark itself has no hard dependency on it — any static file server works.</p>
 
     <h2 id="editors">Editor support</h2>
     <p>Spark components are plain <code>.html</code> files, so they syntax-highlight out of the box. For full <code>{interpolation}</code> highlighting there are extensions for <a href="https://github.com/wilkinnovo/spark/tree/main/editors/zed" target="_blank" rel="noopener">Zed</a> and <a href="https://github.com/wilkinnovo/spark/tree/main/editors/vscode" target="_blank" rel="noopener">VS Code</a>.</p>
@@ -349,13 +357,14 @@ npx spark-prerender dist/index.html dist/docs.html</pre>
   let photos = [];
   async function load() { photos = await (await fetch('/api/photos')).json(); }
 &lt;/script&gt;</pre>
-    <p class="note">There's also a Vite plugin (<code>spark-prerender/vite</code>) that prerenders <code>dist/*.html</code> automatically on build. See the package README for options.</p>
+    <p class="note">There's also a build step (<code>spark-prerender/bun</code>) that prerenders <code>dist/*.html</code> automatically on <code>spark build</code>. See the package README for options.</p>
 
     <h2 id="ecosystem">Ecosystem</h2>
     <p>The core stays tiny on purpose; everything else ships as a small, single-purpose sibling package. Add only what you use — each one is documented on its npm page:</p>
     <table>
       <tr><th>Package</th><th>What it does</th></tr>
       <tr><td><a href="https://www.npmjs.com/package/spark-html" target="_blank" rel="noopener"><code>spark-html</code></a></td><td>The runtime — components, reactivity, stores, forms, scoped styles. 13&nbsp;kB gzip, 0 deps.</td></tr>
+      <tr><td><a href="https://www.npmjs.com/package/spark-html-bun" target="_blank" rel="noopener"><code>spark-html-bun</code></a></td><td>Dev server, bundler &amp; preview on Bun — scoped HMR, no-build dev, post-build pipeline.</td></tr>
       <tr><td><a href="https://www.npmjs.com/package/spark-html-router" target="_blank" rel="noopener"><code>spark-html-router</code></a></td><td><code>&lt;template route&gt;</code> routing — nested routes/layouts, <code>route.query</code>, active links.</td></tr>
       <tr><td><a href="https://www.npmjs.com/package/spark-html-theme" target="_blank" rel="noopener"><code>spark-html-theme</code></a></td><td>Dark/light/system theming in one line — persisted, no flash.</td></tr>
       <tr><td><a href="https://www.npmjs.com/package/spark-html-head" target="_blank" rel="noopener"><code>spark-html-head</code></a></td><td>Reactive <code>&lt;title&gt;</code>/<code>&lt;meta&gt;</code> per route + a <code>head</code> store.</td></tr>
@@ -370,7 +379,7 @@ npx spark-prerender dist/index.html dist/docs.html</pre>
       <tr><td><a href="https://www.npmjs.com/package/spark-html-manifest" target="_blank" rel="noopener"><code>spark-html-manifest</code></a></td><td>PWA manifest + icons + head tags (and optional service worker) from one config.</td></tr>
       <tr><td><a href="https://www.npmjs.com/package/spark-html-offline" target="_blank" rel="noopener"><code>spark-html-offline</code></a></td><td>Offline URL imports — a service worker that caches CDN components.</td></tr>
       <tr><td><a href="https://www.npmjs.com/package/spark-html-sri" target="_blank" rel="noopener"><code>spark-html-sri</code></a></td><td>Subresource Integrity — hash + verify assets and remote components.</td></tr>
-      <tr><td><a href="https://www.npmjs.com/package/create-spark-html-app" target="_blank" rel="noopener"><code>create-spark-html-app</code></a></td><td>Scaffold a Vite + spark-html app in one command.</td></tr>
+      <tr><td><a href="https://www.npmjs.com/package/create-spark-html-app" target="_blank" rel="noopener"><code>create-spark-html-app</code></a></td><td>Scaffold a spark-html app in one command.</td></tr>
       <tr><td><a href="https://www.npmjs.com/package/prettier-plugin-spark" target="_blank" rel="noopener"><code>prettier-plugin-spark</code></a></td><td>Prettier for components — formats <code>&lt;script&gt;</code>/<code>&lt;style&gt;</code>, markup stays byte-for-byte.</td></tr>
       <tr><td><a href="https://www.npmjs.com/package/spark-html-language-server" target="_blank" rel="noopener"><code>spark-html-language-server</code></a></td><td>LSP — diagnostics, go-to-definition, prop autocomplete, hover docs.</td></tr>
     </table>

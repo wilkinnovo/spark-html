@@ -1,20 +1,18 @@
 # ⚡ spark-html-manifest
 
 PWA setup for [spark-html](https://www.npmjs.com/package/spark-html) sites
-from a **single config** — a Vite plugin that generates
+from a **single config** — a `spark-html-bun` build step that generates
 `manifest.webmanifest`, resizes your icons from one source image, injects
 the `<head>` tags, and (optionally) emits a minimal offline app-shell
 service worker. No manual icon exports, no copy-paste boilerplate.
 
 ```js
-// vite.config.js
-import spark from 'spark-html/vite';
-import prerender from 'spark-prerender/vite';
-import manifest from 'spark-html-manifest/vite';
+// spark.config.js
+import prerender from 'spark-prerender/bun';
+import manifest from 'spark-html-manifest/bun';
 
 export default {
-  plugins: [
-    spark(),
+  pipeline: [
     prerender(),
     manifest({
       name: 'My Spark App',
@@ -27,7 +25,7 @@ export default {
 };
 ```
 
-That's the whole setup. `npm run build` now produces:
+That's the whole setup. `bun run build` now produces:
 
 - `manifest.webmanifest` — name, colors, display mode, icons
 - `icons/spark-192.png`, `icons/spark-512.png` — resized from your source
@@ -69,7 +67,7 @@ manifest({
 `offline: true` emits a deliberately small service worker:
 
 - the **app shell** (`shell` URLs) is precached at install;
-- Vite's hash-named `/assets/…` files are **cache-first** (they're immutable);
+- the build's hash-named `/assets/…` files are **cache-first** (they're immutable);
 - everything else same-origin is **network-first** with cache fallback — the
   app opens offline but is never a deploy behind while online;
 - offline navigation to any route falls back to the shell.
@@ -116,7 +114,7 @@ virtual DOM, no build step required. Add only what you use.
 | [`spark-html-manifest`](https://www.npmjs.com/package/spark-html-manifest) | PWA manifest + icons + head tags (and optional service worker) from one config. |
 | [`spark-html-offline`](https://www.npmjs.com/package/spark-html-offline) | Offline URL imports — a service worker that caches CDN components. |
 | [`spark-html-sri`](https://www.npmjs.com/package/spark-html-sri) | Subresource Integrity — hash + verify assets and remote components. |
-| [`create-spark-html-app`](https://www.npmjs.com/package/create-spark-html-app) | Scaffold a Vite + spark-html app in one command. |
+| [`create-spark-html-app`](https://www.npmjs.com/package/create-spark-html-app) | Scaffold a spark-html app in one command. |
 | [`prettier-plugin-spark`](https://www.npmjs.com/package/prettier-plugin-spark) | Prettier for components — formats `<script>`/`<style>`, markup stays byte-for-byte. |
 | [`spark-html-language-server`](https://www.npmjs.com/package/spark-html-language-server) | LSP — diagnostics, go-to-definition, prop autocomplete, hover docs. |
 

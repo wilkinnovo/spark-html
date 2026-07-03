@@ -1,5 +1,5 @@
 /**
- * spark-html-image — build-time image optimization (Vite plugin).
+ * spark-html-image — build-time image optimization (spark-html-bun step).
  * Converts local raster <img> references in the built HTML (pages and
  * component fragments) to webp/avif variants with a responsive srcset.
  */
@@ -19,10 +19,8 @@ export interface SparkImageOptions {
   lazy?: boolean;
 }
 
-/** Vite plugin: optimize <img> references in the build output. */
+/** spark-html-bun pipeline step: optimize <img> references in the build output. */
 export default function sparkImage(options?: SparkImageOptions): {
   name: string;
-  apply: 'build';
-  configResolved(config: unknown): void;
-  closeBundle: { order: 'post'; handler(): Promise<void> };
+  run(ctx: { outDir: string }): Promise<void>;
 };

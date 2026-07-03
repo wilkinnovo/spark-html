@@ -4,8 +4,8 @@
  * Two halves, one mental model (`<script integrity>` — familiar to every
  * web developer):
  *
- * **Local files** — fully automatic, zero config. The vite plugin
- * (spark-html-sri/vite) hashes every built JS/CSS/component fragment,
+ * **Local files** — fully automatic, zero config. The build step
+ * (spark-html-sri/bun) hashes every built JS/CSS/component fragment,
  * injects `integrity` + `crossorigin` into `<script>`/`<link>` tags, and
  * bakes a manifest into each page. At runtime `sri()` verifies every
  * component fetch against that manifest before spark-html boots it.
@@ -120,7 +120,7 @@ function blockedResponse(reason) {
  *
  * @param {object} [options]
  * @param {Record<string,string>} [options.manifest] path → SRI string. Default: the
- *   manifest the vite plugin baked into the page (absent in dev — nothing to verify).
+ *   manifest the build step baked into the page (absent in dev — nothing to verify).
  * @param {string[]} [options.allow] Allowed remote hosts for URL imports
  *   (default: jsdelivr/unpkg/esm.sh/raw.githubusercontent — subdomains included).
  * @param {boolean|'auto'} [options.enforce='auto'] Block on failure. 'auto'

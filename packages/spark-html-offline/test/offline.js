@@ -1,10 +1,13 @@
 /**
  * spark-html-offline — URL matching, worker generation, registration,
- * the worker's fetch strategy (run for real), and the vite plugin.
+ * the worker's fetch strategy (run for real), and the spark-html-bun step.
  */
 import { strict as assert } from 'node:assert';
+import { mkdtempSync, readFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { tmpdir } from 'node:os';
 import { shouldHandle, swSource, offline, CACHE_NAME } from '../src/index.js';
-import sparkOffline from '../src/vite.js';
+import sparkOffline from '../src/bun.js';
 
 let pass = 0, fail = 0;
 async function test(name, fn) {
@@ -146,22 +149,17 @@ await test('offline(): registers the worker; no-ops without serviceWorker', asyn
   delete globalThis.navigator;
 });
 
-await test('vite plugin: emits the worker in build, serves it in dev', async () => {
-  const emitted = [];
-  const plugin = sparkOffline({ include: ['/components/'] });
-  plugin.generateBundle.call({ emitFile: (f) => emitted.push(f) });
-  assert.equal(emitted[0].fileName, 'spark-sw.js', 'default file name');
-  assert.ok(emitted[0].source.includes('"/components/"'), 'config flows into the emitted worker');
+await test('bun step: writes the worker in build, serves it in dev', async () => {
+  const step = sparkOffline({ include: ['/components/'] });
+  const dir = mkdtempSync(join(tmpdir(), 'spark-offline-'));
+  await step.run({ outDir: dir });
+  const source = readFileSync(join(dir, 'spark-sw.js'), 'utf8');
+  assert.ok(source.includes('"/components/"'), 'config flows into the written worker');
 
-  let handler;
-  plugin.configureServer({ middlewares: { use: (fn) => { handler = fn; } } });
-  const res = { headers: {}, setHeader(k, v) { this.headers[k] = v; }, end(body) { this.body = body; } };
-  handler({ url: '/spark-sw.js?t=1' }, res, () => { throw new Error('should not fall through'); });
-  assert.equal(res.headers['Content-Type'], 'text/javascript');
-  assert.equal(res.body, emitted[0].source, 'dev serves the same source');
-  let fell = false;
-  handler({ url: '/other.js' }, res, () => { fell = true; });
-  assert.ok(fell, 'other urls fall through');
+  const routes = step.devRoutes();
+  assert.ok(routes['/spark-sw.js'], 'dev route registered under the worker path');
+  assert.equal(routes['/spark-sw.js'].type, 'text/javascript');
+  assert.equal(routes['/spark-sw.js'].body(), source, 'dev serves the same source');
 });
 
 console.log(`\n${pass} passed, ${fail} failed`);

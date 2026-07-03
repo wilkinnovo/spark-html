@@ -25,18 +25,17 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v6
+      - uses: oven-sh/setup-bun@v2
         with:
-          node-version: 24
-          cache: npm
+          bun-version: latest
 
       - name: Install dependencies (links workspaces)
-        run: npm ci
+        run: bun install
 
       - name: Build website
         # Base path = "/<repo-name>/" so assets and runtime-fetched
         # component fragments resolve on GitHub Pages.
-        run: npm run build -w website
+        run: bun run site:build
         env:
           BASE_PATH: /${{ github.event.repository.name }}/
 

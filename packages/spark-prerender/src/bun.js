@@ -1,22 +1,17 @@
 /**
- * spark-prerender/vite — run the prerender automatically as part of
- * `vite build`, over the emitted `dist/*.html`.
+ * spark-prerender/bun — the prerender as a spark-html-bun pipeline step.
  *
- *   // vite.config.js
- *   import spark from 'spark-html/vite';
- *   import prerender from 'spark-prerender/vite';
- *
+ *   // spark.config.js
+ *   import prerender from 'spark-prerender/bun';
  *   export default {
- *     plugins: [
- *       spark(),
- *       prerender({ pages: ['index.html', 'docs.html'] }),
- *     ],
+ *     pipeline: [prerender({ pages: ['index.html'], site: 'https://example.com' })],
  *   };
  *
- * Runs in `closeBundle` (after assets are written), rewriting each page in
- * place. A failed page logs and is skipped — the build still succeeds with
- * the un-prerendered (client-rendered) HTML, so SEO degrades gracefully and
- * never breaks the build.
+ * Prerenders each page in place, and a
+ * routed entry (<template route>) expands to one file per route + 404.html +
+ * host rewrite rules (_redirects, vercel.json) + sitemap.xml/robots.txt.
+ * A failed page logs and is skipped — the build still succeeds with the
+ * un-prerendered (client-rendered) HTML, so SEO degrades gracefully.
  */
 import { resolve, join, dirname } from 'node:path';
 import { writeFile, mkdir, readFile } from 'node:fs/promises';
@@ -30,22 +25,13 @@ import { prerender, routesOf, routeToFile, redirectsFor, vercelConfigFor, NOT_FO
  * @param {string}   [options.site] Deployed origin (https://example.com). Enables
  *                   sitemap.xml generation and the Sitemap: line in robots.txt.
  * @param {string[]|(() => string[]|Promise<string[]>)} [options.extraRoutes]
- *                   Additional sitemap routes for data-driven pages (e.g. project
- *                   slugs from a CMS): ['/projects/a', '/projects/b'] or a
- *                   (possibly async) function returning them.
+ *                   Additional sitemap routes for data-driven pages.
  */
 export default function sparkPrerender(options = {}) {
   const pages = options.pages || ['index.html'];
-  let outDir = 'dist';
-  let projectRoot = process.cwd();
   return {
     name: 'spark-prerender',
-    apply: 'build',
-    configResolved(config) {
-      if (config && config.build && config.build.outDir) outDir = config.build.outDir;
-      if (config && config.root) projectRoot = config.root;
-    },
-    async closeBundle() {
+    async run({ outDir, projectRoot = process.cwd() }) {
       const root = resolve(outDir);
       for (const page of pages) {
         const file = join(root, page);
@@ -65,9 +51,7 @@ export default function sparkPrerender(options = {}) {
               rendered.push([routeToFile(route), await prerender(file, { root, route, projectRoot, ...(options.prerender || {}) })]);
             }
             // 404.html — GitHub Pages (and most static hosts) serve it for any
-            // unknown path, so no manual generate-404 build step is needed. A
-            // user-provided one always wins: skip if the build already emitted
-            // a 404.html (e.g. from public/) or the app declares a /404 route.
+            // unknown path. A user-provided one always wins.
             if (!existsSync(join(root, '404.html')) && !all.some((r) => routeToFile(r) === '404.html')) {
               rendered.push(['404.html', await prerender(file, { root, route: NOT_FOUND_ROUTE, projectRoot, ...(options.prerender || {}) })]);
             }
@@ -78,15 +62,10 @@ export default function sparkPrerender(options = {}) {
             }
             // _redirects ships in the publish dir (Netlify reads it from the
             // deployed output); vercel.json must live at the PROJECT ROOT —
-            // Vercel reads it from the repo, not the build output, so a copy
-            // under dist/ is silently ignored.
+            // Vercel reads it from the repo, not the build output.
             await writeFile(join(root, '_redirects'), redirectsFor(all), 'utf8');
             await writeFile(join(resolve(projectRoot), 'vercel.json'), vercelConfigFor(all), 'utf8');
             // sitemap.xml + robots.txt — SEO files nobody should hand-maintain.
-            // <template route noindex> routes are excluded from the sitemap and
-            // disallowed in robots.txt; user-shipped files (e.g. from public/)
-            // always win. The sitemap needs absolute URLs, so it requires the
-            // `site` option; robots.txt is emitted either way.
             const seo = [];
             const noindex = noindexRoutesOf(source);
             if (options.site && !existsSync(join(root, 'sitemap.xml'))) {

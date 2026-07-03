@@ -1,6 +1,6 @@
 import { defineConfig, devices } from '@playwright/test';
 
-// One real-browser smoke test of the whole stack: the website is built (vite +
+// One real-browser smoke test of the whole stack: the website is built (Bun +
 // spark-prerender) and served, then we drive it in Chromium to prove mount →
 // hydrate → router → theme all work together in a browser, not just in jsdom.
 const PORT = Number(process.env.E2E_PORT || 4321);
@@ -21,7 +21,7 @@ export default defineConfig({
   webServer: {
     // Build the site (prerender bakes per-route HTML) then serve dist, so the
     // test exercises real hydration over prerendered markup.
-    command: `npm run site:build && npm run preview -w website -- --port ${PORT} --strictPort`,
+    command: `bun run site:build && cd website && bunx spark preview --port ${PORT} --strict-port`,
     url: `http://localhost:${PORT}/`,
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,

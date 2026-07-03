@@ -1,13 +1,13 @@
 /**
  * spark-html-manifest — manifest generation, head tags, the app-shell
- * worker (run for real), and the vite plugin (emit + icons + injection).
+ * worker (run for real), and the bun step (write + icons + injection).
  */
 import { strict as assert } from 'node:assert';
-import { mkdtempSync, mkdirSync, writeFileSync, readFileSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { manifestJson, manifestHtml, swSource, iconPath, ICON_SIZES } from '../src/index.js';
-import sparkManifest from '../src/vite.js';
+import sparkManifest from '../src/bun.js';
 
 let pass = 0, fail = 0;
 async function test(name, fn) {
@@ -142,7 +142,7 @@ await test('worker: hash-named assets are cache-first; cross-origin untouched', 
   assert.equal(handled, false, 'cross-origin passes through');
 });
 
-await test('vite plugin: emits manifest (+ worker), generates icons from one source image', async () => {
+await test('bun step: writes manifest (+ worker), generates icons from one source image', async () => {
   const dir = mkdtempSync(join(tmpdir(), 'spark-manifest-'));
   let sharp = null;
   try { sharp = (await import('sharp')).default; } catch { /* fine — icon half skipped */ }
@@ -151,32 +151,29 @@ await test('vite plugin: emits manifest (+ worker), generates icons from one sou
     writeFileSync(iconSrc, await sharp({ create: { width: 600, height: 600, channels: 4, background: '#ffd24a' } }).png().toBuffer());
   }
 
-  const emitted = [];
-  const plugin = sparkManifest({ ...config, icon: sharp ? iconSrc : undefined, offline: true, sizes: [64, 128] });
-  await plugin.generateBundle.call({ emitFile: (f) => emitted.push(f) });
+  const step = sparkManifest({ ...config, icon: sharp ? iconSrc : undefined, offline: true, sizes: [64, 128] });
+  await step.run({ outDir: dir });
 
-  const manifest = emitted.find((f) => f.fileName === 'manifest.webmanifest');
-  assert.ok(manifest, 'manifest emitted');
-  assert.equal(JSON.parse(manifest.source).short_name, 'Spark');
-  assert.ok(emitted.some((f) => f.fileName === 'spark-manifest-sw.js'), 'worker emitted');
+  assert.ok(existsSync(join(dir, 'manifest.webmanifest')), 'manifest written');
+  assert.equal(JSON.parse(readFileSync(join(dir, 'manifest.webmanifest'), 'utf8')).short_name, 'Spark');
+  assert.ok(existsSync(join(dir, 'spark-manifest-sw.js')), 'worker written');
   if (sharp) {
-    const icon = emitted.find((f) => f.fileName === iconPath(config, 64));
-    assert.ok(icon, 'icon emitted');
-    const meta = await sharp(icon.source).metadata();
+    const iconFile = join(dir, iconPath(config, 64));
+    assert.ok(existsSync(iconFile), 'icon written');
+    const meta = await sharp(readFileSync(iconFile)).metadata();
     assert.equal(meta.width, 64, 'resized to spec');
-    assert.ok(emitted.some((f) => f.fileName === iconPath(config, 128)), 'every size generated');
+    assert.ok(existsSync(join(dir, iconPath(config, 128))), 'every size generated');
   }
 });
 
-await test('vite plugin: injects head tags into built pages, skips fragments, idempotent', async () => {
+await test('bun step: injects head tags into built pages, skips fragments, idempotent', async () => {
   const dist = mkdtempSync(join(tmpdir(), 'spark-manifest-dist-'));
   mkdirSync(join(dist, 'components'));
   writeFileSync(join(dist, 'index.html'), '<!doctype html><html><head><title>t</title></head><body></body></html>');
   writeFileSync(join(dist, 'components', 'card.html'), '<div>{x}</div>');
 
-  const plugin = sparkManifest({ ...config, offline: true });
-  plugin.configResolved({ build: { outDir: dist } });
-  await plugin.closeBundle.handler();
+  const step = sparkManifest({ ...config, offline: true });
+  await step.run({ outDir: dist });
 
   const page = readFileSync(join(dist, 'index.html'), 'utf8');
   assert.ok(page.includes('rel="manifest"'), 'link injected');
@@ -184,26 +181,20 @@ await test('vite plugin: injects head tags into built pages, skips fragments, id
   assert.ok(page.includes(`register('spark-manifest-sw.js')`), 'registration injected');
   assert.equal(readFileSync(join(dist, 'components', 'card.html'), 'utf8'), '<div>{x}</div>', 'fragment untouched');
 
-  await plugin.closeBundle.handler();
+  await step.run({ outDir: dist });
   assert.equal(readFileSync(join(dist, 'index.html'), 'utf8'), page, 'idempotent');
 });
 
-await test('vite plugin dev: serves manifest + worker, transforms index.html', () => {
-  const plugin = sparkManifest({ ...config, offline: true });
-  let handler;
-  plugin.configureServer({ middlewares: { use: (fn) => { handler = fn; } } });
-  const res = { headers: {}, setHeader(k, v) { this.headers[k] = v; }, end(b) { this.body = b; } };
-  handler({ url: '/manifest.webmanifest' }, res, () => { throw new Error('no fall-through'); });
-  assert.equal(JSON.parse(res.body).name, 'My Spark App', 'manifest served in dev');
-  handler({ url: '/spark-manifest-sw.js' }, res, () => { throw new Error('no fall-through'); });
-  assert.ok(res.body.includes('spark-manifest-v1'), 'worker served in dev');
-  let fell = false;
-  handler({ url: '/index.html' }, res, () => { fell = true; });
-  assert.ok(fell, 'other urls fall through');
+await test('bun step dev: serves manifest + worker via devRoutes, transforms html', () => {
+  const step = sparkManifest({ ...config, offline: true });
+  const routes = step.devRoutes();
+  assert.equal(JSON.parse(routes['/manifest.webmanifest'].body()).name, 'My Spark App', 'manifest served in dev');
+  assert.ok(routes['/spark-manifest-sw.js'].body().includes('spark-manifest-v1'), 'worker served in dev');
+  assert.ok(!routes['/index.html'], 'only manifest + worker routes registered');
 
-  const html = plugin.transformIndexHtml('<html><head></head><body></body></html>');
+  const html = step.transformHtml('<html><head></head><body></body></html>', { dev: true });
   assert.ok(html.includes('rel="manifest"'), 'dev html transformed');
-  assert.equal(plugin.transformIndexHtml(html), html, 'transform idempotent');
+  assert.equal(step.transformHtml(html, { dev: true }), html, 'transform idempotent');
 });
 
 assert.deepEqual(ICON_SIZES, [192, 512], 'sanity: exported default sizes');

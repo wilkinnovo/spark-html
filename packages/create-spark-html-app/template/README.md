@@ -24,12 +24,12 @@ component state, stores, and the mounted tree live.
 ## Build (SEO-ready)
 
 ```bash
-npm run build     # static output → dist/, serve anywhere
-npm run preview   # preview the production build locally
+bun run build     # static output → dist/, serve anywhere
+bun run preview   # preview the production build locally
 ```
 
-`npm run build` is **SEO-friendly out of the box**: the `spark-prerender`
-Vite plugin runs your app at build time and writes fully-rendered HTML into
+`bun run build` is **SEO-friendly out of the box**: the `spark-prerender`
+pipeline step runs your app at build time and writes fully-rendered HTML into
 `dist/` — so crawlers and AI tools read real content (headings, text, links),
 not empty placeholders. The browser still hydrates over it for full
 interactivity.
@@ -37,7 +37,7 @@ interactivity.
 Per-route `<title>` and `<meta>` tags are set reactively via
 `spark-html-head` in `src/main.js` — no per-component boilerplate.
 
-Don't need SEO? Remove the `prerender(...)` plugin from `vite.config.js`.
+Don't need SEO? Remove the `prerender(...)` step from `spark.config.js`.
 
 ## Architecture
 

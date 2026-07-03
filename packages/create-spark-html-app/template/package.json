@@ -4,9 +4,9 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "vite build",
-    "preview": "vite preview"
+    "dev": "spark dev",
+    "build": "spark build",
+    "preview": "spark preview"
   },
   "dependencies": {
     "spark-html": "latest",
@@ -18,9 +18,9 @@
     "spark-html-manifest": "latest"
   },
   "devDependencies": {
+    "spark-html-bun": "latest",
     "spark-prerender": "latest",
     "spark-html-devtools": "latest",
-    "spark-html-image": "latest",
-    "vite": "^8.1.0"
+    "spark-html-image": "latest"
   }
 }

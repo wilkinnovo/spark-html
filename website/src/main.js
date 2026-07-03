@@ -8,11 +8,11 @@ import { persist } from 'spark-html-persist';
 import { integrity } from 'spark-html-sri';
 import { manifestJson } from 'spark-html-manifest';
 import { shouldHandle } from 'spark-html-offline';
-import stats from 'virtual:spark-stats';
+import stats from './stats.js';
 import { highlightAll } from './highlight.js';
 import { TUTORIAL_LESSONS } from './tutorial-lessons.js';
 
-// Hero stats, computed at build time (see vite.config.js) — never hand-edited.
+// Hero stats, computed from live source (see scripts/gen-stats.js) — never hand-edited.
 store('stats', stats);
 
 // Code samples on Docs/Playground call this from their onMount (idempotent —

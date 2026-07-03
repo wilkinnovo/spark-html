@@ -1,7 +1,7 @@
 /**
  * spark-html-image — build-time image optimization for spark-html sites.
  *
- * A Vite plugin: after the build (and after spark-prerender has written its
+ * A build step: after the build (and after spark-prerender has written its
  * per-route HTML), it scans every *.html in the out dir — pages AND
  * components — for local raster <img> references, converts each to
  * webp/avif at several widths with sharp, and rewrites the tag:
@@ -15,15 +15,16 @@
  * The original file stays in place as the src fallback, so nothing breaks in
  * a browser (or crawler) that ignores srcset. Zero config:
  *
- *   // vite.config.js
+ *   // spark.config.js
  *   import image from 'spark-html-image';
- *   export default { plugins: [spark(), prerender(), image()] };
+ *   export default { pipeline: [prerender(), image()] };
  *
  * With `picture: true` it instead wraps the img in <picture> with one
  * <source> per format (useful when you enable avif).
  *
  * No core involvement — this is the same pattern as spark-prerender:
- * build-time only, optional, nothing added to the runtime.
+ * build-time only, optional, nothing added to the runtime. It's a
+ * spark-html-bun pipeline step: { name, run({ outDir }) }.
  */
 import { join, dirname, extname, posix } from 'node:path';
 import { readFile, writeFile, readdir, stat } from 'node:fs/promises';
@@ -84,19 +85,10 @@ export default function sparkImage(options = {}) {
   const picture = options.picture === true;
   const lazy = options.lazy !== false;
 
-  let outDir = 'dist';
-
   return {
     name: 'spark-html-image',
-    apply: 'build',
-    configResolved(config) {
-      if (config && config.build && config.build.outDir) outDir = config.build.outDir;
-    },
-    // order:'post' → runs after spark-prerender's closeBundle has written the
-    // per-route HTML, so prerendered pages are rewritten too.
-    closeBundle: {
-      order: 'post',
-      async handler() {
+    // Put it after prerender() in the pipeline so per-route HTML is rewritten too.
+    async run({ outDir }) {
         // sharp is imported lazily so merely having the plugin installed
         // never loads the native module until a build actually runs.
         let sharp;
@@ -212,7 +204,6 @@ export default function sparkImage(options = {}) {
         if (images) {
           console.log(`[spark-html-image] optimized ${images} image reference(s) across ${files} file(s) (${formats.join('+')})`);
         }
-      },
     },
   };
 }

@@ -5,9 +5,10 @@
  *   npm create spark-html-app@latest my-app
  *   npx create-spark-html-app my-app
  *
- * Scaffolds a ready-to-run Vite + spark-html project with a live,
- * reactive "Welcome to Spark" screen. Zero runtime dependencies —
- * just Node built-ins, in keeping with Spark's no-build ethos.
+ * Scaffolds a ready-to-run spark-html project (dev/build/preview on Bun,
+ * via spark-html-bun) with a live, reactive "Welcome to Spark" screen.
+ * Zero runtime dependencies — just Node built-ins, in keeping with
+ * Spark's no-build ethos.
  */
 import { fileURLToPath } from 'node:url';
 import { dirname, join, resolve, relative, basename } from 'node:path';
@@ -236,8 +237,8 @@ async function main() {
   }
   // PWA config carries the app's display name.
   if (features.pwa) {
-    const vitePath = join(targetDir, 'vite.config.js');
-    writeFileSync(vitePath, readFileSync(vitePath, 'utf8').replace("name: 'Spark App'", `name: '${projectName}'`), 'utf8');
+    const cfgPath = join(targetDir, 'spark.config.js');
+    writeFileSync(cfgPath, readFileSync(cfgPath, 'utf8').replace("name: 'Spark App'", `name: '${projectName}'`), 'utf8');
   }
   // Always start on the newest published versions of the spark packages. If the
   // registry can't be reached (or a package isn't published yet), the template's
@@ -262,8 +263,8 @@ async function main() {
   stdout.write(`\n${c.green('✔')} Scaffolded ${c.bold(projectName)} in ${c.cyan(rel)} ${c.dim(`(head, persist, prerender, devtools + ${picked})`)}\n\n`);
   stdout.write(`${c.bold('Next steps:')}\n`);
   if (rel !== '.') stdout.write(`  ${c.dim('1.')} cd ${rel}\n`);
-  stdout.write(`  ${c.dim(rel !== '.' ? '2.' : '1.')} npm install\n`);
-  stdout.write(`  ${c.dim(rel !== '.' ? '3.' : '2.')} npm run dev\n\n`);
+  stdout.write(`  ${c.dim(rel !== '.' ? '2.' : '1.')} bun install\n`);
+  stdout.write(`  ${c.dim(rel !== '.' ? '3.' : '2.')} bun dev\n\n`);
   stdout.write(`${BOLT} Then open the dev server and edit ${c.cyan('public/components/hero.html')}.\n\n`);
 }
 

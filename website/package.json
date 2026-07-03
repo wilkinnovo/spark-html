@@ -4,9 +4,9 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "vite build",
-    "preview": "vite preview"
+    "dev": "bun scripts/gen-stats.js && spark dev",
+    "build": "bun scripts/gen-stats.js && spark build",
+    "preview": "spark preview"
   },
   "dependencies": {
     "spark-html": "*",
@@ -23,6 +23,6 @@
   },
   "devDependencies": {
     "spark-prerender": "*",
-    "vite": "^5.0.0"
+    "spark-html-bun": "*"
   }
 }

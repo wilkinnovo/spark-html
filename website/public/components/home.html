@@ -125,7 +125,7 @@
 <script>
   const app = useStore('app');
   const showcase = useStore('showcase');
-  const stats = useStore('stats'); // computed at build time, see vite.config.js
+  const stats = useStore('stats'); // computed at build time, see scripts/gen-stats.js
   $: sites = showcase.sites || [];
 
   let tab = 'url'; // URL-import demo shown first

@@ -34,16 +34,16 @@ a tree per frame. The file you write is what runs — 13 kB gzipped, zero depend
 ## Quick start
 
 ```bash
-npx create-spark-html-app myapp
-cd myapp && npm install && npm run dev
+bunx create-spark-html-app myapp
+cd myapp && bun install && bun dev
 ```
 
-…or add it to an existing project:
+…or add it to an existing project — `spark-html-bun` is the dev server,
+bundler, and preview server (no build step required):
 
 ```js
-// vite.config.js
-import spark from 'spark-html/vite';
-export default { plugins: [spark()] };
+// spark.config.js (optional — everything has a default)
+export default {};
 
 // main.js
 import { mount } from 'spark-html';
@@ -178,15 +178,15 @@ Spark trades completeness for simplicity — these are deliberate edges, not roa
 
 | Package | What it does |
 |---|---|
-| [`create-spark-html-app`](packages/create-spark-html-app/README.md) | Scaffold a Vite + spark-html app — `npm create spark-html-app`. |
+| [`create-spark-html-app`](packages/create-spark-html-app/README.md) | Scaffold a spark-html app — `npm create spark-html-app`. |
 | [`prettier-plugin-spark`](packages/prettier-plugin-spark/README.md) | Prettier plugin — formats the `<script>`/`<style>` blocks, leaves markup byte-for-byte. |
 | [`spark-html-language-server`](packages/spark-html-language-server/README.md) | LSP for components — diagnostics, go-to-definition, prop autocomplete, hover docs for every directive. |
 
 ## This repo
 
 ```
-packages/        spark-html + the 17 sibling/tooling packages
-examples/        basic (Vite app) · jsimports · no-build (CDN, zero tooling)
+packages/        spark-html + the 18 sibling/tooling packages
+examples/        basic (Bun app) · jsimports · no-build (CDN, zero tooling)
 editors/         Zed + VS Code extensions for .html component highlighting
 website/         the docs/playground/tutorials site — built with Spark itself
 ```

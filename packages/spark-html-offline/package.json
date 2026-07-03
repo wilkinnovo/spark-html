@@ -1,6 +1,6 @@
 {
   "name": "spark-html-offline",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Offline-capable URL imports for spark-html — a tiny service worker that caches CDN-imported components on first fetch and serves them when the network is gone. Zero dependencies.",
   "type": "module",
   "main": "./src/index.js",
@@ -11,9 +11,8 @@
       "types": "./src/index.d.ts",
       "default": "./src/index.js"
     },
-    "./vite": {
-      "types": "./src/vite.d.ts",
-      "default": "./src/vite.js"
+    "./bun": {
+      "default": "./src/bun.js"
     }
   },
   "scripts": {

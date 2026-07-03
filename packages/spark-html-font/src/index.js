@@ -18,8 +18,8 @@
  *   import { fonts } from 'spark-html-font';
  *   fonts({ fonts: [{ family: 'Inter', src: '/fonts/inter-var.woff2', weight: '100 900' }] });
  *
- *   // at build (vite.config.js) — bakes the same tags into every built page
- *   import font from 'spark-html-font/vite';
+ *   // at build (spark.config.js) — bakes the same tags into every built page
+ *   import font from 'spark-html-font/bun';
  *   plugins: [spark(), prerender(), font({ fonts: [...] })]
  *
  * Zero dependencies; pure string generation plus a little DOM.
@@ -127,7 +127,7 @@ export function fontLinks(config = {}) {
   return links;
 }
 
-// Serialize the links + style as an HTML block (used by the vite plugin; the
+// Serialize the links + style as an HTML block (used by the bun build step; the
 // data-spark-font marker makes injection idempotent).
 export function fontHtml(config = {}) {
   const attrs = (l) => Object.entries(l)

@@ -1,6 +1,6 @@
 {
   "name": "spark-html",
-  "version": "0.27.2",
+  "version": "0.27.3",
   "description": "Get your spark back. HTML that reacts!.",
   "homepage": "https://wilkinnovo.github.io/spark",
   "type": "module",
@@ -10,10 +10,6 @@
     ".": {
       "types": "./src/index.d.ts",
       "default": "./src/index.js"
-    },
-    "./vite": {
-      "types": "./src/vite.d.ts",
-      "default": "./src/vite.js"
     },
     "./globals": {
       "types": "./src/globals.d.ts"

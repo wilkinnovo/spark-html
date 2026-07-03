@@ -1,13 +1,13 @@
 /**
  * spark-html-manifest — PWA setup from a single config.
  *
- * name, icons, colors, display mode in one place; the vite plugin turns it
+ * name, icons, colors, display mode in one place; the bun build step turns it
  * into manifest.webmanifest + resized icons + the <head> tags + (optionally)
  * a minimal app-shell service worker. No manual icon exports, no copy-paste
  * boilerplate.
  *
- *   // vite.config.js
- *   import manifest from 'spark-html-manifest/vite';
+ *   // spark.config.js
+ *   import manifest from 'spark-html-manifest/bun';
  *   plugins: [spark(), prerender(), manifest({
  *     name: 'My App',
  *     themeColor: '#ffd24a',
@@ -136,7 +136,7 @@ self.addEventListener('fetch', function (event) {
   var url;
   try { url = new URL(req.url); } catch (e) { return; }
   if (url.origin !== self.location.origin) return;
-  // Vite's hash-named assets are immutable — cache-first is always correct.
+  // The build's hash-named assets are immutable — cache-first is always correct.
   var immutable = /\\/assets\\/[^/]*[-.][A-Za-z0-9_-]{8,}\\.\\w+$/.test(url.pathname);
   event.respondWith(caches.open(CACHE).then(function (cache) {
     return cache.match(req, { ignoreSearch: req.mode === 'navigate' }).then(function (cached) {

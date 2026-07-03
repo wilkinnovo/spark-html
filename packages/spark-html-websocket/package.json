@@ -1,6 +1,6 @@
 {
   "name": "spark-html-websocket",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Declarative WebSocket for spark-html — a reactive store with auto-reconnect, JSON parsing, status, and send(). Zero dependencies.",
   "type": "module",
   "main": "./src/index.js",

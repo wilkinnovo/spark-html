@@ -1,5 +1,5 @@
 /**
- * spark-html-image — the Vite plugin converts local <img> references to
+ * spark-html-image — the build step converts local <img> references to
  * webp/avif variants with srcset, across pages AND component fragments,
  * leaving externals/SVGs/authored srcsets alone.
  */
@@ -41,8 +41,7 @@ async function makeDist() {
 
 const dist = await makeDist();
 const plugin = sparkImage();
-plugin.configResolved({ build: { outDir: dist } });
-await plugin.closeBundle.handler();
+await plugin.run({ outDir: dist });
 const index = readFileSync(join(dist, 'index.html'), 'utf8');
 
 await test('webp variants are generated (sub-widths + intrinsic, no upscale)', () => {
@@ -82,8 +81,7 @@ await test('component fragments are optimized too — and stay fragments', () =>
 await test('picture mode wraps in <picture> with one <source> per format', async () => {
   const dist2 = await makeDist();
   const p2 = sparkImage({ picture: true, formats: ['avif', 'webp'], widths: [640] });
-  p2.configResolved({ build: { outDir: dist2 } });
-  await p2.closeBundle.handler();
+  await p2.run({ outDir: dist2 });
   const html = readFileSync(join(dist2, 'index.html'), 'utf8');
   assert.ok(/<picture><source [^>]*type="image\/avif"/.test(html), 'avif source first');
   assert.ok(html.includes('type="image/webp"'), 'webp source present');
@@ -93,7 +91,7 @@ await test('picture mode wraps in <picture> with one <source> per format', async
 
 await test('a second run is idempotent (srcset already present → skipped)', async () => {
   const before = readFileSync(join(dist, 'index.html'), 'utf8');
-  await plugin.closeBundle.handler();
+  await plugin.run({ outDir: dist });
   assert.equal(readFileSync(join(dist, 'index.html'), 'utf8'), before);
 });
 
@@ -107,8 +105,7 @@ await test('EXIF-rotated photos: orientation baked in, display dimensions writte
   writeFileSync(join(dist3, 'index.html'),
     '<!doctype html><html><head></head><body><img src="/img/photo.jpg" alt="p"></body></html>', 'utf8');
   const p3 = sparkImage({ widths: [640] });
-  p3.configResolved({ build: { outDir: dist3 } });
-  await p3.closeBundle.handler();
+  await p3.run({ outDir: dist3 });
   const html = readFileSync(join(dist3, 'index.html'), 'utf8');
   assert.ok(html.includes('width="900"') && html.includes('height="1600"'),
     'width/height match what the browser renders, not the sensor frame');

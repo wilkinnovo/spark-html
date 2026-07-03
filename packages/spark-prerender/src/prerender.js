@@ -231,7 +231,7 @@ export async function prerender(entryPath, options = {}) {
       join(baseRoot, 'dist'),
       dirname(entryAbs),
     ]),
-    // The Vite plugin passes the project root so JS-import specifiers that
+    // The build step passes the project root so JS-import specifiers that
     // point outside the build output (e.g. un-copied src files) still resolve.
     ...(options.projectRoot ? [resolve(options.projectRoot)] : []),
   ].filter((v, i, a) => a.indexOf(v) === i);

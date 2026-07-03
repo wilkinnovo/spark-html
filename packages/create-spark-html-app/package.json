@@ -1,7 +1,7 @@
 {
   "name": "create-spark-html-app",
-  "version": "0.7.1",
-  "description": "Scaffold a Vite + spark-html",
+  "version": "0.8.0",
+  "description": "Scaffold a spark-html app — dev/build/preview on Bun",
   "type": "module",
   "bin": {
     "create-spark-html-app": "bin/index.js"
@@ -24,7 +24,7 @@
     "create",
     "scaffold",
     "cli",
-    "vite",
+    "bun",
     "reactive",
     "html",
     "no-build"
