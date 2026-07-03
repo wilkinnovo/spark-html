@@ -59,7 +59,7 @@ mount();
 
 ```html
 <script type="importmap">
-  { "imports": { "spark-html": "https://esm.sh/spark-html@0.26" } }
+  { "imports": { "spark-html": "https://esm.sh/spark-html@0.27" } }
 </script>
 <div import="components/counter"></div>
 <script type="module">import { mount } from 'spark-html'; mount()</script>
@@ -106,11 +106,14 @@ just files at a URL, so you can even `import` one straight from a CDN. See
 
 ## Limits
 
+Spark trades completeness for simplicity — these are deliberate edges, not roadmap gaps:
+
 - **One reactive scope per component** — all top-level `let`/`function` declarations share a single proxy scope within each component.
 - **`let`/`const` inside functions** — plain declarations (`let x = 1`) still hoist to component scope. Destructuring (`let {a} = obj`) stays block-local.
 - **Class instances / `Date`** — not deeply reactive (intentional). Reassign the variable to trigger an update. Plain objects, arrays, `Map`, and `Set` are all tracked.
 - **Loops reconcile by index by default** — add `key="…"` for identity-stable reordering (keeps focus, preserves element state).
-- **CSP** — the runtime uses `new Function` for expressions and event handlers, so a strict Content Security Policy needs `unsafe-eval`.
+- **Code-shaped strings in scripts** — the declaration rewriter is not string-aware: a multiline string that *looks like* JS (`"let x = 1;"` — live-editor sources, executable snippets) can be rewritten inside the string. Keep such strings in imported `.js` modules; display-only samples in markup are fine under `spark-ignore`.
+- **CSP** — the runtime uses `new Function` for expressions and event handlers, so a strict Content Security Policy needs `unsafe-eval`. For integrity of what you *load*, [`spark-html-sri`](packages/spark-html-sri/README.md) hashes and verifies assets and URL-imported components.
 - **`import.meta`** — not available inside component scripts (imports are replayed as dynamic `import()`). Bare specifiers need an import map when running without a bundler.
 
 ## How it works
@@ -142,39 +145,58 @@ just files at a URL, so you can even `import` one straight from a CDN. See
 |---|---|
 | [`spark-html`](packages/spark/README.md) | The runtime — `mount()`, components, reactivity, `store`/`derived`, `bind:form`, scoped styles. 13 kB gzip, 0 deps. |
 
-**Optional sibling packages** (add only what you use)
+**UI &amp; UX siblings** (add only what you use)
 
 | Package | What it does |
 |---|---|
-| [`spark-html-router`](packages/spark-html-router/README.md) | Declarative routing — `<template route>` + `router()`, active links, a reactive `route` store. |
+| [`spark-html-router`](packages/spark-html-router/README.md) | Declarative routing — `<template route>` + `router()`, nested routes/layouts, `route.query`, active links. |
 | [`spark-html-theme`](packages/spark-html-theme/README.md) | One-line dark/light/system theming — `theme()`, persisted, no flash. |
-| [`spark-html-head`](packages/spark-html-head/README.md) | Reactive document `<title>`/`<meta>` per route — one line, 0 deps. |
+| [`spark-html-head`](packages/spark-html-head/README.md) | Reactive document `<title>`/`<meta>` per route — plus a `head` store for per-component overrides. |
 | [`spark-html-motion`](packages/spark-html-motion/README.md) | Declarative enter/leave transitions — `transition="fade\|slide\|scale"` on if/each blocks. |
-| [`spark-html-query`](packages/spark-html-query/README.md) | Declarative async data — a self-fetching reactive store (`loading`/`error`/`data`/`refetch`). |
-| [`spark-html-persist`](packages/spark-html-persist/README.md) | Persist a store across reloads in one line — hydrate from localStorage, save on change. |
 | [`spark-html-devtools`](packages/spark-html-devtools/README.md) | In-page devtools panel — live store state, component tree, patch counter, re-render flash. |
 
-**Build &amp; tooling**
+**Data**
 
 | Package | What it does |
 |---|---|
-| [`spark-prerender`](packages/spark-prerender/README.md) | Build-time SEO prerender — real HTML per route, no SSR server, no app changes. |
-| [`prettier-plugin-spark`](packages/prettier-plugin-spark/README.md) | Prettier plugin — formats the `<script>`/`<style>` blocks, leaves markup byte-for-byte. |
+| [`spark-html-query`](packages/spark-html-query/README.md) | Declarative async data — a self-fetching reactive store (`loading`/`error`/`data`/`refetch`). |
+| [`spark-html-persist`](packages/spark-html-persist/README.md) | Persist a store across reloads in one line — hydrate from localStorage, save on change. |
+| [`spark-html-websocket`](packages/spark-html-websocket/README.md) | A WebSocket as a reactive store — auto-reconnect, JSON parsing, status, `send()`. |
+
+**Build, assets &amp; security**
+
+| Package | What it does |
+|---|---|
+| [`spark-prerender`](packages/spark-prerender/README.md) | Build-time SEO prerender — real HTML per route (+ sitemap/robots), no SSR server, no app changes. |
+| [`spark-html-image`](packages/spark-html-image/README.md) | Build-time image optimization — `<img>` rewritten to webp/avif with responsive `srcset`, zero config. |
+| [`spark-html-font`](packages/spark-html-font/README.md) | Font loading optimizer — `@font-face` + preload + size-adjusted fallbacks, no FOUT, no layout shift. |
+| [`spark-html-manifest`](packages/spark-html-manifest/README.md) | PWA manifest + icons + head tags (and optional service worker) from one config. |
+| [`spark-html-offline`](packages/spark-html-offline/README.md) | Offline URL imports — a tiny service worker that caches CDN components on first fetch. |
+| [`spark-html-sri`](packages/spark-html-sri/README.md) | Subresource Integrity — hash built assets/components, verify at runtime, allow-list remote origins. |
+
+**Tooling**
+
+| Package | What it does |
+|---|---|
 | [`create-spark-html-app`](packages/create-spark-html-app/README.md) | Scaffold a Vite + spark-html app — `npm create spark-html-app`. |
+| [`prettier-plugin-spark`](packages/prettier-plugin-spark/README.md) | Prettier plugin — formats the `<script>`/`<style>` blocks, leaves markup byte-for-byte. |
+| [`spark-html-language-server`](packages/spark-html-language-server/README.md) | LSP for components — diagnostics, go-to-definition, prop autocomplete, hover docs for every directive. |
 
 ## This repo
 
 ```
-packages/        spark-html + the sibling/tooling packages (& create-spark-html-app)
-examples/basic   a minimal Vite app consuming spark-html
-website/         the showcase + docs site — built with Spark, the router & theme
+packages/        spark-html + the 17 sibling/tooling packages
+examples/        basic (Vite app) · jsimports · no-build (CDN, zero tooling)
+editors/         Zed + VS Code extensions for .html component highlighting
+website/         the docs/playground/tutorials site — built with Spark itself
 ```
 
 ```bash
 npm install      # links workspaces
 npm run dev      # the example app
 npm run site     # the website
-npm test         # 195+ assertions, pure node, no browser
+npm test         # 400+ assertions, pure node, no browser
+npm run e2e      # Playwright: mount → hydrate → router → theme, live tutorials
 ```
 
 Built something with Spark? Add it to the

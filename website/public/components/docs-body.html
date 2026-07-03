@@ -22,6 +22,7 @@
     <a href="#debugging">Debugging</a>
     <a href="#errors">Error handling</a>
     <a href="#prerender">Prerender / SEO</a>
+    <a href="#ecosystem">Ecosystem</a>
     <a href="#limits">Limitations</a>
   </aside>
 
@@ -44,7 +45,7 @@
     <h3 id="no-build">No build, no install</h3>
     <p>Because components are fetched at runtime and the runtime is a single ES module, you can use Spark with <strong>zero tooling</strong> — straight from a CDN with an import map. No npm, no bundler, no compiler:</p>
     <pre spark-ignore>&lt;script type="importmap"&gt;
-  { "imports": { "spark-html": "https://esm.sh/spark-html@0.22" } }
+  { "imports": { "spark-html": "https://esm.sh/spark-html@0.27" } }
 &lt;/script&gt;
 
 &lt;div import="components/counter"&gt;&lt;/div&gt;
@@ -350,14 +351,39 @@ npx spark-prerender dist/index.html dist/docs.html</pre>
 &lt;/script&gt;</pre>
     <p class="note">There's also a Vite plugin (<code>spark-prerender/vite</code>) that prerenders <code>dist/*.html</code> automatically on build. See the package README for options.</p>
 
+    <h2 id="ecosystem">Ecosystem</h2>
+    <p>The core stays tiny on purpose; everything else ships as a small, single-purpose sibling package. Add only what you use — each one is documented on its npm page:</p>
+    <table>
+      <tr><th>Package</th><th>What it does</th></tr>
+      <tr><td><a href="https://www.npmjs.com/package/spark-html" target="_blank" rel="noopener"><code>spark-html</code></a></td><td>The runtime — components, reactivity, stores, forms, scoped styles. 13&nbsp;kB gzip, 0 deps.</td></tr>
+      <tr><td><a href="https://www.npmjs.com/package/spark-html-router" target="_blank" rel="noopener"><code>spark-html-router</code></a></td><td><code>&lt;template route&gt;</code> routing — nested routes/layouts, <code>route.query</code>, active links.</td></tr>
+      <tr><td><a href="https://www.npmjs.com/package/spark-html-theme" target="_blank" rel="noopener"><code>spark-html-theme</code></a></td><td>Dark/light/system theming in one line — persisted, no flash.</td></tr>
+      <tr><td><a href="https://www.npmjs.com/package/spark-html-head" target="_blank" rel="noopener"><code>spark-html-head</code></a></td><td>Reactive <code>&lt;title&gt;</code>/<code>&lt;meta&gt;</code> per route + a <code>head</code> store.</td></tr>
+      <tr><td><a href="https://www.npmjs.com/package/spark-html-motion" target="_blank" rel="noopener"><code>spark-html-motion</code></a></td><td>Enter/leave transitions on if/each blocks — <code>transition="fade|slide|scale"</code>.</td></tr>
+      <tr><td><a href="https://www.npmjs.com/package/spark-html-devtools" target="_blank" rel="noopener"><code>spark-html-devtools</code></a></td><td>In-page devtools — live stores, component tree, patch activity.</td></tr>
+      <tr><td><a href="https://www.npmjs.com/package/spark-html-query" target="_blank" rel="noopener"><code>spark-html-query</code></a></td><td>Declarative async data — a self-fetching store (<code>loading</code>/<code>error</code>/<code>data</code>/<code>refetch</code>).</td></tr>
+      <tr><td><a href="https://www.npmjs.com/package/spark-html-persist" target="_blank" rel="noopener"><code>spark-html-persist</code></a></td><td>Persist stores to localStorage/sessionStorage in one line.</td></tr>
+      <tr><td><a href="https://www.npmjs.com/package/spark-html-websocket" target="_blank" rel="noopener"><code>spark-html-websocket</code></a></td><td>A WebSocket as a reactive store — auto-reconnect, JSON, <code>send()</code>.</td></tr>
+      <tr><td><a href="https://www.npmjs.com/package/spark-prerender" target="_blank" rel="noopener"><code>spark-prerender</code></a></td><td>Build-time SEO prerender + sitemap/robots — no SSR server.</td></tr>
+      <tr><td><a href="https://www.npmjs.com/package/spark-html-image" target="_blank" rel="noopener"><code>spark-html-image</code></a></td><td>Build-time image optimization — webp/avif + responsive <code>srcset</code>, zero config.</td></tr>
+      <tr><td><a href="https://www.npmjs.com/package/spark-html-font" target="_blank" rel="noopener"><code>spark-html-font</code></a></td><td>Font loading optimizer — preload + size-adjusted fallbacks, no FOUT.</td></tr>
+      <tr><td><a href="https://www.npmjs.com/package/spark-html-manifest" target="_blank" rel="noopener"><code>spark-html-manifest</code></a></td><td>PWA manifest + icons + head tags (and optional service worker) from one config.</td></tr>
+      <tr><td><a href="https://www.npmjs.com/package/spark-html-offline" target="_blank" rel="noopener"><code>spark-html-offline</code></a></td><td>Offline URL imports — a service worker that caches CDN components.</td></tr>
+      <tr><td><a href="https://www.npmjs.com/package/spark-html-sri" target="_blank" rel="noopener"><code>spark-html-sri</code></a></td><td>Subresource Integrity — hash + verify assets and remote components.</td></tr>
+      <tr><td><a href="https://www.npmjs.com/package/create-spark-html-app" target="_blank" rel="noopener"><code>create-spark-html-app</code></a></td><td>Scaffold a Vite + spark-html app in one command.</td></tr>
+      <tr><td><a href="https://www.npmjs.com/package/prettier-plugin-spark" target="_blank" rel="noopener"><code>prettier-plugin-spark</code></a></td><td>Prettier for components — formats <code>&lt;script&gt;</code>/<code>&lt;style&gt;</code>, markup stays byte-for-byte.</td></tr>
+      <tr><td><a href="https://www.npmjs.com/package/spark-html-language-server" target="_blank" rel="noopener"><code>spark-html-language-server</code></a></td><td>LSP — diagnostics, go-to-definition, prop autocomplete, hover docs.</td></tr>
+    </table>
+
     <h2 id="limits">Limitations</h2>
     <p>Spark trades completeness for simplicity. Know the edges:</p>
     <table>
       <tr><th>Limit</th><th>Detail</th></tr>
       <tr><td>One scope per component</td><td>All top-level declarations share the component scope. JS <code>import</code> statements are supported (transformed to dynamic imports); <code>import.meta</code> is not available inside component scripts.</td></tr>
       <tr><td>Block scoping</td><td><code>let</code>/<code>const</code> with a simple identifier inside functions hoist to component scope. Destructuring declarations are untouched and stay local.</td></tr>
-      <tr><td>Reactivity depth</td><td>Plain objects/arrays are deeply reactive (mutation re-renders). <code>Map</code>/<code>Set</code>/class instances are not tracked — reassign them to update.</td></tr>
+      <tr><td>Reactivity depth</td><td>Plain objects/arrays are deeply reactive, and <code>Map</code>/<code>Set</code> mutations (<code>set</code>/<code>add</code>/<code>delete</code>/<code>clear</code>) are tracked too. Class instances and <code>Date</code> are not — reassign the variable to update.</td></tr>
       <tr><td>Loop reconciliation</td><td>Reuse is positional by default; reordering a list without a <code>key</code> keeps nodes in place and rewrites their contents. Add <code>key="…"</code> for identity-stable moves.</td></tr>
+      <tr><td>Code-shaped strings</td><td>The script rewriter is not string-aware: a multiline string that <em>looks like</em> JS declarations (live-editor sources, executable snippets) can be rewritten inside the string. Keep such strings in imported <code>.js</code> modules; display-only samples in markup are fine under <code>spark-ignore</code>.</td></tr>
       <tr><td>Coarse store updates</td><td>Stores are deeply reactive (an in-place <code>cart.items.push(x)</code> notifies every subscriber), but each notification re-renders subscribers with a full (cheap) pass — store reads aren't tracked per key the way component-local state is. For shared computed values, <code>derived()</code> recomputes once and only notifies when a key actually changes (memoized).</td></tr>
     </table>
   </main>

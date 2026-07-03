@@ -1,28 +1,50 @@
 <footer class="f">
-  <span class="brand">⚡ SPARK</span>
-  <span class="sp">·</span>
-  <a href="https://www.npmjs.com/package/spark-html" target="_blank" rel="noopener">spark-html</a>
-  <a href="https://www.npmjs.com/package/spark-html-router" target="_blank" rel="noopener">router</a>
-  <a href="https://www.npmjs.com/package/spark-html-theme" target="_blank" rel="noopener">theme</a>
-  <a href="https://www.npmjs.com/package/spark-html-motion" target="_blank" rel="noopener">motion</a>
-  <span class="sp">·</span>
-  <a href="https://www.npmjs.com/package/spark-html-head" target="_blank" rel="noopener">head</a>
-  <span class="sp">·</span>
-  <a href="https://www.npmjs.com/package/spark-html-devtools" target="_blank" rel="noopener">devtools</a>
-  <span class="sp">·</span>
-  <a href="https://www.npmjs.com/package/spark-html-persist" target="_blank" rel="noopener">persist</a>
-  <span class="sp">·</span>
-  <a href="https://www.npmjs.com/package/spark-html-query" target="_blank" rel="noopener">query</a>
-  <span class="sp">·</span>
-  <a href="https://www.npmjs.com/package/spark-prerender" target="_blank" rel="noopener">prerender</a>
-  <span class="sp">·</span>
-  <a href="https://www.npmjs.com/package/create-spark-html-app" target="_blank" rel="noopener">create</a>
-  <span class="sp">·</span>
-  <a href="https://www.npmjs.com/package/prettier-plugin-spark" target="_blank" rel="noopener">prettier</a>
-  <span class="sp">·</span>
-  <a href="https://github.com/wilkinnovo/spark" target="_blank" rel="noopener">GitHub</a>
-  <span class="grow"></span>
-  <span class="lic">MIT — built with Spark</span>
+  <div class="row">
+    <span class="brand">⚡ SPARK</span>
+    <span class="sp">·</span>
+    <a href="https://www.npmjs.com/package/spark-html" target="_blank" rel="noopener">spark-html</a>
+    <span class="sp">·</span>
+    <a href="https://www.npmjs.com/package/spark-html-router" target="_blank" rel="noopener">router</a>
+    <span class="sp">·</span>
+    <a href="https://www.npmjs.com/package/spark-html-theme" target="_blank" rel="noopener">theme</a>
+    <span class="sp">·</span>
+    <a href="https://www.npmjs.com/package/spark-html-head" target="_blank" rel="noopener">head</a>
+    <span class="sp">·</span>
+    <a href="https://www.npmjs.com/package/spark-html-motion" target="_blank" rel="noopener">motion</a>
+    <span class="sp">·</span>
+    <a href="https://www.npmjs.com/package/spark-html-devtools" target="_blank" rel="noopener">devtools</a>
+    <span class="sp">·</span>
+    <a href="https://www.npmjs.com/package/spark-html-query" target="_blank" rel="noopener">query</a>
+    <span class="sp">·</span>
+    <a href="https://www.npmjs.com/package/spark-html-persist" target="_blank" rel="noopener">persist</a>
+    <span class="sp">·</span>
+    <a href="https://www.npmjs.com/package/spark-html-websocket" target="_blank" rel="noopener">websocket</a>
+    <span class="grow"></span>
+    <a class="gh" href="https://github.com/wilkinnovo/spark" target="_blank" rel="noopener">GitHub</a>
+  </div>
+  <div class="row">
+    <span class="brand2">build &amp; tooling</span>
+    <span class="sp">·</span>
+    <a href="https://www.npmjs.com/package/spark-prerender" target="_blank" rel="noopener">prerender</a>
+    <span class="sp">·</span>
+    <a href="https://www.npmjs.com/package/spark-html-image" target="_blank" rel="noopener">image</a>
+    <span class="sp">·</span>
+    <a href="https://www.npmjs.com/package/spark-html-font" target="_blank" rel="noopener">font</a>
+    <span class="sp">·</span>
+    <a href="https://www.npmjs.com/package/spark-html-manifest" target="_blank" rel="noopener">manifest</a>
+    <span class="sp">·</span>
+    <a href="https://www.npmjs.com/package/spark-html-offline" target="_blank" rel="noopener">offline</a>
+    <span class="sp">·</span>
+    <a href="https://www.npmjs.com/package/spark-html-sri" target="_blank" rel="noopener">sri</a>
+    <span class="sp">·</span>
+    <a href="https://www.npmjs.com/package/create-spark-html-app" target="_blank" rel="noopener">create</a>
+    <span class="sp">·</span>
+    <a href="https://www.npmjs.com/package/prettier-plugin-spark" target="_blank" rel="noopener">prettier</a>
+    <span class="sp">·</span>
+    <a href="https://www.npmjs.com/package/spark-html-language-server" target="_blank" rel="noopener">lsp</a>
+    <span class="grow"></span>
+    <span class="lic">MIT — built with Spark</span>
+  </div>
 </footer>
 
 <style>
@@ -30,12 +52,15 @@
     border-top: 1px solid var(--border);
     margin: 40px 56px 0;
     padding: 26px 0 48px;
-    display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px;
+    display: flex; flex-direction: column; gap: 10px;
     font-size: 13px; color: var(--muted);
   }
+  .f .row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
   .f .brand { font-weight: 800; color: var(--text); letter-spacing: .03em; }
+  .f .brand2 { font-size: 11px; text-transform: uppercase; letter-spacing: .1em; color: var(--muted-dim); }
   .f a { color: var(--muted); }
   .f a:hover { color: var(--spark-ink); }
+  .f .gh { color: var(--text); font-weight: 600; }
   .f .sp { color: var(--border-strong); }
   .f .grow { flex: 1; }
   .f .lic { color: var(--muted-dim); }
