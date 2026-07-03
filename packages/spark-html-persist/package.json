@@ -1,6 +1,6 @@
 {
   "name": "spark-html-persist",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "description": "Persist a spark-html store across reloads in one line — hydrate from localStorage/sessionStorage, save on every change.",
   "type": "module",
   "main": "./src/index.js",

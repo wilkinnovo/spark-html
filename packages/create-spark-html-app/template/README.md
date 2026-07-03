@@ -14,8 +14,8 @@ icons + offline app shell). `spark-html-head`, `spark-html-persist`,
 ## Develop
 
 ```bash
-npm install
-npm run dev          # dev server with HMR
+bun install
+bun run dev          # dev server with HMR
 ```
 
 In dev mode, `spark-html-devtools` adds a debugging overlay — inspect

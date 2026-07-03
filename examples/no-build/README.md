@@ -1,6 +1,6 @@
 # Spark — no build, no install
 
-The whole point of Spark: **the `.html` you write is what runs.** No npm, no
+The whole point of Spark: **the `.html` you write is what runs.** No install, no
 bundler, no compiler. This example is three static files:
 
 ```
@@ -27,7 +27,7 @@ Components are fetched over HTTP, so serve the folder with any static server
 (opening the file with `file://` won't work — browsers block `fetch` there):
 
 ```bash
-npx serve            # or: python3 -m http.server
+bunx serve            # or: python3 -m http.server
 ```
 
 Then open the printed URL. Edit a component and refresh — no build step in sight.

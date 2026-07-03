@@ -1,6 +1,6 @@
 {
   "name": "spark-html-image",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "description": "Build-time image optimization for spark-html sites — a spark-html-bun build step that converts <img> references to webp/avif with responsive srcset, zero config.",
   "type": "module",
   "main": "./src/index.js",

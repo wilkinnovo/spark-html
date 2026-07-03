@@ -6,7 +6,7 @@
     <title>Spark — no build, no install</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚡</text></svg>" />
 
-    <!-- Zero tooling: pull Spark straight from a CDN. No npm, no bundler,
+    <!-- Zero tooling: pull Spark straight from a CDN. No install, no bundler,
          no compiler, no build step. An import map is all you need. -->
     <script type="importmap">
       { "imports": { "spark-html": "https://esm.sh/spark-html@0.27" } }
@@ -23,7 +23,7 @@
     <h1>⚡ Spark with <em>no build step</em></h1>
     <p class="muted">
       This page imports Spark from a CDN and renders a component served as a plain
-      <code>.html</code> file. No npm, no bundler, no compiler — just an import map
+      <code>.html</code> file. No install, no bundler, no compiler — just an import map
       and <code>mount()</code>.
     </p>
 

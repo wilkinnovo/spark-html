@@ -39,7 +39,7 @@ Lighthouse/devtools "installable" checks pass locally too.
 ## Install
 
 ```bash
-npm install spark-html-manifest
+bun add spark-html-manifest
 ```
 
 ## Config
@@ -100,6 +100,7 @@ virtual DOM, no build step required. Add only what you use.
 | Package | What it does |
 |---|---|
 | [`spark-html`](https://www.npmjs.com/package/spark-html) | The runtime — components, reactivity, stores, forms, scoped styles. 13 kB gzip, 0 deps. |
+| [`spark-html-bun`](https://www.npmjs.com/package/spark-html-bun) | Dev server, bundler & preview on Bun — scoped HMR, no-build dev, post-build pipeline. |
 | [`spark-html-router`](https://www.npmjs.com/package/spark-html-router) | `<template route>` routing — nested routes/layouts, `route.query`, active links. |
 | [`spark-html-theme`](https://www.npmjs.com/package/spark-html-theme) | Dark/light/system theming in one line — persisted, no flash. |
 | [`spark-html-head`](https://www.npmjs.com/package/spark-html-head) | Reactive `<title>`/`<meta>` per route + a `head` store. |

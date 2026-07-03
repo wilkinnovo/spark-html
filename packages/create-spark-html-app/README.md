@@ -16,14 +16,14 @@ Then:
 
 ```bash
 cd my-app
-npm install
-npm run dev
+bun install
+bun run dev
 ```
 
 Run it with no name to be prompted:
 
 ```bash
-npm create spark-html-app@latest
+bun create spark-html-app
 ```
 
 ## What you get
@@ -44,10 +44,10 @@ Every included feature ships with a live demo component, ready to run.
 Non-interactive? Pass flags instead of answering prompts:
 
 ```bash
-npx create-spark-html-app my-app --yes       # accept the defaults
-npx create-spark-html-app my-app --all       # everything on
-npx create-spark-html-app my-app --minimal   # core only
-npx create-spark-html-app my-app --pwa --no-image   # per-feature
+bunx create-spark-html-app my-app --yes       # accept the defaults
+bunx create-spark-html-app my-app --all       # everything on
+bunx create-spark-html-app my-app --minimal   # core only
+bunx create-spark-html-app my-app --pwa --no-image   # per-feature
 ```
 
 Everything is plain HTML and JavaScript — no compiler, no virtual DOM, no
@@ -61,6 +61,7 @@ virtual DOM, no build step required. Add only what you use.
 | Package | What it does |
 |---|---|
 | [`spark-html`](https://www.npmjs.com/package/spark-html) | The runtime — components, reactivity, stores, forms, scoped styles. 13 kB gzip, 0 deps. |
+| [`spark-html-bun`](https://www.npmjs.com/package/spark-html-bun) | Dev server, bundler & preview on Bun — scoped HMR, no-build dev, post-build pipeline. |
 | [`spark-html-router`](https://www.npmjs.com/package/spark-html-router) | `<template route>` routing — nested routes/layouts, `route.query`, active links. |
 | [`spark-html-theme`](https://www.npmjs.com/package/spark-html-theme) | Dark/light/system theming in one line — persisted, no flash. |
 | [`spark-html-head`](https://www.npmjs.com/package/spark-html-head) | Reactive `<title>`/`<meta>` per route + a `head` store. |

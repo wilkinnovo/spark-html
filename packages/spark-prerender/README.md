@@ -15,24 +15,24 @@ One renderer, one source of truth, **zero client/prerender drift**.
 ## Install
 
 ```bash
-npm install --save-dev spark-prerender
+bun add -d spark-prerender
 ```
 
 ## Use
 
 ```bash
 # one page or many (multi-page sites are an MPA — just list each page)
-npx spark-prerender dist/index.html dist/docs.html
+bunx spark-prerender dist/index.html dist/docs.html
 
 # write copies elsewhere instead of rewriting in place
-npx spark-prerender site/index.html --out build --root site
+bunx spark-prerender site/index.html --out build --root site
 ```
 
 As a post-build step over any `dist/`:
 
 ```bash
 spark build
-npx spark-prerender dist/index.html dist/docs.html
+bunx spark-prerender dist/index.html dist/docs.html
 ```
 
 ### spark-html-bun pipeline step (auto on build)
@@ -211,7 +211,7 @@ Honest limitations:
 
 - Only dependency is **linkedom** (server DOM); it lives in this package, so the
   `spark-html` runtime stays 0-dependency.
-- Requires a real `node`/`npm` install to populate `package-lock.json` for CI.
+- Requires a real `bun`/`node` install (the build-time CLI path, not the zero-tooling CDN path).
 
 ## The Spark family
 
@@ -221,6 +221,7 @@ virtual DOM, no build step required. Add only what you use.
 | Package | What it does |
 |---|---|
 | [`spark-html`](https://www.npmjs.com/package/spark-html) | The runtime — components, reactivity, stores, forms, scoped styles. 13 kB gzip, 0 deps. |
+| [`spark-html-bun`](https://www.npmjs.com/package/spark-html-bun) | Dev server, bundler & preview on Bun — scoped HMR, no-build dev, post-build pipeline. |
 | [`spark-html-router`](https://www.npmjs.com/package/spark-html-router) | `<template route>` routing — nested routes/layouts, `route.query`, active links. |
 | [`spark-html-theme`](https://www.npmjs.com/package/spark-html-theme) | Dark/light/system theming in one line — persisted, no flash. |
 | [`spark-html-head`](https://www.npmjs.com/package/spark-html-head) | Reactive `<title>`/`<meta>` per route + a `head` store. |

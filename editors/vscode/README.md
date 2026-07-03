@@ -28,13 +28,13 @@ and you get, live in the editor:
   `:hidden`, `transition:fade`, `route`, …), and script symbols in `{…}`.
 - **Hover docs** for every directive and declaration.
 
-The server binary comes from npm — either per project (preferred; the
+The server binary comes from the npm registry — either per project (preferred; the
 extension finds it in `node_modules`) or globally:
 
 ```bash
-npm install -D spark-html-language-server   # in your project
+bun add -d spark-html-language-server   # in your project
 # or
-npm install -g spark-html-language-server
+bun add -g spark-html-language-server
 ```
 
 By default the client only starts in workspaces that depend on `spark-html`
@@ -47,8 +47,8 @@ VS Code can't run from a folder directly — package it once with `vsce`:
 
 ```bash
 cd editors/vscode
-npm install                       # pulls vscode-languageclient
-npx @vscode/vsce package          # produces spark-html-0.2.0.vsix
+bun install                       # pulls vscode-languageclient
+bunx @vscode/vsce package          # produces spark-html-0.2.0.vsix
 code --install-extension spark-html-0.2.0.vsix
 ```
 

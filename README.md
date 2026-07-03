@@ -55,7 +55,7 @@ mount();
 <div import="components/counter"></div>
 ```
 
-…or **no build at all** — straight from a CDN, no npm, no bundler:
+…or **no build at all** — straight from a CDN, no install, no bundler:
 
 ```html
 <script type="importmap">
@@ -167,6 +167,7 @@ Spark trades completeness for simplicity — these are deliberate edges, not roa
 
 | Package | What it does |
 |---|---|
+| [`spark-html-bun`](packages/spark-html-bun/README.md) | Dev server, bundler &amp; preview on Bun — `spark dev`/`build`/`preview`, scoped HMR, no-build dev, the post-build pipeline. |
 | [`spark-prerender`](packages/spark-prerender/README.md) | Build-time SEO prerender — real HTML per route (+ sitemap/robots), no SSR server, no app changes. |
 | [`spark-html-image`](packages/spark-html-image/README.md) | Build-time image optimization — `<img>` rewritten to webp/avif with responsive `srcset`, zero config. |
 | [`spark-html-font`](packages/spark-html-font/README.md) | Font loading optimizer — `@font-face` + preload + size-adjusted fallbacks, no FOUT, no layout shift. |
@@ -178,7 +179,7 @@ Spark trades completeness for simplicity — these are deliberate edges, not roa
 
 | Package | What it does |
 |---|---|
-| [`create-spark-html-app`](packages/create-spark-html-app/README.md) | Scaffold a spark-html app — `npm create spark-html-app`. |
+| [`create-spark-html-app`](packages/create-spark-html-app/README.md) | Scaffold a spark-html app — `bun create spark-html-app`. |
 | [`prettier-plugin-spark`](packages/prettier-plugin-spark/README.md) | Prettier plugin — formats the `<script>`/`<style>` blocks, leaves markup byte-for-byte. |
 | [`spark-html-language-server`](packages/spark-html-language-server/README.md) | LSP for components — diagnostics, go-to-definition, prop autocomplete, hover docs for every directive. |
 
@@ -192,11 +193,11 @@ website/         the docs/playground/tutorials site — built with Spark itself
 ```
 
 ```bash
-npm install      # links workspaces
-npm run dev      # the example app
-npm run site     # the website
-npm test         # 400+ assertions, pure node, no browser
-npm run e2e      # Playwright: mount → hydrate → router → theme, live tutorials
+bun install      # links workspaces
+bun run dev      # the example app
+bun run site     # the website
+bun run test         # 400+ assertions, pure node, no browser
+bun run e2e      # Playwright: mount → hydrate → router → theme, live tutorials
 ```
 
 Built something with Spark? Add it to the
