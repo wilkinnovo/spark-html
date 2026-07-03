@@ -42,9 +42,23 @@
  *     devRoutes?({ config }) → { '/path': { type, body() } },  // dev serving
  *     transformHtml?(html, { dev }) }                  // dev page injection
  */
-import { join, resolve, extname } from 'node:path';
+import { join, resolve, extname, basename, sep } from 'node:path';
 import { existsSync, watch, readdirSync, statSync, readFileSync } from 'node:fs';
 import { rm, mkdir, cp, readFile } from 'node:fs/promises';
+
+// Resolve `rel` under `base` and refuse anything that escapes it — a static
+// server must never serve outside its root. `..` is normalized away by the URL
+// parser, but `decodeURIComponent` can reintroduce it (e.g. `%2e%2e%2f`), so
+// the check runs on the final resolved path.
+function safeJoin(base, rel) {
+  const p = resolve(base, rel);
+  return p === base || p.startsWith(base + sep) ? p : null;
+}
+
+// URL pathname, decoded — null on malformed percent-encoding (rejected as 400).
+function decodePath(pathname) {
+  try { return decodeURIComponent(pathname); } catch { return null; }
+}
 
 const MIME = {
   '.html': 'text/html', '.js': 'text/javascript', '.mjs': 'text/javascript',
@@ -208,7 +222,8 @@ export async function dev(overrides = {}) {
     development: true,
     async fetch(req, srv) {
       const url = new URL(req.url);
-      let path = decodeURIComponent(url.pathname);
+      const path = decodePath(url.pathname);
+      if (path === null) return new Response('Bad request', { status: 400 });
 
       // WebSocket channel for scoped component HMR.
       if (path === '/__spark_hmr') {
@@ -233,11 +248,12 @@ export async function dev(overrides = {}) {
       }
 
       // Static lookup: project root first (index.html, src/…), then publicDir.
+      // Each candidate is guarded against escaping its own base (path traversal).
       const rel = path.replace(/^\/+/, '');
-      const candidates = [join(projectRoot, rel), join(pub, rel)];
       let file = null;
-      for (const c of candidates) {
-        if (existsSync(c) && statSync(c).isFile()) { file = c; break; }
+      for (const b of [projectRoot, pub]) {
+        const c = safeJoin(b, rel);
+        if (c && existsSync(c) && statSync(c).isFile()) { file = c; break; }
       }
 
       // SPA fallback: extensionless paths serve the app shell (the router
@@ -345,11 +361,17 @@ export async function build(overrides = {}) {
         const msgs = (result.logs || []).map((l) => l.message || String(l)).join('\n');
         throw new Error(`[spark] build failed:\n${msgs}`);
       }
-      // Entry outputs come back in entrypoint order — map each to its URL.
+      // Entry outputs come back in entrypoint order (verified for Bun's
+      // splitting output, incl. same-basename entries) — map each to its URL.
       const entryOuts = result.outputs.filter((o) => o.kind === 'entry-point');
       found.forEach((f, i) => {
-        const name = entryOuts[i] && entryOuts[i].path.split('/').pop();
-        if (name) html = html.replaceAll(f.url, `${base}assets/${name}`);
+        const name = entryOuts[i] && basename(entryOuts[i].path);
+        if (!name) return;
+        const to = `${base}assets/${name}`;
+        // Replace only the quoted attribute value, so a longer URL that ends
+        // with this one (e.g. /lib/app.js vs /app.js) is never corrupted the
+        // way a bare replaceAll(url) would corrupt it.
+        for (const q of ['"', "'"]) html = html.split(`${q}${f.url}${q}`).join(`${q}${to}${q}`);
       });
     }
     await Bun.write(join(outDir, config.entry.split('/').pop()), html);
@@ -378,13 +400,15 @@ export async function preview(overrides = {}) {
     port: overrides.port ?? config.port ?? 4173,
     fetch(req) {
       const url = new URL(req.url);
-      let path = decodeURIComponent(url.pathname);
+      let path = decodePath(url.pathname);
+      if (path === null) return new Response('Bad request', { status: 400 });
       if (base !== '/' && path.startsWith(base)) path = '/' + path.slice(base.length);
       const rel = path.replace(/^\/+/, '');
+      // Guard every candidate against escaping outDir (path traversal).
       const tryFiles = [
-        join(outDir, rel === '' ? 'index.html' : rel),
-        join(outDir, rel + '.html'),
-        rel !== '' && rel.endsWith('/') ? join(outDir, rel, 'index.html') : null,
+        safeJoin(outDir, rel === '' ? 'index.html' : rel),
+        safeJoin(outDir, rel + '.html'),
+        rel !== '' && rel.endsWith('/') ? safeJoin(outDir, join(rel, 'index.html')) : null,
       ].filter(Boolean);
       for (const f of tryFiles) {
         if (existsSync(f) && statSync(f).isFile()) {

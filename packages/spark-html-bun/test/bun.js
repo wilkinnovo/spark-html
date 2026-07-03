@@ -4,7 +4,7 @@
  * invokes it through scripts/test-bun.mjs, which skips when bun is absent.
  */
 import { strict as assert } from 'node:assert';
-import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, existsSync, readdirSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, existsSync, readdirSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 
@@ -100,6 +100,18 @@ await test('dev: editing a component broadcasts { name } over /__spark_hmr', asy
   assert.equal(msg.name, 'hello');
 });
 
+await test('dev: encoded path traversal cannot escape the project root', async () => {
+  const name = `spark-secret-${Date.now()}.txt`;
+  const secret = join(devRoot, '..', name);
+  writeFileSync(secret, 'TOP SECRET', 'utf8');
+  try {
+    // %2e%2e%2f = "../" — survives URL normalization, decoded on the server.
+    const res = await fetch(`${D}/%2e%2e%2f${name}`);
+    assert.equal(res.status, 404, 'traversal refused');
+    assert.ok(!(await res.text()).includes('TOP SECRET'), 'file outside the root is never served');
+  } finally { rmSync(secret, { force: true }); }
+});
+
 devServer.stop(true);
 
 // ── build ───────────────────────────────────────────────────────────────
@@ -138,6 +150,27 @@ await test('build: base is honored via publicPath', async () => {
   await build({ root: r, base: '/spark/', quiet: true });
   const html = readFileSync(join(r, 'dist', 'index.html'), 'utf8');
   assert.ok(html.includes('src="/spark/assets/'), 'asset URLs carry the base');
+});
+
+await test('build: a URL that is a suffix of another entry URL is not corrupted', async () => {
+  const r = mkdtempSync(join(tmpdir(), 'spark-bun-collide-'));
+  mkdirSync(join(r, 'lib'));
+  writeFileSync(join(r, 'app.js'), 'export const a = 1;');
+  writeFileSync(join(r, 'lib', 'app.js'), 'export const b = 2;');
+  // "/app.js" is a suffix of "/lib/app.js" — a bare replaceAll would mangle it.
+  writeFileSync(join(r, 'index.html'),
+    '<!doctype html><html><head></head><body>' +
+    '<script type="module" src="/lib/app.js"></script>' +
+    '<script type="module" src="/app.js"></script>' +
+    '</body></html>');
+  writeFileSync(join(r, 'package.json'), JSON.stringify({ name: 'x', type: 'module' }));
+  await build({ root: r, quiet: true });
+  const html = readFileSync(join(r, 'dist', 'index.html'), 'utf8');
+  assert.ok(!html.includes('/lib/assets/'), 'the /lib/ path was not mangled by a suffix match');
+  const refs = [...html.matchAll(/src="([^"]+)"/g)].map((m) => m[1]);
+  assert.equal(refs.length, 2, 'both script srcs remain');
+  assert.ok(refs.every((u) => /^\/assets\/app-\w+\.js$/.test(u)), 'both rewritten to hashed assets');
+  assert.notEqual(refs[0], refs[1], 'each entry mapped to its own hashed file');
 });
 
 // ── preview ─────────────────────────────────────────────────────────────
