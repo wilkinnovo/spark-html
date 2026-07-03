@@ -36,6 +36,13 @@ const ELEMENT_NODE = 1, TEXT_NODE = 3;
 // True while spark-prerender drives (server DOM). `globalThis` is guaranteed in
 // every env Spark runs (it needs Proxy + import maps anyway), so no typeof guard.
 const isPrerender = () => globalThis.__SPARK_PRERENDER__;
+// During prerender, hand a promise to the settle loop (the channel
+// <template await> and async scripts share) so the serialized HTML waits.
+function pushPrerenderWait(p) {
+  if (isPrerender() && Array.isArray(globalThis.__SPARK_AWAITS__)) {
+    globalThis.__SPARK_AWAITS__.push(p);
+  }
+}
 
 // ─── Fault isolation + dev error overlay ──────────────────────────────
 // A failure in one component must never blank the page or take down a
@@ -88,8 +95,7 @@ function renderOverlay() {
       'div',
       'position:fixed;inset:0;z-index:2147483647;overflow:auto;' +
         'background:rgba(20,2,2,.96);color:#ffd9d9;' +
-        'font:13px/1.5 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;' +
-        'padding:24px;box-sizing:border-box',
+        'font:13px/1.5 ui-monospace,Menlo,Consolas,monospace;padding:24px',
     );
     // Never let Spark patch its own overlay.
     overlayEl.setAttribute('spark-ignore', '');
@@ -206,19 +212,17 @@ function execute(code, scope, event = null, __val__ = undefined, ctx = null) {
     // `__val__` carries the element value for two-way bindings.
     compileStmt(code)(scope, event, __val__);
   } catch (e) {
-    if (ctx) reportError(e, { phase: ctx.phase || 'handler', component: ctx.component, detail: ctx.detail || code });
+    // `ctx` is a factory — hot callers (event listeners) pass one so the
+    // context object is only built when something actually threw.
+    if (ctx) reportError(e, ctx());
     else console.warn(`[spark] Error in "${code}":`, e.message);
   }
 }
 
 // Name of the component that owns `el` (nearest [name] ancestor, or itself).
 function componentNameFor(el) {
-  let n = el;
-  while (n) {
-    if (n.getAttribute && n.hasAttribute && n.hasAttribute('name')) return n.getAttribute('name');
-    n = n.parentNode;
-  }
-  return undefined;
+  const c = el && el.hasAttribute && el.hasAttribute('name') ? el : closestComponent(el);
+  return c ? c.getAttribute('name') : undefined;
 }
 
 // Find the `}` that closes the interpolation `{` whose body starts at `start`.
@@ -328,17 +332,11 @@ function parseSFC(source) {
   let script = '';
   let style = '';
 
-  let markup = source.replace(
-    /<script[^>]*>([\s\S]*?)<\/script>/gi,
-    (_, body) => {
-      script += body + '\n';
-      return '';
-    },
-  );
-  markup = markup.replace(
-    /<style[^>]*>([\s\S]*?)<\/style>/gi,
-    (_, body) => {
-      style += body + '\n';
+  const markup = source.replace(
+    /<(script|style)[^>]*>([\s\S]*?)<\/\1>/gi,
+    (_, kind, body) => {
+      if (kind.toLowerCase() === 'script') script += body + '\n';
+      else style += body + '\n';
       return '';
     },
   );
@@ -597,11 +595,10 @@ function hydrateBlockImports(nodes, scope) {
 
 // Coerce attribute strings into sensible JS values for props.
 function coerce(v) {
-  if (v === '') return true;          // bare attribute → boolean true
-  if (v === 'true') return true;
+  if (v === '' || v === 'true') return true; // bare attribute → boolean true
   if (v === 'false') return false;
   if (v === 'null') return null;
-  if (v !== '' && !isNaN(Number(v))) return Number(v);
+  if (!isNaN(Number(v))) return Number(v);
   try { return JSON.parse(v); } catch { /* keep as string */ }
   return v;
 }
@@ -670,9 +667,14 @@ function store(name, initial) {
  * it, or sync it elsewhere). `fn` runs after every change. Returns an
  * unsubscribe function. Creates the store if it doesn't exist yet.
  */
+// The store entry for `name`, creating an empty store when absent.
+function storeEntry(name) {
+  if (!stores.has(name)) store(name, {});
+  return stores.get(name);
+}
+
 function subscribe(name, fn) {
-  let entry = stores.get(name);
-  if (!entry) { store(name, {}); entry = stores.get(name); }
+  const entry = storeEntry(name);
   entry.subscribers.add(fn);
   return () => entry.subscribers.delete(fn);
 }
@@ -682,17 +684,13 @@ function subscribe(name, fn) {
 // it — otherwise the closure (and the whole component scope it captures)
 // would live in the store's Set forever, leaking on every unmount.
 function subscribeStore(name, componentEl, scopeRef) {
-  let entry = stores.get(name);
-  if (!entry) {
-    // During prerender the page's bootstrap (which calls store()) hasn't run,
-    // so an absent store is EXPECTED — auto-create it silently. In the browser
-    // it's a real mistake, so warn there.
-    if (!(isPrerender())) {
-      console.warn(`[spark] useStore("${name}") — store not created. Call store("${name}", initial) before mount().`);
-    }
-    store(name, {});
-    entry = stores.get(name);
+  // During prerender the page's bootstrap (which calls store()) hasn't run,
+  // so an absent store is EXPECTED — auto-create it silently. In the browser
+  // it's a real mistake, so warn there.
+  if (!stores.has(name) && !isPrerender()) {
+    console.warn(`[spark] useStore("${name}") — store not created. Call store("${name}", initial) before mount().`);
   }
+  const entry = storeEntry(name);
   const cb = () => {
     if (!scopeRef.scope || !componentEl.isConnected) return;
     // Route through the component's batching scheduler when available so a
@@ -726,10 +724,7 @@ function subscribeStore(name, componentEl, scopeRef) {
 function derived(name, deps, compute) {
   if (stores.has(name)) return stores.get(name).proxy;
 
-  const sources = (Array.isArray(deps) ? deps : [deps]).map((d) => {
-    if (!stores.has(d)) store(d, {});
-    return stores.get(d);
-  });
+  const sources = (Array.isArray(deps) ? deps : [deps]).map((d) => storeEntry(d));
   const entry = { state: {}, subscribers: new Set(), derived: true };
   markStoreKind(entry.state, 'derived');
   const cache = new WeakMap();
@@ -797,9 +792,9 @@ function isPlainContainer(v) {
   return v[Symbol.toStringTag] !== 'Module';
 }
 
-// Mutating methods that should trigger a re-render, per collection type.
-const MAP_MUTATORS = new Set(['set', 'delete', 'clear']);
-const SET_MUTATORS = new Set(['add', 'delete', 'clear']);
+// Mutating methods that should trigger a re-render. One list serves both
+// collections: Map has no .add and Set has no .set, so nothing misfires.
+const MUTATORS = new Set(['set', 'add', 'delete', 'clear']);
 
 function reactify(value, onMutate, cache) {
   // Unwrap any reactive proxy back to its raw target first, so every value
@@ -814,7 +809,6 @@ function reactify(value, onMutate, cache) {
   if (value instanceof Map || value instanceof Set) {
     const cachedC = cache.get(value);
     if (cachedC) return cachedC;
-    const mutators = value instanceof Map ? MAP_MUTATORS : SET_MUTATORS;
     const proxyC = new Proxy(value, {
       get(t, k) {
         if (k === REACTIVE_RAW) return t;
@@ -822,7 +816,7 @@ function reactify(value, onMutate, cache) {
         if (typeof v !== 'function') return v;
         return function (...args) {
           const r = v.apply(t, args);
-          if (mutators.has(k)) onMutate();
+          if (MUTATORS.has(k)) onMutate();
           return r === t ? proxyC : r; // keep chaining reactive (Map.set returns the map)
         };
       },
@@ -907,44 +901,45 @@ function shouldEval(node) {
   return setsIntersect(deps, gDirtyKeys);
 }
 
-// Run `fn` (which evaluates a binding), recording every scope key it reads
-// onto `node.__sparkReadKeys`. `null` means "read nothing trackable" → always
-// re-evaluate (treated as untracked, never skipped). The dep Set is reused
-// across evaluations of the same node to avoid per-patch allocation.
-function withCapture(node, fn) {
+// Run `fn(a, b)` (which evaluates a binding), recording every scope key it
+// reads onto `node.__sparkReadKeys`. `null` means "read nothing trackable" →
+// always re-evaluate (treated as untracked, never skipped). The dep Set is
+// reused across evaluations of the same node, and the arguments are passed
+// through, so the hot call sites allocate no closure and no Set per patch.
+function withCapture(node, fn, a, b) {
   const prev = captureSet;
   let set = node.__sparkReadKeys;
   if (set == null) set = new Set();
   else set.clear();
   captureSet = set;
   try {
-    fn();
+    return fn(a, b);
   } finally {
     captureSet = prev;
+    node.__sparkReadKeys = set.size ? set : null;
   }
-  node.__sparkReadKeys = set.size ? set : null;
 }
 
-// Run `fn` collecting EVERY scope key read anywhere inside it (including in
-// nested withCapture leaves) onto `node.__sparkReadKeys`. Used by each/if
+// Run `fn(a, b)` collecting EVERY scope key read anywhere inside it (including
+// in nested withCapture leaves) onto `node.__sparkReadKeys`. Used by each/if
 // blocks so the whole block can be skipped in dirty mode when none of the
 // keys it depends on — the array/condition expr AND every per-row binding —
-// changed.
-function withSink(node, fn) {
+// changed. Arguments pass through so anchor call sites allocate no closure.
+function withSink(node, fn, a, b) {
   const prev = captureSink;
   let set = node.__sparkReadKeys;
   if (set == null) set = new Set();
   else set.clear();
   captureSink = set;
   try {
-    fn();
+    return fn(a, b);
   } finally {
     captureSink = prev;
     // Propagate to an enclosing block so a nested loop's deps count for the
     // outer one too.
     if (prev) for (const k of set) prev.add(k);
+    node.__sparkReadKeys = set.size ? set : null;
   }
-  node.__sparkReadKeys = set.size ? set : null;
 }
 
 // ─── `$:` extraction (multi-line aware) ───────────────────────────────
@@ -960,8 +955,8 @@ function withSink(node, fn) {
 const OPEN = '([{';
 const CLOSE = ')]}';
 // operators that, at a line's end OR a line's start, mean "this continues".
-const CONT_END = new Set(['+','-','*','/','%','&','|','^','<','>','=','?',':','.',',']);
-const CONT_START = new Set(['+','-','*','/','%','&','|','^','<','>','=','?',':','.',',','(','[','`']);
+const CONT_END = '+-*/%&|^<>=?:.,';
+const CONT_START = CONT_END + '([`';
 
 // Advance past a string/template literal starting at `i`; returns the index
 // just after its closing quote. Handles escapes and `${…}` interpolation.
@@ -1043,13 +1038,13 @@ function reactiveStatementEnd(src, start) {
       if (c === '\n') {
         const before = src.slice(start, i).replace(/\s+$/, '');
         const last = before[before.length - 1];
-        if (last && CONT_END.has(last)) { i++; continue; }
+        if (last && CONT_END.includes(last)) { i++; continue; }
         let k = i + 1;
         while (k < src.length && /[ \t\r]/.test(src[k])) k++;
         if (src[k] === '\n') { i++; continue; } // blank line — keep scanning
         const next = src[k];
         // ".method" chains, "? :" ternaries, binary operators on the next line
-        if (next && CONT_START.has(next)) { i++; continue; }
+        if (next && CONT_START.includes(next)) { i++; continue; }
         return i;
       }
     }
@@ -1058,36 +1053,56 @@ function reactiveStatementEnd(src, start) {
   return i;
 }
 
-// Pull every `$:` statement out of the script, returning the cleaned code
-// (reactive spans blanked to newlines so line numbers stay put) and the list
-// of statements to re-run on each change.
-function extractReactiveStatements(src) {
+// Pull every top-level `import` statement AND every `$:` reactive statement
+// out of the script in ONE string/comment-aware pass, blanking both to
+// newlines so line numbers stay put. (These were two near-identical
+// scanners; merged for size and a single scan.) `import(` (dynamic) and
+// `import.meta` are left alone, as is anything inside strings, comments, or
+// — for imports — nested braces.
+function extractTopLevel(src) {
+  const imports = [];
   const reactiveStmts = [];
   let out = '';
   let i = 0;
+  let depth = 0;
+  // At a statement boundary: start of script, or after ; { } newline.
+  const atBoundary = () => {
+    let j = out.length - 1;
+    while (j >= 0 && (out[j] === ' ' || out[j] === '\t')) j--;
+    const prev = j < 0 ? '\n' : out[j];
+    return prev === '\n' || prev === ';' || prev === '{' || prev === '}';
+  };
+  const blank = (end) => { out += src.slice(i, end).replace(/[^\n]/g, ''); i = end; };
   while (i < src.length) {
     const c = src[i];
     if (c === '"' || c === "'" || c === '`') { const j = skipString(src, i); out += src.slice(i, j); i = j; continue; }
     if (c === '/' && src[i + 1] === '/') { const s = i; while (i < src.length && src[i] !== '\n') i++; out += src.slice(s, i); continue; }
     if (c === '/' && src[i + 1] === '*') { const s = i; i += 2; while (i < src.length && !(src[i] === '*' && src[i + 1] === '/')) i++; i += 2; out += src.slice(s, i); continue; }
-    if (c === '$' && src[i + 1] === ':') {
-      // Only at a statement boundary: start of script, or after ; { } newline.
-      let j = out.length - 1;
-      while (j >= 0 && (out[j] === ' ' || out[j] === '\t')) j--;
-      const prev = j < 0 ? '\n' : out[j];
-      if (prev === '\n' || prev === ';' || prev === '{' || prev === '}') {
-        const end = reactiveStatementEnd(src, i + 2);
-        const stmt = src.slice(i + 2, end).trim().replace(/;\s*$/, '');
-        if (stmt) reactiveStmts.push(stmt);
-        out += src.slice(i, end).replace(/[^\n]/g, ''); // keep newlines only
-        i = end;
-        continue;
+    if (c === '$' && src[i + 1] === ':' && atBoundary()) {
+      const end = reactiveStatementEnd(src, i + 2);
+      const stmt = src.slice(i + 2, end).trim().replace(/;\s*$/, '');
+      if (stmt) reactiveStmts.push(stmt);
+      blank(end);
+      continue;
+    }
+    if (depth === 0 && c === 'i' && src.startsWith('import', i) && !/[\w$]/.test(src[i + 6] || '') && atBoundary()) {
+      let k = i + 6;
+      while (k < src.length && /\s/.test(src[k])) k++;
+      if (src[k] !== '(' && src[k] !== '.') { // not import() / import.meta
+        const parsed = parseImportStatement(src, i);
+        if (parsed) {
+          imports.push(parsed);
+          blank(parsed.end);
+          continue;
+        }
       }
     }
+    if (OPEN.includes(c)) depth++;
+    else if (CLOSE.includes(c)) depth--;
     out += c;
     i++;
   }
-  return { code: out, reactiveStmts };
+  return { code: out, imports, reactiveStmts };
 }
 
 // ─── JS imports inside component scripts ───────────────────────────────
@@ -1165,47 +1180,6 @@ function parseImportStatement(src, start) {
   return { end: i, spec, defaultName, nsName, named };
 }
 
-// Pull every top-level import statement out of the script. Returns the
-// cleaned code (imports blanked to newlines so line numbers stay put) and
-// the parsed import list. `import(` (dynamic) and `import.meta` are left
-// alone, as is anything inside strings, comments, or nested braces.
-function extractImports(src) {
-  const imports = [];
-  let out = '';
-  let i = 0;
-  let depth = 0;
-  while (i < src.length) {
-    const c = src[i];
-    if (c === '"' || c === "'" || c === '`') { const j = skipString(src, i); out += src.slice(i, j); i = j; continue; }
-    if (c === '/' && src[i + 1] === '/') { const s = i; while (i < src.length && src[i] !== '\n') i++; out += src.slice(s, i); continue; }
-    if (c === '/' && src[i + 1] === '*') { const s = i; i += 2; while (i < src.length && !(src[i] === '*' && src[i + 1] === '/')) i++; i += 2; out += src.slice(s, i); continue; }
-    if (OPEN.includes(c)) { depth++; out += c; i++; continue; }
-    if (CLOSE.includes(c)) { depth--; out += c; i++; continue; }
-    if (depth === 0 && c === 'i' && src.startsWith('import', i) && !/[\w$]/.test(src[i + 6] || '')) {
-      // Only at a statement boundary: start of script, or after ; { } newline.
-      let j = out.length - 1;
-      while (j >= 0 && (out[j] === ' ' || out[j] === '\t')) j--;
-      const prev = j < 0 ? '\n' : out[j];
-      if (prev === '\n' || prev === ';' || prev === '{' || prev === '}') {
-        let k = i + 6;
-        while (k < src.length && /\s/.test(src[k])) k++;
-        if (src[k] !== '(' && src[k] !== '.') { // not import() / import.meta
-          const parsed = parseImportStatement(src, i);
-          if (parsed) {
-            imports.push(parsed);
-            out += src.slice(i, parsed.end).replace(/[^\n]/g, '');
-            i = parsed.end;
-            continue;
-          }
-        }
-      }
-    }
-    out += c;
-    i++;
-  }
-  return { code: out, imports };
-}
-
 // Generate the replay statement for one parsed import. Assignments resolve
 // through the with() scope proxy (the locals are seeded), so imported values
 // land in component state like any other declaration.
@@ -1255,10 +1229,6 @@ function analyzeScript(rawCode) {
   // Normalize line endings + strip comments so the declaration regexes
   // behave identically on every OS/editor. (CRLF was a real-world bug.)
   let code = rawCode.replace(/\r\n?/g, '\n');
-  // JS imports — lifted out first (they can't be props or `$:` statements).
-  const importsOut = extractImports(code);
-  code = importsOut.code;
-  const imports = importsOut.imports;
   // `export let x = …` marks a PROP (overridable from the import
   // placeholder). Record prop names, then treat as a normal declaration.
   const propNames = new Set();
@@ -1269,10 +1239,11 @@ function analyzeScript(rawCode) {
       return `${before}${space}${kw} ${name}`;
     },
   );
-  // `$: doubled = count * 2;` — reactive statements. Extracted here (multi-line
-  // aware), re-run after every state change before patching.
-  const extracted = extractReactiveStatements(code);
+  // JS imports (they can't be props) + `$: …` reactive statements, lifted
+  // out in one multi-line-aware pass; `$:` statements re-run on each change.
+  const extracted = extractTopLevel(code);
   code = extracted.code;
+  const imports = extracted.imports;
   const reactiveStmts = extracted.reactiveStmts;
 
   const codeNoComments = code
@@ -1348,10 +1319,11 @@ function makeScope(rawCode, componentEl, props = {}) {
 
   const raw = Object.create(null);
   for (const n of seedNames) raw[n] = undefined;
-  // Each `$:` statement becomes an effect carrying the keys it reads
-  // (stamped on `__sparkReadKeys` by withCapture, like a DOM binding), so a
-  // dirty-mode flush re-runs only the statements whose inputs changed.
-  const reactiveEffects = reactiveStmts.map((src) => ({ src }));
+  // Each `$:` statement becomes an effect carrying its compiled function and
+  // the keys it reads (stamped on `__sparkReadKeys` by withCapture, like a
+  // DOM binding), so a dirty-mode flush re-runs only the statements whose
+  // inputs changed — with no compile-cache lookup per run.
+  const reactiveEffects = reactiveStmts.map((src) => ({ src, fn: compileStmt(src) }));
 
   // Builtins available inside every component script.
   const scopeRef = { scope: null };
@@ -1455,25 +1427,23 @@ function makeScope(rawCode, componentEl, props = {}) {
   // set sees the settled state.
   let inReactive = false;
   let ready = false; // don't run reactive stmts mid-initialization
-  function runOneReactive(eff) {
-    withCapture(eff, () => {
-      try {
-        compileStmt(eff.src)(scope);
-      } catch (e) {
-        // Runs on every state change — report once per statement.
-        reportError(e, {
-          phase: 'reactive', component: componentEl.getAttribute('name'), detail: '$: ' + eff.src,
-        });
-      }
-    });
-  }
+  const runEffect = (eff) => {
+    try {
+      eff.fn(scope);
+    } catch (e) {
+      // Runs on every state change — report once per statement.
+      reportError(e, {
+        phase: 'reactive', component: componentEl.getAttribute('name'), detail: '$: ' + eff.src,
+      });
+    }
+  };
   function runReactive() {
     if (!ready || inReactive || reactiveEffects.length === 0) return;
     inReactive = true;
     try {
       if (!gDirtyMode) {
         // Full pass: run every `$:` statement, (re)recording its deps.
-        for (const eff of reactiveEffects) runOneReactive(eff);
+        for (const eff of reactiveEffects) withCapture(eff, runEffect, eff);
       } else {
         // Dirty pass: run only statements whose deps changed. A statement's
         // write extends gDirtyKeys (via the set trap), which can make a later
@@ -1487,7 +1457,7 @@ function makeScope(rawCode, componentEl, props = {}) {
           for (const eff of reactiveEffects) {
             if (!shouldEval(eff)) continue;
             const before = gDirtyKeys.size;
-            runOneReactive(eff);
+            withCapture(eff, runEffect, eff);
             if (gDirtyKeys.size > before) grew = true;
           }
         }
@@ -1513,11 +1483,12 @@ function makeScope(rawCode, componentEl, props = {}) {
   function flush() {
     scheduled = false;
     // Swap the dirty set out (cheaper than copying) so writes during the
-    // flush accumulate into a fresh set for the next round.
+    // flush accumulate into a fresh set for the next round. An untouched
+    // (empty) set is simply kept — no allocation on store-driven flushes.
     const keys = dirtyKeys.size ? dirtyKeys : null;
-    dirtyKeys = new Set();
+    if (keys) dirtyKeys = new Set();
     const items = dirtyItems.size ? dirtyItems : null;
-    dirtyItems = new Set();
+    if (items) dirtyItems = new Set();
     const wasFull = fullDirty;
     fullDirty = false;
     if (!componentEl.isConnected) return;
@@ -1589,11 +1560,8 @@ function makeScope(rawCode, componentEl, props = {}) {
       componentEl.__sparkScopePending = true;
       const p = fn(scope, makeImporter(componentEl)).then(finish).catch(reportScriptError);
       componentEl.__sparkScriptReady = p;
-      // Prerender: ride the same channel <template await> uses, so the settle
-      // loop waits for the modules to load + the post-import render.
-      if (isPrerender() && Array.isArray(globalThis.__SPARK_AWAITS__)) {
-        globalThis.__SPARK_AWAITS__.push(p);
-      }
+      // Prerender: the settle loop waits for the modules + post-import render.
+      pushPrerenderWait(p);
     } else {
       fn(scope);
       finish();
@@ -1609,9 +1577,7 @@ function patch(el, scope) {
   walkNode(el, scope, true);
   // Optional observation seam (used by the test suite to assert batching).
   // No-op in normal use — nothing sets this hook in the browser.
-  if (globalThis.__sparkTestOnPatch) {
-    globalThis.__sparkTestOnPatch(el);
-  }
+  globalThis.__sparkTestOnPatch?.(el);
 }
 
 // Request a batched re-render of the component that owns `el`. Used after
@@ -1621,10 +1587,8 @@ function patch(el, scope) {
 // not attributable to a key, force a full pass.
 function scheduleRerender(el) {
   let n = el;
-  while (n) {
-    if (n.__sparkScheduleFull) return n.__sparkScheduleFull();
-    n = n.parentNode;
-  }
+  while (n && !n.__sparkScheduleFull) n = n.parentNode;
+  if (n) n.__sparkScheduleFull();
 }
 
 // ─── Declarative forms: bind:form ─────────────────────────────────────
@@ -1705,16 +1669,75 @@ function setupFormBinding(form, stateName, handlerAttr) {
   });
 }
 
+// Clone an anchor's content as its reusable template: a <template>'s content
+// fragment, or — for a non-template anchor — its children (which are then
+// cleared; the anchor renders clones as managed siblings).
+function cloneTemplateNodes(el) {
+  if (el.tagName.toLowerCase() === 'template') {
+    return [...el.content.childNodes].map((n) => n.cloneNode(true));
+  }
+  const nodes = [...el.childNodes].map((n) => n.cloneNode(true));
+  el.innerHTML = '';
+  return nodes;
+}
+
+// Render a block: clone every template node, mark it managed (owned by its
+// anchor, not the parent walk), insert the clones in order after `cursor`,
+// and collect them into `out`. Shared by the each/if/await anchors.
+function insertClones(templateNodes, cursor, out) {
+  for (const tpl of templateNodes) {
+    const clone = tpl.cloneNode(true);
+    clone.__sparkManaged = true;
+    cursor.after(clone);
+    cursor = clone;
+    out.push(clone);
+  }
+  return cursor;
+}
+
+// Full first render of an if/each block: insert the clones, THEN walk them
+// (a nested if/else chain needs its followers present when its head first
+// runs), fire the enter hook, and resolve any [import] placeholders (async).
+function renderClones(templateNodes, cursor, out, scope) {
+  insertClones(templateNodes, cursor, out);
+  for (const clone of out) {
+    walkNode(clone, scope, false);
+    enterNode(clone);
+  }
+  hydrateBlockImports(out, scope);
+}
+
 // Is a child node already known to be static — i.e. re-walking it can't
 // change anything? Text without `{…}`, fully-static element subtrees, and
 // comments qualify. An each/if anchor (never marked static) and any element
 // with a live binding do not, so the parent keeps descending into them.
 function isStaticNode(n) {
   if (n.nodeType === TEXT_NODE) {
-    return !(n.__sparkTpl && n.__sparkTpl.includes('{'));
+    return n.__sparkTpl == null; // null = no `{…}`; undefined = not seen yet
   }
   if (n.nodeType !== ELEMENT_NODE) return true;
   return n.__sparkStatic === true;
+}
+
+// Classify an element once — the attributes that shape the walk (spark-ignore,
+// each/if/else/await, name) are authoring-time constants, so later walks pay
+// one property read instead of up to seven hasAttribute() calls.
+// 0 plain · 1 spark-ignore · 3 each · 4 if · 5 else/else-if · 6 await.
+// (`name=` is a separate flag: whether it's a real component boundary depends
+// on isSparkComponent, which can flip at boot — see walkNode.)
+function kindOf(node) {
+  let k = node.__sparkKind;
+  if (k === undefined) {
+    node.__sparkNamed = node.hasAttribute('name');
+    k = node.hasAttribute('spark-ignore') ? 1
+      : node.hasAttribute('each') ? 3
+      : node.hasAttribute('if') ? 4
+      : node.hasAttribute('else-if') || node.hasAttribute('else') ? 5
+      : node.hasAttribute('await') ? 6
+      : 0;
+    node.__sparkKind = k;
+  }
+  return k;
 }
 
 function walkNode(node, scope, isRoot = false) {
@@ -1730,9 +1753,11 @@ function walkNode(node, scope, isRoot = false) {
   // of Tier 1: cost becomes proportional to DYNAMIC nodes, not total nodes.
   if (!isRoot && node.__sparkStatic) return;
 
+  const kind = kindOf(node);
+
   // Escape hatch: subtrees marked spark-ignore are never patched —
   // essential for documentation/code samples containing literal {braces}.
-  if (node.hasAttribute('spark-ignore')) {
+  if (kind === 1) {
     if (!isRoot) node.__sparkStatic = true;
     return;
   }
@@ -1741,7 +1766,7 @@ function walkNode(node, scope, isRoot = false) {
   // GENUINE component, though: a native `name=` on a form control (e.g.
   // `<input name="email">`) is not a boundary, so it keeps patching against the
   // parent scope (its `bind:value`/`{…}` read the parent's state).
-  if (!isRoot && node.hasAttribute('name') && isSparkComponent(node)) {
+  if (!isRoot && node.__sparkNamed && isSparkComponent(node)) {
     node.__sparkStatic = true;
     return;
   }
@@ -1752,9 +1777,9 @@ function walkNode(node, scope, isRoot = false) {
   // sink) changed — so an unrelated update no longer re-reconciles a 1000-row
   // loop. Deep mutations (todos.push) take the full-walk path, so they still
   // reconcile correctly.
-  if (node.hasAttribute('each')) {
+  if (kind === 3) {
     if (gDirtyMode && !shouldEval(node)) return;
-    withSink(node, () => patchEach(node, scope));
+    withSink(node, patchEach, node, scope);
     return;
   }
 
@@ -1762,16 +1787,16 @@ function walkNode(node, scope, isRoot = false) {
   // the template when truthy, removed when falsy. Unlike :hidden, the
   // nodes genuinely leave the DOM. May be followed by <template else-if>
   // / <template else> siblings — the whole chain is driven from this head.
-  if (node.hasAttribute('if')) {
+  if (kind === 4) {
     if (gDirtyMode && !shouldEval(node)) return;
-    withSink(node, () => patchIf(node, scope));
+    withSink(node, patchIf, node, scope);
     return;
   }
 
   // else-if / else chain members render via their head's patchIf — the
   // anchor itself never changes, so it's static from the parent's view.
   // (Its rendered content is inserted as managed siblings, like if/each.)
-  if (node.hasAttribute('else-if') || node.hasAttribute('else')) {
+  if (kind === 5) {
     if (!node.__sparkIfManagedBy) {
       warnOnce(
         `orphan-else:${node.getAttribute('else-if') || 'else'}`,
@@ -1786,9 +1811,9 @@ function walkNode(node, scope, isRoot = false) {
   // the promise is pending, then swaps to <template then> (await = resolved
   // value) or <template catch> (await = error). Like if/each, the anchor drives
   // dynamic structure and is gated by the keys it reads in dirty mode.
-  if (node.hasAttribute('await')) {
+  if (kind === 6) {
     if (gDirtyMode && !shouldEval(node)) return;
-    withSink(node, () => patchAwait(node, scope));
+    withSink(node, patchAwait, node, scope);
     return;
   }
 
@@ -1832,13 +1857,16 @@ function walkNode(node, scope, isRoot = false) {
 }
 
 function patchText(node, scope) {
-  if (node.__sparkTpl === undefined) {
-    node.__sparkTpl = node.textContent || '';
+  let tpl = node.__sparkTpl;
+  if (tpl === undefined) {
+    // Static text (no `{`) caches as null — later passes are one null check,
+    // not a string scan.
+    const t = node.textContent || '';
+    tpl = node.__sparkTpl = t.includes('{') ? t : null;
   }
-  if (!node.__sparkTpl.includes('{')) return; // static text: nothing to do
-  if (!shouldEval(node)) return;              // deps unchanged this pass
-  let next;
-  withCapture(node, () => { next = interpolate(node.__sparkTpl, scope); });
+  if (tpl === null) return;      // static text: nothing to do
+  if (!shouldEval(node)) return; // deps unchanged this pass
+  const next = withCapture(node, interpolate, tpl, scope);
   if (node.textContent !== next) node.textContent = next;
 }
 
@@ -1863,9 +1891,7 @@ function enterNode(n) {
 // leave hook animate before it actually detaches; no hook ⇒ remove immediately.
 function leaveNode(n) {
   destroyComponent(n);
-  const remove = () => {
-    if (n.parentNode) n.parentNode.removeChild(n);
-  };
+  const remove = () => n.remove();
   if (leaveHook && n.nodeType === 1) leaveHook(n, remove);
   else remove();
 }
@@ -1879,14 +1905,9 @@ function parseIfMember(el) {
     : el.hasAttribute('else-if')
       ? el.getAttribute('else-if').trim()
       : null; // bare else
-  if (el.tagName.toLowerCase() === 'template') {
-    el.__sparkIfTemplate = [...el.content.childNodes].map((n) =>
-      n.cloneNode(true),
-    );
-  } else {
-    el.__sparkIfTemplate = [...el.childNodes].map((n) => n.cloneNode(true));
-    el.innerHTML = '';
-  }
+  // A bare else compiles as the constant `true` — the chain scan stops there.
+  el.__sparkIfFn = compileExpr(el.__sparkIfExpr === null ? 'true' : el.__sparkIfExpr);
+  el.__sparkIfTemplate = cloneTemplateNodes(el);
   el.__sparkIfParsed = true;
 }
 
@@ -1927,36 +1948,24 @@ function patchIf(el, scope) {
   // only the exprs that actually ran this pass.
   let active = -1;
   for (let i = 0; i < chain.length; i++) {
-    parseIfMember(chain[i]);
-    const expr = chain[i].__sparkIfExpr;
-    if (expr === null || Boolean(evaluate(expr, scope))) { active = i; break; }
+    const m = chain[i];
+    parseIfMember(m);
+    if (runExpr(m.__sparkIfFn, m.__sparkIfExpr, scope)) { active = i; break; }
   }
 
   for (let i = 0; i < chain.length; i++) {
     const m = chain[i];
     if (i > 0 && !m.parentNode) continue;
+    // Parse every member: for a plain-element branch this also CLEARS its
+    // children (they become the template), which must happen even for
+    // branches beyond the active one or their raw content stays visible.
     parseIfMember(m);
     const show = i === active;
     const isShown = Boolean(m.__sparkIfRendered && m.__sparkIfRendered.length);
 
     if (show && !isShown) {
       m.__sparkIfRendered = [];
-      // Insert the whole branch FIRST, then walk it: an if/else chain nested
-      // in the content needs its followers present when its head first runs.
-      let insertAfter = m;
-      for (const tpl of m.__sparkIfTemplate) {
-        const clone = tpl.cloneNode(true);
-        clone.__sparkManaged = true; // owned by this if-block, not the parent walk
-        insertAfter.after(clone);
-        insertAfter = clone;
-        m.__sparkIfRendered.push(clone);
-      }
-      for (const clone of m.__sparkIfRendered) {
-        walkNode(clone, scope, false);
-        enterNode(clone);
-      }
-      // Resolve any [import] placeholders cloned into the branch (async).
-      hydrateBlockImports(m.__sparkIfRendered, scope);
+      renderClones(m.__sparkIfTemplate, m, m.__sparkIfRendered, scope);
     } else if (!show && isShown) {
       m.__sparkIfRendered.forEach(leaveNode); // cleanups + (optional) exit anim
       m.__sparkIfRendered = [];
@@ -1984,18 +1993,14 @@ function patchIf(el, scope) {
 // • await="once(expr)"  fires on mount only (never re-fires).
 // A non-thenable expr is treated as an already-resolved value (then branch).
 
-// A child scope where the identifier `await` resolves to the settled value
-// (resolved value in `then`, error in `catch`) — same shape as the loop scope.
-function awaitScope(scope, value, asName) {
-  return new Proxy(scope, {
-    get(t, k) {
-      if (k === 'await' || (asName && k === asName)) return value;
-      if (k === Symbol.unscopables) return undefined;
-      return t[k];
-    },
-    has(t, k) { return k === 'await' || (asName && k === asName) || k in t; },
-    set(t, k, v) { if (k === 'await' || (asName && k === asName)) return true; t[k] = v; return true; },
-  });
+// The scope an await branch's content walks with: the identifier `await` (and
+// an optional `as` alias) bound to the settled value — the resolved value in
+// `then`, the error in `catch` — and the plain scope while pending. Exactly a
+// loop scope with both names bound to the same value, so reuse it.
+function awaitBranchScope(el, scope, state) {
+  if (state !== 'then' && state !== 'catch') return scope;
+  const v = state === 'then' ? el.__sparkAwaitValue : el.__sparkAwaitError;
+  return makeLoopScope({ v: 'await', iv: el.__sparkAwaitAs, item: v, i: v, scope });
 }
 
 function parseAwait(el) {
@@ -2005,11 +2010,11 @@ function parseAwait(el) {
   const m = expr.match(/^once\(([\s\S]*)\)$/);
   el.__sparkAwaitOnce = !!m;
   el.__sparkAwaitExpr = (m ? m[1] : expr).trim();
+  el.__sparkAwaitFn = compileExpr(el.__sparkAwaitExpr);
   el.__sparkAwaitAs = el.getAttribute('as') || null;
 
-  const content = el.tagName.toLowerCase() === 'template'
-    ? [...el.content.childNodes]
-    : [...el.childNodes];
+  const isTplAnchor = el.tagName.toLowerCase() === 'template';
+  const content = [...(isTplAnchor ? el.content : el).childNodes];
 
   const pending = [], thenNodes = [], catchNodes = [];
   for (const n of content) {
@@ -2022,7 +2027,7 @@ function parseAwait(el) {
   el.__sparkPendingTpl = clone(pending);
   el.__sparkThenTpl = clone(thenNodes);
   el.__sparkCatchTpl = clone(catchNodes);
-  if (el.tagName.toLowerCase() !== 'template') el.innerHTML = '';
+  if (!isTplAnchor) el.innerHTML = '';
   el.__sparkAwaitParsed = true;
 
   // Hydration: drop any branch content a prerender baked as live siblings
@@ -2037,7 +2042,7 @@ function parseAwait(el) {
         const next = n.nextSibling;
         if (n.nodeType === ELEMENT_NODE && !(n.hasAttribute && n.hasAttribute('data-spark-await'))) break;
         destroyComponent(n);
-        if (n.parentNode) n.parentNode.removeChild(n);
+        n.remove();
         n = next;
       }
     }
@@ -2050,7 +2055,7 @@ function applyAwaitState(el, scope) {
   if (el.__sparkAwaitRendered) {
     for (const n of el.__sparkAwaitRendered) {
       destroyComponent(n);
-      if (n.parentNode) n.parentNode.removeChild(n);
+      n.remove();
     }
   }
   el.__sparkAwaitRendered = [];
@@ -2058,20 +2063,14 @@ function applyAwaitState(el, scope) {
   const tpl = state === 'then' ? el.__sparkThenTpl
     : state === 'catch' ? el.__sparkCatchTpl
     : el.__sparkPendingTpl;
-  const branchScope = state === 'then' ? awaitScope(scope, el.__sparkAwaitValue, el.__sparkAwaitAs)
-    : state === 'catch' ? awaitScope(scope, el.__sparkAwaitError, el.__sparkAwaitAs)
-    : scope;
+  const branchScope = awaitBranchScope(el, scope, state);
+  insertClones(tpl, el, el.__sparkAwaitRendered);
   // Tag baked branch nodes during prerender so a client mount can clear them
   // (see parseAwait) and re-render without duplicating.
-  const tag = (isPrerender()) && state !== 'pending';
-  let insertAfter = el;
-  for (const t of tpl) {
-    const c = t.cloneNode(true);
-    c.__sparkManaged = true; // owned by this await-block, not the parent walk
-    if (tag && c.nodeType === ELEMENT_NODE && c.setAttribute) c.setAttribute('data-spark-await', '');
-    insertAfter.after(c);
-    insertAfter = c;
-    el.__sparkAwaitRendered.push(c);
+  if (isPrerender() && state !== 'pending') {
+    for (const c of el.__sparkAwaitRendered) {
+      if (c.nodeType === ELEMENT_NODE && c.setAttribute) c.setAttribute('data-spark-await', '');
+    }
   }
   // Walk after the whole branch is inserted (see patchEach — nested if/else
   // chains need their followers present when the head first patches).
@@ -2083,10 +2082,7 @@ function applyAwaitState(el, scope) {
 // Keep the current branch's reactive bindings fresh on later patches.
 function refreshAwait(el, scope) {
   if (!el.__sparkAwaitRendered) return;
-  const state = el.__sparkAwaitRenderedState;
-  const branchScope = state === 'then' ? awaitScope(scope, el.__sparkAwaitValue, el.__sparkAwaitAs)
-    : state === 'catch' ? awaitScope(scope, el.__sparkAwaitError, el.__sparkAwaitAs)
-    : scope;
+  const branchScope = awaitBranchScope(el, scope, el.__sparkAwaitRenderedState);
   for (const n of el.__sparkAwaitRendered) if (n.parentNode) walkNode(n, branchScope, false);
 }
 
@@ -2107,11 +2103,8 @@ function startAwait(el, source, scope) {
   el.__sparkAwaitState = 'pending';
   applyAwaitState(el, scope); // loading, now
 
-  // During prerender, let the settle loop wait for the promise (like load()),
-  // so :then content is in the serialized HTML.
-  if (isPrerender() && Array.isArray(globalThis.__SPARK_AWAITS__)) {
-    globalThis.__SPARK_AWAITS__.push(p);
-  }
+  // Let the prerender settle loop wait so :then content is in the HTML.
+  pushPrerenderWait(p);
 
   const settle = (state, payload) => {
     if (el.__sparkAwaitPromise !== p) return; // superseded — drop
@@ -2150,7 +2143,7 @@ function patchAwait(el, scope) {
     const prev = captureSet;
     captureSet = set; // record THIS expr's deps (also flows to the block sink)
     let result;
-    try { result = evaluate(el.__sparkAwaitExpr, scope); }
+    try { result = runExpr(el.__sparkAwaitFn, el.__sparkAwaitExpr, scope); }
     finally { captureSet = prev; }
     el.__sparkAwaitExprKeys = set.size ? set : null;
 
@@ -2181,6 +2174,32 @@ function patchAwait(el, scope) {
 //
 // Optional explicit key for identity-stable reconciliation across reorders:
 //   <template each="todo in todos" key="todo.id"> … </template>
+
+// A loop scope: the loop variable (`box.v`) and index (`box.iv`) resolve from
+// a mutable box, everything else forwards to the enclosing scope proxy (so
+// dependency capture still sees those reads). One proxy is created per block
+// and REUSED across patches — reconciliation just rewrites box.item / box.i /
+// box.scope — instead of allocating a proxy per row on every patch.
+function makeLoopScope(box) {
+  return new Proxy(box, {
+    get(b, k) {
+      if (k === b.v) return b.item;
+      if (b.iv && k === b.iv) return b.i;
+      if (k === Symbol.unscopables) return undefined;
+      return b.scope[k];
+    },
+    has(b, k) {
+      return k === b.v || (b.iv && k === b.iv) || k in b.scope;
+    },
+    set(b, k, v) {
+      // Never let an assignment clobber the loop variable/index on the
+      // shared parent scope; everything else writes through normally.
+      if (k === b.v || (b.iv && k === b.iv)) return true;
+      b.scope[k] = v;
+      return true;
+    },
+  });
+}
 
 // Siblings OWNED by an anchor node — the rendered output of an if/else
 // chain member, an await block, or a nested each. They sit after the anchor
@@ -2238,20 +2257,13 @@ function patchEach(el, scope) {
     el.__sparkEachVar = match[1];
     el.__sparkEachIndexVar = match[2] || null;
     el.__sparkEachArrayExpr = match[3].trim();
+    el.__sparkEachArrayFn = compileExpr(el.__sparkEachArrayExpr);
     el.__sparkEachKeyExpr = el.getAttribute('key')
       ? el.getAttribute('key').trim()
       : null;
+    el.__sparkEachKeyFn = el.__sparkEachKeyExpr ? compileExpr(el.__sparkEachKeyExpr) : null;
 
-    if (el.tagName.toLowerCase() === 'template') {
-      el.__sparkEachTemplate = [...el.content.childNodes].map((n) =>
-        n.cloneNode(true),
-      );
-    } else {
-      el.__sparkEachTemplate = [...el.childNodes].map((n) =>
-        n.cloneNode(true),
-      );
-      el.innerHTML = '';
-    }
+    el.__sparkEachTemplate = cloneTemplateNodes(el);
     el.__sparkEachParsed = true;
     el.__sparkEachBlocks = []; // [{ key, nodes: [] }]
   }
@@ -2267,7 +2279,7 @@ function patchEach(el, scope) {
   if (!varName || !arrayExpr || !templateNodes) return;
   if (!el.parentNode) return;
 
-  const arr = evaluate(arrayExpr, scope);
+  const arr = runExpr(el.__sparkEachArrayFn, arrayExpr, scope);
   if (!Array.isArray(arr)) {
     // null/undefined is a normal "loading" state; warn only for a real
     // type mistake (e.g. each over an object or string).
@@ -2280,28 +2292,16 @@ function patchEach(el, scope) {
     return;
   }
 
-  const makeLoopScope = (item, i) =>
-    new Proxy(scope, {
-      get(t, k) {
-        if (k === varName) return item;
-        if (idxName && k === idxName) return i;
-        if (k === Symbol.unscopables) return undefined;
-        return t[k];
-      },
-      has(t, k) {
-        return k === varName || (idxName && k === idxName) || k in t;
-      },
-      set(t, k, v) {
-        // Never let an assignment clobber the loop variable/index on the
-        // shared parent scope; everything else writes through normally.
-        if (k === varName || (idxName && k === idxName)) return true;
-        t[k] = v;
-        return true;
-      },
-    });
-
-  const keyOf = (item, i, loopScope) =>
-    keyExpr ? evaluate(keyExpr, loopScope) : i;
+  // The key expression evaluates through ONE shared per-anchor box+proxy;
+  // each block carries its own persistent box+proxy for walking its nodes.
+  // Reconciliation updates three box fields per row instead of allocating a
+  // new Proxy per row per patch (see makeLoopScope).
+  const keyFn = el.__sparkEachKeyFn;
+  let keyBox = el.__sparkEachKeyBox;
+  if (keyFn && !keyBox) {
+    keyBox = el.__sparkEachKeyBox = { v: varName, iv: idxName, item: null, i: 0, scope: null };
+    el.__sparkEachKeyScope = makeLoopScope(keyBox);
+  }
 
   const oldBlocks = el.__sparkEachBlocks || [];
   const oldByKey = new Map();
@@ -2316,15 +2316,22 @@ function patchEach(el, scope) {
   const comp = el.__sparkEachComp || (el.__sparkEachComp = closestComponent(el));
   const items = comp && (comp.__sparkItems || (comp.__sparkItems = new WeakSet()));
 
-  arr.forEach((item, i) => {
-    const loopScope = makeLoopScope(item, i);
+  for (let i = 0; i < arr.length; i++) {
+    const item = arr[i];
     const rawItem = (item && item[REACTIVE_RAW]) || item;
     if (items && rawItem && typeof rawItem === 'object') items.add(rawItem);
-    const key = keyOf(item, i, loopScope);
+    let key = i;
+    if (keyFn) {
+      keyBox.item = item; keyBox.i = i; keyBox.scope = scope;
+      key = runExpr(keyFn, keyExpr, el.__sparkEachKeyScope);
+    }
     let block = oldByKey.get(key);
 
     if (block) {
       oldByKey.delete(key);
+      // Point the block's persistent scope at this patch's item/index/scope.
+      const box = block.box;
+      box.item = item; box.i = i; box.scope = scope;
       // Reuse the existing nodes — only move them if they're not already in
       // the right spot, so a focused input is left untouched. An anchor's
       // OWN rendered content (an if/else chain, await branch, or nested
@@ -2338,29 +2345,16 @@ function patchEach(el, scope) {
       // mutated this tick. Otherwise nothing it reads changed, so skip it —
       // this is what turns O(rows) into O(changed rows).
       if (!gDirtyItems || gDirtyItems.has(rawItem)) {
-        for (const n of block.nodes) walkNode(n, loopScope, false);
+        for (const n of block.nodes) walkNode(n, block.scope, false);
       }
     } else {
+      const box = { v: varName, iv: idxName, item, i, scope };
+      const loopScope = makeLoopScope(box);
+      // hydrateBlockImports (inside renderClones) mutates `nodes` in place,
+      // swapping placeholders for booted hosts so reconciliation tracks them.
       const nodes = [];
-      let cursor = insertAfter;
-      for (const tpl of templateNodes) {
-        const clone = tpl.cloneNode(true);
-        clone.__sparkManaged = true; // owned by this loop, not the parent walk
-        cursor.after(clone);
-        cursor = clone;
-        nodes.push(clone);
-      }
-      // Walk AFTER the whole block is inserted — an if/else chain cloned into
-      // this row must see its follower templates when its head first patches.
-      for (const clone of nodes) {
-        walkNode(clone, loopScope, false);
-        enterNode(clone);
-      }
-      // Resolve any [import] placeholders cloned into this block (async),
-      // swapping them for booted hosts; mutates `nodes` so reconciliation
-      // tracks the host on later patches.
-      hydrateBlockImports(nodes, loopScope);
-      block = { key, nodes };
+      renderClones(templateNodes, insertAfter, nodes, loopScope);
+      block = { key, nodes, box, scope: loopScope };
     }
 
     newBlocks.push(block);
@@ -2368,7 +2362,7 @@ function patchEach(el, scope) {
     // The next block starts after this row's LAST node — including any
     // content its trailing anchor rendered (if/await/nested-each output).
     if (last) insertAfter = blockEnd(last);
-  });
+  }
 
   // Anything left in oldByKey was dropped from the array — clean it up.
   for (const b of oldByKey.values()) {
@@ -2433,6 +2427,11 @@ function buildElementPlan(el) {
       else mode = 'value';                                      // text input / textarea
       // change vs input: discrete controls fire `change`, text fires `input`.
       const eventName = mode === 'value' || mode === 'number' || mode === 'text' ? 'input' : 'change';
+      const writeStmt = `${expr} = __val__`;
+      // Context is a factory: built only if the write actually throws.
+      const bindCtx = () => ({
+        phase: 'bind', component: componentNameFor(el), detail: name + '="' + expr + '"',
+      });
       el.addEventListener(eventName, () => {
         let val;
         if (mode === 'checked') val = el.checked;
@@ -2442,13 +2441,11 @@ function buildElementPlan(el) {
           val = [...(el.selectedOptions || [])].map((o) => o.value);
         } else if (mode === 'text') val = el.textContent;
         else val = el.value; // value / select
-        execute(`${expr} = __val__`, el.__sparkScopeRef, null, val, {
-          phase: 'bind', component: componentNameFor(el), detail: name + '="' + expr + '"',
-        });
+        execute(writeStmt, el.__sparkScopeRef, null, val, bindCtx);
         // Member writes don't trip the scope proxy, so re-render explicitly.
         scheduleRerender(el);
       });
-      plan.push({ kind: 'bind', mode, expr });
+      plan.push({ kind: 'bind', mode, expr, fn: compileExpr(expr) });
       live = true;
       continue;
     }
@@ -2465,14 +2462,16 @@ function buildElementPlan(el) {
       const isRef = /^[a-zA-Z_$][\w$]*(?:\.[a-zA-Z_$][\w$]*)*$/.test(fnExpr);
       const code = isRef ? `${fnExpr}(event)` : fnExpr;
       const evt = name.slice(2);
+      // Context is a factory: built only if the handler actually throws.
+      const handlerCtx = () => ({
+        phase: 'handler', component: componentNameFor(el), detail: name + '={' + fnExpr + '}',
+      });
       el.addEventListener(evt, (e) => {
         // A plain onsubmit on a <form> almost always means "handle it in JS" —
         // preventDefault by default so the page doesn't navigate (long-standing
         // papercut). Escape hatch: call nothing / use a real <a> for navigation.
         if (evt === 'submit' && e && e.preventDefault) e.preventDefault();
-        execute(code, el.__sparkScopeRef, e, undefined, {
-          phase: 'handler', component: componentNameFor(el), detail: name + '={' + fnExpr + '}',
-        });
+        execute(code, el.__sparkScopeRef, e, undefined, handlerCtx);
       });
       el.removeAttribute(name);
       live = true;
@@ -2482,7 +2481,7 @@ function buildElementPlan(el) {
     // :disabled="count >= 10" — dynamic attribute, evaluated each patch.
     if (name.startsWith(':')) {
       const realAttr = name.slice(1);
-      const op = { kind: 'attr', name, realAttr, expr: value };
+      const op = { kind: 'attr', name, realAttr, expr: value, fn: compileExpr(value) };
       // `:class` MERGES with the static class instead of replacing it, so
       // `<div class="card" :class="state">` keeps `card`. Capture the static
       // class now (before the first :class run overwrites the attribute).
@@ -2507,7 +2506,7 @@ function buildElementPlan(el) {
 function runElementPlan(el, scope) {
   for (const op of el.__sparkPlan) {
     if (op.kind === 'bind') {
-      const current = evaluate(op.expr, scope);
+      const current = runExpr(op.fn, op.expr, scope);
       const str = current == null ? '' : String(current);
       if (op.mode === 'checked') {
         const want = Boolean(current);
@@ -2528,7 +2527,7 @@ function runElementPlan(el, scope) {
     } else if (op.kind === 'attr') {
       let result;
       try {
-        result = compileExpr(op.expr)(scope);
+        result = op.fn(scope);
       } catch (e) {
         // Evaluation failed — leave the attribute untouched (event handlers
         // may still need to read it) but tell the consumer once.
@@ -2568,7 +2567,7 @@ function patchElement(el, scope) {
   if (el.__sparkPlan === undefined) el.__sparkPlan = buildElementPlan(el);
   if (!el.__sparkPlan.length) return;
   if (!shouldEval(el)) return; // deps unchanged this pass — skip re-evaluation
-  withCapture(el, () => runElementPlan(el, scope));
+  withCapture(el, runElementPlan, el, scope);
 }
 
 // ─── Component boot ───────────────────────────────────────────────────
@@ -2586,11 +2585,16 @@ function isSparkComponent(el) {
   if (el.__sparkImportPath !== undefined) return true;  // resolved import host
   if (el.__sparkScriptSrc !== undefined) return true;   // SFC source attached
   if (el.__sparkStyleSrc !== undefined) return true;
+  if (el.__sparkNotComp) return false;                  // cached negative (form field)
   if (el.childNodes) {                                  // legacy inline component
     for (const c of el.childNodes) {
       if (c.nodeType === ELEMENT_NODE && (c.tagName === 'SCRIPT' || c.tagName === 'STYLE')) return true;
     }
   }
+  // A form field's native name= never becomes a component; don't re-scan its
+  // children on every patch. (A genuine component acquires one of the markers
+  // above BEFORE it's ever walked, so caching the negative is safe.)
+  el.__sparkNotComp = true;
   return false;
 }
 
@@ -2695,21 +2699,15 @@ function destroyComponent(node) {
   if (node.hasAttribute && node.hasAttribute('name')) comps.push(node);
   if (node.querySelectorAll) comps.push(...node.querySelectorAll('[name]'));
   for (const c of comps) {
-    (c.__sparkOnDestroy || []).forEach((fn) => {
+    // onMount cleanups first, then store unsubscribes — each throw contained.
+    for (const fn of [...(c.__sparkOnDestroy || []), ...(c.__sparkStoreUnsubs || [])]) {
       try {
         fn();
       } catch (e) {
         console.warn('[spark] onDestroy error:', e.message);
       }
-    });
+    }
     c.__sparkOnDestroy = [];
-    (c.__sparkStoreUnsubs || []).forEach((fn) => {
-      try {
-        fn();
-      } catch {
-        /* ignore */
-      }
-    });
     c.__sparkStoreUnsubs = [];
   }
 }
@@ -2726,19 +2724,6 @@ function destroyComponent(node) {
 // @keyframes/@font-face bodies untouched, and unwraps :global(...) wherever
 // it appears in a selector.
 
-// Advance past a CSS string starting at `i`; returns the index just after
-// the closing quote. Handles escapes.
-function cssSkipString(s, i) {
-  const q = s[i++];
-  while (i < s.length) {
-    const c = s[i];
-    if (c === '\\') { i += 2; continue; }
-    if (c === q) return i + 1;
-    i++;
-  }
-  return i;
-}
-
 // Strip /* … */ comments, preserving strings. A comment becomes one space so
 // adjacent tokens never fuse (e.g. `a/* x */b` → `a b`, not `ab`).
 function stripCssComments(css) {
@@ -2746,7 +2731,7 @@ function stripCssComments(css) {
   let i = 0;
   while (i < css.length) {
     const c = css[i];
-    if (c === '"' || c === "'") { const j = cssSkipString(css, i); out += css.slice(i, j); i = j; continue; }
+    if (c === '"' || c === "'") { const j = skipString(css, i); out += css.slice(i, j); i = j; continue; }
     if (c === '/' && css[i + 1] === '*') {
       i += 2;
       while (i < css.length && !(css[i] === '*' && css[i + 1] === '/')) i++;
@@ -2766,7 +2751,7 @@ function cssMatchBrace(css, openIdx) {
   let i = openIdx;
   while (i < css.length) {
     const c = css[i];
-    if (c === '"' || c === "'") { i = cssSkipString(css, i); continue; }
+    if (c === '"' || c === "'") { i = skipString(css, i); continue; }
     if (c === '{') depth++;
     else if (c === '}') { depth--; if (depth === 0) return i; }
     i++;
@@ -2780,7 +2765,7 @@ function cssMatchGroup(s, open) {
   let i = open;
   while (i < s.length) {
     const c = s[i];
-    if (c === '"' || c === "'") { i = cssSkipString(s, i); continue; }
+    if (c === '"' || c === "'") { i = skipString(s, i); continue; }
     if (c === '(' || c === '[') depth++;
     else if (c === ')' || c === ']') { depth--; if (depth === 0) return i + 1; }
     i++;
@@ -2804,7 +2789,7 @@ function splitSelectorList(list) {
   let i = 0;
   while (i < list.length) {
     const c = list[i];
-    if (c === '"' || c === "'") { i = cssSkipString(list, i); continue; }
+    if (c === '"' || c === "'") { i = skipString(list, i); continue; }
     if (c === '(' || c === '[') depth++;
     else if (c === ')' || c === ']') depth--;
     else if (c === ',' && depth === 0) { parts.push(list.slice(start, i)); start = i + 1; }
@@ -2824,7 +2809,7 @@ function tokenizeSelector(sel) {
   let i = 0;
   while (i < sel.length) {
     const c = sel[i];
-    if (c === '"' || c === "'") { const j = cssSkipString(sel, i); compound += sel.slice(i, j); i = j; continue; }
+    if (c === '"' || c === "'") { const j = skipString(sel, i); compound += sel.slice(i, j); i = j; continue; }
     if (c === '(' || c === '[') { const j = cssMatchGroup(sel, i); compound += sel.slice(i, j); i = j; continue; }
     if (c === ' ' || c === '\t' || c === '\n' || c === '\r' || c === '>' || c === '+' || c === '~') {
       flush();
@@ -2887,7 +2872,7 @@ function scopeRules(css, prefix) {
     let depth = 0;
     while (i < n) {
       const c = css[i];
-      if (c === '"' || c === "'") { i = cssSkipString(css, i); continue; }
+      if (c === '"' || c === "'") { i = skipString(css, i); continue; }
       if (c === '(' || c === '[') { depth++; i++; continue; }
       if (c === ')' || c === ']') { depth--; i++; continue; }
       if (depth === 0 && (c === '{' || c === ';')) break;
