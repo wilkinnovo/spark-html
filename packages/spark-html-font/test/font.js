@@ -45,6 +45,12 @@ await test(':root exposes a --font-<slug> var with the full stack', () => {
   assert.ok(css.includes('--font-fira-code:'), 'google family gets a var too');
 });
 
+await test('mono families adjust from Courier New (their metric-compatible local)', () => {
+  const css = fontCss({ fonts: [{ family: 'JetBrains Mono', google: true }], fallback: ['ui-monospace', 'monospace'] });
+  assert.ok(css.includes('font-family: "JetBrains Mono Fallback"; src: local("Courier New")'), 'Courier basis, not Arial');
+  assert.ok(css.includes('--font-jetbrains-mono: "JetBrains Mono", "JetBrains Mono Fallback", ui-monospace, monospace;'), 'stack');
+});
+
 await test('custom metrics + adjust:false are honored', () => {
   const custom = fontCss({ fonts: [{ family: 'MyFace', src: '/f.woff2', metrics: { sizeAdjust: 99, ascent: 88, descent: 20, lineGap: 1 } }] });
   assert.ok(custom.includes('size-adjust: 99%'), 'user metrics used');

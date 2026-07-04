@@ -25,8 +25,10 @@
  * Zero dependencies; pure string generation plus a little DOM.
  */
 
-// Approximate Arial-adjusted fallback metrics (fontaine-style) for popular
+// Approximate size-adjusted fallback metrics (fontaine-style) for popular
 // families. Percentages; good enough to keep the swap from moving the page.
+// Sans families adjust from Arial; mono families carry their own local basis
+// (`from`) — Courier New is the metric-compatible mono every OS ships.
 // Override per font with `metrics: { sizeAdjust, ascent, descent, lineGap }`.
 const METRICS = {
   'inter':            { sizeAdjust: 107.4, ascent: 90.2,  descent: 22.5, lineGap: 0 },
@@ -37,6 +39,9 @@ const METRICS = {
   'poppins':          { sizeAdjust: 112.2, ascent: 93.8,  descent: 31.3, lineGap: 0 },
   'nunito':           { sizeAdjust: 101.9, ascent: 99.4,  descent: 34.7, lineGap: 0 },
   'source sans pro':  { sizeAdjust: 94.1,  ascent: 104.6, descent: 29.0, lineGap: 0 },
+  'jetbrains mono':   { sizeAdjust: 100,   ascent: 102,   descent: 24.5, lineGap: 0, from: 'Courier New' },
+  'roboto mono':      { sizeAdjust: 100,   ascent: 104.8, descent: 27.1, lineGap: 0, from: 'Courier New' },
+  'source code pro':  { sizeAdjust: 100,   ascent: 98.4,  descent: 27.3, lineGap: 0, from: 'Courier New' },
 };
 
 const slug = (family) => family.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
@@ -87,7 +92,7 @@ export function fontCss(config = {}) {
     const m = font.metrics || METRICS[fam.toLowerCase()];
     const stack = [`"${fam}"`];
     if (m && font.adjust !== false) {
-      const local = font.adjustFrom || 'Arial';
+      const local = font.adjustFrom || m.from || 'Arial';
       rules.push(
         `@font-face { font-family: "${fam} Fallback"; src: local("${local}");` +
         ` size-adjust: ${m.sizeAdjust}%; ascent-override: ${m.ascent}%;` +
