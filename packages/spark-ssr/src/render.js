@@ -6,6 +6,7 @@
  * re-attaches them client-side; static pages don't need them).
  */
 import { parseHTML } from 'linkedom';
+import { maskComments } from './parse.js';
 
 const FN_CACHE = new Map();
 function compile(expr) {
@@ -260,10 +261,12 @@ async function renderImport(node, scope, ctx, depth) {
   if (source == null) { node.innerHTML = ''; return; }
   // Components are pure UI on the server: strip <spark-ssr>/<script> from the
   // output, but read literal script defaults so {count} renders as 0.
+  // Comments are masked so prose mentioning those tags never truncates one.
   let script = '';
-  const clean = String(source)
+  const { masked, restore } = maskComments(source);
+  const clean = restore(masked
     .replace(/<spark-ssr\b[^>]*?\/>|<spark-ssr\b[^>]*>[\s\S]*?<\/spark-ssr>/gi, '')
-    .replace(/<script\b[^>]*>([\s\S]*?)<\/script>/gi, (m, body) => { script += body + '\n'; return ''; });
+    .replace(/<script\b[^>]*>([\s\S]*?)<\/script>/gi, (m, body) => { script += body + '\n'; return ''; }));
   node.innerHTML = clean;
   const compScope = Object.assign(Object.create(null), scriptLiterals(script), props);
   await walkChildren(node, compScope, ctx, depth + 1);

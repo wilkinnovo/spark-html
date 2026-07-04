@@ -18,7 +18,7 @@
 import { join, resolve } from 'node:path';
 import { readFile, writeFile, readdir, stat } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
-import { themeInitScript } from './index.js';
+import { themeInitScript } from './init.js';
 
 async function htmlFiles(dir) {
   const out = [];

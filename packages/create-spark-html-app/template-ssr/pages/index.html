@@ -1,19 +1,33 @@
-<div import="/components/nav" title="Tasks"></div>
+<!-- The homepage. Everything the page needs is declared at the bottom in
+     <spark-ssr>; the title/meta lift into <head> (spark-html-head/ssr);
+     app.js is a client module (theme toggle). -->
+<title>{author.name} — a spark blog</title>
+<meta name="description" content="{author.bio}">
+<link rel="stylesheet" href="/style.css">
+<script type="module" src="/app.js"></script>
 
-<h1>Tasks</h1>
+<div import="/components/nav" blog="{author.name}" active="home"></div>
 
-<template await="todos">
-  <input bind:value="draft" placeholder="New task">
-  <button onclick={add}>Add</button>
-  <ul>
-    <template each="todo in todos">
-      <li>
-        <input type="checkbox" bind:checked="todo.done" onchange={patch}>
-        {todo.title}
-        <button onclick={remove}>✕</button>
-      </li>
-    </template>
-  </ul>
-</template>
+<header class="hero">
+  <img class="avatar" src="/img/avatar.png" alt="{author.name}" width="88" height="88">
+  <div>
+    <h1>{author.name}</h1>
+    <p class="lede">{author.bio}</p>
+  </div>
+</header>
 
-<spark-ssr table="todos" />
+<main>
+  <!-- Server → component data passing: each row travels whole into the
+       card as a prop. post-card.html has no <script> — its props ARE it. -->
+  <template each="post in posts">
+    <div import="/components/post-card" post="{post}"></div>
+  </template>
+  <template if="posts.length === 0">
+    <p class="empty">Nothing published yet — sign in at <a href="/admin">/admin</a> and write the first post.</p>
+  </template>
+</main>
+
+<spark-ssr>
+  GET /api/author → SELECT id, name, email, bio FROM users LIMIT 1
+  GET /api/published → SELECT * FROM posts WHERE published = 1 ORDER BY created_at DESC
+</spark-ssr>

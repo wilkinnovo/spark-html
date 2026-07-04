@@ -36,5 +36,10 @@ export function loadConfig(root) {
     auth: cfg.auth || null,
     cors: cfg.cors ?? false,
     uploads: cfg.uploads || 'uploads',
+    // Companion-package config, same shapes their build-pipeline steps take:
+    // "fonts" → spark-html-font tags in every <head>; "images" → options for
+    // the spark-html-image pass `spark-ssr build` runs when it's installed.
+    fonts: cfg.fonts || null,
+    images: cfg.images || null,
   };
 }

@@ -34,7 +34,7 @@
     },
     "packages/create-spark-html-app": {
       "name": "create-spark-html-app",
-      "version": "0.8.3",
+      "version": "0.9.0",
       "bin": "bin/index.js",
     },
     "packages/prettier-plugin-spark": {
@@ -46,7 +46,7 @@
     },
     "packages/spark": {
       "name": "spark-html",
-      "version": "0.27.6",
+      "version": "0.27.7",
     },
     "packages/spark-html-bun": {
       "name": "spark-html-bun",
@@ -68,7 +68,7 @@
     },
     "packages/spark-html-head": {
       "name": "spark-html-head",
-      "version": "0.2.4",
+      "version": "0.3.0",
       "dependencies": {
         "spark-html": "^0.27.0",
       },
@@ -131,7 +131,7 @@
     },
     "packages/spark-html-theme": {
       "name": "spark-html-theme",
-      "version": "0.1.11",
+      "version": "0.2.0",
       "dependencies": {
         "spark-html": "^0.27.0",
       },
@@ -156,13 +156,14 @@
     },
     "packages/spark-ssr": {
       "name": "spark-ssr",
-      "version": "0.1.0",
+      "version": "0.2.0",
       "bin": {
         "spark-ssr": "./bin/cli.js",
       },
       "dependencies": {
         "linkedom": "^0.18.12",
-        "spark-html": "^0.27.0",
+        "spark-html": "^0.27.7",
+        "spark-html-head": "^0.3.0",
       },
     },
     "website": {

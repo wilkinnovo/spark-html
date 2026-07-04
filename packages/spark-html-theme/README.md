@@ -90,6 +90,14 @@ the exact string to drop into a `<script>` at the top of `<head>`:
 </script>
 ```
 
+## Servers & pipelines: `spark-html-theme/init`
+
+`themeInitScript()` (the inline no-flash snippet) is also exported from
+`spark-html-theme/init` — a DOM-free module servers and build pipelines can
+import without pulling in the client runtime. spark-ssr inlines it into every
+page head automatically when your app depends on spark-html-theme;
+`spark-html-theme/bun` bakes it at build time for prerendered sites.
+
 ## The Spark family
 
 Small, single-purpose packages that share one philosophy: no compiler, no

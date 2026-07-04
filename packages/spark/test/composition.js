@@ -70,7 +70,16 @@ component('trailingcomment', `
 // used to install an empty scope and drop the props on the floor)
 component('purecard', `<p class="pc">{label}</p>`);
 
-parseHTML('<div import="cardpage"></div><div import="deeptest"></div><div import="trailingcomment"></div><div import="purecard" label="From props"></div>', body);
+// ── regression: an HTML comment mentioning <script> must not start an
+// extraction that swallows the markup up to the real </script> ──
+component('commented', `
+<!-- prose that mentions <script> tags and even </script> in passing -->
+<p class="cm">{msg}</p>
+<script>
+  let msg = 'intact';
+</script>`);
+
+parseHTML('<div import="cardpage"></div><div import="deeptest"></div><div import="trailingcomment"></div><div import="purecard" label="From props"></div><div import="commented"></div>', body);
 await mount();
 await tick();
 
@@ -123,6 +132,12 @@ await test('script ending in a // comment still parses and renders', () => {
 await test('a script-less component renders its props (props ARE its scope)', () => {
   const el = body.querySelector('[name="purecard"] .pc');
   assert.equal(el.textContent, 'From props');
+});
+await test('a comment mentioning <script> never swallows markup', () => {
+  // (the dom-shim drops comment nodes at parse time, so only the markup
+  // integrity is assertable here — spark-ssr's suite covers survival)
+  const host = body.querySelector('[name="commented"]');
+  assert.equal(host.querySelector('.cm').textContent, 'intact', 'script extracted, markup kept');
 });
 
 console.log(`\n${pass} passed, ${fail} failed`);

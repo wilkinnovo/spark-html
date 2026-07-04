@@ -1,0 +1,8 @@
+<button class="ghost" onclick={logout}>Sign out</button>
+
+<script>
+  async function logout() {
+    await fetch('/api/logout', { method: 'POST' });
+    location.href = '/';
+  }
+</script>

@@ -138,7 +138,7 @@ await test('SSR: / renders the seeded rows into HTML', async () => {
 
 await test('hydration: page ships importmap + mount + component host with name', async () => {
   const html = await (await fetch(`${T}/`)).text();
-  assert.ok(html.includes('"spark-html":"/@modules/spark-html"'), 'importmap');
+  assert.ok(html.includes('"spark-html":"/@modules/spark-html/index.js"'), 'importmap');
   assert.ok(html.includes('mount()'), 'mount call');
   // BOTH import and name — the runtime's hydrate contract. Without name the
   // pre-rendered HTML is treated as slot content and projected NEXT TO the
@@ -247,6 +247,41 @@ await test('hydration e2e: the real runtime mounts the generated component and a
   }
 });
 
+await test('live reload: dev pages carry the client; editing a file pings SSE', async () => {
+  const html = await (await fetch(`${T}/`)).text();
+  assert.ok(html.includes('/__spark/reload'), 'reload client injected in dev HTML');
+
+  const res = await fetch(`${T}/__spark/reload`);
+  assert.equal(res.headers.get('content-type'), 'text/event-stream');
+  const reader = res.body.getReader();
+  const dec = new TextDecoder();
+  const read = async () => dec.decode((await reader.read()).value || new Uint8Array());
+  assert.ok((await read()).includes(': connected'), 'SSE channel opens');
+
+  writeFileSync(join(todoRoot, 'index.html'),
+    readFileSync(join(todoRoot, 'index.html'), 'utf8') + '\n<!-- touched -->\n');
+  const ping = await Promise.race([
+    read(),
+    new Promise((_, rej) => setTimeout(() => rej(new Error('no reload ping within 3s')), 3000)),
+  ]);
+  assert.ok(ping.includes('reload'), 'file edit broadcasts a reload event');
+  await reader.cancel();
+});
+
+await test('watch: false serves without the reload client or SSE channel', async () => {
+  const prodRoot = makeTodoApp();
+  const prod = await serve({ root: prodRoot, port: 0, quiet: true, watch: false });
+  try {
+    const P = `http://localhost:${prod.port}`;
+    await prod.db.query('CREATE TABLE todos (id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT, done INTEGER DEFAULT 0)');
+    const html = await (await fetch(`${P}/`)).text();
+    assert.ok(!html.includes('/__spark/reload'), 'no reload client in production HTML');
+    assert.equal((await fetch(`${P}/__spark/reload`)).status, 404, 'no SSE channel');
+  } finally {
+    await prod.stop(true);
+  }
+});
+
 await todoServer.stop(true);
 
 // ── pages/, params, components, middleware, api/, auth, uploads ────────
@@ -257,6 +292,12 @@ function makeSiteApp() {
     db: 'sqlite::memory:',
     auth: { table: 'users', identity: 'email', secret: 'ENV.SPARK_TEST_SECRET' },
     cors: true,
+    fonts: [{ family: 'Inter', google: true, weights: [400, 700] }],
+  }));
+  // Family deps: the server maps each into the importmap, serves it at
+  // /@modules/<name>, and inlines spark-html-theme's no-flash init snippet.
+  writeFileSync(join(root, 'package.json'), JSON.stringify({
+    name: 'site', dependencies: { 'spark-html-theme': '*', 'spark-html-font': '*' },
   }));
   mkdirSync(join(root, 'pages', 'blog'), { recursive: true });
   mkdirSync(join(root, 'components'));
@@ -460,6 +501,107 @@ await test('new page + endpoint created AFTER startup serve without a restart', 
   assert.equal(api[0].slug, 'hello', 'its endpoint registered too');
 });
 
+await test('head lifting: <title>/<meta>/<link> reach <head>, {expr} interpolated', async () => {
+  writeFileSync(join(siteRoot, 'pages', 'seo.html'), `<title>{post.title} · Site</title>
+<meta name="description" content="{post.title} has {post.views} views">
+<link rel="stylesheet" href="/style.css">
+<h1>{post.title}</h1>
+<spark-ssr>
+  GET /api/seo → SELECT * FROM posts WHERE slug = 'hello' LIMIT 1
+</spark-ssr>`);
+  const html = await (await fetch(`${S}/seo`)).text();
+  const [head, body] = html.split('</head>');
+  assert.ok(head.includes('<title>Hello World · Site</title>'), 'title interpolated in head');
+  assert.ok(head.includes('content="Hello World has 500 views"'), 'meta interpolated');
+  assert.ok(head.includes('href="/style.css"'), 'link lifted');
+  assert.ok(!head.includes('<title>seo</title>'), 'default title suppressed');
+  assert.ok(!body.includes('description'), 'head tags gone from the body');
+});
+
+await test('family packages: theme init inlined, fonts in head, modules served, importmap first', async () => {
+  writeFileSync(join(siteRoot, 'pages', 'client.html'),
+    '<h1>Client</h1>\n<div import="/components/card" title="hi"></div>\n'
+    + '<script type="module">import { theme } from \'spark-html-theme\'; theme();</script>\n');
+  const html = await (await fetch(`${S}/client`)).text();
+  const [head, body] = html.split('</head>');
+  assert.ok(head.includes('data-theme'), 'spark-html-theme no-flash init inlined');
+  assert.ok(/fonts\.googleapis|--font-inter/.test(head), 'spark-html-font tags from spark.json');
+  assert.ok(head.includes("import { theme }"), 'inline module script lifted to head');
+  assert.ok(!body.includes('import { theme }'), 'client script not left in the body');
+  assert.ok(head.indexOf('importmap') !== -1 && head.indexOf('importmap') < head.indexOf("import { theme }"),
+    'importmap precedes module scripts');
+  assert.ok(head.includes('"spark-html-theme":"/@modules/spark-html-theme/index.js"'), 'family dep in the importmap');
+  const mod = await fetch(`${S}/@modules/spark-html-theme/index.js`);
+  assert.equal(mod.status, 200, 'family module served');
+  assert.equal((await fetch(`${S}/@modules/spark-html-theme/init.js`)).status, 200,
+    'sibling files resolve (relative imports inside a package)');
+  assert.equal((await fetch(`${S}/@modules/left-pad`)).status, 404, 'non-family modules refused');
+});
+
+await test('auth table hygiene: no hashes over the wire, writes are own-account only', async () => {
+  const cookie = globalThis.__sparkTestCookie;
+  const rows = await (await fetch(`${S}/api/users`)).json();
+  assert.ok(rows.length > 0 && rows.every((r) => !('password' in r)), 'GET strips password hashes');
+
+  const anon = await fetch(`${S}/api/users/1`, {
+    method: 'PATCH',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ password: 'pwned' }),
+  });
+  assert.equal(anon.status, 401, 'anonymous cannot reset a password');
+
+  const other = await (await fetch(`${S}/api/users`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ email: 'x@y.z', password: 'pw2' }),
+  })).json();
+  const cross = await fetch(`${S}/api/users/${other.id}`, {
+    method: 'PATCH',
+    headers: { 'content-type': 'application/json', cookie },
+    body: JSON.stringify({ password: 'pwned' }),
+  });
+  assert.equal(cross.status, 401, 'a session cannot touch another account');
+  assert.equal((await fetch(`${S}/api/users/${other.id}`, { method: 'DELETE', headers: { cookie } })).status, 401,
+    'nor delete it');
+
+  const own = await fetch(`${S}/api/users/1`, {
+    method: 'PATCH',
+    headers: { 'content-type': 'application/json', cookie },
+    body: JSON.stringify({ password: 'hunter3' }),
+  });
+  assert.equal(own.status, 200, 'own account is editable');
+  assert.ok(!('password' in await own.json()), 'response carries no hash');
+  const stored = (await site.db.query('SELECT password FROM users WHERE id = 1'))[0].password;
+  assert.ok(stored.startsWith('$') && stored !== 'hunter3', 'new password hashed at rest');
+});
+
+await test('project internals never served: spark.json, package.json, dotfiles', async () => {
+  writeFileSync(join(siteRoot, '.env'), 'SECRET=x');
+  assert.equal((await fetch(`${S}/spark.json`)).status, 404);
+  assert.equal((await fetch(`${S}/package.json`)).status, 404);
+  assert.equal((await fetch(`${S}/.env`)).status, 404);
+  assert.equal((await fetch(`${S}/style.css`)).status, 200, 'public/ still serves');
+});
+
+await test('comments mentioning <spark-ssr>/<script>/<title> never break extraction', async () => {
+  writeFileSync(join(siteRoot, 'components', 'notecard.html'),
+    '<!-- pure UI: mention <script> and even </script> in prose -->\n<p class="nc">{note}</p>\n');
+  writeFileSync(join(siteRoot, 'pages', 'commented.html'), `<!-- this page declares data in <spark-ssr>,
+  sets its <title>, and has no server <script> at all -->
+<title>Commented · Site</title>
+<h1>{post.title}</h1>
+<div import="/components/notecard" note="ok"></div>
+<spark-ssr>
+  GET /api/commented → SELECT * FROM posts WHERE slug = 'hello' LIMIT 1
+</spark-ssr>`);
+  const html = await (await fetch(`${S}/commented`)).text();
+  assert.ok(html.includes('<title>Commented · Site</title>'), 'title lifted despite the comment');
+  assert.ok(html.includes('Hello World'), 'the block parsed and its query ran');
+  assert.ok(html.includes('class="nc">ok'), 'component rendered past its comment');
+  assert.ok(html.includes('this page declares data'), 'page comment survives verbatim');
+  assert.ok(html.includes('mention <script>'), 'component comment survives verbatim');
+});
+
 await test('imported component with its own <script> comes alive (counter)', async () => {
   writeFileSync(join(siteRoot, 'components', 'counter.html'),
     '<h2 class="c">Count: {count}</h2>\n<button onclick={inc}>+1</button>\n<script>\nlet count = 0;\nfunction inc() { count++; }\n</script>');
@@ -470,7 +612,7 @@ await test('imported component with its own <script> comes alive (counter)', asy
   const hostTag = (html.match(/<div[^>]*import="\/components\/counter"[^>]*>/) || [''])[0];
   assert.ok(hostTag.includes('name="counter"'), 'host keeps import + name for client takeover');
   assert.ok(html.includes('mount()'), 'page mounts because it has component imports');
-  assert.ok(!/<script>[\s\S]*let count/.test(html.split('importmap')[0]), 'component script never in the SSR body');
+  assert.ok(!html.includes('let count'), 'component script never in the SSR output');
 
   // The real runtime takes the counter over and inc() re-renders.
   const { window, document } = parseHTML(html);
@@ -511,15 +653,19 @@ await test('imported component with its own <script> comes alive (counter)', asy
 await site.stop(true);
 
 // ── CLI: build assembles a deployable dist/ ─────────────────────────────
-await test('cli build --no-compile: dist/ carries pages, config, and a server entry', async () => {
+await test('cli build --no-compile: dist/ carries pages, config, a server entry; public/ flattens', async () => {
   const root = makeTodoApp();
+  mkdirSync(join(root, 'public'));
+  writeFileSync(join(root, 'public', 'style.css'), 'body{}');
   const cli = join(import.meta.dir, '..', 'bin', 'cli.js');
   const r = Bun.spawnSync(['bun', cli, 'build', '--no-compile', '--root', root]);
   assert.equal(r.exitCode, 0, String(r.stderr));
   assert.ok(existsSync(join(root, 'dist', 'index.html')), 'page copied');
   assert.ok(existsSync(join(root, 'dist', 'spark.json')), 'config copied');
+  assert.ok(existsSync(join(root, 'dist', 'style.css')), 'public/ flattened into dist root');
+  assert.ok(!existsSync(join(root, 'dist', 'public')), 'no dist/public — assets keep their dev URLs');
   const entry = readFileSync(join(root, 'dist', '__server.js'), 'utf8');
-  assert.ok(entry.includes("from 'spark-ssr'"), 'server entry written');
+  assert.ok(entry.includes("from 'spark-ssr'") && entry.includes('watch: false'), 'production server entry written');
 });
 
 console.log(`\n${pass} passed, ${fail} failed`);

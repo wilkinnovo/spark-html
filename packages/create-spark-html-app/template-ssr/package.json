@@ -1,15 +1,20 @@
 {
-  "name": "spark-ssr-app",
+  "name": "spark-blog",
   "private": true,
   "version": "0.0.0",
   "type": "module",
   "scripts": {
     "dev": "bun setup.js && bun spark-ssr",
-    "start": "bun spark-ssr",
+    "start": "bun spark-ssr start",
     "build": "bun spark-ssr build"
   },
   "dependencies": {
     "spark-html": "latest",
-    "spark-ssr": "latest"
+    "spark-ssr": "latest",
+    "spark-html-theme": "latest",
+    "spark-html-font": "latest"
+  },
+  "devDependencies": {
+    "spark-html-image": "latest"
   }
 }

@@ -1,3 +1,5 @@
 {
-  "db": "sqlite://./dev.db"
+  "db": "sqlite://./dev.db",
+  "auth": { "table": "users", "identity": "email" },
+  "fonts": [{ "family": "Inter", "google": true, "weights": [400, 700] }]
 }

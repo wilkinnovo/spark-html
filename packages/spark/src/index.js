@@ -332,10 +332,15 @@ function parseSFC(source) {
   let script = '';
   let style = '';
 
+  // The comment alternation wins first, so prose like <!-- no <script>
+  // here --> can never start an extraction that swallows markup up to a
+  // real </script> — comments pass through verbatim.
   const markup = source.replace(
-    /<(script|style)[^>]*>([\s\S]*?)<\/\1>/gi,
-    (_, kind, body) => {
-      if (kind.toLowerCase() === 'script') script += body + '\n';
+    /<!--.*?-->|<(script|style)[^>]*>(.*?)<\/\1>/gis,
+    (m, kind, body) => {
+      if (!kind) return m;
+      // script (6 letters) vs style (5) — cheaper than lowercasing the tag
+      if (kind.length > 5) script += body + '\n';
       else style += body + '\n';
       return '';
     },
@@ -545,7 +550,7 @@ async function resolveImportNode(node, scope = null) {
     return host;
   } catch (e) {
     const hint = /HTTP 404/.test(e.message)
-      ? ` Check the path is correct and the file is served (relative to the page).`
+      ? ' Check the path — is the file served?'
       : '';
     console.warn(`[spark] Could not import "${path}" — ${e.message}.${hint}`);
     return null;

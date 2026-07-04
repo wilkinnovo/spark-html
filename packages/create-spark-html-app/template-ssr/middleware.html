@@ -1,0 +1,8 @@
+<!-- Runs on EVERY request, before anything else. This blog is single-author:
+     the seeded account is the only one, so public signups are switched off —
+     only the ?auth login may POST to the users API. -->
+<script>
+  if (req.path.startsWith('/api/users') && !(req.method === 'POST' && 'auth' in req.query)) {
+    return { status: 403, body: 'Single-author blog — signups are disabled.' };
+  }
+</script>

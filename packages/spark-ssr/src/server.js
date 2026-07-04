@@ -10,9 +10,14 @@ import { existsSync, readFileSync, readdirSync, statSync, mkdirSync } from 'node
 import { createHmac, timingSafeEqual, randomBytes, randomUUID } from 'node:crypto';
 import { loadConfig } from './config.js';
 import { connect } from './db.js';
-import { extractBlocks, analyze, dataPlan, rewriteParams, singleShaped } from './parse.js';
-import { renderFragment } from './render.js';
+import { extractBlocks, analyze, dataPlan, rewriteParams, singleShaped, maskComments } from './parse.js';
+import { renderFragment, evalExpr } from './render.js';
 import { clientComponent, initModule } from './hydrate.js';
+// Head semantics live in one place for the whole family: spark-html-head owns
+// title/meta on the client (pushState updates); its /ssr module owns them
+// here — pages put literal <title>/<meta>/<link> tags in their markup, we
+// lift them into the document head with {expr} interpolated per request.
+import { liftHead, renderHead } from 'spark-html-head/ssr';
 
 const AsyncFunction = (async () => {}).constructor;
 const json = (data, status = 200, headers = {}) =>
@@ -63,12 +68,18 @@ function matchPage(pages, pathname) {
 }
 
 // Split the page's <script> (the server-side escape hatch) from its markup.
+// Client scripts — <script src> and inline <script type="module"> — are NOT
+// server code; they stay in the markup and liftHead sends them to the browser.
 function splitScript(html) {
   let code = '';
-  const out = String(html).replace(/<script\b(?![^>]*\bsrc=)[^>]*>([\s\S]*?)<\/script>/gi, (m, body) => {
-    code += body + '\n';
-    return '';
-  });
+  const { masked, restore } = maskComments(html);
+  const out = restore(masked.replace(
+    /<script\b(?![^>]*\bsrc=)(?![^>]*\btype\s*=\s*["']module["'])[^>]*>([\s\S]*?)<\/script>/gi,
+    (m, body) => {
+      code += body + '\n';
+      return '';
+    },
+  ));
   return { html: out, code: code.trim() };
 }
 
@@ -80,10 +91,13 @@ function pageData(page, cache) {
   const source = readFileSync(page.file, 'utf8');
   const { blocks, html } = extractBlocks(source);
   const { html: markup, code } = splitScript(html);
+  // Analyze BEFORE lifting the head, so a {var} used only in <title>/<meta>
+  // still registers as a data need.
   const analysis = analyze(markup);
   analysis.hasScript = !!code;
   const plan = dataPlan(analysis, blocks);
-  const data = { mtime, source, blocks, html: markup, code, analysis, plan };
+  const { head, scripts, body } = liftHead(markup);
+  const data = { mtime, source, blocks, html: body, head, scripts, code, analysis, plan };
   cache.set(page.file, data);
   return data;
 }
@@ -127,6 +141,88 @@ export async function serve(options = {}) {
   const quiet = !!options.quiet;
 
   const ctx = { port: 0 };
+
+  // ── dev live reload ──
+  // The server side already re-reads files per request; this closes the loop
+  // on the browser side. A cheap mtime sweep (same walk refreshPages does)
+  // feeds an SSE channel, and every HTML response carries a two-line client
+  // that reloads the page on a ping. Production (`start` / dist) runs with
+  // watch:false and ships none of it.
+  const live = options.watch !== false;
+  const sseClients = new Set();
+  const sseEnc = new TextEncoder();
+  let watchTimer = null;
+  if (live) {
+    const IGNORE = new Set(['node_modules', 'dist', 'uploads']);
+    const mtimes = new Map();
+    const sweep = () => {
+      const seen = new Set();
+      let changed = false;
+      (function walk(dir) {
+        let names;
+        try { names = readdirSync(dir); } catch { return; }
+        for (const f of names) {
+          if (f.startsWith('.') || IGNORE.has(f)) continue;
+          const full = join(dir, f);
+          let st;
+          try { st = statSync(full); } catch { continue; }
+          if (st.isDirectory()) { walk(full); continue; }
+          if (!/\.(html|css|js|json)$/.test(f)) continue;
+          seen.add(full);
+          if (mtimes.get(full) !== st.mtimeMs) { mtimes.set(full, st.mtimeMs); changed = true; }
+        }
+      })(root);
+      for (const k of mtimes.keys()) if (!seen.has(k)) { mtimes.delete(k); changed = true; }
+      return changed;
+    };
+    sweep(); // baseline — the first pass records, it doesn't reload anyone
+    watchTimer = setInterval(() => {
+      if (!sweep()) return;
+      for (const c of sseClients) {
+        try { c.enqueue(sseEnc.encode('data: reload\n\n')); } catch { sseClients.delete(c); }
+      }
+    }, 250);
+    watchTimer.unref?.();
+  }
+  // Reconnect-then-reload: after a server restart the EventSource reconnects,
+  // and a fresh open following an error means "the server came back" — reload.
+  const RELOAD_CLIENT = '<script>(()=>{const e=new EventSource("/__spark/reload");let d=0;'
+    + 'e.onmessage=()=>location.reload();e.onerror=()=>{d=1};e.onopen=()=>{if(d)location.reload()}})()</script>';
+
+  // ── the Spark family, wired in ──
+  // Companion packages the app depends on get an importmap entry and are
+  // served at /@modules/<name>, so client scripts import them bare — the same
+  // packages a spark-html-bun/prerender build uses, working here unbundled.
+  let familyDeps = [];
+  try {
+    const pj = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8'));
+    familyDeps = Object.keys({ ...pj.dependencies, ...pj.devDependencies })
+      .filter((n) => /^spark-html-[\w-]+$/.test(n));
+  } catch { /* no package.json — single-file project */ }
+
+  // spark-html-theme: inline its no-flash snippet in every <head> (the same
+  // one spark-html-theme/bun bakes into prerendered pages) so the saved/OS
+  // theme is on <html> before first paint.
+  let themeInit = '';
+  if (familyDeps.includes('spark-html-theme')) {
+    try {
+      const { themeInitScript } = await import('spark-html-theme/init');
+      themeInit = `<script>${themeInitScript()}</script>`;
+    } catch { /* older spark-html-theme without /init — theme() still works, with a flash */ }
+  }
+
+  // spark-html-font: `"fonts"` in spark.json renders the same head tags the
+  // font/bun pipeline step bakes at build time — preloads, @font-face with a
+  // size-adjusted fallback face, --font-<slug> vars.
+  let fontTags = '';
+  if (config.fonts) {
+    try {
+      const { fontHtml } = await import('spark-html-font');
+      fontTags = fontHtml({ fonts: config.fonts });
+    } catch (e) {
+      if (!quiet) console.warn(`[spark-ssr] "fonts" configured but spark-html-font is not installed — ${e.message}`);
+    }
+  }
 
   // ── request wrapper ──
   function wrapReq(request, url, params, session, server) {
@@ -228,7 +324,10 @@ export async function serve(options = {}) {
     on('GET', `api/${table}`, async (req) => {
       const { scoped } = await tableInfo(table);
       if (scoped && !req.session) return json({ error: 'unauthorized' }, 401);
-      return json(await tableRows(table, req));
+      const rows = await tableRows(table, req);
+      // Password hashes never leave the auth table, not even to a session.
+      if (isAuthTable) for (const r of rows) delete r.password;
+      return json(isAuthTable ? [...rows] : rows);
     });
 
     on('POST', `api/${table}`, async (req) => {
@@ -256,13 +355,22 @@ export async function serve(options = {}) {
       return json(row, 201);
     });
 
+    // Auth-table writes are own-account only: anyone could otherwise reset
+    // the author's password or delete their account through the auto CRUD.
+    const ownAccountOnly = (req) =>
+      isAuthTable && (!req.session || String(req.session.id) !== String(req.params.id));
+
     on('PATCH', `api/${table}/:id`, async (req) => {
       const { names, scoped } = await tableInfo(table);
       if (scoped && !req.session) return json({ error: 'unauthorized' }, 401);
+      if (ownAccountOnly(req)) return json({ error: 'unauthorized' }, 401);
       const { fields } = await req.body();
       const data = {};
       for (const [k, v] of Object.entries(fields)) {
         if (names.includes(k) && k !== 'id' && k !== 'user_id') data[k] = v;
+      }
+      if (isAuthTable && typeof data.password === 'string') {
+        data.password = await Bun.password.hash(data.password);
       }
       const keys = Object.keys(data);
       if (!keys.length) return json({ error: 'empty body' }, 400);
@@ -270,12 +378,15 @@ export async function serve(options = {}) {
       const values = [...keys.map((k) => data[k]), req.params.id];
       if (scoped) { sql += ' AND user_id = ?'; values.push(req.session.id); }
       const rows = await db.query(sql + ' RETURNING *', values);
-      return rows[0] ? json(rows[0]) : json({ error: 'not found' }, 404);
+      const row = rows[0];
+      if (isAuthTable && row) delete row.password;
+      return row ? json(row) : json({ error: 'not found' }, 404);
     });
 
     on('DELETE', `api/${table}/:id`, async (req) => {
       const { scoped } = await tableInfo(table);
       if (scoped && !req.session) return json({ error: 'unauthorized' }, 401);
+      if (ownAccountOnly(req)) return json({ error: 'unauthorized' }, 401);
       let sql = `DELETE FROM ${table} WHERE id = ?`;
       const values = [req.params.id];
       if (scoped) { sql += ' AND user_id = ?'; values.push(req.session.id); }
@@ -345,6 +456,13 @@ export async function serve(options = {}) {
   // a plain readdir walk plus mtime-cached parses — so new pages, new tables,
   // and edited queries appear without restarting the server.
   const tables = new Set();
+  // Configuring auth IS declaring its table: the login endpoint
+  // (POST /api/<table>?auth) and signup exist without any page mentioning
+  // them. Single-account apps can turn signup off in middleware.html.
+  if (config.auth && config.auth.table && db) {
+    tables.add(config.auth.table);
+    registerTable(config.auth.table);
+  }
   function refreshPages() {
     const scanned = scanPages(root);
     pagesDir = scanned.pagesDir;
@@ -500,9 +618,15 @@ export async function serve(options = {}) {
     if (!rel || rel.includes('..')) return null;
     const candidates = [join(root, 'public', rel)];
     const ext = extname(rel);
-    if (ext && ext !== '.html') {
+    // The root fallback exists for co-located assets (pages/x.css, img/…) —
+    // it must never serve project internals: config (may hold secrets),
+    // lockfiles, databases, dotfiles. public/ stays the intentional space.
+    const internal = rel.startsWith('.') || rel.includes('/.')
+      || ['spark.json', 'package.json', 'bun.lock', 'bun.lockb', 'package-lock.json'].includes(rel)
+      || ['.db', '.sqlite', '.sqlite3'].includes(ext);
+    if (!internal && ext && ext !== '.html') {
       candidates.push(join(root, rel), join(pagesDir, rel));
-    } else if (rel.startsWith('components/')) {
+    } else if (!internal && rel.startsWith('components/')) {
       candidates.push(join(root, rel));
     }
     for (const file of candidates) {
@@ -532,19 +656,39 @@ export async function serve(options = {}) {
       && pd.blocks.some((b) => b.table) && !!db;
   }
 
-  function shell(page, body, { hydrate, mount }) {
+  function shell(page, body, { hydrate, mount, headExtra = '', scripts = '' }) {
     const title = page.key === 'index' ? 'Spark' : page.key.split('/').pop().replace(/\[|\]/g, '');
     const cssRel = page.key + '.css';
     const hasCss = existsSync(join(pagesDir, cssRel));
+    // The importmap must precede EVERY module script in document order (a
+    // later one is ignored), so the whole module story lives in <head>:
+    // importmap → the page's own client scripts → mount. Page scripts are
+    // the app's bootstrap (store()/theme() setup) and modules execute in
+    // document order, so they run before components boot — same contract as
+    // a hand-written main.js that ends with mount().
+    const needModules = mount || scripts.includes('<script');
+    const imports = {};
+    for (const dep of ['spark-html', ...familyDeps]) {
+      const info = moduleEntry(dep);
+      if (info) imports[dep] = `/@modules/${dep}/${info.entry}`;
+    }
+    const importmap = needModules
+      ? `<script type="importmap">${JSON.stringify({ imports })}</script>\n`
+      : '';
+    const mountJs = mount
+      ? `<script type="module">import { mount } from 'spark-html'; mount();</script>\n`
+      : '';
     const head =
       '<meta charset="utf-8">\n' +
       '<meta name="viewport" content="width=device-width, initial-scale=1">\n' +
-      `<title>${title}</title>\n` +
+      (themeInit ? themeInit + '\n' : '') +
+      (/<title\b/i.test(headExtra) ? '' : `<title>${title}</title>\n`) +
+      (headExtra ? headExtra + '\n' : '') +
+      (fontTags ? fontTags + '\n' : '') +
+      importmap +
+      (scripts ? scripts + '\n' : '') +
+      mountJs +
       (hasCss ? `<link rel="stylesheet" href="/${cssRel}">\n` : '');
-    const hydration = mount
-      ? `\n<script type="importmap">{"imports":{"spark-html":"/@modules/spark-html"}}</script>\n` +
-        `<script type="module">import { mount } from 'spark-html'; mount();</script>\n`
-      : '\n';
     // A hydrating page host carries BOTH `import` and `name` — that is the
     // runtime's flash-free hydrate contract (same as spark-prerender's
     // makeHydratable): the pre-rendered content stays visible while the
@@ -555,7 +699,8 @@ export async function serve(options = {}) {
     const host = hydrate
       ? `<div import="/__spark/page/${page.key}" name="${compName}" data-spark-ssr>${body}</div>`
       : `<div data-spark-ssr>${body}</div>`;
-    return `<!doctype html>\n<html>\n<head>\n${head}</head>\n<body>\n${host}${hydration}</body>\n</html>\n`;
+    const reload = live ? RELOAD_CLIENT + '\n' : '';
+    return `<!doctype html>\n<html>\n<head>\n${head}</head>\n<body>\n${host}\n${reload}</body>\n</html>\n`;
   }
 
   async function buildScope(pd, req) {
@@ -582,7 +727,10 @@ export async function serve(options = {}) {
     // and their own <script> comes alive (counters, demos, …).
     const hasComponents = /\bimport\s*=\s*"/.test(pd.html);
     const body = await renderFragment(pd.html, scope, { loadComponent, keepImports: !hydrate });
-    return new Response(shell(page, body, { hydrate, mount: hydrate || hasComponents }), {
+    const headExtra = pd.head ? renderHead(pd.head, (e) => evalExpr(e, scope)) : '';
+    return new Response(shell(page, body, {
+      hydrate, mount: hydrate || hasComponents, headExtra, scripts: pd.scripts,
+    }), {
       headers: { 'content-type': 'text/html; charset=utf-8' },
     });
   }
@@ -590,22 +738,37 @@ export async function serve(options = {}) {
   function errorPage(status) {
     const file = join(root, `${status}.html`);
     if (existsSync(file)) {
-      return new Response(readFileSync(file, 'utf8'), { status, headers: { 'content-type': 'text/html; charset=utf-8' } });
+      // The reload client rides along so fixing the page un-sticks the browser.
+      const body = readFileSync(file, 'utf8') + (live ? '\n' + RELOAD_CLIENT : '');
+      return new Response(body, { status, headers: { 'content-type': 'text/html; charset=utf-8' } });
     }
     return new Response(status === 404 ? 'Not found' : 'Server error', { status });
   }
 
-  // spark-html runtime, served for hydration (importmap target).
-  let runtimeJs = null;
-  function runtimeFile() {
-    if (runtimeJs) return runtimeJs;
+  // spark-html + family packages, served as browser modules. The importmap
+  // maps each package name to /@modules/<pkg>/<entry>, and sibling files in
+  // the package resolve as relative imports under the same prefix (theme's
+  // ./init.js, say). Bun's resolver falls back to its GLOBAL install cache
+  // when a dir has no node_modules — that can be a different version than
+  // the app's, so cache hits only count when nothing real resolves.
+  const moduleInfo = new Map(); // pkg → { dir, entry } | null
+  function moduleEntry(pkg) {
+    if (moduleInfo.has(pkg)) return moduleInfo.get(pkg);
+    let lastResort = null;
     for (const dir of [root, dirname(new URL(import.meta.url).pathname)]) {
       try {
-        runtimeJs = readFileSync(Bun.resolveSync('spark-html', dir), 'utf8');
-        return runtimeJs;
+        const file = Bun.resolveSync(pkg, dir);
+        if (file.includes('/install/cache/')) { lastResort = lastResort || file; continue; }
+        const info = { dir: dirname(file), entry: file.slice(file.lastIndexOf('/') + 1) };
+        moduleInfo.set(pkg, info);
+        return info;
       } catch { /* next */ }
     }
-    return null;
+    const info = lastResort
+      ? { dir: dirname(lastResort), entry: lastResort.slice(lastResort.lastIndexOf('/') + 1) }
+      : null;
+    moduleInfo.set(pkg, info);
+    return info;
   }
 
   // ── the server ──
@@ -616,6 +779,19 @@ export async function serve(options = {}) {
       let pathname;
       try { pathname = decodeURIComponent(url.pathname); } catch { pathname = url.pathname; }
       if (pathname.includes('..')) return errorPage(404);
+
+      // Dev reload channel — before middleware; it's the harness, not the app.
+      if (live && pathname === '/__spark/reload') {
+        let ctrl;
+        const stream = new ReadableStream({
+          start(c) { ctrl = c; c.enqueue(sseEnc.encode(': connected\n\n')); sseClients.add(c); },
+          cancel() { sseClients.delete(ctrl); },
+        });
+        return new Response(stream, {
+          headers: { 'content-type': 'text/event-stream', 'cache-control': 'no-store' },
+        });
+      }
+
       const session = readSession(request.headers.get('cookie'), secret);
       const extraHeaders = {};
 
@@ -641,11 +817,24 @@ export async function serve(options = {}) {
           return res;
         };
 
-        if (pathname === '/@modules/spark-html') {
-          const js = runtimeFile();
-          return finish(js
-            ? new Response(js, { headers: { 'content-type': 'text/javascript', 'cache-control': 'no-cache' } })
-            : errorPage(404));
+        if (pathname.startsWith('/@modules/')) {
+          const rest = pathname.slice('/@modules/'.length);
+          const slash = rest.indexOf('/');
+          const pkg = slash === -1 ? rest : rest.slice(0, slash);
+          const subpath = slash === -1 ? '' : rest.slice(slash + 1);
+          let mod = null;
+          if (/^spark-html(-[\w-]+)?$/.test(pkg)) {
+            const info = moduleEntry(pkg);
+            if (info) {
+              const file = resolve(info.dir, subpath || info.entry);
+              if (file.startsWith(info.dir + '/') && existsSync(file) && statSync(file).isFile()) {
+                mod = new Response(readFileSync(file, 'utf8'), {
+                  headers: { 'content-type': 'text/javascript', 'cache-control': 'no-cache' },
+                });
+              }
+            }
+          }
+          return finish(mod || errorPage(404));
         }
 
         if (pathname.startsWith('/__spark/page/')) {
@@ -725,6 +914,12 @@ export async function serve(options = {}) {
     root,
     config,
     db,
-    stop(force) { server.stop(force); return db && db.close(); },
+    stop(force) {
+      if (watchTimer) clearInterval(watchTimer);
+      for (const c of sseClients) { try { c.close(); } catch { /* gone */ } }
+      sseClients.clear();
+      server.stop(force);
+      return db && db.close();
+    },
   };
 }

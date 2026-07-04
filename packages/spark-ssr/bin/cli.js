@@ -15,7 +15,7 @@
  */
 import { join, resolve } from 'node:path';
 import { cpSync, existsSync, mkdirSync, rmSync, writeFileSync, readdirSync, statSync } from 'node:fs';
-import { serve } from '../src/index.js';
+import { serve, loadConfig } from '../src/index.js';
 
 function parseArgs(argv) {
   const opts = { cmd: 'serve', compile: true };
@@ -41,7 +41,10 @@ Usage:
 
 // The project files a deployment needs — pages, components, api, public,
 // error pages, middleware, config. node_modules/dist/uploads stay behind.
-const SHIP_DIRS = ['pages', 'components', 'api', 'public'];
+// public/ is FLATTENED into dist root: assets keep the same URLs they had in
+// dev (/style.css, /img/…), and post-build passes (spark-html-image) resolve
+// root-absolute <img> paths against dist directly.
+const SHIP_DIRS = ['pages', 'components', 'api'];
 const SHIP_FILES = ['404.html', '500.html', 'middleware.html', 'spark.json', 'package.json'];
 
 async function build(root, compile) {
@@ -50,6 +53,11 @@ async function build(root, compile) {
   mkdirSync(dist, { recursive: true });
   for (const d of SHIP_DIRS) {
     if (existsSync(join(root, d))) cpSync(join(root, d), join(dist, d), { recursive: true });
+  }
+  if (existsSync(join(root, 'public'))) {
+    for (const f of readdirSync(join(root, 'public'))) {
+      cpSync(join(root, 'public', f), join(dist, f), { recursive: true });
+    }
   }
   for (const f of SHIP_FILES) {
     if (existsSync(join(root, f))) cpSync(join(root, f), join(dist, f));
@@ -67,8 +75,16 @@ async function build(root, compile) {
   }
   writeFileSync(join(dist, '__server.js'),
     "import { serve } from 'spark-ssr';\n" +
-    'serve({ root: process.cwd(), port: Number(process.env.PORT) || 3000 });\n');
+    'serve({ root: process.cwd(), port: Number(process.env.PORT) || 3000, watch: false });\n');
   console.log(`✓ assembled dist/`);
+  // spark-html-image, when the app depends on it: the same pass a
+  // spark-html-bun pipeline runs — webp variants + srcset for every local
+  // <img> in the assembled pages and components. Options: spark.json "images".
+  try {
+    const image = (await import('spark-html-image')).default;
+    await image(loadConfig(root).images || {}).run({ outDir: dist });
+    console.log('✓ images optimized (spark-html-image)');
+  } catch { /* not installed — plain assets ship as-is */ }
   if (compile) {
     const r = Bun.spawnSync(
       ['bun', 'build', '--compile', join(dist, '__server.js'), '--outfile', join(dist, 'app')],
@@ -89,7 +105,7 @@ if (opts.cmd === 'build') {
   await build(root, opts.compile);
 } else if (opts.cmd === 'start') {
   const dist = join(root, 'dist');
-  await serve({ root: existsSync(join(dist, '__server.js')) ? dist : root, port });
+  await serve({ root: existsSync(join(dist, '__server.js')) ? dist : root, port, watch: false });
 } else {
   await serve({ root, port });
 }

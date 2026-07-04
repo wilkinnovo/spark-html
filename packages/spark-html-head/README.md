@@ -61,6 +61,25 @@ sets its own metadata reactively — no giant `path → title` map in main.js:
 > [`spark-prerender`](https://www.npmjs.com/package/spark-prerender) bakes them
 > per route; `head()` handles the live client-side updates on SPA navigation.
 
+## Server-side: `spark-html-head/ssr`
+
+The declarative counterpart for SSR servers and build pipelines — no DOM, no
+dependencies. spark-ssr uses it to let a page own its `<head>`:
+
+```js
+import { liftHead, renderHead } from 'spark-html-head/ssr';
+
+const { head, scripts, body } = liftHead(pageHtml);
+const tags = renderHead(head, (expr) => evaluate(expr, scope));
+```
+
+- `liftHead` pulls top-level `<title>`/`<meta>`/`<link>` tags (and client
+  `<script src>` / inline `<script type="module">` scripts) out of a page's
+  markup. HTML comments are masked first, so prose mentioning those tags
+  never lifts anything.
+- `renderHead` interpolates `{expr}` placeholders via your resolver —
+  values are stringified and HTML-escaped.
+
 ## The Spark family
 
 Small, single-purpose packages that share one philosophy: no compiler, no

@@ -1,0 +1,30 @@
+<!-- /admin — the author's private side. `session` is always in page scope:
+     signed out you get the login form, signed in the management panels.
+     The two table declarations give the components their scoped REST APIs
+     (posts + todos both carry user_id → session-scoped, 401 for anyone else). -->
+<title>Manage · {author.name}</title>
+<meta name="robots" content="noindex">
+<link rel="stylesheet" href="/style.css">
+<script type="module" src="/app.js"></script>
+
+<div import="/components/nav" blog="{author.name}" active="admin"></div>
+
+<template if="session">
+  <main class="admin">
+    <header class="admin-head">
+      <p>Signed in as <strong>{session.email}</strong></p>
+      <div import="/components/logout-button"></div>
+    </header>
+    <div import="/components/post-editor"></div>
+    <div import="/components/todo-list"></div>
+  </main>
+</template>
+<template else>
+  <div import="/components/login-form"></div>
+</template>
+
+<spark-ssr table="posts" />
+<spark-ssr table="todos" />
+<spark-ssr>
+  GET /api/author → SELECT id, name, email, bio FROM users LIMIT 1
+</spark-ssr>

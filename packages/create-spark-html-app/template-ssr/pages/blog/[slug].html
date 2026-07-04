@@ -1,0 +1,35 @@
+<!-- /blog/:slug — the filename IS the route; :slug binds into the query.
+     Drafts stay invisible to anonymous readers, but the signed-in author
+     gets a live preview (the OR :session.id clause). -->
+<title>{post ? post.title : 'Not found'} · {author.name}</title>
+<meta name="description" content="{post ? post.excerpt : 'This post does not exist.'}">
+<link rel="stylesheet" href="/style.css">
+<script type="module" src="/app.js"></script>
+
+<div import="/components/nav" blog="{author.name}"></div>
+
+<template if="post">
+  <article class="post">
+    <h1>{post.title}</h1>
+    <p class="meta">
+      By {author.name} · {post.created_at}
+      <template if="!post.published"><span class="pill draft">draft preview</span></template>
+    </p>
+    <p class="lede">{post.excerpt}</p>
+    <div class="body">{post.body}</div>
+  </article>
+</template>
+<template else>
+  <article class="post">
+    <h1>Not found</h1>
+    <p>That post doesn't exist — or it's a draft and you're not signed in.</p>
+    <p><a href="/">← Back to all posts</a></p>
+  </article>
+</template>
+
+<spark-ssr>
+  GET /api/author → SELECT id, name, email, bio FROM users LIMIT 1
+  GET /api/blog/[slug] → SELECT * FROM posts
+    WHERE slug = :slug AND (published = 1 OR :session.id IS NOT NULL)
+    LIMIT 1
+</spark-ssr>

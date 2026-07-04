@@ -1,0 +1,7 @@
+<!-- Pure UI — receives the WHOLE post row as one prop from the page's
+     each-loop: <div import="/components/post-card" post="{post}">. -->
+<article class="card">
+  <h2><a href="/blog/{post.slug}">{post.title}</a></h2>
+  <p>{post.excerpt}</p>
+  <p class="meta">{post.created_at}</p>
+</article>

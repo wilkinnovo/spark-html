@@ -1,4 +1,11 @@
-<!-- Components are pure UI — they just render what they receive. -->
-<nav>
-  <strong>⚡ {title}</strong>
+<!-- Pure UI — no <script>. Props (blog, active) come from whichever page
+     imports it, rendered on the server and again after client mount. -->
+<nav class="nav">
+  <a class="brand" href="/">⚡ {blog}</a>
+  <span class="links">
+    <a href="/" :class="active === 'home' ? 'on' : ''">Posts</a>
+    <a href="/about" :class="active === 'about' ? 'on' : ''">About</a>
+    <a href="/admin" :class="active === 'admin' ? 'on' : ''">Manage</a>
+    <span import="/components/theme-toggle"></span>
+  </span>
 </nav>

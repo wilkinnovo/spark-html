@@ -91,18 +91,11 @@ export function theme(options = {}) {
   return s;
 }
 
-/**
- * The inline no-flash snippet as a string, to drop into <head> (sets the
- * `data-theme` attribute before first paint). Keep `key`/`attribute` in sync
- * with theme().
- */
-export function themeInitScript({ key = 'theme-mode', attribute = 'data-theme' } = {}) {
-  return (
-    `(function(){try{var m=localStorage.getItem(${JSON.stringify(key)})||'system';` +
-    `var d=m==='dark'||(m==='system'&&matchMedia('(prefers-color-scheme: dark)').matches);` +
-    `document.documentElement.setAttribute(${JSON.stringify(attribute)},d?'dark':'light');}` +
-    `catch(e){document.documentElement.setAttribute(${JSON.stringify(attribute)},'dark');}})();`
-  );
-}
+// The inline no-flash snippet (sets `data-theme` before first paint) lives in
+// ./init.js — DOM-free and importable by servers/pipelines (spark-ssr,
+// spark-html-bun) without pulling in the client runtime. Re-exported here
+// for compatibility.
+import { themeInitScript } from './init.js';
+export { themeInitScript };
 
 export default { theme, themeInitScript };

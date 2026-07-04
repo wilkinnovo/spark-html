@@ -130,5 +130,31 @@ test('a store override of a PRE-EXISTING meta is restored on route change', () =
     'author-written content restored, element kept');
 });
 
+// ── the /ssr module: liftHead + renderHead (pure, no DOM) ───────────────
+const { liftHead, renderHead } = await import('../src/ssr.js');
+
+test('ssr: liftHead splits head tags, client scripts, and body', () => {
+  const { head, scripts, body } = liftHead(
+    '<title>{post.title} · Site</title>\n'
+    + '<meta name="description" content="{post.excerpt}">\n'
+    + '<link rel="stylesheet" href="/style.css">\n'
+    + '<script type="module">const cfg = { a: 1 };</script>\n'
+    + '<script src="/app.js"></script>\n'
+    + '<h1>{post.title}</h1>\n<script>let server = 1;</script>',
+  );
+  assert.ok(head.includes('<title>') && head.includes('<meta') && head.includes('<link'), 'head tags lifted');
+  assert.ok(scripts.includes('type="module"') && scripts.includes('src="/app.js"'), 'client scripts lifted');
+  assert.ok(scripts.includes('{ a: 1 }'), 'script bodies untouched');
+  assert.ok(body.includes('<h1>') && body.includes('let server'), 'body keeps markup and server scripts');
+  assert.ok(!body.includes('<title>') && !body.includes('/app.js'), 'lifted tags removed from body');
+});
+
+test('ssr: renderHead interpolates {expr} via the resolver, escaped', () => {
+  const out = renderHead('<title>{post.title}</title>\n<meta content="{missing}">',
+    (e) => (e === 'post.title' ? 'A <b>"bold"</b> claim' : undefined));
+  assert.equal(out.split('\n')[0], '<title>A &lt;b&gt;&quot;bold&quot;&lt;/b&gt; claim</title>', 'values HTML-escaped');
+  assert.ok(out.includes('content=""'), 'unresolved → empty string');
+});
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

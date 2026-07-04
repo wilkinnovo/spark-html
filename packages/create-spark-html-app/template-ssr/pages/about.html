@@ -1,0 +1,22 @@
+<!-- /about — profile straight from the users table, plus an aggregate:
+     a COUNT(*) query serves an object, so {stats.n} just works. -->
+<title>About {author.name}</title>
+<meta name="description" content="Who is {author.name} — {author.bio}">
+<link rel="stylesheet" href="/style.css">
+<script type="module" src="/app.js"></script>
+
+<div import="/components/nav" blog="{author.name}" active="about"></div>
+
+<article class="post">
+  <img class="avatar" src="/img/avatar.png" alt="{author.name}" width="88" height="88">
+  <h1>About me</h1>
+  <p class="lede">{author.bio}</p>
+  <p>I've published <strong>{stats.n}</strong> {stats.n === 1 ? 'post' : 'posts'} on this blog so far,
+     and I manage all of it from the <a href="/admin">admin panel</a> — which is just another page.</p>
+  <p>Say hi: <a href="mailto:{author.email}">{author.email}</a></p>
+</article>
+
+<spark-ssr>
+  GET /api/author → SELECT id, name, email, bio FROM users LIMIT 1
+  GET /api/stats → SELECT COUNT(*) AS n FROM posts WHERE published = 1
+</spark-ssr>

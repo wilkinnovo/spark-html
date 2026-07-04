@@ -1,0 +1,38 @@
+<!-- A component <script> runs in the BROWSER (pages' plain <script> runs on
+     the server — that's the split). POST /api/users?auth is the login
+     endpoint spark-ssr derives from the auth config. -->
+<form class="panel login" onsubmit={login}>
+  <h2>Author sign-in</h2>
+  <label>Email
+    <input type="email" bind:value="email" autocomplete="username" required>
+  </label>
+  <label>Password
+    <input type="password" bind:value="password" autocomplete="current-password" required>
+  </label>
+  <button :disabled="pending">{pending ? 'Signing in…' : 'Sign in'}</button>
+  <template if="error"><p class="error">{error}</p></template>
+  <p class="hint">Seeded account: me@spark-html.com / spark</p>
+</form>
+
+<script>
+  let email = '';
+  let password = '';
+  let error = '';
+  let pending = false;
+
+  async function login() {
+    pending = true;
+    error = '';
+    const res = await fetch('/api/users?auth', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ email, password }),
+    });
+    if (res.ok) {
+      location.reload();
+    } else {
+      error = 'Wrong email or password.';
+      pending = false;
+    }
+  }
+</script>

@@ -1,0 +1,116 @@
+/* One stylesheet for the whole blog. Fonts come from spark.json ("fonts" →
+   spark-html-font injects @font-face + the --font-inter stack); theming is
+   the data-theme attribute spark-html-theme maintains. */
+
+:root {
+  --bg: #fdfcf9;
+  --panel: #ffffff;
+  --text: #1c1917;
+  --muted: #78716c;
+  --line: #e7e5e4;
+  --accent: #b45309;
+  --spark: #f59e0b;
+}
+
+[data-theme="dark"] {
+  --bg: #131110;
+  --panel: #1c1917;
+  --text: #e7e5e4;
+  --muted: #a8a29e;
+  --line: #292524;
+  --accent: #fbbf24;
+  --spark: #f59e0b;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0 auto;
+  max-width: 680px;
+  padding: 0 1.25rem 4rem;
+  font-family: var(--font-inter, system-ui, sans-serif);
+  line-height: 1.6;
+  background: var(--bg);
+  color: var(--text);
+}
+
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+h1, h2, h3 { line-height: 1.2; }
+
+/* ── nav ── */
+.nav {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  padding: 1.25rem 0;
+}
+.nav .brand { font-weight: 700; color: var(--text); }
+.nav .links { display: flex; align-items: center; gap: 1rem; }
+.nav .links a.on { color: var(--text); font-weight: 700; }
+
+/* ── home ── */
+.hero { display: flex; gap: 1.25rem; align-items: center; margin: 2rem 0 2.5rem; }
+.hero h1 { margin: 0 0 0.25rem; }
+.avatar { border-radius: 50%; }
+.lede { color: var(--muted); margin: 0; }
+
+.card {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 1rem 1.25rem;
+  margin: 0 0 1rem;
+}
+.card h2 { margin: 0 0 0.35rem; font-size: 1.15rem; }
+.card p { margin: 0 0 0.35rem; color: var(--text); }
+.meta { color: var(--muted); font-size: 0.85rem; }
+.empty { color: var(--muted); }
+
+/* ── post page ── */
+.post { margin-top: 2rem; }
+.post .body { white-space: pre-line; margin-top: 1.5rem; }
+.pill {
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 0.1rem 0.5rem;
+  border-radius: 999px;
+  vertical-align: middle;
+}
+.pill.draft { background: var(--spark); color: #1c1917; }
+.pill.live { background: #16a34a; color: #fff; }
+
+/* ── admin ── */
+.admin-head { display: flex; justify-content: space-between; align-items: center; }
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 1.25rem;
+  margin: 0 0 1.25rem;
+}
+.panel h2 { margin-top: 0; }
+.row { display: flex; align-items: center; gap: 0.6rem; margin: 0.4rem 0; }
+.grow { flex: 1; }
+.done { text-decoration: line-through; color: var(--muted); }
+.hint { color: var(--muted); font-size: 0.85rem; }
+.error { color: #dc2626; }
+
+input, textarea, button {
+  font: inherit;
+  color: inherit;
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 0.45rem 0.7rem;
+}
+.login { max-width: 380px; margin: 3rem auto; display: grid; gap: 0.75rem; }
+.login label { display: grid; gap: 0.25rem; font-size: 0.9rem; }
+.panel input, .panel textarea { width: 100%; margin: 0.25rem 0; }
+.row input, .row button { width: auto; margin: 0; }
+button { cursor: pointer; background: var(--panel); }
+button:hover { border-color: var(--accent); }
+button:disabled { opacity: 0.5; cursor: default; }
+button.danger:hover { border-color: #dc2626; color: #dc2626; }
+button.ghost, button.toggle { border: none; background: none; padding: 0.2rem; }

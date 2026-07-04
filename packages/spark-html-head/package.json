@@ -1,6 +1,6 @@
 {
   "name": "spark-html-head",
-  "version": "0.2.4",
+  "version": "0.3.0",
   "description": "Reactive document <title> and <meta> per route for spark-html — one line, no dependencies.",
   "type": "module",
   "main": "./src/index.js",
@@ -10,6 +10,10 @@
     ".": {
       "types": "./src/index.d.ts",
       "default": "./src/index.js"
+    },
+    "./ssr": {
+      "types": "./src/ssr.d.ts",
+      "default": "./src/ssr.js"
     }
   },
   "scripts": {

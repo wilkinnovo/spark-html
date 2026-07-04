@@ -148,5 +148,15 @@ await (async () => {
   });
 })();
 
+// ── the /init module: DOM-free, same snippet as the root export ─────────
+await (async () => {
+  const init = await import('../src/init.js');
+  const root = await import('../src/index.js');
+  test('init: themeInitScript importable without the client runtime, same output', () => {
+    assert.equal(init.themeInitScript(), root.themeInitScript(), 'root re-exports ./init');
+    assert.ok(init.themeInitScript({ key: 'k', attribute: 'a' }).includes('"k"'), 'options respected');
+  });
+})();
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

@@ -11,16 +11,30 @@
  */
 import { parseHTML } from 'linkedom';
 
+// ── comment masking ────────────────────────────────────────────────────
+// Every regex-based extraction here must mask comments first, so prose like
+// <!-- declare data in <spark-ssr>, no <script> needed --> never starts (or
+// ends) an extraction. restore() puts the comments back verbatim.
+export function maskComments(source) {
+  const comments = [];
+  const masked = String(source).replace(/<!--[\s\S]*?-->/g, (m) => {
+    comments.push(m);
+    return `\u0000c${comments.length - 1}\u0000`;
+  });
+  return { masked, restore: (s) => String(s).replace(/\u0000c(\d+)\u0000/g, (_, i) => comments[i]) };
+}
+
 // ── <spark-ssr> blocks ─────────────────────────────────────────────────
 export function extractBlocks(source) {
+  const { masked, restore } = maskComments(source);
   const blocks = [];
   const re = /<spark-ssr\b([^>]*?)\/>|<spark-ssr\b([^>]*)>([\s\S]*?)<\/spark-ssr>/gi;
-  const html = String(source).replace(re, (m, selfAttrs, attrs, inner) => {
+  const html = restore(masked.replace(re, (m, selfAttrs, attrs, inner) => {
     const attrStr = selfAttrs ?? attrs ?? '';
     const table = (attrStr.match(/\btable\s*=\s*"([^"]+)"/) || [])[1] || null;
     blocks.push({ table, routes: inner ? parseRoutes(inner) : [] });
     return '';
-  });
+  }));
   return { blocks, html };
 }
 
