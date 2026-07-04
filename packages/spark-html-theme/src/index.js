@@ -22,15 +22,15 @@
  * (tri-state, including 'system'); `set(mode)` jumps to one. The chosen
  * `resolved` is written to `document.documentElement` as `data-theme`.
  *
- * No-flash tip: a deferred module runs after first paint, so to avoid a flash of
- * the wrong theme add this tiny inline script to <head> (it mirrors the same
- * logic) — or import { themeInitScript } and inline its string:
+ * No flash on reload: a deferred module runs after first paint, so the correct
+ * theme must be on <html> before the browser paints. Add the pipeline step to
+ * spark.config.js and it's handled in dev and build automatically:
  *
- *   <script>document.documentElement.dataset.theme =
- *     (localStorage.getItem('theme-mode')||'system')==='light' ? 'light'
- *     : (localStorage.getItem('theme-mode')==='dark' ||
- *        matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light';
- *   </script>
+ *   import theme from 'spark-html-theme/bun';
+ *   export default { pipeline: [prerender(), theme()] };
+ *
+ * (Without the bun pipeline, inline the same snippet by hand — import
+ * { themeInitScript } and drop its string into a <script> at the top of <head>.)
  */
 import { store } from 'spark-html';
 

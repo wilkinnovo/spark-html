@@ -94,5 +94,59 @@ test('the store is the shared `theme` store (useStore reads it)', () => {
   assert.equal(store('theme').mode, t.mode, 'same store instance');
 });
 
+// ── the /bun pipeline step (no-flash injection) ──────────────────────────
+const { mkdtempSync, writeFileSync, readFileSync, mkdirSync } = await import('node:fs');
+const { join } = await import('node:path');
+const { tmpdir } = await import('node:os');
+const sparkTheme = (await import('../src/bun.js')).default;
+
+const PAGE = '<!doctype html>\n<html><head><title>x</title></head><body>hi</body></html>';
+const FRAGMENT = '<h1>{msg}</h1>\n<script>let msg = "hi";</script>';
+
+await (async () => {
+  const step = sparkTheme();
+  const out = mkdtempSync(join(tmpdir(), 'spark-theme-'));
+  mkdirSync(join(out, 'components'));
+  writeFileSync(join(out, 'index.html'), PAGE);
+  writeFileSync(join(out, 'components', 'card.html'), FRAGMENT);
+  await step.run({ outDir: out });
+
+  test('bun step: injects the init script at the top of <head> in built pages', () => {
+    const html = readFileSync(join(out, 'index.html'), 'utf8');
+    assert.ok(html.includes('<script data-spark-theme>'), 'script injected');
+    assert.ok(/<head>\s*<script data-spark-theme>/.test(html), 'at head start (before styles)');
+    assert.ok(html.includes('prefers-color-scheme'), 'the real init logic');
+  });
+
+  test('bun step: component fragments (no <head>) ship untouched', () => {
+    assert.equal(readFileSync(join(out, 'components', 'card.html'), 'utf8'), FRAGMENT);
+  });
+
+  test('bun step: a fragment with a <header> element is NOT mistaken for a page', () => {
+    const frag = '<header><h1>{title}</h1></header>\n<script>let title = "x";</script>';
+    assert.equal(step.transformHtml(frag, { dev: true }), frag, '<header> is not <head>');
+  });
+
+  test('bun step: idempotent — a second run leaves one script', () => {
+    return step.run({ outDir: out }).then(() => {
+      const html = readFileSync(join(out, 'index.html'), 'utf8');
+      assert.equal(html.split('data-spark-theme').length - 1, 1, 'exactly one marker');
+    });
+  });
+
+  test('bun step: dev transformHtml injects the same script (and only in dev)', () => {
+    const devHtml = step.transformHtml(PAGE, { dev: true });
+    assert.ok(devHtml.includes('data-spark-theme'), 'injected in dev');
+    assert.equal(step.transformHtml(PAGE, { dev: false }), PAGE, 'build path untouched (run() owns it)');
+    assert.equal(step.transformHtml(devHtml, { dev: true }), devHtml, 'idempotent in dev');
+  });
+
+  test('bun step: custom key/attribute reach the injected script', () => {
+    const custom = sparkTheme({ key: 'my-theme', attribute: 'data-mode' }).transformHtml(PAGE, { dev: true });
+    assert.ok(custom.includes('"my-theme"'), 'custom key');
+    assert.ok(custom.includes('"data-mode"'), 'custom attribute');
+  });
+})();
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

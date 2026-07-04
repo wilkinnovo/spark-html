@@ -59,8 +59,27 @@ theme({
 
 ## No flash of the wrong theme
 
-A `type="module"` script runs after first paint, so add a tiny inline script to
-`<head>` to set the theme before the page renders:
+A `type="module"` script runs after first paint, so the saved theme has to be
+on `<html>` *before* the browser paints. If you build with
+[`spark-html-bun`](https://www.npmjs.com/package/spark-html-bun), add the
+pipeline step and it's handled automatically — in `spark dev` **and** in every
+built page:
+
+```js
+// spark.config.js
+import prerender from 'spark-prerender/bun';
+import theme from 'spark-html-theme/bun';
+
+export default {
+  pipeline: [prerender(), theme()], // after prerender, so route pages get it too
+};
+```
+
+Pass the same `key` / `attribute` you give `theme()` if you customized them:
+`theme({ key: 'my-theme', attribute: 'data-mode' })`.
+
+Without the pipeline, inline the script by hand — `themeInitScript()` returns
+the exact string to drop into a `<script>` at the top of `<head>`:
 
 ```html
 <script>
@@ -71,12 +90,11 @@ A `type="module"` script runs after first paint, so add a tiny inline script to
 </script>
 ```
 
-(Or import `themeInitScript()` to get that string and inline it from your build.)
-
 ## The Spark family
 
 Small, single-purpose packages that share one philosophy: no compiler, no
-virtual DOM, no build step required. Add only what you use.
+virtual DOM, no build step required — built for humans who love hand-writing
+their web apps. Add only what you use.
 
 | Package | What it does |
 |---|---|

@@ -1,6 +1,6 @@
 {
   "name": "spark-html-theme",
-  "version": "0.1.10",
+  "version": "0.1.11",
   "description": "One-line dark/light/system theming for spark-html — a reactive `theme` store, data-theme attribute, system watch, and localStorage persistence.",
   "type": "module",
   "main": "./src/index.js",
@@ -10,6 +10,9 @@
     ".": {
       "types": "./src/index.d.ts",
       "default": "./src/index.js"
+    },
+    "./bun": {
+      "default": "./src/bun.js"
     }
   },
   "scripts": {
