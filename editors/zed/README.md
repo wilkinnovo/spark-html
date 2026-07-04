@@ -1,6 +1,6 @@
 # Spark for Zed
 
-[spark-html](https://github.com/wilkinnovo/spark) single-file component support
+[spark-html](https://github.com/wilkinnovo/spark-html) single-file component support
 for [Zed](https://zed.dev), with **full highlighting**:
 
 - **`{interpolation}`** highlighted as JavaScript — `{count * 2}`, `{ok ? a : b}`.

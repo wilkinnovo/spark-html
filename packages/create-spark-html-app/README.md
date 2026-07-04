@@ -1,6 +1,6 @@
 # create-spark-html-app
 
-Scaffold a [Spark](https://github.com/wilkinnovo/spark) app in seconds — a
+Scaffold a [Spark](https://github.com/wilkinnovo/spark-html) app in seconds — a
 Bun-powered project (dev / build / preview via `spark-html-bun`) wired to
 `spark-html` with live, reactive **Spark** components.
 

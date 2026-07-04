@@ -1,6 +1,6 @@
 # ⚡ spark-html-devtools
 
-A tiny in-page inspector for [spark-html](https://github.com/wilkinnovo/spark)
+A tiny in-page inspector for [spark-html](https://github.com/wilkinnovo/spark-html)
 apps. Drop it in during development and get a ⚡ panel (bottom-right) showing:
 
 - **Stores** — every named store and its live state.

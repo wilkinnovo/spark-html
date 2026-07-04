@@ -1,6 +1,6 @@
 # ⚡ Spark App
 
-A starter built with [spark-html](https://github.com/wilkinnovo/spark) — single-file
+A starter built with [spark-html](https://github.com/wilkinnovo/spark-html) — single-file
 HTML components with built-in reactivity. No compiler, no virtual DOM, no build step.
 
 The scaffold is a **multi-page SPA** with client-side routing, live demos, and a
@@ -72,5 +72,5 @@ Derive values with `$:`, share state across components with `useStore(name)`, us
 `bind:value` for two-way binds, and pass props as attributes on the `import`
 placeholder.
 
-See the [full docs](https://wilkinnovo.github.io/spark/docs) for the complete
+See the [full docs](https://wilkinnovo.github.io/spark-html/docs) for the complete
 template syntax reference.

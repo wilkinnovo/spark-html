@@ -49,7 +49,7 @@ store('showcase', {
     { slug: 'dat-taxi', name: 'dat.taxi', url: 'https://dat.taxi',
       desc: "NYC's premium ride service, on demand since 1992.",
       tags: ['router', 'prerender'] },
-    { slug: 'spark', name: 'This site', url: 'https://wilkinnovo.github.io/spark/',
+    { slug: 'spark', name: 'This site', url: 'https://wilkinnovo.github.io/spark-html/',
       desc: 'Every section is a Spark component.',
       tags: ['router', 'theme', 'prerender'] },
   ],

@@ -1,7 +1,7 @@
 # Spark for VS Code
 
 Syntax highlighting **and language-server features** for
-[spark-html](https://github.com/wilkinnovo/spark) single-file components.
+[spark-html](https://github.com/wilkinnovo/spark-html) single-file components.
 
 ## Highlighting
 

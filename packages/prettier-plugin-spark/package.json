@@ -18,10 +18,10 @@
   ],
   "license": "MIT",
   "author": "Wilkin Novo",
-  "homepage": "https://github.com/wilkinnovo/spark/tree/main/packages/prettier-plugin-spark",
+  "homepage": "https://github.com/wilkinnovo/spark-html/tree/main/packages/prettier-plugin-spark",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/wilkinnovo/spark.git",
+    "url": "git+https://github.com/wilkinnovo/spark-html.git",
     "directory": "packages/prettier-plugin-spark"
   },
   "peerDependencies": {

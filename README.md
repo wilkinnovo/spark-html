@@ -6,9 +6,9 @@
   <a href="https://www.npmjs.com/package/spark-html"><img alt="npm" src="https://img.shields.io/npm/v/spark-html?color=ffd24a&amp;label=spark-html" /></a>
   <img alt="size" src="https://img.shields.io/bundlephobia/minzip/spark-html?color=ffd24a&amp;label=gzip" />
   <img alt="deps" src="https://img.shields.io/badge/dependencies-0-ffd24a" />
-  <a href="https://github.com/wilkinnovo/spark/blob/main/LICENSE"><img alt="license" src="https://img.shields.io/npm/l/spark-html?color=ffd24a" /></a>
-  &middot; <a href="https://wilkinnovo.github.io/spark/">site</a>
-  &middot; <a href="https://wilkinnovo.github.io/spark/docs">docs</a>
+  <a href="https://github.com/wilkinnovo/spark-html/blob/main/LICENSE"><img alt="license" src="https://img.shields.io/npm/l/spark-html?color=ffd24a" /></a>
+  &middot; <a href="https://wilkinnovo.github.io/spark-html/">site</a>
+  &middot; <a href="https://wilkinnovo.github.io/spark-html/docs">docs</a>
 </p>
 
 ---
@@ -214,7 +214,7 @@ bun run e2e      # Playwright: mount → hydrate → router → theme, live tuto
 ```
 
 Built something with Spark? Add it to the
-[showcase](https://wilkinnovo.github.io/spark/showcase) — open a PR.
+[showcase](https://wilkinnovo.github.io/spark-html/showcase) — open a PR.
 
 ## License
 

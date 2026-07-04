@@ -4,7 +4,7 @@ version = "0.3.1"
 schema_version = 1
 authors = ["Wilkin Novo"]
 description = "spark-html single-file component support for Zed (https://zed.dev) — HTML + {interpolation} + scoped <script>/<style>."
-repository = "https://github.com/wilkinnovo/spark"
+repository = "https://github.com/wilkinnovo/spark-html"
 
 # spark-html components are syntactically a near-subset of Svelte (HTML +
 # {expr} + <script>/<style>), so we reuse the well-tested Svelte tree-sitter

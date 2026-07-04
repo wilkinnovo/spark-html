@@ -1,7 +1,7 @@
 # prettier-plugin-spark
 
 [Prettier](https://prettier.io) plugin for
-[spark-html](https://github.com/wilkinnovo/spark) single-file components.
+[spark-html](https://github.com/wilkinnovo/spark-html) single-file components.
 
 ## Why a dedicated plugin
 
@@ -58,7 +58,7 @@ directory, e.g. `"files": "components/**/*.html"`.)
 
 ### Zed
 
-The [Spark Zed extension](https://github.com/wilkinnovo/spark/tree/main/editors/zed)
+The [Spark Zed extension](https://github.com/wilkinnovo/spark-html/tree/main/editors/zed)
 already sets `prettier_parser_name = "spark"`. Enable Prettier + this plugin for
 the `Spark` language once in your Zed `settings.json`:
 

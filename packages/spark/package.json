@@ -2,7 +2,7 @@
   "name": "spark-html",
   "version": "0.27.5",
   "description": "Get your spark back. HTML that reacts!.",
-  "homepage": "https://wilkinnovo.github.io/spark",
+  "homepage": "https://wilkinnovo.github.io/spark-html",
   "type": "module",
   "main": "./src/index.js",
   "types": "./src/index.d.ts",
@@ -20,7 +20,7 @@
   ],
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/wilkinnovo/spark.git"
+    "url": "git+https://github.com/wilkinnovo/spark-html.git"
   },
   "keywords": [
     "reactive",

@@ -1,7 +1,7 @@
 # spark-html-motion
 
 Declarative **enter / leave transitions** for
-[spark-html](https://github.com/wilkinnovo/spark) — the Spark way: no compiler,
+[spark-html](https://github.com/wilkinnovo/spark-html) — the Spark way: no compiler,
 no virtual DOM, 0 dependencies (1.5 kB gzipped). When an `<template if>` / `<template
 each>` block adds or removes an element, it animates in/out. A leaving element
 is held in the DOM until its exit animation finishes, then removed.

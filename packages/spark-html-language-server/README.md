@@ -1,6 +1,6 @@
 # spark-html-language-server
 
-Language server (LSP) for [Spark](https://github.com/wilkinnovo/spark) single-file
+Language server (LSP) for [Spark](https://github.com/wilkinnovo/spark-html) single-file
 `.html` components. Zero dependencies, speaks LSP over stdio.
 
 ## What you get
@@ -37,7 +37,7 @@ transport every LSP client speaks.
 ## VS Code
 
 Install the **Spark (spark-html)** extension from
-[`editors/vscode`](https://github.com/wilkinnovo/spark/tree/main/editors/vscode) —
+[`editors/vscode`](https://github.com/wilkinnovo/spark-html/tree/main/editors/vscode) —
 it bundles syntax highlighting and launches this server automatically (globally
 installed binary, or `node_modules/.bin` in your project).
 
