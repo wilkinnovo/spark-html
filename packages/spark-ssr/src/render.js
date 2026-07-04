@@ -37,12 +37,21 @@ export function evalExpr(expr, scope) {
 
 const str = (v) => (v == null ? '' : typeof v === 'object' ? JSON.stringify(v) : String(v));
 
-// Template children may live in .content or .childNodes depending on how
-// linkedom parsed the (possibly nested) template — read both.
-const kids = (node) => [
-  ...(node.content ? node.content.childNodes : []),
-  ...node.childNodes,
-];
+// linkedom's template parsing is inconsistent: children can land in .content,
+// in .childNodes, split between the two (whitespace one side, elements the
+// other), or fully DUPLICATED into both. Never merge — pick the side that
+// actually holds elements; on a tie (duplicates) .content is canonical.
+export function templateKids(node) {
+  const c = node.content ? [...node.content.childNodes] : [];
+  const d = [...node.childNodes];
+  if (!c.length) return d;
+  if (!d.length) return c;
+  const hasEl = (a) => a.some((n) => n.nodeType === 1);
+  if (hasEl(c)) return c;
+  if (hasEl(d)) return d;
+  return c;
+}
+const kids = templateKids;
 const interpolate = (text, scope) =>
   String(text).replace(/\{([^{}]+)\}/g, (_, e) => str(evalExpr(e, scope)));
 
@@ -188,10 +197,44 @@ async function renderIfChain(node, scope, ctx, depth) {
   for (const link of chain) link.node.remove();
 }
 
+// Round-trip an evaluated prop back to an attribute string the runtime's
+// coerce() understands ('' = true, JSON for objects, …) — same contract as
+// spark-prerender's serializeProp.
+function serializeProp(v) {
+  if (v === true) return '';
+  if (v === false) return 'false';
+  if (v === null || v === undefined) return 'null';
+  if (typeof v === 'string') return v;
+  if (typeof v === 'number') return String(v);
+  return JSON.stringify(v);
+}
+
+// Literal top-level defaults from a component <script> (let count = 0;
+// let greeting = 'hi') so the SSR output shows initial values instead of
+// blanks. Anything non-literal is skipped — the client boot computes it.
+export function scriptLiterals(code) {
+  const out = {};
+  for (const m of String(code).matchAll(/^\s*(?:let|var|const)\s+([a-zA-Z_$][\w$]*)\s*=\s*(.+?);?\s*$/gm)) {
+    const raw = m[2].trim();
+    try {
+      out[m[1]] = JSON.parse(raw.replace(/^'([^'\\]*)'$/, '"$1"'));
+    } catch { /* not a literal — client-side only */ }
+  }
+  return out;
+}
+
 async function renderImport(node, scope, ctx, depth) {
   const spec = node.getAttribute('import');
-  node.removeAttribute('import');
   if (depth >= (ctx.maxDepth || 20)) { node.innerHTML = ''; return; }
+
+  // A top-level host on a page that will client-mount keeps its import (plus
+  // a `name` and its evaluated props) so the runtime's flash-free hydrate
+  // path re-resolves it and the component comes alive — exactly the contract
+  // spark-prerender's makeHydratable establishes. Nested hosts are inlined;
+  // their parent rebuilds them on the client.
+  const keepHost = !!ctx.keepImports && depth === 0;
+  if (!keepHost) node.removeAttribute('import');
+  else node.setAttribute('name', String(spec).split(/[?#]/)[0].replace(/\/+$/, '').replace(/.*\//, '').replace(/\.html$/, ''));
 
   // Slot content renders in the CALLER's scope, before the component swaps in.
   await walkChildren(node, scope, ctx, depth);
@@ -203,25 +246,41 @@ async function renderImport(node, scope, ctx, depth) {
   for (const attr of [...node.attributes]) {
     const n = attr.name;
     const v = String(attr.value || '');
+    if (n === 'import' || n === 'name' || n.startsWith('data-spark')) continue;
     if (n === 'class' || n === 'id') { if (v.includes('{')) attr.value = interpolate(v, scope); continue; }
     const exact = v.trim().match(/^\{([\s\S]+)\}$/);
     props[n] = exact ? evalExpr(exact[1], scope) : v.includes('{') ? interpolate(v, scope) : v;
-    node.removeAttribute(n);
+    // Kept hosts re-serialize the evaluated value so the client re-resolve
+    // receives the same props; inlined hosts drop them.
+    if (keepHost) attr.value = serializeProp(props[n]);
+    else node.removeAttribute(n);
   }
 
   const source = ctx.loadComponent ? await ctx.loadComponent(spec) : null;
   if (source == null) { node.innerHTML = ''; return; }
-  // Components are pure UI: strip their <spark-ssr>/<script>, keep markup+style.
+  // Components are pure UI on the server: strip <spark-ssr>/<script> from the
+  // output, but read literal script defaults so {count} renders as 0.
+  let script = '';
   const clean = String(source)
     .replace(/<spark-ssr\b[^>]*?\/>|<spark-ssr\b[^>]*>[\s\S]*?<\/spark-ssr>/gi, '')
-    .replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, '');
+    .replace(/<script\b[^>]*>([\s\S]*?)<\/script>/gi, (m, body) => { script += body + '\n'; return ''; });
   node.innerHTML = clean;
-  await walkChildren(node, props, ctx, depth + 1);
+  const compScope = Object.assign(Object.create(null), scriptLiterals(script), props);
+  await walkChildren(node, compScope, ctx, depth + 1);
 
   // Default slot: replace <slot> with the caller's rendered content.
   for (const slot of [...node.querySelectorAll('slot')]) {
-    const holder = ctx.document.createElement('template');
+    const holder = ctx.document.createElement('div');
     holder.innerHTML = slotHtml;
-    slot.replaceWith(...(holder.content || holder).childNodes);
+    slot.replaceWith(...holder.childNodes);
+  }
+
+  // Stash the rendered slot content for the client's hydrate path
+  // (<template data-spark-slots>, read by the runtime on re-resolve).
+  if (keepHost && slotHtml.trim()) {
+    const stash = ctx.document.createElement('template');
+    stash.setAttribute('data-spark-slots', '');
+    stash.innerHTML = slotHtml;
+    node.appendChild(stash);
   }
 }

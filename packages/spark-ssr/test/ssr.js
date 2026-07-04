@@ -136,11 +136,14 @@ await test('SSR: / renders the seeded rows into HTML', async () => {
   assert.ok(!html.includes('onclick={'), 'handlers stripped from static HTML');
 });
 
-await test('hydration: page ships importmap + mount + component host', async () => {
+await test('hydration: page ships importmap + mount + component host with name', async () => {
   const html = await (await fetch(`${T}/`)).text();
   assert.ok(html.includes('"spark-html":"/@modules/spark-html"'), 'importmap');
   assert.ok(html.includes('mount()'), 'mount call');
-  assert.ok(html.includes('import="/__spark/page/index"'), 'component host');
+  // BOTH import and name — the runtime's hydrate contract. Without name the
+  // pre-rendered HTML is treated as slot content and projected NEXT TO the
+  // fresh render: two live copies of the whole UI.
+  assert.ok(/import="\/__spark\/page\/index"[^>]*\bname="index"/.test(html), 'host carries import + name');
 });
 
 await test('auto CRUD: GET/POST/PATCH/DELETE /api/todos inferred from the template', async () => {
@@ -181,6 +184,9 @@ await test('client component: await unwrapped, row handlers get their row, scrip
   assert.ok(/async function add\(\)/.test(html), 'insert handler');
   assert.ok(html.includes('body.title = draft'), 'bind mapped to the text column');
   assert.ok(html.includes("method: 'PATCH'") && html.includes("method: 'DELETE'"), 'update+delete verbs');
+  // linkedom can park template children in .content AND .childNodes — the
+  // await unwrap must emit them ONCE (duplicated inputs were live twins).
+  assert.equal((html.match(/placeholder="New task"/g) || []).length, 1, 'await content not duplicated');
 });
 
 await test('init data module: /__spark/data/index.js exports the rows', async () => {
@@ -226,6 +232,8 @@ await test('hydration e2e: the real runtime mounts the generated component and a
       await new Promise((r) => setTimeout(r, 5));
     }
     assert.ok(document.body.innerHTML.includes('Buy milk'), 'component rendered with init data');
+    assert.equal((document.body.innerHTML.match(/placeholder="New task"/g) || []).length, 1,
+      'exactly one live copy after hydration (no slot-projected duplicate)');
     const host = [...document.querySelectorAll('[name]')].find((h) => h.__sparkScope);
     assert.ok(host, 'component booted');
     const scope = host.__sparkScope;
@@ -437,6 +445,67 @@ await test('500.html: a failing query surfaces the custom error page', async () 
   const res = await fetch(`${S}/broken`);
   assert.equal(res.status, 500);
   assert.ok((await res.text()).includes('Custom boom'));
+});
+
+await test('new page + endpoint created AFTER startup serve without a restart', async () => {
+  assert.equal((await fetch(`${S}/later`)).status, 404, 'not there yet');
+  writeFileSync(join(siteRoot, 'pages', 'later.html'), `<h1>{post.title}</h1>
+<spark-ssr>
+  GET /api/later → SELECT * FROM posts WHERE slug = 'hello'
+</spark-ssr>`);
+  const res = await fetch(`${S}/later`);
+  assert.equal(res.status, 200, 'picked up on the next request');
+  assert.ok((await res.text()).includes('Hello World'), 'its query ran too');
+  const api = await (await fetch(`${S}/api/later`)).json();
+  assert.equal(api[0].slug, 'hello', 'its endpoint registered too');
+});
+
+await test('imported component with its own <script> comes alive (counter)', async () => {
+  writeFileSync(join(siteRoot, 'components', 'counter.html'),
+    '<h2 class="c">Count: {count}</h2>\n<button onclick={inc}>+1</button>\n<script>\nlet count = 0;\nfunction inc() { count++; }\n</script>');
+  writeFileSync(join(siteRoot, 'pages', 'counterdemo.html'),
+    '<h1>Demo</h1>\n<div import="/components/counter"></div>\n');
+  const html = await (await fetch(`${S}/counterdemo`)).text();
+  assert.ok(html.includes('Count: 0'), 'script literals feed the SSR output');
+  const hostTag = (html.match(/<div[^>]*import="\/components\/counter"[^>]*>/) || [''])[0];
+  assert.ok(hostTag.includes('name="counter"'), 'host keeps import + name for client takeover');
+  assert.ok(html.includes('mount()'), 'page mounts because it has component imports');
+  assert.ok(!/<script>[\s\S]*let count/.test(html.split('importmap')[0]), 'component script never in the SSR body');
+
+  // The real runtime takes the counter over and inc() re-renders.
+  const { window, document } = parseHTML(html);
+  try { if (document.readyState === 'loading') document.readyState = 'complete'; } catch { /* fine */ }
+  let rafQueue = [];
+  const realFetch = globalThis.fetch;
+  const globals = {
+    window, document, Node: window.Node,
+    requestAnimationFrame: (fn) => rafQueue.push(fn),
+    __SPARK_PRERENDER__: true, __SPARK_AWAITS__: [],
+    fetch: (p, init) => realFetch(String(p).startsWith('/') ? S + p : p, init),
+  };
+  const prev = {};
+  for (const [k, v] of Object.entries(globals)) { prev[k] = globalThis[k]; globalThis[k] = v; }
+  try {
+    const spark = await import(import.meta.resolve('spark-html') + '?ssr=' + Math.random().toString(36).slice(2));
+    await spark.mount(document.body);
+    for (let i = 0; i < 15; i++) {
+      const q = rafQueue; rafQueue = [];
+      for (const fn of q) fn();
+      await new Promise((r) => setTimeout(r, 5));
+    }
+    const host = [...document.querySelectorAll('[name]')].find((h) => h.__sparkScope && h.__sparkScope.inc);
+    assert.ok(host, 'counter booted with its own script');
+    host.__sparkScope.inc();
+    for (let i = 0; i < 10; i++) {
+      const q = rafQueue; rafQueue = [];
+      for (const fn of q) fn();
+      await new Promise((r) => setTimeout(r, 5));
+    }
+    assert.ok(document.body.innerHTML.includes('Count: 1'), 'inc() re-rendered');
+    assert.equal((document.body.innerHTML.match(/Count:/g) || []).length, 1, 'one counter, not a projected twin');
+  } finally {
+    for (const [k, v] of Object.entries(prev)) { if (v === undefined) delete globalThis[k]; else globalThis[k] = v; }
+  }
 });
 
 await site.stop(true);

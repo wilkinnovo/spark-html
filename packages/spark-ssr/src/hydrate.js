@@ -15,6 +15,7 @@
  * becomes onclick={remove(todo)} — the runtime runs it as an inline statement.
  */
 import { parseHTML } from 'linkedom';
+import { templateKids } from './render.js';
 
 // Structural roles from the analysis (names are the author's own).
 export function handlerRoles(analysis) {
@@ -43,12 +44,7 @@ export function primaryColumn(cols) {
 export function clientComponent({ html, analysis, plan, table, cols, key }) {
   const { document } = parseHTML('<!doctype html><html><body>' + html + '</body></html>');
 
-  // Nested templates may keep their children in .childNodes rather than
-  // .content depending on how linkedom parsed them — read both.
-  const kids = (node) => [
-    ...(node.content ? node.content.childNodes : []),
-    ...node.childNodes,
-  ];
+  const kids = templateKids;
 
   (function transform(node, loopVar) {
     if (node.nodeType !== 1) return;
@@ -74,7 +70,16 @@ export function clientComponent({ html, analysis, plan, table, cols, key }) {
         const em = each.match(/^\s*([\w$]+)/);
         if (em) inner = em[1];
       }
-      for (const c of kids(node)) transform(c, inner);
+      // Attribute rewrites must reach BOTH of linkedom's template stores —
+      // it may hold duplicate copies in .content and .childNodes, and which
+      // one the serializer emits varies. (Moves, like the await unwrap above,
+      // take just the canonical side since the template is removed after.)
+      const seen = new Set();
+      for (const c of [...(node.content ? node.content.childNodes : []), ...node.childNodes]) {
+        if (seen.has(c)) continue;
+        seen.add(c);
+        transform(c, inner);
+      }
       return;
     }
     if (loopVar && node.attributes) {

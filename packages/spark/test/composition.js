@@ -65,7 +65,12 @@ component('trailingcomment', `
   function noop() { msg = 'changed'; } // trailing line comment with no newline
 </script>`);
 
-parseHTML('<div import="cardpage"></div><div import="deeptest"></div><div import="trailingcomment"></div>', body);
+// ── regression: a SCRIPT-LESS component still renders its props ──
+// (pure-UI components "render what they receive"; the no-script boot path
+// used to install an empty scope and drop the props on the floor)
+component('purecard', `<p class="pc">{label}</p>`);
+
+parseHTML('<div import="cardpage"></div><div import="deeptest"></div><div import="trailingcomment"></div><div import="purecard" label="From props"></div>', body);
 await mount();
 await tick();
 
@@ -114,6 +119,10 @@ console.log('\nrobustness');
 await test('script ending in a // comment still parses and renders', () => {
   const el = body.querySelector('[name="trailingcomment"] .tc');
   assert.equal(el.textContent, 'parsed');
+});
+await test('a script-less component renders its props (props ARE its scope)', () => {
+  const el = body.querySelector('[name="purecard"] .pc');
+  assert.equal(el.textContent, 'From props');
 });
 
 console.log(`\n${pass} passed, ${fail} failed`);

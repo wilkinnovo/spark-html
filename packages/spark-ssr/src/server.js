@@ -120,12 +120,13 @@ export async function serve(options = {}) {
   const config = { ...loadConfig(root), ...(options.config || {}) };
   const db = await connect(config.db);
   const secret = (config.auth && config.auth.secret) || randomBytes(32).toString('hex');
-  const { pagesDir, pages } = scanPages(root);
   const cache = new Map();
+  const pages = [];
+  let pagesDir = root;
   const uploadsDir = join(root, config.uploads);
   const quiet = !!options.quiet;
 
-  const ctx = { root, config, db, secret, pagesDir, pages, cache, uploadsDir, port: 0 };
+  const ctx = { port: 0 };
 
   // ── request wrapper ──
   function wrapReq(request, url, params, session, server) {
@@ -317,36 +318,49 @@ export async function serve(options = {}) {
   }
 
   // ── explicit <spark-ssr> query endpoints ──
-  const registered = new Set();
+  // Defs are mutable so an edited page's SQL takes effect without a restart —
+  // the registered handler reads def.sql at call time.
+  const queryDefs = new Map();
   function registerQuery(route) {
     const key = route.method + ' ' + route.path;
-    if (registered.has(key)) return;
-    registered.add(key);
+    const existing = queryDefs.get(key);
+    if (existing) { existing.sql = route.sql; return; }
+    const def = { sql: route.sql };
+    queryDefs.set(key, def);
     const segs = route.path.split('/').filter(Boolean)
       .map((s) => s.replace(/^\[(\w+)\]$/, ':$1'));
     apiRoutes.push({
       method: route.method,
       segs,
       handler: async (req) => {
-        const rows = await runSql(route.sql, req);
-        if (route.method === 'GET') return json(singleShaped(route.sql) ? rows[0] ?? null : [...rows]);
+        const rows = await runSql(def.sql, req);
+        if (route.method === 'GET') return json(singleShaped(def.sql) ? rows[0] ?? null : [...rows]);
         if (Array.isArray(rows) && rows.length) return json(rows.length === 1 ? rows[0] : [...rows]);
         return json({ ok: true, changes: rows.changes ?? 0 });
       },
     });
   }
 
-  // Register everything the pages declare.
+  // (Re)scan pages/ and register everything they declare. Runs per request —
+  // a plain readdir walk plus mtime-cached parses — so new pages, new tables,
+  // and edited queries appear without restarting the server.
   const tables = new Set();
-  for (const page of pages) {
-    const pd = pageData(page, cache);
-    for (const b of pd.blocks) {
-      if (b.table && !tables.has(b.table)) { tables.add(b.table); registerTable(b.table); }
-      for (const r of b.routes) {
-        if (r.path) registerQuery(r);
+  function refreshPages() {
+    const scanned = scanPages(root);
+    pagesDir = scanned.pagesDir;
+    pages.splice(0, pages.length, ...scanned.pages);
+    for (const page of pages) {
+      let pd;
+      try { pd = pageData(page, cache); } catch { continue; }
+      for (const b of pd.blocks) {
+        if (b.table && !tables.has(b.table)) { tables.add(b.table); registerTable(b.table); }
+        for (const r of b.routes) {
+          if (r.path) registerQuery(r);
+        }
       }
     }
   }
+  refreshPages();
 
   // ── api/ folder — custom endpoints ──
   function makeAppFetch(req) {
@@ -368,8 +382,12 @@ export async function serve(options = {}) {
     };
   }
 
-  const apiDir = join(root, 'api');
-  if (existsSync(apiDir)) {
+  // api/ files re-scan per request too; script handlers hold a mutable def so
+  // edits take effect, and registration itself happens once per route.
+  const apiDefs = new Map(); // route path → { mtime, fn }
+  function refreshApi() {
+    const apiDir = join(root, 'api');
+    if (!existsSync(apiDir)) return;
     (function scanApi(dir, prefix) {
       for (const f of readdirSync(dir)) {
         if (f.startsWith('.')) continue;
@@ -377,21 +395,32 @@ export async function serve(options = {}) {
         if (statSync(full).isDirectory()) { scanApi(full, prefix + f + '/'); continue; }
         if (!f.endsWith('.html')) continue;
         const route = '/api/' + prefix + f.slice(0, -5);
+        const mtime = statSync(full).mtimeMs;
+        let def = apiDefs.get(route);
+        if (def && def.mtime === mtime) continue;
+        if (!def) { def = { mtime: 0, fn: null, registered: false }; apiDefs.set(route, def); }
+        def.mtime = mtime;
         const source = readFileSync(full, 'utf8');
         const { blocks, html } = extractBlocks(source);
         const { code } = splitScript(html);
         for (const b of blocks) {
           for (const r of b.routes) registerQuery({ ...r, path: r.path || route });
         }
+        def.fn = null;
         if (code) {
-          const fn = new AsyncFunction('req', 'res', 'db', 'fetch', code);
+          try { def.fn = new AsyncFunction('req', 'res', 'db', 'fetch', code); }
+          catch (e) { if (!quiet) console.warn(`[spark-ssr] ${route} <script> — ${e.message}`); }
+        }
+        if (def.fn && !def.registered) {
+          def.registered = true;
           const segs = route.split('/').filter(Boolean);
           for (const method of ['GET', 'POST', 'PUT', 'PATCH', 'DELETE']) {
             apiRoutes.push({
               method,
               segs,
               handler: async (req, res) => {
-                const out = await fn(req, res, db, makeAppFetch(req));
+                if (!def.fn) return json({ error: 'not found' }, 404);
+                const out = await def.fn(req, res, db, makeAppFetch(req));
                 if (out instanceof Response) return out;
                 if (out && typeof out === 'object' && 'status' in out && 'body' in out) {
                   return new Response(typeof out.body === 'string' ? out.body : JSON.stringify(out.body), { status: out.status });
@@ -404,6 +433,7 @@ export async function serve(options = {}) {
       }
     })(apiDir, '');
   }
+  refreshApi();
 
   function matchApi(method, pathname) {
     const parts = pathname.split('/').filter(Boolean);
@@ -419,14 +449,24 @@ export async function serve(options = {}) {
     return null;
   }
 
-  // ── middleware.html ──
+  // ── middleware.html (reloaded when the file changes) ──
   let middleware = null;
+  let mwMtime = -1;
   const mwState = { rateLimit: new Map(), state: {} };
-  const mwFile = join(root, 'middleware.html');
-  if (existsSync(mwFile)) {
+  function refreshMiddleware() {
+    const mwFile = join(root, 'middleware.html');
+    if (!existsSync(mwFile)) { middleware = null; mwMtime = -1; return; }
+    const mtime = statSync(mwFile).mtimeMs;
+    if (mtime === mwMtime) return;
+    mwMtime = mtime;
+    middleware = null;
     const { code } = splitScript(readFileSync(mwFile, 'utf8'));
-    if (code) middleware = new AsyncFunction('req', 'res', 'rateLimit', 'state', 'fetch', code);
+    if (code) {
+      try { middleware = new AsyncFunction('req', 'res', 'rateLimit', 'state', 'fetch', code); }
+      catch (e) { if (!quiet) console.warn(`[spark-ssr] middleware.html — ${e.message}`); }
+    }
   }
+  refreshMiddleware();
 
   // ── CORS ──
   function corsHeaders(origin) {
@@ -492,7 +532,7 @@ export async function serve(options = {}) {
       && pd.blocks.some((b) => b.table) && !!db;
   }
 
-  function shell(page, body, { hydrate }) {
+  function shell(page, body, { hydrate, mount }) {
     const title = page.key === 'index' ? 'Spark' : page.key.split('/').pop().replace(/\[|\]/g, '');
     const cssRel = page.key + '.css';
     const hasCss = existsSync(join(pagesDir, cssRel));
@@ -501,12 +541,19 @@ export async function serve(options = {}) {
       '<meta name="viewport" content="width=device-width, initial-scale=1">\n' +
       `<title>${title}</title>\n` +
       (hasCss ? `<link rel="stylesheet" href="/${cssRel}">\n` : '');
-    const hydration = hydrate
+    const hydration = mount
       ? `\n<script type="importmap">{"imports":{"spark-html":"/@modules/spark-html"}}</script>\n` +
         `<script type="module">import { mount } from 'spark-html'; mount();</script>\n`
       : '\n';
+    // A hydrating page host carries BOTH `import` and `name` — that is the
+    // runtime's flash-free hydrate contract (same as spark-prerender's
+    // makeHydratable): the pre-rendered content stays visible while the
+    // component is fetched and booted detached, then swaps in atomically.
+    // `name` missing would make the runtime treat the rendered HTML as SLOT
+    // content and project it next to the fresh render — duplicated live UI.
+    const compName = page.key.replace(/.*\//, '');
     const host = hydrate
-      ? `<div import="/__spark/page/${page.key}" data-spark-ssr>${body}</div>`
+      ? `<div import="/__spark/page/${page.key}" name="${compName}" data-spark-ssr>${body}</div>`
       : `<div data-spark-ssr>${body}</div>`;
     return `<!doctype html>\n<html>\n<head>\n${head}</head>\n<body>\n${host}${hydration}</body>\n</html>\n`;
   }
@@ -529,8 +576,13 @@ export async function serve(options = {}) {
   async function servePage(page, req) {
     const pd = pageData(page, cache);
     const scope = await buildScope(pd, req);
-    const body = await renderFragment(pd.html, scope, { loadComponent });
-    return new Response(shell(page, body, { hydrate: shouldHydrate(pd) }), {
+    const hydrate = shouldHydrate(pd);
+    // Component imports keep their host (import + name + props) on pages the
+    // page host won't rebuild wholesale, so a client mount re-resolves them
+    // and their own <script> comes alive (counters, demos, …).
+    const hasComponents = /\bimport\s*=\s*"/.test(pd.html);
+    const body = await renderFragment(pd.html, scope, { loadComponent, keepImports: !hydrate });
+    return new Response(shell(page, body, { hydrate, mount: hydrate || hasComponents }), {
       headers: { 'content-type': 'text/html; charset=utf-8' },
     });
   }
@@ -568,6 +620,10 @@ export async function serve(options = {}) {
       const extraHeaders = {};
 
       try {
+        // Pick up new/edited pages, api files, and middleware without a
+        // restart (readdir walk + mtime-cached parses — cheap).
+        if (options.watch !== false) { refreshPages(); refreshApi(); refreshMiddleware(); }
+
         // middleware.html runs first, on every request.
         if (middleware) {
           const req = wrapReq(request, url, {}, session, srv);

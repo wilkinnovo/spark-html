@@ -2648,7 +2648,9 @@ function bootComponent(el) {
     if (scriptSrc) {
       el.__sparkScope = makeScope(scriptSrc, el, el.__sparkProps || {});
     } else {
-      el.__sparkScope = {};
+      // A script-less component is pure UI — but it still renders what it
+      // receives: its props ARE its scope.
+      el.__sparkScope = { ...el.__sparkProps };
       patch(el, el.__sparkScope);
     }
   } catch (e) {
