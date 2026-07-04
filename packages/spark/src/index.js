@@ -1023,30 +1023,39 @@ function extractDeclaredNames(code) {
 }
 
 // Find the end index of a `$:` statement whose body begins at `start`.
+// Continuation checks must look at CODE, not raw text: a comment ending in
+// '.' (or a next line that begins with '//') must not read as an operator —
+// that would silently absorb the following statement into the `$:` body.
 function reactiveStatementEnd(src, start) {
   let i = start;
   let depth = 0;
+  let last = ''; // last significant char (strings count as one, comments none)
   while (i < src.length) {
     const c = src[i];
-    if (c === '"' || c === "'" || c === '`') { i = skipString(src, i); continue; }
+    if (c === '"' || c === "'" || c === '`') { i = skipString(src, i); last = '"'; continue; }
     if (c === '/' && src[i + 1] === '/') { while (i < src.length && src[i] !== '\n') i++; continue; }
     if (c === '/' && src[i + 1] === '*') { i += 2; while (i < src.length && !(src[i] === '*' && src[i + 1] === '/')) i++; i += 2; continue; }
-    if (OPEN.includes(c)) { depth++; i++; continue; }
-    if (CLOSE.includes(c)) { if (depth === 0) return i; depth--; i++; continue; }
+    if (OPEN.includes(c)) { depth++; last = c; i++; continue; }
+    if (CLOSE.includes(c)) { if (depth === 0) return i; depth--; last = c; i++; continue; }
     if (depth === 0) {
       if (c === ';') return i;
       if (c === '\n') {
-        const before = src.slice(start, i).replace(/\s+$/, '');
-        const last = before[before.length - 1];
         if (last && CONT_END.includes(last)) { i++; continue; }
+        // Peek the next significant char — past whitespace, blank lines, and
+        // comments. ".method" chains, "? :" ternaries, binary operators on
+        // the next code line mean "this continues".
         let k = i + 1;
-        while (k < src.length && /[ \t\r]/.test(src[k])) k++;
-        if (src[k] === '\n') { i++; continue; } // blank line — keep scanning
+        while (k < src.length) {
+          if (/\s/.test(src[k])) { k++; continue; }
+          if (src[k] === '/' && src[k + 1] === '/') { while (k < src.length && src[k] !== '\n') k++; continue; }
+          if (src[k] === '/' && src[k + 1] === '*') { k += 2; while (k < src.length && !(src[k] === '*' && src[k + 1] === '/')) k++; k += 2; continue; }
+          break;
+        }
         const next = src[k];
-        // ".method" chains, "? :" ternaries, binary operators on the next line
         if (next && CONT_START.includes(next)) { i++; continue; }
         return i;
       }
+      if (!/\s/.test(c)) last = c;
     }
     i++;
   }

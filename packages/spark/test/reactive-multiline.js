@@ -85,6 +85,19 @@ component('mlboundary', `
   $: total = doubled + extra;
 </script>`);
 
+// comments after a $: must not read as continuations: a trailing '.' in a
+// comment is prose, not a member access, and a next line starting '//' is a
+// comment, not division — the following declaration stays a real statement.
+component('mlcomment', `
+<p class="out">{label}</p>
+<script>
+  let n = 1;
+  $: if (n > 99) { n = 0; }
+  // this comment ends with a CONT_END char, a period.
+  // and this line starts with slashes like an operator.
+  let label = 'kept';
+</script>`);
+
 // control: single-line $: keeps working exactly as before
 component('slcontrol', `
 <p class="out">{d}</p>
@@ -96,7 +109,7 @@ component('slcontrol', `
 parseHTML(
   '<div import="mlternary"></div><div import="mltrailing"></div>' +
   '<div import="mlfilter"></div><div import="mlchain"></div>' +
-  '<div import="mlboundary"></div><div import="slcontrol"></div>',
+  '<div import="mlboundary"></div><div import="mlcomment"></div><div import="slcontrol"></div>',
   body,
 );
 await mount();
@@ -135,6 +148,9 @@ await test('a regular statement after a multi-line $: is not swallowed', () => {
   // statement, total would be NaN. 6 + 10 = 16.
   assert.equal(body.querySelector('[name="mlboundary"] .a').textContent, '6');
   assert.equal(body.querySelector('[name="mlboundary"] .b').textContent, '16');
+});
+await test('a declaration after a $: + trailing-period comment is not swallowed', () => {
+  assert.equal(body.querySelector('[name="mlcomment"] .out').textContent, 'kept');
 });
 await test('single-line $: still works (control)', () => {
   assert.equal(body.querySelector('[name="slcontrol"] .out').textContent, '10');
