@@ -1,12 +1,8 @@
-<!-- The homepage. Everything the page needs is declared at the bottom in
-     <spark-ssr>; the title/meta lift into <head> (spark-html-head/ssr);
-     app.js is a client module (theme toggle). -->
+<!-- The homepage. The layout owns the chrome and provides {author}; this
+     page declares only what's unique to it. `posts = SELECT …` is page data
+     with NO public endpoint — name the variable, skip the route. -->
 <title>{author.name} — a spark blog</title>
 <meta name="description" content="{author.bio}">
-<link rel="stylesheet" href="/style.css">
-<script type="module" src="/app.js"></script>
-
-<div import="/components/nav" blog="{author.name}" active="home"></div>
 
 <header class="hero">
   <img class="avatar" src="/img/avatar.png" alt="{author.name}" width="88" height="88">
@@ -28,6 +24,5 @@
 </main>
 
 <spark-ssr>
-  GET /api/author → SELECT id, name, email, bio FROM users LIMIT 1
-  GET /api/published → SELECT * FROM posts WHERE published = 1 ORDER BY created_at DESC
+  posts = SELECT * FROM posts WHERE published = 1 ORDER BY created_at DESC
 </spark-ssr>

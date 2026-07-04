@@ -2,55 +2,71 @@
 
 A complete blog: public posts with SEO titles/meta, dynamic routes, an
 about page, and an auth-gated admin panel where the author manages posts —
-and a private todo list. All of it is a handful of `.html` files, one SQLite
-database, and **zero build steps**.
+and a live-updating private todo list. All of it is a handful of `.html`
+files and one SQLite database. **No build step. No setup script. No fetch
+calls for the basics.**
 
 ## Run it
 
 ```bash
 bun install
-bun run dev     # seeds dev.db, serves on :3000, live-reloads on every edit
+bun run dev     # creates + seeds the DB from the templates, serves on :3000
 ```
 
-Sign in at [/admin](http://localhost:3000/admin) with
-**me@spark-html.com** / **spark**.
+Sign in at [/login](http://localhost:3000/login) with
+**me@spark-html.com** / **spark** — a plain form; it works with JavaScript
+disabled.
 
 ## What's demonstrated where
 
 | Feature | Where |
 |---|---|
+| Layouts | `pages/_layout.html` — nav, styles, `app.js` and the `author` query, once for every page |
 | Filesystem routing | `pages/index.html` → `/`, `pages/about.html` → `/about` |
 | Dynamic routes | `pages/blog/[slug].html` → `/blog/:slug` — `:slug` binds into the SQL |
-| Per-page `<title>`/`<meta>` | literal tags at the top of each page, `{expr}`-interpolated (spark-html-head/ssr) |
-| Declarative data | `<spark-ssr>` blocks — the query names feed the template variables |
+| Named page data | `posts = SELECT …` — the variable is named in the block, no endpoint exposed |
+| Real 404s | `<template else status="404">` on the missing-post branch |
+| Guards | `/admin`: `<spark-ssr guard="session" redirect="/login" />` — one line |
+| No-JS forms | `pages/login.html` and the logout button — plain forms, 303 back |
+| Form validation | the login form's `required`/`type="email"` run server-side too |
+| The template is the schema | `seed/*.json` + `<spark-ssr table="…" seed="…">` — tables created and seeded at startup; `bun run db` shows the diff |
+| Live updates | `<spark-ssr table="todos" … live />` — open /admin in two tabs |
+| Per-page `<title>`/`<meta>` | literal tags at the top of each page, `{expr}`-interpolated |
+| SEO | og:title/og:description derive from the head; `/sitemap.xml` enumerates `/blog/:slug` from its query; `/robots.txt` honors the admin page's `noindex` |
 | Server → component props | `index.html` passes each whole `post` row into `post-card.html` |
-| Pure-UI components | `nav.html`, `post-card.html` — no `<script>`, props are the scope |
-| Client components | `login-form`, `post-editor`, `todo-list` — their `<script>` runs in the browser |
+| Client components | `post-editor`, `todo-list` — their `<script>` runs in the browser |
 | Auth | `spark.json` `"auth"` → sessions, `POST /api/users?auth` login, hashed passwords |
 | Auth-scoped CRUD | `posts` and `todos` carry `user_id` → their APIs are session-scoped (401 anonymous) |
 | Draft privacy | the `[slug]` query: `published = 1 OR :session.id IS NOT NULL` — authors preview drafts |
 | Middleware | `middleware.html` disables public signups (single-author blog) |
 | Aggregates | `about.html`'s `COUNT(*)` serves an object → `{stats.n}` |
-| Custom error page | `404.html` |
 | Dark/light theme | spark-html-theme — `app.js` one-liner + `theme-toggle.html`; no-flash init is auto-inlined |
-| Fonts | spark.json `"fonts"` → spark-html-font tags in every `<head>` (preload, no-shift fallback) |
-| Images | `bun run build` runs spark-html-image over `dist/` — webp + srcset for every `<img>` |
+| Fonts | spark.json `"fonts"` → spark-html-font tags in every `<head>` |
+| Images | `bun run build` runs spark-html-image over `dist/` — webp + srcset |
 
 ## The mental model
 
+- `pages/_layout.html` wraps every page in the folder; `<slot>` is the page.
+  Its `<spark-ssr>` vars are in scope everywhere it wraps.
 - A **page**'s plain `<script>` runs on the **server** (it's the escape
   hatch); `<script type="module">`/`src` scripts ship to the browser.
 - A **component**'s `<script>` runs in the **browser**. Components are
   otherwise pure UI: they render the props they're given.
-- `<spark-ssr>` declares data. A `table="…"` gives you scoped REST CRUD;
-  a `GET /api/x → SELECT …` line is both an endpoint and page data.
-- Everything hot-reloads — pages, components, queries, middleware — no
-  restart, the browser refreshes itself.
+- `<spark-ssr>` declares data. `var = SELECT …` names page data;
+  `table="…"` gives you scoped REST CRUD (+ `seed`, `live`, `limit`,
+  `search`); `guard="…"` protects the page.
+- Plain forms to `/api/*` work without JavaScript — success 303s back,
+  the markup's constraint attributes validate on the server.
+- Everything hot-reloads — pages, layouts, components, queries, middleware
+  — and dev errors land on the page, not in a bare 500. Open
+  [/__spark/plan](http://localhost:3000/__spark/plan) to see the inferred
+  backend.
 
 ## Deploy
 
 ```bash
-bun run build   # dist/ + compiled binary; images optimized if sharp installs
+bun run build            # dist/ + compiled binary; images optimized
+bun spark-ssr build --docker   # …plus a Dockerfile
 PORT=3000 ./dist/app
 ```
 

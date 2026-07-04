@@ -1,0 +1,38 @@
+[
+  {
+    "user_id": 1,
+    "slug": "hello-spark",
+    "title": "Hello, Spark",
+    "excerpt": "Why this blog runs on HTML that infers its own backend.",
+    "body": "This site is a handful of .html files and one SQLite database.\n\nEach page declares the data it needs in a <spark-ssr> block, and the server infers the rest: routes from filenames, APIs from SQL, auth from a user_id column — even these tables and rows came from seed files the templates point at.\n\nView source on any page — what you see is what I wrote.",
+    "published": 1,
+    "created_at": "2026-06-21"
+  },
+  {
+    "user_id": 1,
+    "slug": "html-that-reacts",
+    "title": "HTML that reacts",
+    "excerpt": "Templates, loops and conditionals — in plain HTML attributes.",
+    "body": "A <template each=\"post in posts\"> renders a list. A <template if> branches. {curly} braces interpolate.\n\nOn the server they render to static HTML; in the browser the same syntax comes alive as components. One mental model, both sides of the wire.",
+    "published": 1,
+    "created_at": "2026-06-27"
+  },
+  {
+    "user_id": 1,
+    "slug": "zero-config-ssr",
+    "title": "Zero-config SSR",
+    "excerpt": "Filesystem routing, layouts, sessions, live updates — from the template.",
+    "body": "pages/blog/[slug].html serves /blog/:slug, and :slug binds straight into the page query. pages/_layout.html wraps every page — nav, styles, footer, once.\n\nDeclare <spark-ssr table=\"todos\" live /> and the REST endpoints exist, the table is created from the template, and every open tab stays in sync. Delete the file and it all goes away.",
+    "published": 1,
+    "created_at": "2026-07-02"
+  },
+  {
+    "user_id": 1,
+    "slug": "drafts-are-private",
+    "title": "Drafts are private",
+    "excerpt": "This post is unpublished — only the signed-in author sees it.",
+    "body": "The page query keeps drafts out of anonymous requests:\n\nWHERE slug = :slug AND (published = 1 OR :session.id IS NOT NULL)\n\nAnd a missing row is a REAL 404 now — <template else status=\"404\"> sets the response status, so crawlers never index an empty page. Sign in at /admin and this post appears.",
+    "published": 0,
+    "created_at": "2026-07-04"
+  }
+]

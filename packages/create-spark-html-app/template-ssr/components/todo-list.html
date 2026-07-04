@@ -1,6 +1,8 @@
 <!-- The author's private todos. Same auto-CRUD pattern as posts — the
      user_id column scopes every row to the session, so nobody else can
-     read or touch them (try /api/todos signed out: 401). -->
+     read or touch them (try /api/todos signed out: 401). The todos block
+     declares `live`, so writes ping /__spark/live: the two lines at the
+     bottom keep every open tab (or the author's phone) in sync. -->
 <section class="panel">
   <h2>Private todos</h2>
   <div class="row">
@@ -48,4 +50,7 @@
   }
 
   refresh();
+
+  const es = new EventSource('/__spark/live');
+  es.onmessage = (e) => { if (e.data === 'todos') refresh(); };
 </script>

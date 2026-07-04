@@ -1,12 +1,9 @@
 <!-- /blog/:slug — the filename IS the route; :slug binds into the query.
-     Drafts stay invisible to anonymous readers, but the signed-in author
+     A missing row is a REAL 404 (the status= on the rendered branch), and
+     drafts stay invisible to anonymous readers while the signed-in author
      gets a live preview (the OR :session.id clause). -->
 <title>{post ? post.title : 'Not found'} · {author.name}</title>
 <meta name="description" content="{post ? post.excerpt : 'This post does not exist.'}">
-<link rel="stylesheet" href="/style.css">
-<script type="module" src="/app.js"></script>
-
-<div import="/components/nav" blog="{author.name}"></div>
 
 <template if="post">
   <article class="post">
@@ -19,7 +16,7 @@
     <div class="body">{post.body}</div>
   </article>
 </template>
-<template else>
+<template else status="404">
   <article class="post">
     <h1>Not found</h1>
     <p>That post doesn't exist — or it's a draft and you're not signed in.</p>
@@ -28,8 +25,7 @@
 </template>
 
 <spark-ssr>
-  GET /api/author → SELECT id, name, email, bio FROM users LIMIT 1
-  GET /api/blog/[slug] → SELECT * FROM posts
+  post = SELECT * FROM posts
     WHERE slug = :slug AND (published = 1 OR :session.id IS NOT NULL)
     LIMIT 1
 </spark-ssr>

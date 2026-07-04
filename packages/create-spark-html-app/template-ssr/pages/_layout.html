@@ -1,0 +1,14 @@
+<!-- The layout: every page in pages/ renders inside it — <slot> is the page.
+     Its <spark-ssr> vars (author) are in scope for every page it wraps, and
+     its head tags lift into <head> too (a page's own tags win on conflict).
+     The three lines every page used to repeat live here, once. -->
+<link rel="stylesheet" href="/style.css">
+<script type="module" src="/app.js"></script>
+
+<div import="/components/nav" blog="{author.name}"></div>
+
+<slot></slot>
+
+<spark-ssr>
+  author = SELECT id, name, email, bio FROM users LIMIT 1
+</spark-ssr>

@@ -1,0 +1,19 @@
+<!-- Sign in with a PLAIN FORM — no JavaScript required. The server answers
+     a browser like a browser: success 303s to redirect="/admin"; a wrong
+     password re-renders this page with {errors} in scope. The `required`
+     attributes are enforced server-side too — the form is the validator. -->
+<title>Sign in · {author.name}</title>
+<meta name="robots" content="noindex">
+
+<form class="panel login" action="/api/users?auth" method="post" redirect="/admin">
+  <h2>Author sign-in</h2>
+  <label>Email
+    <input type="email" name="email" autocomplete="username" required>
+  </label>
+  <label>Password
+    <input type="password" name="password" autocomplete="current-password" required>
+  </label>
+  <button>Sign in</button>
+  <template if="errors"><p class="error">Wrong email or password.</p></template>
+  <p class="hint">Seeded account: me@spark-html.com / spark</p>
+</form>

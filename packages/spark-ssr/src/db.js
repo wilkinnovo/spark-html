@@ -18,13 +18,16 @@ const bindable = (v) =>
   : typeof v === 'boolean' ? (v ? 1 : 0)
   : JSON.stringify(v);
 
-export async function connect(url) {
+export async function connect(url, root) {
   if (!url) return null;
 
   if (url.startsWith('sqlite:')) {
     const { Database } = await import('bun:sqlite');
+    const { isAbsolute, join } = await import('node:path');
     let path = url.slice('sqlite:'.length).replace(/^\/\//, '');
     if (path === '' || path === ':memory:') path = ':memory:';
+    // A relative file lives in the PROJECT, not wherever the process started.
+    else if (root && !isAbsolute(path)) path = join(root, path);
     const db = new Database(path, { create: true });
     return {
       kind: 'sqlite',

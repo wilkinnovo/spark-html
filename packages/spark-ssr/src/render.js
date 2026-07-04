@@ -62,7 +62,9 @@ const interpolate = (text, scope) =>
  */
 export async function renderFragment(html, scope, ctx = {}, depth = 0) {
   const { document } = parseHTML('<!doctype html><html><body>' + html + '</body></html>');
-  await walkChildren(document.body, scope, { maxDepth: 20, ...ctx, document }, depth);
+  const inner = { maxDepth: 20, ...ctx, document };
+  await walkChildren(document.body, scope, inner, depth);
+  if (inner.status) ctx.status = inner.status; // a rendered branch set it (§3)
   return document.body.innerHTML;
 }
 
@@ -91,6 +93,21 @@ async function walkNode(node, scope, ctx, depth) {
   }
 
   if (node.hasAttribute('import')) return renderImport(node, scope, ctx, depth);
+
+  // No-JS forms (§5): a redirect="…" attribute on a form posting to /api/*
+  // becomes a hidden _redirect field, so the plain-browser 303 knows where
+  // to land. The attribute itself never reaches the browser.
+  if (tag === 'form' && node.hasAttribute('redirect')) {
+    const to = node.getAttribute('redirect');
+    node.removeAttribute('redirect');
+    if ((node.getAttribute('action') || '').startsWith('/api/')) {
+      const hidden = ctx.document.createElement('input');
+      hidden.setAttribute('type', 'hidden');
+      hidden.setAttribute('name', '_redirect');
+      hidden.setAttribute('value', to);
+      node.appendChild(hidden);
+    }
+  }
 
   renderAttrs(node, scope);
   await walkChildren(node, scope, ctx, depth);
@@ -193,6 +210,10 @@ async function renderIfChain(node, scope, ctx, depth) {
     if (link.expr === null || evalExpr(link.expr, scope)) { winner = link; break; }
   }
   if (winner) {
+    // Declarative status (§3): the rendered branch sets the response status —
+    // <template else status="404"> stops being a 200-that-means-404.
+    const st = Number(winner.node.getAttribute('status'));
+    if (st) ctx.status = st;
     await insertRendered(kids(winner.node), winner.node, scope, ctx, depth);
   }
   for (const link of chain) link.node.remove();

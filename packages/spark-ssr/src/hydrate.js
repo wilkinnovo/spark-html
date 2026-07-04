@@ -41,7 +41,7 @@ export function primaryColumn(cols) {
  *  - loop handlers get their row argument.
  *  - the synthesized <script> is appended.
  */
-export function clientComponent({ html, analysis, plan, table, cols, key }) {
+export function clientComponent({ html, analysis, plan, table, cols, key, live }) {
   const { document } = parseHTML('<!doctype html><html><body>' + html + '</body></html>');
 
   const kids = templateKids;
@@ -96,12 +96,12 @@ export function clientComponent({ html, analysis, plan, table, cols, key }) {
     for (const c of [...node.childNodes]) transform(c, loopVar);
   })(document.body, null);
 
-  return document.body.innerHTML + '\n<script>\n' + clientScript({ analysis, plan, table, cols, key }) + '</script>\n';
+  return document.body.innerHTML + '\n<script>\n' + clientScript({ analysis, plan, table, cols, key, live }) + '</script>\n';
 }
 
 // The synthesized component script. Plain functions, no template literals,
 // no code-shaped strings (the runtime's script rewriter is not string-aware).
-export function clientScript({ analysis, plan, table, cols, key }) {
+export function clientScript({ analysis, plan, table, cols, key, live }) {
   const L = [];
   L.push(`import __init from '/__spark/data/${key}.js';`);
   for (const p of plan) {
@@ -151,6 +151,13 @@ export function clientScript({ analysis, plan, table, cols, key }) {
     L.push(`  await fetch('${api}/' + row.id, { method: 'DELETE' });`);
     if (listVar) L.push('  await __refresh();');
     L.push('}');
+  }
+  // live (§9): every write the server sees on this table pings the channel;
+  // every open tab refetches through its own session. Realtime as one
+  // attribute — no socket code, no pub/sub setup.
+  if (live && listVar) {
+    L.push(`const __live = new EventSource('/__spark/live');`);
+    L.push(`__live.onmessage = (e) => { if (e.data === '${table}') __refresh(); };`);
   }
   return L.join('\n') + '\n';
 }

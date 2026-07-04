@@ -1,11 +1,7 @@
-<!-- /about — profile straight from the users table, plus an aggregate:
+<!-- /about — {author} comes from the layout; this page adds one aggregate:
      a COUNT(*) query serves an object, so {stats.n} just works. -->
 <title>About {author.name}</title>
 <meta name="description" content="Who is {author.name} — {author.bio}">
-<link rel="stylesheet" href="/style.css">
-<script type="module" src="/app.js"></script>
-
-<div import="/components/nav" blog="{author.name}" active="about"></div>
 
 <article class="post">
   <img class="avatar" src="/img/avatar.png" alt="{author.name}" width="88" height="88">
@@ -17,6 +13,5 @@
 </article>
 
 <spark-ssr>
-  GET /api/author → SELECT id, name, email, bio FROM users LIMIT 1
-  GET /api/stats → SELECT COUNT(*) AS n FROM posts WHERE published = 1
+  stats = SELECT COUNT(*) AS n FROM posts WHERE published = 1
 </spark-ssr>
