@@ -1,5 +1,5 @@
 <aside class="sidebar">
-  <span class="logo" onclick="{theme.toggle}" title="Toggle theme">⚡</span>
+  <span :class="'logo ' + (sparkSeq % 2 ? 'flick-a' : 'flick-b')" onclick="{theme.toggle}" title="Toggle theme"><span class="bolt">⚡</span></span>
 
   <!-- desktop rail -->
   <nav class="rail desktop-only">
@@ -26,7 +26,7 @@
   <div class="drawer" :hidden="!menuOpen" onclick="{closeMenu}">
     <div class="drawer-inner" onclick="{stopProp}">
       <div class="drawer-head">
-        <span class="logo" onclick="{theme.toggle}" title="Toggle theme">⚡</span>
+        <span :class="'logo ' + (sparkSeq % 2 ? 'flick-a' : 'flick-b')" onclick="{theme.toggle}" title="Toggle theme"><span class="bolt">⚡</span></span>
         <button class="close" onclick="{closeMenu}" aria-label="Close">&times;</button>
       </div>
       <ul class="nav drawer-nav">
@@ -59,6 +59,13 @@
   let prevPath = route.path;
   $: if (route.path !== prevPath) { prevPath = route.path; menuOpen = false; }
 
+  // The logo sparks like the hero reacts-text: once on load, and again on
+  // every theme toggle. Alternating between two identical keyframe sets is
+  // what retriggers the CSS animation.
+  let sparkSeq = 0;
+  let prevResolved = theme.resolved;
+  $: if (theme.resolved !== prevResolved) { prevResolved = theme.resolved; sparkSeq++; }
+
   function toggleMenu() { menuOpen = !menuOpen; }
   function closeMenu() { menuOpen = false; }
   function stopProp(e) { e.stopPropagation(); }
@@ -71,11 +78,40 @@
     display: flex; flex-direction: column; justify-content: space-between; align-items: center;
   }
   .logo {
+    /* the same spark ink + glow the hero's "reacts." wears */
+    --logo-glow: rgba(255, 210, 74, .8);
+    --logo-ring: rgba(255, 210, 74, .28);
+    /* the circle is var(--text) (inverts with the theme), so the bolt ink
+       must invert too: deep gold on the white circle, bright on the dark */
+    --logo-bolt: #9a6a00;
     width: 44px; height: 44px; border-radius: 50%; margin: 14px; flex-shrink: 0; cursor: pointer;
-    display: grid; place-items: center; font-size: 22px; background: var(--text); color: var(--spark);
-    transition: transform .2s; user-select: none;
+    display: grid; place-items: center; font-size: 24px; background: var(--text); color: var(--logo-bolt);
+    box-shadow: 0 0 0 1px var(--logo-ring), 0 0 11px var(--logo-ring);
+    transition: transform .2s, box-shadow .2s; user-select: none;
   }
+  :global([data-theme="light"]) .logo {
+    /* light theme: dark circle → bright bolt; page is light → darker glow */
+    --logo-bolt: var(--spark);
+    --logo-glow: rgba(154, 106, 0, .65);
+    --logo-ring: rgba(154, 106, 0, .35);
+  }
+  .logo:hover { box-shadow: 0 0 0 1px var(--logo-glow), 0 0 22px var(--logo-glow); }
   .logo:active { transform: scale(.88); }
+  .bolt { display: block; text-shadow: 0 0 8px var(--logo-glow); }
+  /* two identical flickers — swapping the class replays it on theme toggle */
+  .flick-a .bolt { animation: sparkBoltA 1.05s ease-in-out 1; }
+  .flick-b .bolt { animation: sparkBoltB 1.05s ease-in-out .35s 1; }
+  @keyframes sparkBoltA {
+    0% { opacity: .25; text-shadow: none; } 10% { opacity: 1; } 14% { opacity: .4; }
+    20% { opacity: 1; text-shadow: 0 0 26px var(--logo-glow); } 30% { opacity: .7; }
+    38% { opacity: 1; text-shadow: 0 0 12px var(--logo-glow); } 100% { opacity: 1; text-shadow: 0 0 8px var(--logo-glow); }
+  }
+  @keyframes sparkBoltB {
+    0% { opacity: .25; text-shadow: none; } 10% { opacity: 1; } 14% { opacity: .4; }
+    20% { opacity: 1; text-shadow: 0 0 26px var(--logo-glow); } 30% { opacity: .7; }
+    38% { opacity: 1; text-shadow: 0 0 12px var(--logo-glow); } 100% { opacity: 1; text-shadow: 0 0 8px var(--logo-glow); }
+  }
+  @media (prefers-reduced-motion: reduce) { .flick-a .bolt, .flick-b .bolt { animation: none; } }
   .rail { display: flex; align-items: center; }
   .nav { list-style: none; display: flex; gap: 54px; align-items: center; transform: rotate(90deg); }
   .nav li { margin: 0; }
