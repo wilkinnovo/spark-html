@@ -26,8 +26,12 @@ bun dev
   (built from your `package.json`), so the browser runs your ES modules directly
   — **no bundling in dev**. Scoped component HMR rides a plain WebSocket
   (`/__spark_hmr`) + `fs.watch`: edit a component and only its instances
-  re-mount, sibling state preserved (slotted / loop-managed hosts full-reload,
-  always correct).
+  re-mount — fresh markup **and** fresh scoped CSS — sibling state preserved
+  (slotted / loop-managed hosts full-reload, always correct; components not on
+  the current page are a no-op — the next mount fetches them fresh). Editing a
+  `.css` file swaps the matching `<link>` in place with no reload; editing page
+  HTML or a JS module reloads. Editor save patterns (temp file + rename) are
+  debounced into a single update.
 - **`spark build`** — empties `dist/`, copies `public/` verbatim (components ship
   as authored), bundles the HTML entry's scripts/styles with `Bun.build`
   (hashed under `assets/`, `base` honored), then runs the **pipeline** in order.

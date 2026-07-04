@@ -4,7 +4,7 @@
  * invokes it through scripts/test-bun.mjs, which skips when bun is absent.
  */
 import { strict as assert } from 'node:assert';
-import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, existsSync, readdirSync, rmSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, existsSync, readdirSync, rmSync, renameSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 
@@ -98,6 +98,48 @@ await test('dev: editing a component broadcasts { name } over /__spark_hmr', asy
     ws.onerror = (e) => { clearTimeout(timer); reject(new Error('ws error')); };
   });
   assert.equal(msg.name, 'hello');
+});
+
+// One WS listener per scenario: collect every message for `ms` after `fire()`.
+function collectHmr(fire, ms = 700) {
+  return new Promise((resolveMsgs, reject) => {
+    const ws = new WebSocket(`ws://localhost:${devServer.port}/__spark_hmr`);
+    const msgs = [];
+    ws.onopen = () => {
+      setTimeout(() => {
+        fire();
+        setTimeout(() => { ws.close(); resolveMsgs(msgs); }, ms);
+      }, 100);
+    };
+    ws.onmessage = (ev) => msgs.push(JSON.parse(ev.data));
+    ws.onerror = () => reject(new Error('ws error'));
+  });
+}
+
+await test('dev: editing a stylesheet broadcasts { css } with its served URL', async () => {
+  const msgs = await collectHmr(() => {
+    writeFileSync(join(devRoot, 'src', 'style.css'), 'body { color: red; }');
+  });
+  assert.deepEqual(msgs, [{ css: '/src/style.css' }]);
+});
+
+await test('dev: editing the entry page broadcasts { reload: true }', async () => {
+  const msgs = await collectHmr(() => {
+    writeFileSync(join(devRoot, 'index.html'),
+      readFileSync(join(devRoot, 'index.html'), 'utf8') + '<!-- edited -->');
+  });
+  assert.deepEqual(msgs, [{ reload: true }]);
+});
+
+await test('dev: rapid duplicate saves coalesce into one HMR message', async () => {
+  const file = join(devRoot, 'public', 'components', 'hello.html');
+  const msgs = await collectHmr(() => {
+    // editor-style save: temp write + rename + rewrite, several events at once
+    writeFileSync(file + '.tmp', '<h1>Yo {who}</h1>\n<script>let who = "bun";</script>');
+    renameSync(file + '.tmp', file);
+    writeFileSync(file, '<h1>Yo {who}</h1>\n<script>let who = "bun";</script>');
+  });
+  assert.deepEqual(msgs, [{ name: 'hello' }]);
 });
 
 await test('dev: encoded path traversal cannot escape the project root', async () => {

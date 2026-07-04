@@ -27,8 +27,12 @@
  *    from /@modules/<name>) — no bundling in dev at all, the browser runs
  *    your ES modules directly. Scoped component HMR rides a plain WebSocket
  *    (/__spark_hmr) + fs.watch: edit a component file and only its instances
- *    re-mount, sibling state preserved (slotted/loop-managed hosts full-reload,
- *    always correct — the exact semantics of the Vite plugin).
+ *    re-mount — fresh markup AND fresh scoped CSS — sibling state preserved
+ *    (slotted/loop-managed hosts full-reload, always correct; a component not
+ *    mounted on the current page is a no-op — fragments are no-cache, the next
+ *    mount fetches it fresh). Stylesheet (.css) edits swap the matching <link>
+ *    in place, no reload; page HTML / JS module edits full-reload. Broadcasts
+ *    are debounced so editor save patterns (temp file + rename) send one update.
  *  • build — empty outDir, copy publicDir verbatim (components ship as
  *    authored), Bun.build the HTML entry (scripts/styles bundled + hashed
  *    under assets/, HTML rewritten, base honored via publicPath), then run
@@ -123,36 +127,73 @@ export async function loadConfig(root = process.cwd(), overrides = {}) {
 
 // The scoped-HMR client. The re-mount logic (unmount host → placeholder →
 // re-mount; slotted/managed hosts full-reload) rides a plain WebSocket the
-// dev server owns, instead of a bundler's HMR channel.
+// dev server owns, instead of a bundler's HMR channel. Messages:
+//   { name }   component fragment changed → re-mount its instances in place
+//   { css }    stylesheet changed → swap the matching <link> (no reload)
+//   { reload } page-level file changed → full reload
 const HMR_CLIENT = `
 import { mount, unmount } from 'spark-html';
+
+// Swap a stylesheet in place: load the cache-busted copy alongside, remove the
+// old one when it's ready — no flash of unstyled content.
+function swapCss(path) {
+  for (const link of document.querySelectorAll('link[rel="stylesheet"]')) {
+    const url = new URL(link.href, location.href);
+    if (url.origin !== location.origin || url.pathname !== path) continue;
+    url.searchParams.set('t', Date.now());
+    const next = link.cloneNode();
+    next.href = url.pathname + url.search;
+    next.onload = () => link.remove();
+    link.after(next);
+    console.log('[spark] ⚡ css-updated', path);
+  }
+}
+
+async function update(name) {
+  const hosts = [...document.querySelectorAll('[name="' + name + '"]')];
+  // Not mounted right now (e.g. it lives on another route): nothing to do —
+  // fragments are served no-cache, so the next mount fetches it fresh anyway.
+  if (!hosts.length) return;
+  // Scoped HMR only for simple top-level hosts; slotted or loop/if-managed
+  // hosts fall back to a full reload so the result is always correct.
+  if (hosts.some((h) => h.__sparkHadSlots || h.__sparkManaged)) { location.reload(); return; }
+  try {
+    // Drop the component's injected style so the re-mount installs the fresh
+    // one (bootComponent dedupes by data-spark tag and would keep the stale CSS).
+    const style = document.querySelector('style[data-spark="' + name + '"]');
+    if (style) style.remove();
+    for (const host of hosts) {
+      const ph = document.createElement('div');
+      ph.setAttribute('import', host.__sparkImportPath || ('components/' + name + '.html'));
+      const props = host.__sparkProps || {};
+      for (const k in props) {
+        const v = props[k];
+        try { ph.setAttribute(k, typeof v === 'string' ? v : JSON.stringify(v)); } catch (e) {}
+      }
+      const cls = host.getAttribute('class'); if (cls) ph.setAttribute('class', cls);
+      if (host.id) ph.id = host.id;
+      const parent = host.parentNode;
+      unmount(host);
+      host.replaceWith(ph);
+      await mount(parent);
+    }
+    console.log('[spark] ⚡ hot-updated', name);
+  } catch (e) { location.reload(); }
+}
+
 function connect() {
   const ws = new WebSocket((location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/__spark_hmr');
-  ws.onmessage = async (ev) => {
-    const { name } = JSON.parse(ev.data);
-    const hosts = [...document.querySelectorAll('[name="' + name + '"]')];
-    if (!hosts.length) { location.reload(); return; }
-    // Scoped HMR only for simple top-level hosts; slotted or loop/if-managed
-    // hosts fall back to a full reload so the result is always correct.
-    if (hosts.some((h) => h.__sparkHadSlots || h.__sparkManaged)) { location.reload(); return; }
-    try {
-      for (const host of hosts) {
-        const ph = document.createElement('div');
-        ph.setAttribute('import', host.__sparkImportPath || ('components/' + name + '.html'));
-        const props = host.__sparkProps || {};
-        for (const k in props) {
-          const v = props[k];
-          try { ph.setAttribute(k, typeof v === 'string' ? v : JSON.stringify(v)); } catch (e) {}
-        }
-        const cls = host.getAttribute('class'); if (cls) ph.setAttribute('class', cls);
-        if (host.id) ph.id = host.id;
-        const parent = host.parentNode;
-        unmount(host);
-        host.replaceWith(ph);
-        await mount(parent);
-      }
-      console.log('[spark] ⚡ hot-updated', name);
-    } catch (e) { location.reload(); }
+  // Updates run strictly one after another — a second save landing while a
+  // re-mount is mid-flight must not observe the placeholder (it would find no
+  // host and mis-classify the state), so every message queues on the chain.
+  let chain = Promise.resolve();
+  ws.onmessage = (ev) => {
+    const msg = JSON.parse(ev.data);
+    chain = chain.then(() => {
+      if (msg.reload) { location.reload(); return; }
+      if (msg.css) { swapCss(msg.css); return; }
+      return update(msg.name);
+    }).catch(() => {});
   };
   ws.onclose = () => setTimeout(connect, 1000); // server restarted — retry
 }
@@ -206,7 +247,8 @@ async function transformPage(html, config, { dev }) {
   const inject =
     `<script type="importmap">${importMap}</script>\n` +
     `<script type="module">${HMR_CLIENT}</script>\n`;
-  if (/<head[^>]*>/i.test(out)) return out.replace(/<head[^>]*>/i, (m) => `${m}\n${inject}`);
+  // `<head(\s…)?>` — never match a page's <header> element.
+  if (/<head(\s[^>]*)?>/i.test(out)) return out.replace(/<head(\s[^>]*)?>/i, (m) => `${m}\n${inject}`);
   return inject + out;
 }
 
@@ -294,15 +336,56 @@ export async function dev(overrides = {}) {
     },
   });
 
-  // Watch component fragments; broadcast the component name on change.
+  // Watch the whole project for dev edits and broadcast the right HMR message:
+  // component fragments → scoped re-mount, stylesheets → in-place <link> swap,
+  // page HTML (the entry, or any other served page) → full reload. Broadcasts
+  // are debounced per key — editors save via temp-file + rename and emit
+  // several fs events per keystroke, and a duplicate message arriving while
+  // the client is mid-re-mount would mis-read the DOM.
   const componentsRoot = existsSync(join(pub, componentsDir)) ? join(pub, componentsDir) : join(projectRoot, componentsDir);
+  const outAbs = resolve(projectRoot, config.outDir);
+  const timers = new Map();
+  const broadcast = (key, msg) => {
+    clearTimeout(timers.get(key));
+    timers.set(key, setTimeout(() => {
+      timers.delete(key);
+      server.publish('spark-hmr', JSON.stringify(msg));
+    }, 50));
+  };
+  const onChange = (base) => (_event, filename) => {
+    if (!filename) return;
+    const rel = String(filename);
+    // Never react to build output, deps, or VCS internals.
+    if (/(^|\/)(node_modules|\.git)(\/|$)/.test(rel)) return;
+    const abs = join(base, rel);
+    if (abs === outAbs || abs.startsWith(outAbs + sep)) return;
+    if (rel.endsWith('.css')) {
+      // The URL the page loads this file under: public/ files are served from
+      // the site root, project files from their project-relative path.
+      const underPub = abs.startsWith(pub + sep);
+      const urlPath = '/' + (underPub ? abs.slice(pub.length + 1) : abs.slice(projectRoot.length + 1)).split(sep).join('/');
+      broadcast(urlPath, { css: urlPath });
+      return;
+    }
+    // App modules are served raw — an edit only takes effect on a fresh page.
+    if (/\.(js|mjs)$/.test(rel)) { broadcast('/', { reload: true }); return; }
+    if (!rel.endsWith('.html')) return;
+    if (abs.startsWith(componentsRoot + sep)) {
+      const name = rel.split('/').pop().replace(/\.html$/, '');
+      broadcast(name, { name });
+      return;
+    }
+    // A page (the entry or any other top-level HTML) — only a reload is correct.
+    broadcast('/', { reload: true });
+  };
   let unwatch = () => {};
-  if (existsSync(componentsRoot)) {
-    unwatch = watchTree(componentsRoot, (_event, filename) => {
-      if (!filename || !String(filename).endsWith('.html')) return;
-      const name = String(filename).split('/').pop().replace(/\.html$/, '');
-      server.publish('spark-hmr', JSON.stringify({ name }));
-    });
+  {
+    const stops = [watchTree(projectRoot, onChange(projectRoot))];
+    // publicDir outside the project root (unusual, but configurable).
+    if (existsSync(pub) && !pub.startsWith(projectRoot + sep) && pub !== projectRoot) {
+      stops.push(watchTree(pub, onChange(pub)));
+    }
+    unwatch = () => stops.forEach((s) => s());
   }
 
   const stop = server.stop.bind(server);
