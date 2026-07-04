@@ -21,6 +21,7 @@
     "spark-html-bun": "latest",
     "spark-prerender": "latest",
     "spark-html-devtools": "latest",
-    "spark-html-image": "latest"
+    "spark-html-image": "latest",
+    "spark-html-font": "latest"
   }
 }

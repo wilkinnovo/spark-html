@@ -106,6 +106,7 @@ async function prompt(question, fallback) {
 const FEATURES = [
   { key: 'router', question: 'Include router (multi-page SPA)?', def: true, deps: ['spark-html-router'], files: ['public/components/about.html'] },
   { key: 'theme', question: 'Include theme (dark/light toggle)?', def: true, deps: ['spark-html-theme'], files: [] },
+  { key: 'font', question: 'Include font loading optimizer (no FOUT)?', def: true, deps: ['spark-html-font'], files: [] },
   { key: 'image', question: 'Include image optimization?', def: true, deps: ['spark-html-image'], files: ['public/components/demo-image.html', 'public/sample.jpg'] },
   { key: 'sri', question: 'Include SRI integrity checks?', def: true, deps: ['spark-html-sri'], files: [] },
   { key: 'pwa', question: 'Include PWA support (manifest + offline shell)?', def: false, deps: ['spark-html-manifest'], files: ['public/icon.png'] },
@@ -122,7 +123,7 @@ async function pickFeatures() {
     if (flags.includes(`--no-${f.key}`)) on[f.key] = false;
   }
   // Interactive only on a TTY, and only when no preset flag was given.
-  const preset = flags.some((a) => /^--(yes|all|minimal|(no-)?(router|theme|image|sri|pwa))$/.test(a));
+  const preset = flags.some((a) => /^--(yes|all|minimal|(no-)?(router|theme|font|image|sri|pwa))$/.test(a));
   if (stdin.isTTY && !preset) {
     for (const f of FEATURES) {
       const hint = f.def ? '(Y/n)' : '(y/N)';
@@ -181,7 +182,7 @@ function applyFeatures(targetDir, on) {
 
 async function main() {
   stdout.write(`\n${BOLT} ${c.bold('create-spark-html-app')}\n`);
-  stdout.write(`${c.dim('   HTML that reacts — no compiler, no virtual DOM.')}\n\n`);
+  stdout.write(`${c.dim('   HTML that reacts. Built for humans — no compiler, no virtual DOM.')}\n\n`);
 
   // 1 ─ figure out the target directory ────────────────────────────────
   let targetArg = argv[2];

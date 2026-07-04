@@ -1,4 +1,10 @@
 import prerender from 'spark-prerender/bun';
+// @spark:theme
+import theme from 'spark-html-theme/bun';
+// @spark:end
+// @spark:font
+import font from 'spark-html-font/bun';
+// @spark:end
 // @spark:image
 import image from 'spark-html-image/bun';
 // @spark:end
@@ -26,6 +32,20 @@ import sri from 'spark-html-sri/bun';
 export default {
   pipeline: [
     prerender({ pages: ['index.html'] }),
+    // @spark:theme
+    // Bakes the tiny no-flash script into each page (dev too) so the saved /
+    // OS theme is on <html> before first paint — no wrong-theme flash on load.
+    theme(),
+    // @spark:end
+    // @spark:font
+    // Preconnect + the Google stylesheet + a size-adjusted local fallback
+    // face, baked into each page (dev too) — the font swap never moves or
+    // visibly reflows the page.
+    font({
+      fallback: ['ui-monospace', 'monospace'],
+      fonts: [{ family: 'JetBrains Mono', google: true, weights: [300, 400, 500, 600, 700, 800] }],
+    }),
+    // @spark:end
     // @spark:image
     // Every <img> in pages and components: converted to webp/avif at multiple
     // widths, srcset + width/height added (no layout shift), loading="lazy".

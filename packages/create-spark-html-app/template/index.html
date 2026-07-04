@@ -6,9 +6,9 @@
     <title>Spark App</title>
     <meta name="description" content="A reactive app built with Spark — single-file HTML components, no compiler, no virtual DOM." />
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚡</text></svg>" />
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+    <!-- Fonts are injected by spark-html-font/bun (see spark.config.js):
+         preconnects, the stylesheet, and a size-adjusted fallback face so the
+         swap never moves the page. -->
     <style>
       /* Design system — the same palette and monospace type as the Spark
                website. Tokens + base + a shared card/button/input system live here in
@@ -34,7 +34,9 @@
         --spark-ink: #ffd24a;
         --danger: #ff6b6b;
         --radius: 12px;
-        --font: "JetBrains Mono", ui-monospace, monospace;
+        /* the injected --font-jetbrains-mono stack includes the fallback face;
+           the var() fallback list covers a config without the font step */
+        --font: var(--font-jetbrains-mono, "JetBrains Mono", ui-monospace, monospace);
       }
       [data-theme="light"] {
         --bg: #fff;
