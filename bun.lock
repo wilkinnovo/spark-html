@@ -34,7 +34,7 @@
     },
     "packages/create-spark-html-app": {
       "name": "create-spark-html-app",
-      "version": "0.8.2",
+      "version": "0.8.3",
       "bin": "bin/index.js",
     },
     "packages/prettier-plugin-spark": {
@@ -46,11 +46,11 @@
     },
     "packages/spark": {
       "name": "spark-html",
-      "version": "0.27.5",
+      "version": "0.27.6",
     },
     "packages/spark-html-bun": {
       "name": "spark-html-bun",
-      "version": "0.1.2",
+      "version": "0.1.3",
       "bin": {
         "spark": "./bin/cli.js",
       },
@@ -64,7 +64,7 @@
     },
     "packages/spark-html-font": {
       "name": "spark-html-font",
-      "version": "0.1.3",
+      "version": "0.1.4",
     },
     "packages/spark-html-head": {
       "name": "spark-html-head",
@@ -131,7 +131,7 @@
     },
     "packages/spark-html-theme": {
       "name": "spark-html-theme",
-      "version": "0.1.10",
+      "version": "0.1.11",
       "dependencies": {
         "spark-html": "^0.27.0",
       },
@@ -148,6 +148,17 @@
       "version": "0.7.3",
       "bin": {
         "spark-prerender": "bin/cli.js",
+      },
+      "dependencies": {
+        "linkedom": "^0.18.12",
+        "spark-html": "^0.27.0",
+      },
+    },
+    "packages/spark-ssr": {
+      "name": "spark-ssr",
+      "version": "0.1.0",
+      "bin": {
+        "spark-ssr": "./bin/cli.js",
       },
       "dependencies": {
         "linkedom": "^0.18.12",
@@ -361,6 +372,8 @@
     "spark-html-websocket": ["spark-html-websocket@workspace:packages/spark-html-websocket"],
 
     "spark-prerender": ["spark-prerender@workspace:packages/spark-prerender"],
+
+    "spark-ssr": ["spark-ssr@workspace:packages/spark-ssr"],
 
     "spark-website": ["spark-website@workspace:website"],
 

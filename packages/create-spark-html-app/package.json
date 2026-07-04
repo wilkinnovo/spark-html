@@ -1,6 +1,6 @@
 {
   "name": "create-spark-html-app",
-  "version": "0.8.3",
+  "version": "0.9.0",
   "description": "Scaffold a spark-html app — dev/build/preview on Bun",
   "type": "module",
   "bin": {
@@ -8,7 +8,9 @@
   },
   "files": [
     "bin",
-    "template"
+    "template",
+    "template-ssr",
+    "template-prerender"
   ],
   "engines": {
     "node": ">=18"

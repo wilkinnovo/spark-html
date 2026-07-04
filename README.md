@@ -40,7 +40,7 @@ of us still love hand-writing our web apps: reading every line we ship,
 understanding the whole stack, owning the craft. Spark is built for those
 people. It makes hand-crafting a web app as easy as it can be, and then stops:
 no compiler rewriting your source, no virtual DOM between you and the page, no
-scaffolding you didn't ask for. Nineteen small packages, each one readable in a
+scaffolding you didn't ask for. Twenty small packages, each one readable in a
 sitting — add only what you use, and everything you write stays yours,
 byte-for-byte, in view-source forever.
 
@@ -182,6 +182,7 @@ Spark trades completeness for simplicity — these are deliberate edges, not roa
 |---|---|
 | [`spark-html-bun`](packages/spark-html-bun/README.md) | Dev server, bundler &amp; preview on Bun — `spark dev`/`build`/`preview`, scoped HMR, no-build dev, the post-build pipeline. |
 | [`spark-prerender`](packages/spark-prerender/README.md) | Build-time SEO prerender — real HTML per route (+ sitemap/robots), no SSR server, no app changes. |
+| [`spark-ssr`](packages/spark-ssr/README.md) | Zero-config SSR on Bun — the template infers the data, routes &amp; CRUD API (`<spark-ssr>`), sessions, uploads, middleware. |
 | [`spark-html-image`](packages/spark-html-image/README.md) | Build-time image optimization — `<img>` rewritten to webp/avif with responsive `srcset`, zero config. |
 | [`spark-html-font`](packages/spark-html-font/README.md) | Font loading optimizer — `@font-face` + preload + size-adjusted fallbacks, no FOUT, no layout shift. |
 | [`spark-html-manifest`](packages/spark-html-manifest/README.md) | PWA manifest + icons + head tags (and optional service worker) from one config. |

@@ -24,6 +24,24 @@ Run it with no name to be prompted:
 bunx create-spark-html-app@latest
 ```
 
+## Project types — SSR & Prerender
+
+```bash
+bunx create-spark-html-app@latest myapp              # client-only (default)
+bunx create-spark-html-app@latest myapp --ssr        # SSR with spark-ssr
+bunx create-spark-html-app@latest myapp --prerender  # static site with spark-prerender
+```
+
+Without a flag (on a TTY) an interactive picker asks which one you want.
+
+`--ssr` scaffolds the three-tier pattern — **pages** declare data with
+`<spark-ssr>`, **components** are pure UI via `<div import>`, **spark.json**
+holds the DB connection — plus a seeded SQLite dev database. No build step:
+`bun run dev` and it serves.
+
+`--prerender` scaffolds a minimal static site whose build writes
+fully-rendered HTML into `dist/` via `spark-prerender`.
+
 ## What you get
 
 The scaffold comes with the **whole Spark ecosystem pre-wired** — you delete

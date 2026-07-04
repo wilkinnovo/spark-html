@@ -1,0 +1,19 @@
+<div import="/components/nav" title="Tasks"></div>
+
+<h1>Tasks</h1>
+
+<template await="todos">
+  <input bind:value="draft" placeholder="New task">
+  <button onclick={add}>Add</button>
+  <ul>
+    <template each="todo in todos">
+      <li>
+        <input type="checkbox" bind:checked="todo.done" onchange={patch}>
+        {todo.title}
+        <button onclick={remove}>✕</button>
+      </li>
+    </template>
+  </ul>
+</template>
+
+<spark-ssr table="todos" />

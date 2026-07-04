@@ -1,0 +1,15 @@
+{
+  "name": "spark-ssr-app",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "bun setup.js && bun spark-ssr",
+    "start": "bun spark-ssr",
+    "build": "bun spark-ssr build"
+  },
+  "dependencies": {
+    "spark-html": "latest",
+    "spark-ssr": "latest"
+  }
+}

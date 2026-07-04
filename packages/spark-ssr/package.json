@@ -1,0 +1,45 @@
+{
+  "name": "spark-ssr",
+  "version": "0.1.0",
+  "description": "Zero-config SSR for spark-html on Bun. The HTML template infers everything: filesystem routing, <spark-ssr> declarative queries, auto CRUD APIs, sessions, uploads, middleware. No build step.",
+  "homepage": "https://wilkinnovo.github.io/spark-html",
+  "type": "module",
+  "main": "./src/index.js",
+  "bin": {
+    "spark-ssr": "./bin/cli.js"
+  },
+  "exports": {
+    ".": {
+      "default": "./src/index.js"
+    }
+  },
+  "files": [
+    "src",
+    "bin"
+  ],
+  "engines": {
+    "bun": ">=1.2.0"
+  },
+  "scripts": {
+    "test": "bun test/ssr.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/wilkinnovo/spark-html.git",
+    "directory": "packages/spark-ssr"
+  },
+  "dependencies": {
+    "linkedom": "^0.18.12",
+    "spark-html": "^0.27.0"
+  },
+  "keywords": [
+    "spark-html",
+    "ssr",
+    "bun",
+    "no-build",
+    "sql",
+    "html",
+    "server"
+  ],
+  "license": "MIT"
+}

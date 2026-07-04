@@ -27,7 +27,8 @@ import { createInterface } from 'node:readline/promises';
 import { stdin, stdout, argv, exit } from 'node:process';
 
 const here = dirname(fileURLToPath(import.meta.url));
-const templateDir = resolve(here, '..', 'template');
+const templateFor = (type) =>
+  resolve(here, '..', type === 'client' ? 'template' : `template-${type}`);
 
 // ── tiny ANSI palette (no chalk; one less thing to install) ───────────
 const supportsColor = stdout.isTTY && process.env.NO_COLOR === undefined;
@@ -97,6 +98,28 @@ async function prompt(question, fallback) {
   } finally {
     rl.close();
   }
+}
+
+// ── project type ────────────────────────────────────────────────────────
+// Client-only (the existing default), SSR (spark-ssr), or a prerendered
+// static site (spark-prerender). Flags: --ssr / --prerender; otherwise an
+// interactive picker on a TTY.
+const TYPES = [
+  { key: 'client', label: 'Client-only (default)' },
+  { key: 'ssr', label: 'SSR (spark-ssr)' },
+  { key: 'prerender', label: 'Prerender (spark-prerender)' },
+];
+
+async function pickType() {
+  const flags = argv.slice(2);
+  if (flags.includes('--ssr')) return 'ssr';
+  if (flags.includes('--prerender')) return 'prerender';
+  if (flags.includes('--client')) return 'client';
+  if (!stdin.isTTY) return 'client';
+  stdout.write(`${c.accent('?')} Project type:\n`);
+  TYPES.forEach((t, i) => stdout.write(`  ${c.dim(String(i + 1) + ')')} ${t.label}\n`));
+  const a = (await prompt(`${c.accent('?')} Pick one ${c.dim('(1)')} `, '1')).trim();
+  return (TYPES[Number(a) - 1] || TYPES[0]).key;
 }
 
 // ── optional features ──────────────────────────────────────────────────
@@ -185,7 +208,7 @@ async function main() {
   stdout.write(`${c.dim('   HTML that reacts. Built for humans — no compiler, no virtual DOM.')}\n\n`);
 
   // 1 ─ figure out the target directory ────────────────────────────────
-  let targetArg = argv[2];
+  let targetArg = argv.slice(2).find((a) => !a.startsWith('-'));
   if (!targetArg) {
     if (!stdin.isTTY) bail('Please pass a project name: create-spark-html-app <name>');
     targetArg = await prompt(
@@ -207,11 +230,12 @@ async function main() {
     if (!/^y(es)?$/i.test(ok)) bail('Aborted — nothing was written.');
   }
 
-  // 3 ─ pick features, copy the template, strip what's excluded ────────
-  const features = await pickFeatures();
+  // 3 ─ pick the project type + features, copy the template ────────────
+  const type = await pickType();
+  const features = type === 'client' ? await pickFeatures() : {};
   mkdirSync(targetDir, { recursive: true });
-  cpSync(templateDir, targetDir, { recursive: true });
-  applyFeatures(targetDir, features);
+  cpSync(templateFor(type), targetDir, { recursive: true });
+  if (type === 'client') applyFeatures(targetDir, features);
 
   // npm renames/strips dotfiles on publish, so the template ships them
   // with safe underscore prefixes. Restore the real names here.
@@ -229,7 +253,7 @@ async function main() {
   const pkg = JSON.parse(readFileSync(pkgPath, 'utf8'));
   pkg.name = projectName;
   // Drop dependencies that belong to excluded features.
-  for (const f of FEATURES) {
+  for (const f of type === 'client' ? FEATURES : []) {
     if (features[f.key]) continue;
     for (const dep of f.deps) {
       if (pkg.dependencies) delete pkg.dependencies[dep];
@@ -248,7 +272,8 @@ async function main() {
     const deps = pkg[group];
     if (!deps) continue;
     for (const name of Object.keys(deps)) {
-      if (name !== 'spark-html' && !name.startsWith('spark-html-') && name !== 'spark-prerender') continue;
+      if (name !== 'spark-html' && !name.startsWith('spark-html-')
+        && name !== 'spark-prerender' && name !== 'spark-ssr') continue;
       const range = await latestRange(name);
       if (range) {
         deps[name] = range;
@@ -260,13 +285,16 @@ async function main() {
 
   // 5 ─ celebrate + print next steps ───────────────────────────────────
   const rel = relative(process.cwd(), targetDir) || '.';
-  const picked = FEATURES.filter((f) => features[f.key]).map((f) => f.key).join(', ') || 'core only';
-  stdout.write(`\n${c.green('✔')} Scaffolded ${c.bold(projectName)} in ${c.cyan(rel)} ${c.dim(`(head, persist, prerender, devtools + ${picked})`)}\n\n`);
+  const flavor = type === 'ssr' ? 'SSR — spark-ssr, zero config, no build'
+    : type === 'prerender' ? 'prerendered static site — spark-prerender'
+    : `head, persist, prerender, devtools + ${FEATURES.filter((f) => features[f.key]).map((f) => f.key).join(', ') || 'core only'}`;
+  stdout.write(`\n${c.green('✔')} Scaffolded ${c.bold(projectName)} in ${c.cyan(rel)} ${c.dim(`(${flavor})`)}\n\n`);
   stdout.write(`${c.bold('Next steps:')}\n`);
   if (rel !== '.') stdout.write(`  ${c.dim('1.')} cd ${rel}\n`);
   stdout.write(`  ${c.dim(rel !== '.' ? '2.' : '1.')} bun install\n`);
-  stdout.write(`  ${c.dim(rel !== '.' ? '3.' : '2.')} bun dev\n\n`);
-  stdout.write(`${BOLT} Then open the dev server and edit ${c.cyan('public/components/hero.html')}.\n\n`);
+  stdout.write(`  ${c.dim(rel !== '.' ? '3.' : '2.')} bun run dev\n\n`);
+  const editHint = type === 'ssr' ? 'pages/index.html' : 'public/components/hero.html';
+  stdout.write(`${BOLT} Then open the dev server and edit ${c.cyan(editHint)}.\n\n`);
 }
 
 main().catch((err) => bail(err?.message || String(err)));
