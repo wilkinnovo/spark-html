@@ -1,4 +1,6 @@
 import prerender from 'spark-prerender/bun';
+import theme from 'spark-html-theme/bun';
+import font from 'spark-html-font/bun';
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { resolve, join } from 'node:path';
 
@@ -48,6 +50,16 @@ export default {
     prerender({
       site: 'https://wilkinnovo.github.io' + (base === '/' ? '' : base.replace(/\/$/, '')),
       prerender: { fetch: prerenderFetch },
+    }),
+    // No-flash theming: the saved/OS theme lands on <html> before first paint,
+    // in dev and in every built page (after prerender so route pages are covered).
+    theme(),
+    // Fonts: preconnect + the css2 stylesheet + a Courier-adjusted "JetBrains
+    // Mono Fallback" face and the --font-jetbrains-mono var — text renders at
+    // the right metrics before the webfont lands, so the swap is seamless.
+    font({
+      fallback: ['ui-monospace', 'monospace'],
+      fonts: [{ family: 'JetBrains Mono', google: true, weights: [300, 400, 500, 600, 700, 800] }],
     }),
   ],
 };

@@ -31,12 +31,12 @@ theme();
 head({
   base,
   title: {
-    '/': 'Spark — HTML that reacts.',
+    '/': 'Spark — HTML that reacts. Built for humans.',
     '/docs': 'Spark — Documentation',
     '/playground': 'Spark — Playground',
     '/tutorials': 'Spark — Tutorials',
     '/showcase': 'Spark — Showcase',
-    '*': 'Spark — HTML that reacts.',
+    '*': 'Spark — HTML that reacts. Built for humans.',
   },
 });
 

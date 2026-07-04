@@ -23,6 +23,7 @@
   },
   "devDependencies": {
     "spark-prerender": "*",
-    "spark-html-bun": "*"
+    "spark-html-bun": "*",
+    "spark-html-font": "*"
   }
 }

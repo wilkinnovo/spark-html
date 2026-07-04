@@ -1,7 +1,7 @@
 <section class="hero">
   <div class="hero-copy">
     <p class="eyebrow"><span>no compiler</span><span class="d">·</span><span>no virtual DOM</span><span class="d">·</span><span>no build step</span></p>
-    <h1><span class="l1">HTML that</span> <em>reacts.</em></h1>
+    <h1><span class="l1">HTML that</span> <em>reacts.</em><br /><span class="l2">Built for humans.</span></h1>
     <p class="lede" :hidden="tab !== 'url'">Import a component <b>straight from a URL</b> — no install, no bundler. The browser fetches the <code>.html</code> and boots it live. Components are just files, anywhere. <b>Nothing else does that.</b></p>
     <p class="lede" :hidden="tab !== 'counter'">The component <b>is</b> the file. Save <code>counter.html</code> and the browser runs it <b>byte-for-byte</b> — reactive, scoped, untouched. Nothing else does that.</p>
     <div class="cli">
@@ -60,6 +60,11 @@
   <span class="chip"><b>{stats.tests}+</b> tests</span>
   <span class="chip"><b>{stats.packages}</b> packages</span>
 </div>
+
+<section class="sec why">
+  <p class="sec-eyebrow">Why Spark</p>
+  <p class="why-text">AI writes more of the web every day. Spark is for the people who still love writing it themselves — view-source romantics, hand-crafters, the ones who want to understand every line they ship. So it gets out of your way: <b>no compiler rewriting your code, no virtual DOM between you and the page, no build step between you and the browser.</b> The HTML you write is the app that runs.</p>
+</section>
 
 <section class="sec">
   <p class="sec-eyebrow">What's in Spark</p>
@@ -156,6 +161,10 @@
   .eyebrow span:nth-child(5){animation-delay:.38s}
   h1 { font-size: clamp(40px, 6vw, 68px); line-height: 1.04; letter-spacing: -.03em; font-weight: 800; }
   h1 .l1 { display: inline-block; opacity: 0; animation: fadeUp .6s cubic-bezier(.2,.7,.2,1) .46s forwards; }
+  h1 .l2 {
+    display: inline-block; opacity: 0; font-size: .52em; letter-spacing: -.015em;
+    color: var(--muted); animation: fadeUp .6s cubic-bezier(.2,.7,.2,1) .92s forwards;
+  }
   h1 em {
     font-style: normal; color: var(--spark-ink); display: inline-block; opacity: 0;
     animation: fadeUp .6s cubic-bezier(.2,.7,.2,1) .66s forwards, sparkOn 1.05s ease-in-out 1.2s 1;
@@ -166,7 +175,7 @@
     20% { opacity: 1; text-shadow: 0 0 24px rgba(255,210,74,.7); } 30% { opacity: .7; }
     38% { opacity: 1; text-shadow: 0 0 10px rgba(255,210,74,.4); } 100% { opacity: 1; text-shadow: 0 0 0 transparent; }
   }
-  @media (prefers-reduced-motion: reduce) { .eyebrow span, h1 .l1, h1 em, .lede { animation: none !important; opacity: 1 !important; transform: none !important; } }
+  @media (prefers-reduced-motion: reduce) { .eyebrow span, h1 .l1, h1 .l2, h1 em, .lede { animation: none !important; opacity: 1 !important; transform: none !important; } }
   .lede { color: var(--muted); font-size: 16px; max-width: 46ch; margin: 20px 0 26px; }
   .lede b { color: var(--text); font-weight: 600; }
   .lede code { color: var(--spark-ink); background: var(--surface-2); padding: 1px 6px; }
@@ -201,11 +210,13 @@
   .chip b { color: var(--text); font-weight: 600; }
 
   .sec { padding: 52px 0; border-top: 1px solid var(--border); }
+  .why-text { font-size: 16.5px; line-height: 1.85; color: var(--muted); max-width: 72ch; }
+  .why-text b { color: var(--text); font-weight: 600; }
   .sec-head { display: flex; justify-content: space-between; align-items: baseline; }
   .sec-eyebrow { font-size: 12px; letter-spacing: .14em; text-transform: uppercase; color: var(--muted-dim); margin-bottom: 24px; }
   .more { font-size: 13px; color: var(--muted); }
   .more:hover { color: var(--spark-ink); }
-  .bento { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; background: var(--border); border: 1px solid var(--border); }
+  .bento { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1px; background: var(--border); border: 1px solid var(--border); }
   .cell { background: var(--bg); padding: 26px 24px; transition: background .2s; }
   .cell:hover { background: var(--surface); }
   .cell h3 { font-size: 16px; font-weight: 700; margin-bottom: 8px; }
@@ -223,7 +234,7 @@
   .use-note a { color: var(--spark-ink); }
   @media (max-width: 860px) { .use-grid { grid-template-columns: 1fr; } }
 
-  .show { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+  .show { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 20px; }
   .card { display: flex; flex-direction: column; }
   .thumb { aspect-ratio: 2/1; border: 1px solid var(--border); position: relative; overflow: hidden; background: var(--surface-2); }
   .thumb img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: 1; }
@@ -232,5 +243,5 @@
   .card .nm { padding: 12px 2px 2px; font-size: 15px; font-weight: 600; }
   .card .ds { font-size: 12.5px; color: var(--muted); }
 
-  @media (max-width: 860px) { .hero, .bento, .show { grid-template-columns: 1fr; } .hero { padding: 48px 0 40px; } }
+  @media (max-width: 860px) { .hero { grid-template-columns: 1fr; padding: 48px 0 40px; } }
 </style>

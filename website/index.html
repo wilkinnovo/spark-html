@@ -3,26 +3,18 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Spark — HTML that reacts.</title>
-    <meta name="description" content="Single-file reactive HTML components. The .html you save is the component that runs — no compiler, no virtual DOM, no build step." />
-    <meta property="og:title" content="Spark — HTML that reacts." />
-    <meta property="og:description" content="Single-file reactive HTML components. No compiler, no virtual DOM, no build step." />
+    <title>Spark — HTML that reacts. Built for humans.</title>
+    <meta name="description" content="Single-file reactive HTML components for people who love hand-writing web apps. The .html you save is the component that runs — no compiler, no virtual DOM, no build step." />
+    <meta property="og:title" content="Spark — HTML that reacts. Built for humans." />
+    <meta property="og:description" content="Single-file reactive HTML components, hand-crafted by you. No compiler, no virtual DOM, no build step." />
     <meta property="og:type" content="website" />
     <meta property="og:image" content="https://wilkinnovo.github.io/spark/og.png" />
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚡</text></svg>" />
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
-    <script>
-      /* no flash of the wrong theme */
-      (function () {
-        try {
-          var m = localStorage.getItem('theme-mode') || 'system';
-          var dark = m === 'dark' || (m === 'system' && matchMedia('(prefers-color-scheme: dark)').matches);
-          document.documentElement.dataset.theme = dark ? 'dark' : 'light';
-        } catch (e) { document.documentElement.dataset.theme = 'dark'; }
-      })();
-    </script>
+    <!-- Fonts: spark-html-font/bun in spark.config.js injects preconnects, the
+         stylesheet, and a size-adjusted local fallback face — the swap doesn't
+         move or visibly reflow the page. -->
+    <!-- No flash of the wrong theme: spark-html-theme/bun in spark.config.js
+         injects the init script before first paint (dev and build). -->
     <style>
       *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
       :root {
@@ -35,8 +27,10 @@
         --spark-ink:#ffd24a;
         --sk-dark:#111; --sk-mid:#1a1a1a; --sk-light:#222;
         --sidebar-w:80px; --radius:0;
-        --font:"JetBrains Mono", ui-monospace, monospace;
-        --mono:"JetBrains Mono", ui-monospace, monospace;
+        /* stack from spark-html-font (includes the size-adjusted fallback face);
+           the var() fallback list covers a config without the font step. */
+        --font:var(--font-jetbrains-mono, "JetBrains Mono", ui-monospace, monospace);
+        --mono:var(--font-jetbrains-mono, "JetBrains Mono", ui-monospace, monospace);
       }
       [data-theme="light"] {
         --bg:#fff; --surface:#fafafa; --surface-2:#f4f4f5;
@@ -61,13 +55,10 @@
       .layout { display:flex; min-height:100vh; }
       .content { flex:1; margin-left:var(--sidebar-w); min-width:0; display:flex; flex-direction:column; }
       .routes { flex:1; padding:0 56px; }
-      .wrap { max-width:1040px; margin:0 auto; }
-      /* The playground REPL wants the whole content width — release the
-         1040px cap on that route only (the section is in the prerendered
-         HTML, so there's no layout shift on hydration). */
-      /* width:100% too — .wrap's auto margins would otherwise shrink the
-         (now uncapped) flex item to fit-content instead of stretching. */
-      main.routes:has(#playground-repl) { max-width:none; width:100%; }
+      /* Full-width content on every route (the playground set the precedent):
+         pages own their internal measure — docs/tutorial prose caps itself at
+         a readable ch-width, grids stretch to use the space. */
+      .wrap { width:100%; }
       @media (max-width:860px) {
         .layout { flex-direction:column; }   /* sidebar becomes a top bar */
         .content { margin-left:0; }

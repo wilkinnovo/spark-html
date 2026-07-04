@@ -46,7 +46,7 @@
   .page-title { font-size: clamp(30px, 5vw, 44px); font-weight: 800; letter-spacing: -.03em; }
   .sub { color: var(--muted); margin-top: 10px; font-size: 15px; }
   .sub a { color: var(--spark-ink); }
-  .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 24px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 24px; }
   .card { display: flex; flex-direction: column; }
   .thumb { aspect-ratio: 2/1; border: 1px solid var(--border); position: relative; overflow: hidden; background: var(--surface-2); }
   .thumb img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: 1; }

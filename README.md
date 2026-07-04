@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="website/public/banner.svg" alt="Spark — HTML that reacts. Single-file reactive components: no compiler, no virtual DOM, no build step." width="880" />
+  <img src="website/public/banner.svg" alt="Spark — HTML that reacts. Built for humans. Single-file reactive components: no compiler, no virtual DOM, no build step." width="880" />
 </p>
 
 <p align="center">
@@ -12,6 +12,8 @@
 </p>
 
 ---
+
+**HTML that reacts. Built for humans.**
 
 The component **is** the file. Save `counter.html` and the browser runs it
 byte-for-byte — reactive, scoped, untouched.
@@ -30,6 +32,17 @@ byte-for-byte — reactive, scoped, untouched.
 
 No compiler generates code from your template. No virtual DOM allocates and diffs
 a tree per frame. The file you write is what runs — 13 kB gzipped, zero dependencies.
+
+## Built for humans
+
+AI writes more of the web every day — and that's exactly why Spark exists. Some
+of us still love hand-writing our web apps: reading every line we ship,
+understanding the whole stack, owning the craft. Spark is built for those
+people. It makes hand-crafting a web app as easy as it can be, and then stops:
+no compiler rewriting your source, no virtual DOM between you and the page, no
+scaffolding you didn't ask for. Nineteen small packages, each one readable in a
+sitting — add only what you use, and everything you write stays yours,
+byte-for-byte, in view-source forever.
 
 ## Quick start
 
@@ -186,7 +199,7 @@ Spark trades completeness for simplicity — these are deliberate edges, not roa
 ## This repo
 
 ```
-packages/        spark-html + the 18 sibling/tooling packages
+packages/        spark-html + its 18 sibling/tooling packages — 19 in all
 examples/        basic (Bun app) · jsimports · no-build (CDN, zero tooling)
 editors/         Zed + VS Code extensions for .html component highlighting
 website/         the docs/playground/tutorials site — built with Spark itself
@@ -196,7 +209,7 @@ website/         the docs/playground/tutorials site — built with Spark itself
 bun install      # links workspaces
 bun run dev      # the example app
 bun run site     # the website
-bun run test         # 400+ assertions, pure node, no browser
+bun run test     # 800+ assertions, pure node, no browser
 bun run e2e      # Playwright: mount → hydrate → router → theme, live tutorials
 ```
 

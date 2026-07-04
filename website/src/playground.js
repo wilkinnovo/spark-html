@@ -14,6 +14,7 @@
  * bundle entry (see the data-spark-pg-frame tag in index.html).
  */
 import { store, subscribe, parseSFC, scopeCss } from 'spark-html';
+import { persist } from 'spark-html-persist';
 import { highlightSource } from './highlight.js';
 
 // ── default project ─────────────────────────────────────────────────────
@@ -133,6 +134,22 @@ let lastFiles = null;
 
 export function setupPlayground() {
   consoleStore = store('pg-console', { entries: [] });
+
+  // The whole project survives reloads: files, active tab, view — one
+  // persisted store (spark-html-persist), saved on every edit.
+  const project = persist('pg-project', { files: null, current: 0, view: 'result' });
+  window.__pgLoad = () => ({
+    files: Array.isArray(project.files) && project.files.length
+      ? project.files.map((f) => ({ name: f.name, source: f.source }))
+      : null, // nothing saved yet — the component falls back to the defaults
+    current: project.current || 0,
+    view: project.view || 'result',
+  });
+  window.__pgSave = (files, current, view) => {
+    project.files = files.map((f) => ({ name: f.name, source: f.source }));
+    project.current = current;
+    project.view = view;
+  };
 
   // Console/error traffic from the result iframe.
   window.addEventListener('message', (e) => {

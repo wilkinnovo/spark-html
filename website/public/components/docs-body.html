@@ -28,12 +28,13 @@
 
   <main>
     <h1>Spark documentation</h1>
-    <p class="intro">Everything you need to build with Spark — single-file HTML components with reactivity, props, and shared stores. No compiler, no virtual DOM.</p>
+    <p class="intro">Everything you need to hand-craft web apps with Spark — single-file HTML components with reactivity, props, and shared stores. No compiler, no virtual DOM: the code you write yourself is the code that runs.</p>
 
     <h2 id="concept">The concept</h2>
     <p>Most modern frameworks place a toolchain between you and the browser: code is compiled from an invented dialect, UI updates flow through a virtual representation of the DOM, and shipping requires a build pipeline. Each layer adds power — and adds something to install, learn, debug, and keep upgraded.</p>
     <p>Spark inverts the trade. A component is a plain HTML file the browser receives unmodified. State is ordinary variables; reactivity comes from intercepting assignments, not from re-rendering and diffing a copy of your UI. The runtime patches the real DOM directly and is small enough to read in one sitting. The result: no build step to maintain, nothing proprietary in your source, a mental model that is just HTML plus JavaScript, and components that stay readable in view-source forever.</p>
     <p>This is a deliberate scope, not a missing roadmap — Spark targets the very large class of sites and apps that need interactivity, components, and shared state without a compiler's ceiling of complexity.</p>
+    <p>It's also a deliberate audience. In a world where AI generates ever more of the web, Spark is built for the people who love hand-writing theirs — every abstraction it skips is one you don't have to hand over. The whole surface fits in your head: what you type is what ships, and what ships is what you can read back, byte for byte.</p>
 
     <h2 id="install">Installation</h2>
     <p>Scaffold a complete, ready-to-run app (Bun dev server + the Spark runtime + a live welcome screen) in one command:</p>
@@ -437,8 +438,8 @@ bunx spark-prerender dist/index.html dist/docs.html</pre>
 
 <style>
   .docs {
-    max-width: 1080px; margin: 0 auto; padding: 56px 0 90px;
-    display: grid; grid-template-columns: 190px 1fr; gap: 48px; align-items: start;
+    padding: 56px 0 90px;
+    display: grid; grid-template-columns: 190px minmax(0, 1fr); gap: 48px; align-items: start;
   }
   aside { position: sticky; top: 24px; display: flex; flex-direction: column; gap: 1px; }
   .aside-title { font-size: 11px; text-transform: uppercase; letter-spacing: .12em; color: var(--muted-dim); margin-bottom: 12px; }
@@ -467,5 +468,8 @@ bunx spark-prerender dist/index.html dist/docs.html</pre>
     .docs { grid-template-columns: 1fr; gap: 24px; }
     aside { position: static; flex-direction: row; flex-wrap: wrap; gap: 6px 14px; }
     aside a { padding: 2px 0; }
+    /* Wide reference tables scroll inside themselves instead of pushing the
+       page sideways (the nowrap first column forces a min content width). */
+    table { display: block; overflow-x: auto; }
   }
 </style>

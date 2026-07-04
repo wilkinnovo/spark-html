@@ -81,7 +81,8 @@ script/style and preserves the markup.
 ## The Spark family
 
 Small, single-purpose packages that share one philosophy: no compiler, no
-virtual DOM, no build step required. Add only what you use.
+virtual DOM, no build step required — built for humans who love hand-writing
+their web apps. Add only what you use.
 
 | Package | What it does |
 |---|---|

@@ -26,7 +26,8 @@
         <button :class="view === 'result' ? 'vtab on' : 'vtab'" data-v="result" onclick="{pickView}">Result</button>
         <button :class="view === 'js' ? 'vtab on' : 'vtab'" data-v="js" onclick="{pickView}">JS output</button>
         <button :class="view === 'css' ? 'vtab on' : 'vtab'" data-v="css" onclick="{pickView}">CSS output</button>
-        <span class="hint">edits run automatically</span>
+        <button class="vreset" onclick="{resetAll}" title="discard saved edits, restore the default project">reset</button>
+        <span class="hint">edits run automatically — saved locally</span>
       </div>
       <div class="stage">
         <div class="fill" :hidden="view !== 'result'">
@@ -71,6 +72,10 @@
   let fileError = '';
   let timer = null;
 
+  function saveState() {
+    if (window.__pgSave) window.__pgSave(files, current, view);
+  }
+
   function lang(name) {
     return name.endsWith('.js') ? 'js' : 'html';
   }
@@ -108,6 +113,7 @@
     const f = files[current];
     if (!f) return;
     f.source = event.target.value;
+    saveState();
     paint();
     schedule();
   }
@@ -128,6 +134,7 @@
     const f = files[current];
     if (f) f.source = ed.value;
     draft = ed.value;
+    saveState();
     paint();
     schedule();
   }
@@ -136,11 +143,13 @@
     current = Number(event.target.dataset.i);
     draft = files[current].source;
     fileError = '';
+    saveState();
     paint();
   }
 
   function pickView(event) {
     view = event.target.dataset.v;
+    saveState();
   }
 
   function startAdd() {
@@ -166,6 +175,7 @@
     draft = files[current].source;
     adding = false;
     fileError = '';
+    saveState();
     paint();
     schedule();
   }
@@ -177,6 +187,18 @@
     if (current >= files.length) current = files.length - 1;
     draft = files[current].source;
     fileError = '';
+    saveState();
+    paint();
+    schedule();
+  }
+
+  function resetAll() {
+    files = window.__pgDefaults();
+    current = 0;
+    draft = files[0].source;
+    view = 'result';
+    fileError = '';
+    saveState();
     paint();
     schedule();
   }
@@ -186,8 +208,13 @@
   }
 
   onMount(function () {
-    files = window.__pgDefaults();
-    draft = files[0].source;
+    // Restore the saved project (spark-html-persist survives reloads);
+    // first visit falls back to the default files.
+    const saved = window.__pgLoad ? window.__pgLoad() : { files: null, current: 0, view: 'result' };
+    files = saved.files || window.__pgDefaults();
+    current = Math.min(saved.current, files.length - 1);
+    view = saved.view;
+    draft = files[current].source;
     paint();
     run();
     return function () { clearTimeout(timer); };
@@ -248,14 +275,20 @@
   .editor:focus { outline: none; }
 
   /* ── right pane ── */
-  .viewbar { display: flex; align-items: center; border-bottom: 1px solid var(--border); flex: none; }
+  .viewbar { display: flex; align-items: center; border-bottom: 1px solid var(--border); flex: none; overflow-x: auto; }
   .vtab {
     font-family: var(--font); font-size: 12px; padding: 10px 16px; background: none;
     border: none; border-right: 1px solid var(--border); color: var(--muted); cursor: pointer;
   }
   .vtab.on { background: var(--bg); color: var(--spark-ink); font-weight: 700; }
   .vtab:hover { color: var(--text); }
-  .hint { margin-left: auto; font-size: 10.5px; color: var(--muted-dim); padding: 0 14px; white-space: nowrap; }
+  .hint { font-size: 10.5px; color: var(--muted-dim); padding: 0 14px; white-space: nowrap; }
+  .vreset {
+    margin-left: auto; font-family: var(--font); font-size: 10.5px; text-transform: uppercase;
+    letter-spacing: .1em; background: none; border: none; border-left: 1px solid var(--border);
+    color: var(--muted); padding: 10px 14px; cursor: pointer;
+  }
+  .vreset:hover { color: #ff6b6b; }
 
   .stage { position: relative; flex: 1; min-height: 0; }
   .fill { position: absolute; inset: 0; }
@@ -289,6 +322,7 @@
   .crow.info, .crow.debug { color: var(--muted-dim); }
 
   /* ── small screens: stack, fixed heights ── */
+  @media (max-width: 640px) { .hint { display: none; } }
   @media (max-width: 980px) {
     .repl { grid-template-columns: 1fr; height: auto; }
     .pane.left { border-right: none; border-bottom: 1px solid var(--border); }
