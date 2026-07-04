@@ -84,11 +84,19 @@ self.addEventListener('activate', function (event) {
 self.addEventListener('fetch', function (event) {
   var req = event.request;
   if (req.method !== 'GET') return;
+  if (req.url.indexOf('/__spark/') !== -1) return; // server SSE channels — streams, never cache
   if (!shouldHandle(req.url, self.location.origin, CONFIG)) return;
   event.respondWith(caches.open(CACHE).then(function (cache) {
     return cache.match(req).then(function (cached) {
       var refresh = fetch(req).then(function (res) {
-        if (res && res.ok) cache.put(req, res.clone());
+        // Never cache streams or no-store responses — Cache.put() on an
+        // endless event-stream rejects with a NetworkError.
+        var ct = (res && res.headers.get('content-type')) || '';
+        var cc = (res && res.headers.get('cache-control')) || '';
+        var cachable = res && res.ok
+          && ct.indexOf('text/event-stream') === -1
+          && cc.indexOf('no-store') === -1;
+        if (cachable) cache.put(req, res.clone());
         return res;
       }).catch(function () { return null; });
       if (cached) {

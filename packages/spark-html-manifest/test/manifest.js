@@ -71,7 +71,13 @@ function makeSwWorld(src, origin = 'https://app.dev') {
   const world = {
     fetch: null,
     Response: class {
-      constructor(body, init = {}) { this.body = body; this.status = init.status ?? 200; this.ok = this.status < 300; }
+      constructor(body, init = {}) {
+        this.body = body;
+        this.status = init.status ?? 200;
+        this.ok = this.status < 300;
+        const h = new Map(Object.entries(init.headers || {}));
+        this.headers = { get: (k) => h.get(k) ?? null };
+      }
       clone() { return this; }
     },
   };
@@ -140,6 +146,30 @@ await test('worker: hash-named assets are cache-first; cross-origin untouched', 
   cross.respondWith = () => { handled = true; };
   listeners.fetch(cross);
   assert.equal(handled, false, 'cross-origin passes through');
+});
+
+await test('worker: never intercepts /__spark/ channels, never caches streams or no-store', async () => {
+  const { listeners, cacheStore, world } = makeSwWorld(swSource());
+  // spark-ssr's SSE channels (live reload / live data) must pass straight through.
+  const sse = fetchEvent('https://app.dev/__spark/live');
+  let handled = false;
+  sse.respondWith = () => { handled = true; };
+  listeners.fetch(sse);
+  assert.equal(handled, false, 'server channels untouched');
+
+  // An event-stream (or no-store) response elsewhere returns but never lands
+  // in the cache — Cache.put() on an endless stream rejects with NetworkError.
+  world.fetch = async () => new world.Response('stream', { headers: { 'content-type': 'text/event-stream' } });
+  const ev = fetchEvent('https://app.dev/events');
+  listeners.fetch(ev);
+  assert.equal((await ev.result()).body, 'stream', 'response still served');
+  assert.ok(!cacheStore.has('https://app.dev/events'), 'stream not cached');
+
+  world.fetch = async () => new world.Response('fresh', { headers: { 'cache-control': 'no-store' } });
+  const ns = fetchEvent('https://app.dev/volatile.json');
+  listeners.fetch(ns);
+  assert.equal((await ns.result()).body, 'fresh');
+  assert.ok(!cacheStore.has('https://app.dev/volatile.json'), 'no-store honored');
 });
 
 await test('bun step: writes manifest (+ worker), generates icons from one source image', async () => {

@@ -136,6 +136,9 @@ self.addEventListener('fetch', function (event) {
   var url;
   try { url = new URL(req.url); } catch (e) { return; }
   if (url.origin !== self.location.origin) return;
+  // Server channels (spark-ssr live reload / live data SSE) are streams —
+  // never intercept them, and never try to cache one.
+  if (url.pathname.indexOf('/__spark/') === 0) return;
   // The build's hash-named assets are immutable — cache-first is always correct.
   var immutable = /\\/assets\\/[^/]*[-.][A-Za-z0-9_-]{8,}\\.\\w+$/.test(url.pathname);
   event.respondWith(caches.open(CACHE).then(function (cache) {
@@ -143,7 +146,14 @@ self.addEventListener('fetch', function (event) {
       if (cached && immutable) return cached;
       // Network-first keeps pages/components fresh; cache is the offline net.
       return fetch(req).then(function (res) {
-        if (res && res.ok) cache.put(req, res.clone());
+        // Streams and no-store responses must not land in the cache —
+        // Cache.put() on an endless event-stream rejects with a NetworkError.
+        var ct = (res && res.headers.get('content-type')) || '';
+        var cc = (res && res.headers.get('cache-control')) || '';
+        var cachable = res && res.ok
+          && ct.indexOf('text/event-stream') === -1
+          && cc.indexOf('no-store') === -1;
+        if (cachable) cache.put(req, res.clone());
         return res;
       }).catch(function () {
         if (cached) return cached;

@@ -1,11 +1,12 @@
-<!-- Pure UI — no <script>. Props (blog, active) come from whichever page
-     imports it, rendered on the server and again after client mount. -->
+<!-- Pure UI — no <script>. Props (blog, path) come from the layout; `path`
+     is ambient page scope (the current request path), so the highlight is
+     right on the server render and after client mount alike. -->
 <nav class="nav">
   <a class="brand" href="/">⚡ {blog}</a>
   <span class="links">
-    <a href="/" :class="active === 'home' ? 'on' : ''">Posts</a>
-    <a href="/about" :class="active === 'about' ? 'on' : ''">About</a>
-    <a href="/admin" :class="active === 'admin' ? 'on' : ''">Manage</a>
+    <a href="/" :class="path === '/' ? 'on' : ''">Posts</a>
+    <a href="/about" :class="path === '/about' ? 'on' : ''">About</a>
+    <a href="/admin" :class="path.startsWith('/admin') ? 'on' : ''">Manage</a>
     <span import="/components/theme-toggle"></span>
   </span>
 </nav>

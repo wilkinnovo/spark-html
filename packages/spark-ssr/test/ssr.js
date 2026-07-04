@@ -912,6 +912,14 @@ await test('declarative status (§3): the rendered else-branch sets 404', async 
   assert.equal((await fetch(`${L}/blog/draft`)).status, 404, 'unpublished stays invisible');
 });
 
+await test('ambient {path}: the current request path is page scope (nav highlighting)', async () => {
+  writeFileSync(join(layoutRoot, 'pages', 'where.html'),
+    '<p id="pth">{path}</p><p id="on">{path === \'/where\' ? \'yes\' : \'no\'}</p>');
+  const html = await (await fetch(`${L}/where`)).text();
+  assert.ok(html.includes('id="pth">/where<'), '{path} interpolates');
+  assert.ok(html.includes('id="on">yes<'), 'expressions over path work');
+});
+
 await test('sitemap (T3): guarded pages out, [slug] enumerated respecting the query WHERE', async () => {
   const xml = await (await fetch(`${L}/sitemap.xml`)).text();
   assert.ok(xml.includes(`${L}/blog/one`), 'published post listed');

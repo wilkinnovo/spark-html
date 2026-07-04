@@ -62,7 +62,13 @@ function makeSwWorld(src) {
     caches: { open: async () => cache },
     fetch: null, // set per test
     Response: class {
-      constructor(body, init = {}) { this.body = body; this.status = init.status ?? 200; this.ok = this.status < 300; }
+      constructor(body, init = {}) {
+        this.body = body;
+        this.status = init.status ?? 200;
+        this.ok = this.status < 300;
+        const h = new Map(Object.entries(init.headers || {}));
+        this.headers = { get: (k) => h.get(k) ?? null };
+      }
       clone() { return this; }
     },
     console,
@@ -147,6 +153,25 @@ await test('offline(): registers the worker; no-ops without serviceWorker', asyn
   sw.register = async () => { throw new Error('insecure origin'); };
   assert.equal(await offline(), null, 'registration failure → null, warn only');
   delete globalThis.navigator;
+});
+
+await test('worker: skips /__spark/ channels; streams and no-store never cached', async () => {
+  const { listeners, cacheStore, world } = makeSwWorld(swSource({ include: ['/'] }));
+  const sse = fetchEvent(`${ORIGIN}/__spark/reload`);
+  listeners.fetch(sse);
+  assert.equal(sse.handled, false, 'SSE channel passes straight through');
+
+  world.fetch = async () => new world.Response('stream', { headers: { 'content-type': 'text/event-stream' } });
+  const ev = fetchEvent(`${ORIGIN}/events`);
+  listeners.fetch(ev);
+  assert.equal((await ev.result()).body, 'stream', 'response still served');
+  assert.ok(!cacheStore.has(`${ORIGIN}/events`), 'event-stream not cached');
+
+  world.fetch = async () => new world.Response('fresh', { headers: { 'cache-control': 'no-store' } });
+  const ns = fetchEvent(`${ORIGIN}/volatile.json`);
+  listeners.fetch(ns);
+  assert.equal((await ns.result()).body, 'fresh');
+  assert.ok(!cacheStore.has(`${ORIGIN}/volatile.json`), 'no-store honored');
 });
 
 await test('bun step: writes the worker in build, serves it in dev', async () => {

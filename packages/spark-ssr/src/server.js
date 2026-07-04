@@ -300,6 +300,19 @@ export async function serve(options = {}) {
   const RELOAD_CLIENT = '<script>(()=>{const e=new EventSource("/__spark/reload");let d=0;'
     + 'e.onmessage=()=>location.reload();e.onerror=()=>{d=1};e.onopen=()=>{if(d)location.reload()}})()</script>';
 
+  // Heartbeats keep every SSE socket outside Bun's idleTimeout (the default
+  // would kill them at 10 s — and a killed reload socket reconnects, which
+  // the client reads as "the server came back": a spurious reload). The ping
+  // also flushes dead clients (enqueue throws → drop).
+  const heartbeat = setInterval(() => {
+    for (const set of [sseClients, liveClients]) {
+      for (const c of set) {
+        try { c.enqueue(sseEnc.encode(': ping\n\n')); } catch { set.delete(c); }
+      }
+    }
+  }, 25000);
+  heartbeat.unref?.();
+
   // ── live data channel (§9) — a production feature, unlike dev reload ──
   // Any write through the server pings /__spark/live with the table name;
   // hydrated pages refetch through their own session (scoping intact) and
@@ -1007,7 +1020,9 @@ export async function serve(options = {}) {
   }
 
   async function buildScope(pd, req) {
-    const scope = { ...req.query, ...req.params, session: req.session };
+    // `path` is ambient like `session` — the layout's nav highlights the
+    // current page with it. Query/params may shadow it deliberately.
+    const scope = { path: req.path, ...req.query, ...req.params, session: req.session };
     if (pd.code) Object.assign(scope, await runPageScript(pd.code, req));
     for (const p of pd.plan) {
       if (scope[p.var] !== undefined) continue; // the page <script> won
@@ -1216,6 +1231,9 @@ code{color:#fdba74}em{color:#a8a29e}</style></head><body>
   // ── the server ──
   const server = Bun.serve({
     port: options.port ?? 3000,
+    // SSE channels idle between events (heartbeat every 25 s keeps them
+    // alive); slow queries and big uploads get headroom too.
+    idleTimeout: 60,
     async fetch(request, srv) {
       const url = new URL(request.url);
       let pathname;
@@ -1417,6 +1435,7 @@ code{color:#fdba74}em{color:#a8a29e}</style></head><body>
     db,
     stop(force) {
       if (watchTimer) clearInterval(watchTimer);
+      clearInterval(heartbeat);
       for (const c of sseClients) { try { c.close(); } catch { /* gone */ } }
       sseClients.clear();
       for (const c of liveClients) { try { c.close(); } catch { /* gone */ } }
