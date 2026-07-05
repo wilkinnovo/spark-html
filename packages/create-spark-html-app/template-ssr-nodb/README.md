@@ -22,6 +22,14 @@ bun run start     # run the production server
 Drop a markdown file in `content/` with `title`, `date`, and `excerpt` front
 matter. The filename is its URL (`content/my-post.md` → `/blog/my-post`).
 
+## Fast by default
+
+Markdown reads are cached: the server re-reads only files whose mtime moved,
+and in production whole rendered pages are served from an in-memory response
+cache (tune with `"responseCache": <seconds>` in spark.json). A content site
+on this template serves thousands of requests per second on one core —
+without a CDN in front.
+
 ## Need a database?
 
 Users, comments, orders, admin CRUD, auth, `live` updates — scaffold the SSR

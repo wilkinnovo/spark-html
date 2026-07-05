@@ -116,6 +116,14 @@ just files at a URL, so you can even `import` one straight from a CDN. See
 - **Tracked `Map`/`Set` mutations** — `map.set(key, val)`, `set.add(item)`, and
   `delete`/`clear` trigger re-renders, just like array push and object property
   assignment. No special API or immutability discipline required.
+- **Server-side, the same story** — [`spark-ssr`](packages/spark-ssr/README.md)
+  precompiles every page and component into a render program (parsed once,
+  mtime-invalidated): a request is a string-emitting loop — no DOM built, no
+  HTML re-parsed. Production adds an auto-detected full-page response cache
+  for anonymous GETs (invalidated by the same write hooks that power `live`),
+  streaming for big list pages, batched relation queries, and bounded LRU
+  source caches. A 1,000-row page that rendered in ~27 ms renders in ~4 ms;
+  a cached public page serves at in-memory-string speed.
 
 ## Limits
 
@@ -182,7 +190,7 @@ Spark trades completeness for simplicity — these are deliberate edges, not roa
 |---|---|
 | [`spark-html-bun`](packages/spark-html-bun/README.md) | Dev server, bundler &amp; preview on Bun — `spark dev`/`build`/`preview`, scoped HMR, no-build dev, the post-build pipeline. |
 | [`spark-prerender`](packages/spark-prerender/README.md) | Build-time SEO prerender — real HTML per route (+ sitemap/robots), no SSR server, no app changes. |
-| [`spark-ssr`](packages/spark-ssr/README.md) | Full-stack SSR on Bun — the template is the backend: inferred schema, REST/CRUD API, auth &amp; sessions, jobs/mail, and source-agnostic hydration (`<spark-ssr>`). |
+| [`spark-ssr`](packages/spark-ssr/README.md) | Full-stack SSR on Bun — the template is the backend: inferred schema, REST/CRUD API, auth &amp; sessions, jobs/mail, source-agnostic hydration (`<spark-ssr>`). Precompiled render programs + a full-page response cache: fast by default. |
 | [`spark-html-image`](packages/spark-html-image/README.md) | Build-time image optimization — `<img>` rewritten to webp/avif with responsive `srcset`, zero config. |
 | [`spark-html-font`](packages/spark-html-font/README.md) | Font loading optimizer — `@font-face` + preload + size-adjusted fallbacks, no FOUT, no layout shift. |
 | [`spark-html-manifest`](packages/spark-html-manifest/README.md) | PWA manifest + icons + head tags (and optional service worker) from one config. |

@@ -276,6 +276,7 @@ component('hello', `
 | [`spark-html-persist`](https://www.npmjs.com/package/spark-html-persist) | Persist any store to `localStorage` — survives refresh |
 | [`spark-html-devtools`](https://www.npmjs.com/package/spark-html-devtools) | Browser devtools panel — inspect stores, components, and reactivity |
 | [`spark-prerender`](https://www.npmjs.com/package/spark-prerender) | Build-time prerendering + client hydration — SEO without SSR |
+| [`spark-ssr`](https://www.npmjs.com/package/spark-ssr) | Full-stack SSR on Bun — the template is the backend: inferred DB, REST CRUD, auth, live updates. Precompiled + response-cached: fast by default. |
 | [`create-spark-html-app`](https://www.npmjs.com/package/create-spark-html-app) | Scaffold a new project in one command |
 | [`prettier-plugin-spark`](https://www.npmjs.com/package/prettier-plugin-spark) | Prettier plugin for Spark component files |
 

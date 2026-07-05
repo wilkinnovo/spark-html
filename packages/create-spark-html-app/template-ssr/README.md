@@ -79,6 +79,22 @@ disabled.
   [/__spark/plan](http://localhost:3000/__spark/plan) to see the inferred
   backend.
 
+## Performance (nothing to configure)
+
+In production (`bun run start` / the built binary) the server is fast by
+default:
+
+- **Precompiled templates** — every page and component compiles once into a
+  render program; requests run a string-emitting loop, no DOM, no re-parse.
+- **Full-page response cache** — anonymous GETs of pages whose output depends
+  only on the URL are served straight from memory and invalidated by the same
+  write hooks that power `live`. Tune with `"responseCache": <seconds>` in
+  spark.json (default 60; `false` disables).
+- **Streaming** — big list pages flush their `<head>` immediately and stream
+  rows as they render.
+- Relation loops (`each="c in post.comments"`) batch into one `IN (…)` query;
+  sources with `cache="…"` live in a bounded LRU.
+
 ## Deploy
 
 ```bash
