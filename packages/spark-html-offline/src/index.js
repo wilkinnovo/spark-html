@@ -96,7 +96,10 @@ self.addEventListener('fetch', function (event) {
         var cachable = res && res.ok
           && ct.indexOf('text/event-stream') === -1
           && cc.indexOf('no-store') === -1;
-        if (cachable) cache.put(req, res.clone());
+        // A request aborted mid-stream (the user navigated away) leaves the
+        // cloned body in a network-error state, so Cache.put() rejects — a
+        // harmless race, but an unhandled rejection without this catch.
+        if (cachable) cache.put(req, res.clone()).catch(function () {});
         return res;
       }).catch(function () { return null; });
       if (cached) {

@@ -303,7 +303,21 @@ export async function serve(options = {}) {
   // controlled client's sockets around) piles them up until the tab hangs
   // loading. Freeing the socket the instant we leave keeps the pool clear;
   // reopen if the page is restored from the back/forward cache.
-  const RELOAD_CLIENT = '<script>(()=>{let e,d=0;const open=()=>{e=new EventSource("/__spark/reload");'
+  // A service worker must never control a spark-ssr dev page: the dev server
+  // ships none, so a controller is always a leftover from a PREVIOUS project on
+  // this same localhost port. A stale caching worker serves old HTML (so fixes
+  // never appear), holds the per-host sockets live reload needs, and throws
+  // Cache.put() errors on aborted navigations — the tab hangs and no amount of
+  // rescaffolding helps, because deleting files never unregisters a worker.
+  // Unregister it, drop its caches, reload once (a session flag stops any loop).
+  const RELOAD_CLIENT = '<script>(()=>{'
+    + 'if(navigator.serviceWorker&&navigator.serviceWorker.controller&&!sessionStorage.getItem("__spark_sw")){'
+    + 'sessionStorage.setItem("__spark_sw","1");'
+    + 'console.warn("[spark-ssr] a stale service worker was controlling this dev page — unregistering it and clearing its caches");'
+    + 'navigator.serviceWorker.getRegistrations().then(r=>Promise.all(r.map(x=>x.unregister())))'
+    + '.then(()=>window.caches?caches.keys().then(k=>Promise.all(k.map(x=>caches.delete(x)))):0)'
+    + '.then(()=>location.reload());return}'
+    + 'let e,d=0;const open=()=>{e=new EventSource("/__spark/reload");'
     + 'e.onmessage=()=>location.reload();e.onerror=()=>{d=1};e.onopen=()=>{if(d)location.reload()}};open();'
     + 'addEventListener("pagehide",()=>{if(e)e.close()});'
     + 'addEventListener("pageshow",v=>{if(v.persisted)open()})})()</script>';

@@ -153,7 +153,10 @@ self.addEventListener('fetch', function (event) {
         var cachable = res && res.ok
           && ct.indexOf('text/event-stream') === -1
           && cc.indexOf('no-store') === -1;
-        if (cachable) cache.put(req, res.clone());
+        // A navigation the user clicks away from is aborted mid-stream, so the
+        // cloned body errors and Cache.put() rejects with a NetworkError — a
+        // harmless race, but an unhandled rejection without this catch.
+        if (cachable) cache.put(req, res.clone()).catch(function () {});
         return res;
       }).catch(function () {
         if (cached) return cached;
