@@ -1,0 +1,27 @@
+<!-- /blog/:slug — the filename IS the route; :slug binds into the source.
+     `post = ./lib/post.js` is a MODULE source: it returns one row for the slug
+     or null. A missing post is a real 404 (status on the else branch), so
+     crawlers and the browser both get the right answer. -->
+<title>{post ? post.title : 'Not found'} · Spark Notes</title>
+<meta name="description" content="{post ? post.excerpt : 'This post does not exist.'}">
+
+<template if="post">
+  <article class="post">
+    <h1>{post.title}</h1>
+    <p class="meta">{post.date}</p>
+    <p class="lede">{post.excerpt}</p>
+    <div class="body">{post.body}</div>
+    <p><a href="/">← All posts</a></p>
+  </article>
+</template>
+<template else status="404">
+  <article class="post">
+    <h1>Not found</h1>
+    <p class="lede">That post doesn't exist.</p>
+    <p><a href="/">← All posts</a></p>
+  </article>
+</template>
+
+<spark-ssr>
+  post = ./lib/post.js
+</spark-ssr>

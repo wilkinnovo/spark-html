@@ -27,8 +27,6 @@ import { createInterface } from 'node:readline/promises';
 import { stdin, stdout, argv, exit } from 'node:process';
 
 const here = dirname(fileURLToPath(import.meta.url));
-const templateFor = (type) =>
-  resolve(here, '..', type === 'client' ? 'template' : `template-${type}`);
 
 // ── tiny ANSI palette (no chalk; one less thing to install) ───────────
 const supportsColor = stdout.isTTY && process.env.NO_COLOR === undefined;
@@ -120,6 +118,24 @@ async function pickType() {
   TYPES.forEach((t, i) => stdout.write(`  ${c.dim(String(i + 1) + ')')} ${t.label}\n`));
   const a = (await prompt(`${c.accent('?')} Pick one ${c.dim('(1)')} `, '1')).trim();
   return (TYPES[Number(a) - 1] || TYPES[0]).key;
+}
+
+// SSR only: with a database (SQLite + auto-CRUD + auth + admin) or without one
+// (a markdown blog on file sources). Flags: --db / --no-db.
+async function pickSsrDb() {
+  const flags = argv.slice(2);
+  if (flags.includes('--no-db')) return false;
+  if (flags.includes('--db')) return true;
+  if (!stdin.isTTY) return true;
+  const a = (await prompt(`${c.accent('?')} Include a database? ${c.dim('(Y/n)')} `, 'y')).toLowerCase();
+  return /^y(es)?$/.test(a);
+}
+
+// Resolve the template directory for a chosen project type.
+function templateDir(type, ssrDb) {
+  if (type === 'client') return resolve(here, '..', 'template');
+  if (type === 'prerender') return resolve(here, '..', 'template-prerender');
+  return resolve(here, '..', ssrDb ? 'template-ssr' : 'template-ssr-nodb');
 }
 
 // ── optional features ──────────────────────────────────────────────────
@@ -232,11 +248,13 @@ async function main() {
 
   // 3 ─ pick the project type + features, copy the template ────────────
   const type = await pickType();
+  // SSR can ship with or without a database; the choice picks the template.
+  const ssrDb = type === 'ssr' ? await pickSsrDb() : true;
   // The prerender template is the full showcase (router, todos, demos) whose
   // optional pieces are toggled via @spark markers; client and ssr ship fixed.
   const features = type === 'prerender' ? await pickFeatures() : {};
   mkdirSync(targetDir, { recursive: true });
-  cpSync(templateFor(type), targetDir, { recursive: true });
+  cpSync(templateDir(type, ssrDb), targetDir, { recursive: true });
   if (type === 'prerender') applyFeatures(targetDir, features);
 
   // npm renames/strips dotfiles on publish, so the template ships them
@@ -287,7 +305,8 @@ async function main() {
 
   // 5 ─ celebrate + print next steps ───────────────────────────────────
   const rel = relative(process.cwd(), targetDir) || '.';
-  const flavor = type === 'ssr' ? 'SSR — spark-ssr, zero config, no build'
+  const flavor = type === 'ssr'
+    ? (ssrDb ? 'SSR — spark-ssr blog, SQLite + auth, zero config' : 'SSR — spark-ssr, markdown blog, no database')
     : type === 'prerender' ? `prerendered showcase — router, todos, demos + ${FEATURES.filter((f) => features[f.key]).map((f) => f.key).join(', ') || 'core only'}`
     : 'client-only — a single reactive counter to build on';
   stdout.write(`\n${c.green('✔')} Scaffolded ${c.bold(projectName)} in ${c.cyan(rel)} ${c.dim(`(${flavor})`)}\n\n`);

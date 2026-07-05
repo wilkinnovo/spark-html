@@ -1,0 +1,8 @@
+<!-- Pure UI — receives a whole post row (from the glob source) as one prop:
+     <div import="/components/post-card" post="{post}">. A markdown file's
+     front matter became these columns; the filename became {post.slug}. -->
+<article class="card">
+  <h2><a href="/blog/{post.slug}">{post.title}</a></h2>
+  <p>{post.excerpt}</p>
+  <p class="meta">{post.date}</p>
+</article>

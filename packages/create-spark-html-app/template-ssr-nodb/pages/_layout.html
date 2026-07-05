@@ -1,0 +1,14 @@
+<!-- The layout wraps every page. No database here — this whole site runs on
+     markdown files (see content/) read through spark-ssr's glob and module
+     sources. The three shared lines live once; <slot> is the page. -->
+<link rel="stylesheet" href="/style.css">
+<script type="module" src="/app.js"></script>
+
+<div import="/components/nav" blog="Spark Notes" path="{path}"></div>
+
+<slot></slot>
+
+<footer class="foot">
+  Built with <a href="https://github.com/wilkinnovo/spark-html">spark-ssr</a> —
+  no database, just markdown.
+</footer>

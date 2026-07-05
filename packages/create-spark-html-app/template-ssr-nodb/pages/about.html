@@ -1,0 +1,18 @@
+<!-- A plain static page — no data block at all. spark-ssr still wraps it in the
+     layout and ships fully-rendered HTML. -->
+<title>About · Spark Notes</title>
+<meta name="description" content="What this database-free spark-ssr starter is.">
+
+<article class="post">
+  <h1>About</h1>
+  <p class="lede">This is a database-free blog built with <code>spark-ssr</code>.</p>
+  <p>Every post is a markdown file in <code>content/</code>. The homepage reads
+     them with a <strong>glob source</strong> (<code>posts = ./content/*.md</code>);
+     each post page reads one with a <strong>module source</strong>
+     (<code>post = ./lib/post.js</code>). There is no database, no table, no query,
+     and no build step — just files and HTML.</p>
+  <p>Add a post by dropping a new <code>.md</code> file in <code>content/</code>
+     with <code>title</code>, <code>date</code>, and <code>excerpt</code> front
+     matter. Need a database later? Scaffold the SSR template with a database.</p>
+  <p><a href="/">← All posts</a></p>
+</article>

@@ -1,0 +1,27 @@
+<!-- The homepage. `posts = ./content/*.md` is a GLOB source: every markdown
+     file under content/ becomes a row — front matter → columns, filename →
+     slug, body → .body. No database, no table, no query. -->
+<title>Spark Notes — a markdown blog</title>
+<meta name="description" content="A database-free blog powered by spark-ssr and markdown files.">
+
+<header class="hero">
+  <img class="avatar" src="/img/avatar.png" alt="Spark Notes" width="88" height="88">
+  <div>
+    <h1>Spark Notes</h1>
+    <p class="lede">A blog with no database — every post is a markdown file in
+      <code>content/</code>. spark-ssr reads them, renders them, and hydrates.</p>
+  </div>
+</header>
+
+<main>
+  <template each="post in posts">
+    <div import="/components/post-card" post="{post}"></div>
+  </template>
+  <template if="posts.length === 0">
+    <p class="empty">No posts yet — drop a <code>.md</code> file in <code>content/</code>.</p>
+  </template>
+</main>
+
+<spark-ssr>
+  posts = ./content/*.md
+</spark-ssr>

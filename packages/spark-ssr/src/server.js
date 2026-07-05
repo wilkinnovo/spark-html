@@ -1105,15 +1105,67 @@ export async function serve(options = {}) {
     });
   }
 
-  const STATUS_TEXT = { 401: 'Unauthorized', 403: 'Forbidden', 404: 'Not found' };
+  // Human copy for the built-in default error screen (used when the app ships
+  // no <status>.html of its own).
+  const STATUS_INFO = {
+    400: ['Bad request', 'That request could not be understood.'],
+    401: ['Sign in required', 'You need to sign in to view this page.'],
+    403: ['Forbidden', "You don't have access to this page."],
+    404: ['Page not found', "The page you're looking for doesn't exist — it may have moved."],
+    500: ['Server error', 'Something went wrong on our end. Try again in a moment.'],
+  };
+
+  // Zero-config error screen: a styled, self-contained page in the Spark design
+  // system (dark default, gold ⚡, monospace) — no dependency on the app's
+  // layout or data, so it renders even when those are what failed. Apps override
+  // it by dropping a <status>.html in pages/ (or the project root).
+  function defaultErrorPage(status) {
+    const [title, blurb] = STATUS_INFO[status] || ['Error', 'Something went wrong.'];
+    const body = `<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>${status} · ${escapeHtml(title)}</title>
+<style>
+  :root{color-scheme:dark light}
+  *{box-sizing:border-box}
+  body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;
+    background:#000;color:#fff;text-align:center;padding:2rem;
+    font-family:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,monospace;line-height:1.6}
+  @media(prefers-color-scheme:light){body{background:#fff;color:#1a1a1a}}
+  .bolt{font-size:2.25rem;filter:drop-shadow(0 0 16px rgba(255,210,74,.45))}
+  .code{font-size:clamp(3.5rem,14vw,6rem);font-weight:800;letter-spacing:-.04em;margin:.25rem 0 0;
+    background:linear-gradient(110deg,currentColor,#ffd24a);-webkit-background-clip:text;background-clip:text;color:transparent}
+  h1{font-size:1.15rem;font-weight:700;margin:.25rem 0 .5rem}
+  p{color:#888;max-width:32rem;margin:0 auto 1.5rem;font-size:.95rem}
+  @media(prefers-color-scheme:light){p{color:#666}}
+  a{display:inline-block;color:#000;background:#ffd24a;text-decoration:none;font-weight:700;
+    padding:.6rem 1.2rem;border-radius:8px;font-size:.9rem}
+  a:active{transform:scale(.97)}
+</style></head>
+<body><main>
+  <div class="bolt">⚡</div>
+  <div class="code">${status}</div>
+  <h1>${escapeHtml(title)}</h1>
+  <p>${escapeHtml(blurb)}</p>
+  <a href="/">← Back home</a>
+</main></body></html>`;
+    return body;
+  }
+
   function errorPage(status) {
-    const file = join(root, `${status}.html`);
-    if (existsSync(file)) {
-      // The reload client rides along so fixing the page un-sticks the browser.
-      const body = readFileSync(file, 'utf8') + (live ? '\n' + RELOAD_CLIENT : '');
-      return new Response(body, { status, headers: { 'content-type': 'text/html; charset=utf-8' } });
+    // Override precedence: pages/<status>.html (filesystem convention) →
+    // <root>/<status>.html (back-compat) → the built-in default.
+    for (const dir of new Set([pagesDir, root])) {
+      const file = join(dir, `${status}.html`);
+      if (existsSync(file)) {
+        // The reload client rides along so fixing the page un-sticks the browser.
+        const custom = readFileSync(file, 'utf8') + (live ? '\n' + RELOAD_CLIENT : '');
+        return new Response(custom, { status, headers: { 'content-type': 'text/html; charset=utf-8' } });
+      }
     }
-    return new Response(STATUS_TEXT[status] || 'Server error', { status });
+    const body = defaultErrorPage(status) + (live ? '\n' + RELOAD_CLIENT : '');
+    return new Response(body, { status, headers: { 'content-type': 'text/html; charset=utf-8' } });
   }
 
   // Dev-only error overlay (§4): the real error — SQL, file, line — on the

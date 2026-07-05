@@ -1,0 +1,175 @@
+/* One stylesheet for the whole blog — the same design system as the Spark
+   showcase: monospace JetBrains Mono type, a gold --spark accent, rounded
+   surfaces. Fonts come from spark.json ("fonts" → spark-html-font injects
+   @font-face + the --font-jetbrains-mono stack); theming is the data-theme
+   attribute spark-html-theme maintains (dark is the default). */
+
+:root {
+  --bg: #000;
+  --surface: #0a0a0a;
+  --surface-2: #101014;
+  --border: #1a1a1a;
+  --border-strong: #333;
+  --text: #fff;
+  --muted: #888;
+  --muted-dim: #555;
+  --spark: #ffd24a;
+  --spark-ink: #ffd24a;
+  --danger: #ff6b6b;
+  --radius: 12px;
+  --font: var(--font-jetbrains-mono, "JetBrains Mono", ui-monospace, monospace);
+}
+
+[data-theme="light"] {
+  --bg: #fff;
+  --surface: #fafafa;
+  --surface-2: #f4f4f5;
+  --border: #ededed;
+  --border-strong: #d4d4d4;
+  --text: #1a1a1a;
+  --muted: #666;
+  --muted-dim: #999;
+  --spark: #ffd24a;
+  --spark-ink: #9a6a00;
+  --danger: #d63b3b;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+body {
+  margin: 0 auto;
+  max-width: 720px;
+  padding: 0 1.25rem 4rem;
+  font-family: var(--font);
+  line-height: 1.6;
+  background: var(--bg);
+  color: var(--text);
+  -webkit-font-smoothing: antialiased;
+}
+
+a { color: var(--spark-ink); text-decoration: none; }
+a:hover { text-decoration: underline; }
+h1, h2, h3 { line-height: 1.2; letter-spacing: -0.02em; }
+::selection { background: var(--spark); color: #000; }
+[data-theme="light"] ::selection { background: #ffe9a8; color: #111; }
+code {
+  background: var(--surface-2);
+  color: var(--spark-ink);
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 0.85em;
+}
+
+/* ── nav ── */
+.nav {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem 0;
+  margin-bottom: 1rem;
+  border-bottom: 1px solid var(--border);
+}
+.nav .brand {
+  font-weight: 700;
+  color: var(--text);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+.nav .links { display: flex; align-items: center; gap: 0.35rem; }
+.nav .links a {
+  color: var(--muted);
+  padding: 0.35rem 0.6rem;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  transition: color 0.12s, background 0.12s;
+}
+.nav .links a:hover { color: var(--text); background: var(--surface-2); text-decoration: none; }
+.nav .links a.on { color: var(--spark-ink); background: var(--surface-2); font-weight: 700; }
+
+/* ── home ── */
+.hero { display: flex; gap: 1.25rem; align-items: center; margin: 2rem 0 2.5rem; }
+.hero h1 { margin: 0 0 0.25rem; font-size: clamp(1.6rem, 5vw, 2.2rem); }
+.avatar { border-radius: 50%; border: 1px solid var(--border-strong); }
+.lede { color: var(--muted); margin: 0; }
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1rem 1.25rem;
+  margin: 0 0 1rem;
+  transition: border-color 0.12s;
+}
+.card:hover { border-color: var(--border-strong); }
+.card h2 { margin: 0 0 0.35rem; font-size: 1.1rem; }
+.card h2 a { color: var(--text); }
+.card h2 a:hover { color: var(--spark-ink); text-decoration: none; }
+.card p { margin: 0 0 0.35rem; color: var(--muted); }
+.meta { color: var(--muted-dim); font-size: 0.8rem; }
+.empty { color: var(--muted); }
+
+/* ── post page ── */
+.post { margin-top: 2rem; }
+.post h1 { font-size: clamp(1.8rem, 6vw, 2.4rem); font-weight: 800; }
+.post .lede { margin: 0.75rem 0; }
+.post .body { white-space: pre-line; margin-top: 1.5rem; color: var(--text); }
+.pill {
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 0.1rem 0.55rem;
+  border-radius: 999px;
+  vertical-align: middle;
+}
+.pill.draft { background: var(--spark); color: #000; }
+.pill.live { background: #16a34a; color: #fff; }
+
+/* ── admin ── */
+.admin-head { display: flex; justify-content: space-between; align-items: center; }
+.panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1.25rem;
+  margin: 0 0 1.25rem;
+}
+.panel h2 { margin-top: 0; font-size: 1.15rem; }
+.panel h3 { margin: 1.25rem 0 0.5rem; font-size: 0.95rem; color: var(--muted); }
+.row { display: flex; align-items: center; gap: 0.6rem; margin: 0.4rem 0; }
+.grow { flex: 1; }
+.done { text-decoration: line-through; color: var(--muted-dim); }
+.hint { color: var(--muted); font-size: 0.85rem; }
+.error { color: var(--danger); }
+
+/* ── forms & buttons ── */
+input, textarea {
+  font: inherit;
+  color: var(--text);
+  background: var(--bg);
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  padding: 0.5rem 0.7rem;
+}
+input:focus, textarea:focus { outline: none; border-color: var(--spark); }
+.login { max-width: 380px; margin: 3rem auto; display: grid; gap: 0.75rem; }
+.login label { display: grid; gap: 0.25rem; font-size: 0.9rem; color: var(--muted); }
+.panel input, .panel textarea { width: 100%; margin: 0.25rem 0; }
+.row input, .row button { width: auto; margin: 0; }
+
+button {
+  font: inherit;
+  cursor: pointer;
+  color: var(--text);
+  background: var(--surface-2);
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  padding: 0.5rem 0.8rem;
+  transition: border-color 0.12s, color 0.12s, transform 0.08s;
+}
+button:hover:not(:disabled) { border-color: var(--spark); color: var(--spark-ink); }
+button:active:not(:disabled) { transform: scale(0.97); }
+button:disabled { opacity: 0.4; cursor: default; }
+button.danger:hover:not(:disabled) { border-color: var(--danger); color: var(--danger); }
+button.ghost, button.toggle { border: none; background: none; padding: 0.2rem; }
+button.ghost:hover:not(:disabled), button.toggle:hover:not(:disabled) { color: var(--spark-ink); transform: none; }

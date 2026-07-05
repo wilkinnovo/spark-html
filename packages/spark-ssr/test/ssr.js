@@ -936,6 +936,31 @@ await test('declarative status (§3): the rendered else-branch sets 404', async 
   assert.equal((await fetch(`${L}/blog/draft`)).status, 404, 'unpublished stays invisible');
 });
 
+await test('errors: unknown route gets a styled default 404; pages/404.html overrides it', async () => {
+  // No 404.html anywhere → the built-in styled default (not bare text).
+  const root = mkdtempSync(join(tmpdir(), 'spark-ssr-404-'));
+  writeFileSync(join(root, 'spark.json'), JSON.stringify({ db: 'sqlite::memory:' }));
+  mkdirSync(join(root, 'pages'), { recursive: true });
+  writeFileSync(join(root, 'pages', 'index.html'), '<h1>Home</h1>');
+  let s = await serve({ root, port: 0, quiet: true });
+  let res = await fetch(`http://localhost:${s.port}/does-not-exist`);
+  assert.equal(res.status, 404);
+  let body = await res.text();
+  assert.ok(res.headers.get('content-type').includes('text/html'), 'served as HTML');
+  assert.ok(body.includes('<!doctype html>') && body.includes('>404<'), 'the built-in default renders');
+  assert.ok(!/^Not found$/.test(body.trim()), 'not the bare text response');
+  await s.stop?.();
+
+  // Drop pages/404.html → it wins.
+  writeFileSync(join(root, 'pages', '404.html'), '<h1 id="custom">Nothing here</h1>');
+  s = await serve({ root, port: 0, quiet: true });
+  res = await fetch(`http://localhost:${s.port}/nope`);
+  assert.equal(res.status, 404, 'still a 404 status');
+  assert.ok((await res.text()).includes('id="custom"'), 'the app 404 page overrides the default');
+  assert.equal((await fetch(`http://localhost:${s.port}/404`)).status, 404, '404.html is not itself a route');
+  await s.stop?.();
+});
+
 await test('ambient {path}: the current request path is page scope (nav highlighting)', async () => {
   writeFileSync(join(layoutRoot, 'pages', 'where.html'),
     '<p id="pth">{path}</p><p id="on">{path === \'/where\' ? \'yes\' : \'no\'}</p>');
