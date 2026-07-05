@@ -1,95 +1,6 @@
 {
   "communities": {
     "0": [
-      "packages_spark_ssr_bin_cli",
-      "packages_spark_ssr_bin_cli_build",
-      "packages_spark_ssr_bin_cli_dbcmd",
-      "packages_spark_ssr_bin_cli_opts",
-      "packages_spark_ssr_bin_cli_parseargs",
-      "packages_spark_ssr_bin_cli_root",
-      "packages_spark_ssr_bin_cli_ship_dirs",
-      "packages_spark_ssr_bin_cli_ship_files",
-      "packages_spark_ssr_src_config",
-      "packages_spark_ssr_src_config_loadconfig",
-      "packages_spark_ssr_src_config_resolveenv",
-      "packages_spark_ssr_src_db",
-      "packages_spark_ssr_src_db_bindable",
-      "packages_spark_ssr_src_db_connect",
-      "packages_spark_ssr_src_db_yieldsrows",
-      "packages_spark_ssr_src_hydrate",
-      "packages_spark_ssr_src_hydrate_clientcomponent",
-      "packages_spark_ssr_src_hydrate_clientscript",
-      "packages_spark_ssr_src_hydrate_definednames",
-      "packages_spark_ssr_src_hydrate_handlerroles",
-      "packages_spark_ssr_src_hydrate_initmodule",
-      "packages_spark_ssr_src_hydrate_primarycolumn",
-      "packages_spark_ssr_src_hydrate_stripdeclarations",
-      "packages_spark_ssr_src_index",
-      "packages_spark_ssr_src_parse",
-      "packages_spark_ssr_src_parse_analyze",
-      "packages_spark_ssr_src_parse_classifysource",
-      "packages_spark_ssr_src_parse_dataplan",
-      "packages_spark_ssr_src_parse_editdistance",
-      "packages_spark_ssr_src_parse_extractblocks",
-      "packages_spark_ssr_src_parse_extractforms",
-      "packages_spark_ssr_src_parse_input_rules",
-      "packages_spark_ssr_src_parse_maskcomments",
-      "packages_spark_ssr_src_parse_mergeanalyses",
-      "packages_spark_ssr_src_parse_parseattrs",
-      "packages_spark_ssr_src_parse_parsebody",
-      "packages_spark_ssr_src_parse_rewriteparams",
-      "packages_spark_ssr_src_parse_rootof",
-      "packages_spark_ssr_src_parse_singleshaped",
-      "packages_spark_ssr_src_parse_singular",
-      "packages_spark_ssr_src_parse_sqltables",
-      "packages_spark_ssr_src_parse_validatefields",
-      "packages_spark_ssr_src_schema",
-      "packages_spark_ssr_src_schema_affinity",
-      "packages_spark_ssr_src_schema_createsql",
-      "packages_spark_ssr_src_schema_diffschema",
-      "packages_spark_ssr_src_schema_inferschema",
-      "packages_spark_ssr_src_schema_input_type",
-      "packages_spark_ssr_src_schema_never_retype",
-      "packages_spark_ssr_src_schema_pushschema",
-      "packages_spark_ssr_src_schema_q",
-      "packages_spark_ssr_src_schema_rebuildtable",
-      "packages_spark_ssr_src_schema_reserved",
-      "packages_spark_ssr_src_schema_seedtables",
-      "packages_spark_ssr_src_schema_valuetype",
-      "packages_spark_ssr_src_server",
-      "packages_spark_ssr_src_server_b64",
-      "packages_spark_ssr_src_server_dig",
-      "packages_spark_ssr_src_server_escapehtml",
-      "packages_spark_ssr_src_server_flash_cookie",
-      "packages_spark_ssr_src_server_isadmin",
-      "packages_spark_ssr_src_server_json",
-      "packages_spark_ssr_src_server_layoutchain",
-      "packages_spark_ssr_src_server_matchpage",
-      "packages_spark_ssr_src_server_mergeheads",
-      "packages_spark_ssr_src_server_mergescripts",
-      "packages_spark_ssr_src_server_pagedata",
-      "packages_spark_ssr_src_server_parsefile",
-      "packages_spark_ssr_src_server_projectschema",
-      "packages_spark_ssr_src_server_readflash",
-      "packages_spark_ssr_src_server_readsession",
-      "packages_spark_ssr_src_server_reserved_files",
-      "packages_spark_ssr_src_server_reserved_root_dirs",
-      "packages_spark_ssr_src_server_scanpages",
-      "packages_spark_ssr_src_server_serve",
-      "packages_spark_ssr_src_server_session_cookie",
-      "packages_spark_ssr_src_server_signflash",
-      "packages_spark_ssr_src_server_signsession",
-      "packages_spark_ssr_src_server_splitscript",
-      "packages_spark_ssr_src_sources",
-      "packages_spark_ssr_src_sources_glob_cache",
-      "packages_spark_ssr_src_sources_globregex",
-      "packages_spark_ssr_src_sources_globsource",
-      "packages_spark_ssr_src_sources_makesourcecache",
-      "packages_spark_ssr_src_sources_modulesource",
-      "packages_spark_ssr_src_sources_parsefrontmatter",
-      "packages_spark_ssr_src_sources_urlsource"
-    ],
-    "1": [
       "examples_jsimports_spark_config",
       "packages_spark_prerender_bin_cli",
       "packages_spark_prerender_bin_cli_main",
@@ -156,50 +67,51 @@
       "packages_spark_prerender_test_routes_source",
       "packages_spark_prerender_test_routes_test"
     ],
-    "2": [
-      "packages_spark_ssr_package_engines_bun",
-      "packages_spark_ssr_src_render",
-      "packages_spark_ssr_src_render_compile",
-      "packages_spark_ssr_src_render_compileattrs",
-      "packages_spark_ssr_src_render_compilelist",
-      "packages_spark_ssr_src_render_componentprogram",
-      "packages_spark_ssr_src_render_components",
-      "packages_spark_ssr_src_render_defaultawaiterror",
-      "packages_spark_ssr_src_render_emitopen",
-      "packages_spark_ssr_src_render_empty_attrs",
-      "packages_spark_ssr_src_render_escapeattr",
-      "packages_spark_ssr_src_render_escapetext",
-      "packages_spark_ssr_src_render_evalexpr",
-      "packages_spark_ssr_src_render_evalfn",
-      "packages_spark_ssr_src_render_fn_cache",
-      "packages_spark_ssr_src_render_globals",
-      "packages_spark_ssr_src_render_interpolate",
-      "packages_spark_ssr_src_render_lru",
-      "packages_spark_ssr_src_render_programfor",
-      "packages_spark_ssr_src_render_programs",
-      "packages_spark_ssr_src_render_proxy_memo",
-      "packages_spark_ssr_src_render_rawattr",
-      "packages_spark_ssr_src_render_renderfragment",
-      "packages_spark_ssr_src_render_renderfragmentto",
-      "packages_spark_ssr_src_render_renderimport",
-      "packages_spark_ssr_src_render_run",
-      "packages_spark_ssr_src_render_scopeproxy",
-      "packages_spark_ssr_src_render_scriptliterals",
-      "packages_spark_ssr_src_render_serializeprop",
-      "packages_spark_ssr_src_render_str",
-      "packages_spark_ssr_src_render_templatekids",
-      "packages_spark_ssr_src_render_textparts",
-      "packages_spark_ssr_test_bench",
-      "packages_spark_ssr_test_bench_args",
-      "packages_spark_ssr_test_bench_httpbench",
-      "packages_spark_ssr_test_bench_makebenchapp",
-      "packages_spark_ssr_test_bench_mb",
-      "packages_spark_ssr_test_bench_micro",
-      "packages_spark_ssr_test_bench_quantile",
-      "packages_spark_ssr_test_bench_report",
-      "packages_spark_ssr_test_bench_rss"
+    "1": [
+      "examples_basic_src_main",
+      "packages_spark_html_head_src_index_d",
+      "packages_spark_html_head_src_index_d_headoptions",
+      "packages_spark_html_manifest_src_index_d",
+      "packages_spark_html_manifest_src_index_d_appshellswoptions",
+      "packages_spark_html_manifest_src_index_d_manifestconfig",
+      "packages_spark_html_manifest_src_index_d_manifesticon",
+      "packages_spark_html_motion_src_index_d",
+      "packages_spark_html_motion_src_index_d_motionoptions",
+      "packages_spark_html_motion_src_index_d_preset",
+      "packages_spark_html_offline_src_index_d",
+      "packages_spark_html_offline_src_index_d_offlinebuildoptions",
+      "packages_spark_html_offline_src_index_d_offlineoptions",
+      "packages_spark_html_offline_src_index_d_offlineswoptions",
+      "packages_spark_html_persist_src_index_d",
+      "packages_spark_html_persist_src_index_d_persistoptions",
+      "packages_spark_html_query_src_index_d",
+      "packages_spark_html_query_src_index_d_queryoptions",
+      "packages_spark_html_query_src_index_d_querystate",
+      "packages_spark_html_sri_src_index_d",
+      "packages_spark_html_sri_src_index_d_srialgorithm",
+      "packages_spark_html_sri_src_index_d_srioptions",
+      "packages_spark_src_index_parsesfc",
+      "website_src_highlight",
+      "website_src_highlight_escapehtml",
+      "website_src_highlight_highlightall",
+      "website_src_highlight_highlightcss",
+      "website_src_highlight_highlighthtml",
+      "website_src_highlight_highlightjs",
+      "website_src_highlight_highlightsource",
+      "website_src_highlight_highlighttagbody",
+      "website_src_highlight_injecttokenstyles",
+      "website_src_highlight_span",
+      "website_src_main",
+      "website_src_main_base",
+      "website_src_playground",
+      "website_src_playground_buildsrcdoc",
+      "website_src_playground_default_files",
+      "website_src_playground_frameurl",
+      "website_src_playground_setupplayground",
+      "website_src_tutorial_lessons",
+      "website_src_tutorial_lessons_tutorial_lessons"
     ],
-    "3": [
+    "2": [
       "packages_spark_html_language_server_bin_cli",
       "packages_spark_html_language_server_src_analyze",
       "packages_spark_html_language_server_src_analyze_analyze",
@@ -239,6 +151,42 @@
       "packages_spark_html_language_server_test_lsp_makeserver",
       "packages_spark_html_language_server_test_lsp_test"
     ],
+    "3": [
+      "packages_create_spark_html_app_template_ssr_public_app",
+      "packages_spark_html_font_src_bun",
+      "packages_spark_html_font_src_bun_htmlfiles",
+      "packages_spark_html_font_src_bun_sparkfont",
+      "packages_spark_html_font_src_index",
+      "packages_spark_html_font_src_index_fontcss",
+      "packages_spark_html_font_src_index_fonthtml",
+      "packages_spark_html_font_src_index_fontlinks",
+      "packages_spark_html_font_src_index_fonts",
+      "packages_spark_html_font_src_index_formatof",
+      "packages_spark_html_font_src_index_googleurl",
+      "packages_spark_html_font_src_index_metrics",
+      "packages_spark_html_font_src_index_slug",
+      "packages_spark_html_font_test_font",
+      "packages_spark_html_font_test_font_config",
+      "packages_spark_html_font_test_font_test",
+      "packages_spark_html_theme_src_bun",
+      "packages_spark_html_theme_src_bun_htmlfiles",
+      "packages_spark_html_theme_src_bun_inject",
+      "packages_spark_html_theme_src_bun_sparktheme",
+      "packages_spark_html_theme_src_index",
+      "packages_spark_html_theme_src_index_d",
+      "packages_spark_html_theme_src_index_d_themeoptions",
+      "packages_spark_html_theme_src_index_d_themestore",
+      "packages_spark_html_theme_src_index_d_themestore_cycle",
+      "packages_spark_html_theme_src_index_d_themestore_set",
+      "packages_spark_html_theme_src_index_d_themestore_toggle",
+      "packages_spark_html_theme_src_index_default_modes",
+      "packages_spark_html_theme_src_index_theme",
+      "packages_spark_html_theme_src_init",
+      "packages_spark_html_theme_src_init_themeinitscript",
+      "website_spark_config",
+      "website_spark_config_prerenderfetch",
+      "website_spark_config_stats"
+    ],
     "4": [
       "packages_spark_html_theme_test_theme",
       "packages_spark_html_theme_test_theme_datatheme",
@@ -246,13 +194,6 @@
       "packages_spark_html_theme_test_theme_matches",
       "packages_spark_html_theme_test_theme_mem",
       "packages_spark_html_theme_test_theme_test",
-      "packages_spark_html_websocket_src_index",
-      "packages_spark_html_websocket_src_index_defaults",
-      "packages_spark_html_websocket_src_index_handles",
-      "packages_spark_html_websocket_src_index_namefor",
-      "packages_spark_html_websocket_src_index_parsemessage",
-      "packages_spark_html_websocket_src_index_sockets",
-      "packages_spark_html_websocket_src_index_ws",
       "packages_spark_test_dom_shim_element",
       "packages_spark_test_dom_shim_element_addeventlistener",
       "packages_spark_test_dom_shim_element_after",
@@ -276,8 +217,7 @@
       "packages_spark_test_dom_shim_element_removechild",
       "packages_spark_test_dom_shim_element_replacewith",
       "packages_spark_test_dom_shim_element_setattribute",
-      "packages_spark_test_dom_shim_element_textcontent",
-      "packages_spark_test_dom_shim_element_value"
+      "packages_spark_test_dom_shim_element_textcontent"
     ],
     "5": [
       "editors_vscode_package",
@@ -311,36 +251,6 @@
       "editors_vscode_package_version"
     ],
     "6": [
-      "packages_spark_html_devtools_src_index",
-      "packages_spark_html_devtools_src_index_components",
-      "packages_spark_html_devtools_src_index_devtools",
-      "packages_spark_html_devtools_src_index_esc",
-      "packages_spark_html_devtools_src_index_readscope",
-      "packages_spark_html_devtools_src_index_safe",
-      "packages_spark_html_router_src_index",
-      "packages_spark_html_router_src_index_afternav",
-      "packages_spark_html_router_src_index_chain",
-      "packages_spark_html_router_src_index_closestoutlet",
-      "packages_spark_html_router_src_index_currentpath",
-      "packages_spark_html_router_src_index_defaultnotfoundhtml",
-      "packages_spark_html_router_src_index_ensurecatchall",
-      "packages_spark_html_router_src_index_markactivelinks",
-      "packages_spark_html_router_src_index_navigate",
-      "packages_spark_html_router_src_index_normalize",
-      "packages_spark_html_router_src_index_onclick",
-      "packages_spark_html_router_src_index_parsequery",
-      "packages_spark_html_router_src_index_prepareinitial",
-      "packages_spark_html_router_src_index_querystring",
-      "packages_spark_html_router_src_index_render",
-      "packages_spark_html_router_src_index_renderchain",
-      "packages_spark_html_router_src_index_resolvein",
-      "packages_spark_html_router_src_index_router",
-      "packages_spark_html_router_src_index_sameparams",
-      "packages_spark_html_router_src_index_setroute",
-      "packages_spark_html_router_src_index_syncquerytourl",
-      "packages_spark_html_router_src_index_templatesat"
-    ],
-    "7": [
       "packages_spark_html_bun_bin_cli",
       "packages_spark_html_bun_bin_cli_cmd_rest",
       "packages_spark_html_bun_bin_cli_flags",
@@ -369,7 +279,7 @@
       "packages_spark_html_bun_test_bun_ran",
       "packages_spark_html_bun_test_bun_test"
     ],
-    "8": [
+    "7": [
       "packages_spark_html_sri_src_bun",
       "packages_spark_html_sri_src_bun_sparksri",
       "packages_spark_html_sri_src_bun_srihash",
@@ -398,35 +308,7 @@
       "packages_spark_html_sri_test_sri_storage",
       "packages_spark_html_sri_test_sri_test"
     ],
-    "9": [
-      "packages_spark_html_font_src_bun",
-      "packages_spark_html_font_src_bun_htmlfiles",
-      "packages_spark_html_font_src_bun_sparkfont",
-      "packages_spark_html_font_src_index",
-      "packages_spark_html_font_src_index_fontcss",
-      "packages_spark_html_font_src_index_fonthtml",
-      "packages_spark_html_font_src_index_fontlinks",
-      "packages_spark_html_font_src_index_fonts",
-      "packages_spark_html_font_src_index_formatof",
-      "packages_spark_html_font_src_index_googleurl",
-      "packages_spark_html_font_src_index_metrics",
-      "packages_spark_html_font_src_index_slug",
-      "packages_spark_html_font_test_font",
-      "packages_spark_html_font_test_font_config",
-      "packages_spark_html_font_test_font_test",
-      "packages_spark_html_theme_src_bun",
-      "packages_spark_html_theme_src_bun_htmlfiles",
-      "packages_spark_html_theme_src_bun_inject",
-      "packages_spark_html_theme_src_bun_sparktheme",
-      "packages_spark_html_theme_src_index",
-      "packages_spark_html_theme_src_index_default_modes",
-      "packages_spark_html_theme_src_init",
-      "packages_spark_html_theme_src_init_themeinitscript",
-      "website_spark_config",
-      "website_spark_config_prerenderfetch",
-      "website_spark_config_stats"
-    ],
-    "10": [
+    "8": [
       "packages_spark_prerender_package",
       "packages_spark_prerender_package_bin",
       "packages_spark_prerender_package_bin_spark_prerender",
@@ -453,6 +335,62 @@
       "packages_spark_prerender_package_type",
       "packages_spark_prerender_package_types",
       "packages_spark_prerender_package_version"
+    ],
+    "9": [
+      "packages_spark_ssr_package",
+      "packages_spark_ssr_package_bin",
+      "packages_spark_ssr_package_bin_spark_ssr",
+      "packages_spark_ssr_package_default",
+      "packages_spark_ssr_package_dependencies",
+      "packages_spark_ssr_package_dependencies_linkedom",
+      "packages_spark_ssr_package_dependencies_spark_html",
+      "packages_spark_ssr_package_dependencies_spark_html_head",
+      "packages_spark_ssr_package_description",
+      "packages_spark_ssr_package_engines",
+      "packages_spark_ssr_package_engines_bun",
+      "packages_spark_ssr_package_exports",
+      "packages_spark_ssr_package_files",
+      "packages_spark_ssr_package_homepage",
+      "packages_spark_ssr_package_keywords",
+      "packages_spark_ssr_package_license",
+      "packages_spark_ssr_package_main",
+      "packages_spark_ssr_package_name",
+      "packages_spark_ssr_package_repository",
+      "packages_spark_ssr_package_repository_directory",
+      "packages_spark_ssr_package_repository_type",
+      "packages_spark_ssr_package_repository_url",
+      "packages_spark_ssr_package_scripts",
+      "packages_spark_ssr_package_scripts_test",
+      "packages_spark_ssr_package_type",
+      "packages_spark_ssr_package_version"
+    ],
+    "10": [
+      "packages_spark_ssr_src_config",
+      "packages_spark_ssr_src_config_loadconfig",
+      "packages_spark_ssr_src_config_resolveenv",
+      "packages_spark_ssr_src_parse_sqltables",
+      "packages_spark_ssr_src_server",
+      "packages_spark_ssr_src_server_b64",
+      "packages_spark_ssr_src_server_dig",
+      "packages_spark_ssr_src_server_escapehtml",
+      "packages_spark_ssr_src_server_flash_cookie",
+      "packages_spark_ssr_src_server_isadmin",
+      "packages_spark_ssr_src_server_json",
+      "packages_spark_ssr_src_server_layoutchain",
+      "packages_spark_ssr_src_server_matchpage",
+      "packages_spark_ssr_src_server_mergeheads",
+      "packages_spark_ssr_src_server_mergescripts",
+      "packages_spark_ssr_src_server_pagedata",
+      "packages_spark_ssr_src_server_projectschema",
+      "packages_spark_ssr_src_server_readflash",
+      "packages_spark_ssr_src_server_readsession",
+      "packages_spark_ssr_src_server_reserved_files",
+      "packages_spark_ssr_src_server_reserved_root_dirs",
+      "packages_spark_ssr_src_server_scanpages",
+      "packages_spark_ssr_src_server_serve",
+      "packages_spark_ssr_src_server_session_cookie",
+      "packages_spark_ssr_src_server_signflash",
+      "packages_spark_ssr_src_server_signsession"
     ],
     "11": [
       "packages_spark_html_theme_package",
@@ -482,33 +420,6 @@
       "packages_spark_html_theme_package_version"
     ],
     "12": [
-      "packages_spark_ssr_package",
-      "packages_spark_ssr_package_bin",
-      "packages_spark_ssr_package_bin_spark_ssr",
-      "packages_spark_ssr_package_default",
-      "packages_spark_ssr_package_dependencies",
-      "packages_spark_ssr_package_dependencies_linkedom",
-      "packages_spark_ssr_package_dependencies_spark_html",
-      "packages_spark_ssr_package_dependencies_spark_html_head",
-      "packages_spark_ssr_package_description",
-      "packages_spark_ssr_package_engines",
-      "packages_spark_ssr_package_exports",
-      "packages_spark_ssr_package_files",
-      "packages_spark_ssr_package_homepage",
-      "packages_spark_ssr_package_keywords",
-      "packages_spark_ssr_package_license",
-      "packages_spark_ssr_package_main",
-      "packages_spark_ssr_package_name",
-      "packages_spark_ssr_package_repository",
-      "packages_spark_ssr_package_repository_directory",
-      "packages_spark_ssr_package_repository_type",
-      "packages_spark_ssr_package_repository_url",
-      "packages_spark_ssr_package_scripts",
-      "packages_spark_ssr_package_scripts_test",
-      "packages_spark_ssr_package_type",
-      "packages_spark_ssr_package_version"
-    ],
-    "13": [
       "website_package",
       "website_package_dependencies",
       "website_package_dependencies_spark_html",
@@ -535,7 +446,7 @@
       "website_package_type",
       "website_package_version"
     ],
-    "14": [
+    "13": [
       "packages_spark_html_head_package",
       "packages_spark_html_head_package_default",
       "packages_spark_html_head_package_dependencies",
@@ -561,7 +472,7 @@
       "packages_spark_html_head_package_types",
       "packages_spark_html_head_package_version"
     ],
-    "15": [
+    "14": [
       "packages_spark_html_image_package",
       "packages_spark_html_image_package_bun_default",
       "packages_spark_html_image_package_default",
@@ -587,7 +498,7 @@
       "packages_spark_html_image_package_types",
       "packages_spark_html_image_package_version"
     ],
-    "16": [
+    "15": [
       "packages_spark_src_index",
       "packages_spark_src_index_analysiscache",
       "packages_spark_src_index_component",
@@ -613,7 +524,7 @@
       "packages_spark_src_index_templatecache",
       "packages_spark_src_index_warned"
     ],
-    "17": [
+    "16": [
       "packages_create_spark_html_app_template_prerender_package",
       "packages_create_spark_html_app_template_prerender_package_dependencies",
       "packages_create_spark_html_app_template_prerender_package_dependencies_spark_html",
@@ -638,7 +549,7 @@
       "packages_create_spark_html_app_template_prerender_package_type",
       "packages_create_spark_html_app_template_prerender_package_version"
     ],
-    "18": [
+    "17": [
       "packages_spark_html_manifest_package",
       "packages_spark_html_manifest_package_bun_default",
       "packages_spark_html_manifest_package_default",
@@ -663,7 +574,7 @@
       "packages_spark_html_manifest_package_types",
       "packages_spark_html_manifest_package_version"
     ],
-    "19": [
+    "18": [
       "packages_spark_test_composition",
       "packages_spark_test_composition_fire",
       "packages_spark_test_composition_test",
@@ -688,7 +599,55 @@
       "packages_spark_test_repro_input_fire",
       "packages_spark_test_repro_input_input"
     ],
+    "19": [
+      "packages_spark_html_router_src_index",
+      "packages_spark_html_router_src_index_afternav",
+      "packages_spark_html_router_src_index_chain",
+      "packages_spark_html_router_src_index_closestoutlet",
+      "packages_spark_html_router_src_index_currentpath",
+      "packages_spark_html_router_src_index_defaultnotfoundhtml",
+      "packages_spark_html_router_src_index_ensurecatchall",
+      "packages_spark_html_router_src_index_markactivelinks",
+      "packages_spark_html_router_src_index_navigate",
+      "packages_spark_html_router_src_index_normalize",
+      "packages_spark_html_router_src_index_onclick",
+      "packages_spark_html_router_src_index_parsequery",
+      "packages_spark_html_router_src_index_prepareinitial",
+      "packages_spark_html_router_src_index_querystring",
+      "packages_spark_html_router_src_index_render",
+      "packages_spark_html_router_src_index_renderchain",
+      "packages_spark_html_router_src_index_resolvein",
+      "packages_spark_html_router_src_index_router",
+      "packages_spark_html_router_src_index_sameparams",
+      "packages_spark_html_router_src_index_setroute",
+      "packages_spark_html_router_src_index_syncquerytourl",
+      "packages_spark_html_router_src_index_templatesat"
+    ],
     "20": [
+      "packages_spark_ssr_bin_cli",
+      "packages_spark_ssr_bin_cli_build",
+      "packages_spark_ssr_bin_cli_dbcmd",
+      "packages_spark_ssr_bin_cli_opts",
+      "packages_spark_ssr_bin_cli_parseargs",
+      "packages_spark_ssr_bin_cli_root",
+      "packages_spark_ssr_bin_cli_ship_dirs",
+      "packages_spark_ssr_bin_cli_ship_files",
+      "packages_spark_ssr_src_parse_singular",
+      "packages_spark_ssr_src_schema",
+      "packages_spark_ssr_src_schema_affinity",
+      "packages_spark_ssr_src_schema_createsql",
+      "packages_spark_ssr_src_schema_diffschema",
+      "packages_spark_ssr_src_schema_inferschema",
+      "packages_spark_ssr_src_schema_input_type",
+      "packages_spark_ssr_src_schema_never_retype",
+      "packages_spark_ssr_src_schema_pushschema",
+      "packages_spark_ssr_src_schema_q",
+      "packages_spark_ssr_src_schema_rebuildtable",
+      "packages_spark_ssr_src_schema_reserved",
+      "packages_spark_ssr_src_schema_seedtables",
+      "packages_spark_ssr_src_schema_valuetype"
+    ],
+    "21": [
       "packages_spark_html_devtools_package",
       "packages_spark_html_devtools_package_default",
       "packages_spark_html_devtools_package_dependencies",
@@ -711,7 +670,7 @@
       "packages_spark_html_devtools_package_types",
       "packages_spark_html_devtools_package_version"
     ],
-    "21": [
+    "22": [
       "packages_spark_html_font_package",
       "packages_spark_html_font_package_bun_default",
       "packages_spark_html_font_package_default",
@@ -734,7 +693,7 @@
       "packages_spark_html_font_package_types",
       "packages_spark_html_font_package_version"
     ],
-    "22": [
+    "23": [
       "packages_spark_html_language_server_package",
       "packages_spark_html_language_server_package_bin",
       "packages_spark_html_language_server_package_bin_spark_html_language_server",
@@ -757,7 +716,7 @@
       "packages_spark_html_language_server_package_types",
       "packages_spark_html_language_server_package_version"
     ],
-    "23": [
+    "24": [
       "packages_spark_html_motion_package",
       "packages_spark_html_motion_package_default",
       "packages_spark_html_motion_package_dependencies",
@@ -780,7 +739,7 @@
       "packages_spark_html_motion_package_types",
       "packages_spark_html_motion_package_version"
     ],
-    "24": [
+    "25": [
       "packages_spark_html_offline_package",
       "packages_spark_html_offline_package_bun_default",
       "packages_spark_html_offline_package_default",
@@ -803,7 +762,7 @@
       "packages_spark_html_offline_package_types",
       "packages_spark_html_offline_package_version"
     ],
-    "25": [
+    "26": [
       "packages_spark_html_persist_package",
       "packages_spark_html_persist_package_default",
       "packages_spark_html_persist_package_description",
@@ -826,7 +785,7 @@
       "packages_spark_html_persist_package_types",
       "packages_spark_html_persist_package_version"
     ],
-    "26": [
+    "27": [
       "packages_spark_html_query_package",
       "packages_spark_html_query_package_default",
       "packages_spark_html_query_package_description",
@@ -849,7 +808,7 @@
       "packages_spark_html_query_package_types",
       "packages_spark_html_query_package_version"
     ],
-    "27": [
+    "28": [
       "packages_spark_html_router_package",
       "packages_spark_html_router_package_default",
       "packages_spark_html_router_package_dependencies",
@@ -872,7 +831,7 @@
       "packages_spark_html_router_package_types",
       "packages_spark_html_router_package_version"
     ],
-    "28": [
+    "29": [
       "packages_spark_html_sri_package",
       "packages_spark_html_sri_package_bun_default",
       "packages_spark_html_sri_package_default",
@@ -895,7 +854,7 @@
       "packages_spark_html_sri_package_types",
       "packages_spark_html_sri_package_version"
     ],
-    "29": [
+    "30": [
       "packages_spark_html_websocket_package",
       "packages_spark_html_websocket_package_default",
       "packages_spark_html_websocket_package_description",
@@ -917,28 +876,6 @@
       "packages_spark_html_websocket_package_type",
       "packages_spark_html_websocket_package_types",
       "packages_spark_html_websocket_package_version"
-    ],
-    "30": [
-      "packages_create_spark_html_app_bin_index",
-      "packages_create_spark_html_app_bin_index_applyfeatures",
-      "packages_create_spark_html_app_bin_index_bail",
-      "packages_create_spark_html_app_bin_index_bolt",
-      "packages_create_spark_html_app_bin_index_c",
-      "packages_create_spark_html_app_bin_index_features",
-      "packages_create_spark_html_app_bin_index_here",
-      "packages_create_spark_html_app_bin_index_isemptydir",
-      "packages_create_spark_html_app_bin_index_latestrange",
-      "packages_create_spark_html_app_bin_index_main",
-      "packages_create_spark_html_app_bin_index_paint",
-      "packages_create_spark_html_app_bin_index_pickfeatures",
-      "packages_create_spark_html_app_bin_index_pickssrdb",
-      "packages_create_spark_html_app_bin_index_picktype",
-      "packages_create_spark_html_app_bin_index_prompt",
-      "packages_create_spark_html_app_bin_index_sanitizename",
-      "packages_create_spark_html_app_bin_index_stripmarkers",
-      "packages_create_spark_html_app_bin_index_templatedir",
-      "packages_create_spark_html_app_bin_index_types",
-      "packages_create_spark_html_app_bin_index_walkfiles"
     ],
     "31": [
       "packages_spark_html_bun_package",
@@ -985,6 +922,91 @@
       "packages_spark_src_index_tokenizeselector"
     ],
     "33": [
+      "packages_spark_ssr_src_render",
+      "packages_spark_ssr_src_render_compile",
+      "packages_spark_ssr_src_render_defaultawaiterror",
+      "packages_spark_ssr_src_render_evalexpr",
+      "packages_spark_ssr_src_render_fn_cache",
+      "packages_spark_ssr_src_render_globals",
+      "packages_spark_ssr_src_render_insertrendered",
+      "packages_spark_ssr_src_render_interpolate",
+      "packages_spark_ssr_src_render_renderattrs",
+      "packages_spark_ssr_src_render_renderawait",
+      "packages_spark_ssr_src_render_rendereach",
+      "packages_spark_ssr_src_render_renderfragment",
+      "packages_spark_ssr_src_render_renderifchain",
+      "packages_spark_ssr_src_render_renderimport",
+      "packages_spark_ssr_src_render_scopeproxy",
+      "packages_spark_ssr_src_render_scriptliterals",
+      "packages_spark_ssr_src_render_serializeprop",
+      "packages_spark_ssr_src_render_str",
+      "packages_spark_ssr_src_render_walkchildren",
+      "packages_spark_ssr_src_render_walknode"
+    ],
+    "34": [
+      "packages_create_spark_html_app_bin_index",
+      "packages_create_spark_html_app_bin_index_applyfeatures",
+      "packages_create_spark_html_app_bin_index_bail",
+      "packages_create_spark_html_app_bin_index_bolt",
+      "packages_create_spark_html_app_bin_index_features",
+      "packages_create_spark_html_app_bin_index_here",
+      "packages_create_spark_html_app_bin_index_isemptydir",
+      "packages_create_spark_html_app_bin_index_latestrange",
+      "packages_create_spark_html_app_bin_index_main",
+      "packages_create_spark_html_app_bin_index_paint",
+      "packages_create_spark_html_app_bin_index_pickfeatures",
+      "packages_create_spark_html_app_bin_index_pickssrdb",
+      "packages_create_spark_html_app_bin_index_picktype",
+      "packages_create_spark_html_app_bin_index_prompt",
+      "packages_create_spark_html_app_bin_index_sanitizename",
+      "packages_create_spark_html_app_bin_index_stripmarkers",
+      "packages_create_spark_html_app_bin_index_templatedir",
+      "packages_create_spark_html_app_bin_index_types",
+      "packages_create_spark_html_app_bin_index_walkfiles"
+    ],
+    "35": [
+      "packages_create_spark_html_app_bin_index_c",
+      "packages_spark_ssr_src_parse",
+      "packages_spark_ssr_src_parse_analyze",
+      "packages_spark_ssr_src_parse_classifysource",
+      "packages_spark_ssr_src_parse_dataplan",
+      "packages_spark_ssr_src_parse_editdistance",
+      "packages_spark_ssr_src_parse_extractblocks",
+      "packages_spark_ssr_src_parse_extractforms",
+      "packages_spark_ssr_src_parse_input_rules",
+      "packages_spark_ssr_src_parse_maskcomments",
+      "packages_spark_ssr_src_parse_mergeanalyses",
+      "packages_spark_ssr_src_parse_parseattrs",
+      "packages_spark_ssr_src_parse_parsebody",
+      "packages_spark_ssr_src_parse_rewriteparams",
+      "packages_spark_ssr_src_parse_rootof",
+      "packages_spark_ssr_src_parse_singleshaped",
+      "packages_spark_ssr_src_parse_validatefields",
+      "packages_spark_ssr_src_server_parsefile",
+      "packages_spark_ssr_src_server_splitscript"
+    ],
+    "36": [
+      "packages_spark_ssr_src_db",
+      "packages_spark_ssr_src_db_bindable",
+      "packages_spark_ssr_src_db_connect",
+      "packages_spark_ssr_src_db_yieldsrows",
+      "packages_spark_ssr_src_hydrate",
+      "packages_spark_ssr_src_hydrate_clientcomponent",
+      "packages_spark_ssr_src_hydrate_clientscript",
+      "packages_spark_ssr_src_hydrate_handlerroles",
+      "packages_spark_ssr_src_hydrate_initmodule",
+      "packages_spark_ssr_src_hydrate_primarycolumn",
+      "packages_spark_ssr_src_index",
+      "packages_spark_ssr_src_render_templatekids",
+      "packages_spark_ssr_src_sources",
+      "packages_spark_ssr_src_sources_globregex",
+      "packages_spark_ssr_src_sources_globsource",
+      "packages_spark_ssr_src_sources_makesourcecache",
+      "packages_spark_ssr_src_sources_modulesource",
+      "packages_spark_ssr_src_sources_parsefrontmatter",
+      "packages_spark_ssr_src_sources_urlsource"
+    ],
+    "37": [
       "editors_vscode_syntaxes_spark_tmlanguage",
       "editors_vscode_syntaxes_spark_tmlanguage_0_name",
       "editors_vscode_syntaxes_spark_tmlanguage_begincaptures_0",
@@ -1004,27 +1026,7 @@
       "editors_vscode_syntaxes_spark_tmlanguage_schema",
       "editors_vscode_syntaxes_spark_tmlanguage_scopename"
     ],
-    "34": [
-      "examples_basic_src_main",
-      "examples_jsimports_src_main",
-      "packages_spark_html_motion_src_index_d",
-      "packages_spark_html_motion_src_index_d_motionoptions",
-      "packages_spark_html_motion_src_index_d_preset",
-      "packages_spark_html_query_src_index",
-      "packages_spark_html_query_src_index_query",
-      "packages_spark_html_query_test_query",
-      "packages_spark_html_query_test_query_test",
-      "packages_spark_html_query_test_query_tick",
-      "packages_spark_html_router_src_index_d",
-      "packages_spark_html_router_src_index_d_routeroptions",
-      "packages_spark_html_router_src_index_d_routestate",
-      "packages_spark_src_index_d",
-      "packages_spark_src_index_d_mountoptions",
-      "website_src_playground_frame",
-      "website_src_playground_frame_fmt",
-      "website_src_playground_frame_send"
-    ],
-    "35": [
+    "38": [
       "packages_prettier_plugin_spark_package",
       "packages_prettier_plugin_spark_package_author",
       "packages_prettier_plugin_spark_package_description",
@@ -1044,27 +1046,7 @@
       "packages_prettier_plugin_spark_package_type",
       "packages_prettier_plugin_spark_package_version"
     ],
-    "36": [
-      "packages_spark_html_head_src_index_d",
-      "packages_spark_html_head_src_index_d_headoptions",
-      "packages_spark_html_manifest_src_index_d",
-      "packages_spark_html_manifest_src_index_d_appshellswoptions",
-      "packages_spark_html_manifest_src_index_d_manifestconfig",
-      "packages_spark_html_manifest_src_index_d_manifesticon",
-      "packages_spark_html_persist_src_index_d",
-      "packages_spark_html_persist_src_index_d_persistoptions",
-      "packages_spark_html_query_src_index_d",
-      "packages_spark_html_query_src_index_d_queryoptions",
-      "packages_spark_html_query_src_index_d_querystate",
-      "packages_spark_html_sri_src_index_d",
-      "packages_spark_html_sri_src_index_d_srialgorithm",
-      "packages_spark_html_sri_src_index_d_srioptions",
-      "website_src_main",
-      "website_src_main_base",
-      "website_src_tutorial_lessons",
-      "website_src_tutorial_lessons_tutorial_lessons"
-    ],
-    "37": [
+    "39": [
       "packages_spark_package",
       "packages_spark_package_default",
       "packages_spark_package_description",
@@ -1084,7 +1066,7 @@
       "packages_spark_package_types",
       "packages_spark_package_version"
     ],
-    "38": [
+    "40": [
       "packages_create_spark_html_app_template_ssr_package",
       "packages_create_spark_html_app_template_ssr_package_dependencies",
       "packages_create_spark_html_app_template_ssr_package_dependencies_spark_html",
@@ -1103,7 +1085,7 @@
       "packages_create_spark_html_app_template_ssr_package_type",
       "packages_create_spark_html_app_template_ssr_package_version"
     ],
-    "39": [
+    "41": [
       "packages_spark_html_devtools_test_devtools",
       "packages_spark_html_devtools_test_devtools_stop",
       "packages_spark_html_devtools_test_devtools_test",
@@ -1122,26 +1104,7 @@
       "packages_spark_test_repro_debug",
       "packages_spark_test_repro_debug_inp"
     ],
-    "40": [
-      "packages_spark_src_index_bootcomponent",
-      "packages_spark_src_index_coerce",
-      "packages_spark_src_index_compilescript",
-      "packages_spark_src_index_isprerender",
-      "packages_spark_src_index_makeimporter",
-      "packages_spark_src_index_makescope",
-      "packages_spark_src_index_mount",
-      "packages_spark_src_index_origfetchcomponent",
-      "packages_spark_src_index_parsesfc",
-      "packages_spark_src_index_patch",
-      "packages_spark_src_index_projectslots",
-      "packages_spark_src_index_pushprerenderwait",
-      "packages_spark_src_index_resolveimportnode",
-      "packages_spark_src_index_resolveimports",
-      "packages_spark_src_index_reveal",
-      "packages_spark_src_index_startawait",
-      "packages_spark_src_index_subscribestore"
-    ],
-    "41": [
+    "42": [
       "packages_create_spark_html_app_package",
       "packages_create_spark_html_app_package_bin",
       "packages_create_spark_html_app_package_bin_create_spark_html_app",
@@ -1159,7 +1122,7 @@
       "packages_create_spark_html_app_package_type",
       "packages_create_spark_html_app_package_version"
     ],
-    "42": [
+    "43": [
       "website_public_components_demo_lifecycle",
       "website_public_components_demo_motion",
       "website_public_components_demo_offline",
@@ -1177,7 +1140,7 @@
       "website_public_components_playground",
       "website_public_components_tutorials"
     ],
-    "43": [
+    "44": [
       "package",
       "package_devdependencies",
       "package_devdependencies_esbuild",
@@ -1194,7 +1157,7 @@
       "package_scripts_test",
       "package_workspaces"
     ],
-    "44": [
+    "45": [
       "packages_spark_html_manifest_src_bun",
       "packages_spark_html_manifest_src_bun_htmlfiles",
       "packages_spark_html_manifest_src_bun_sparkmanifest",
@@ -1210,23 +1173,6 @@
       "packages_spark_html_manifest_test_manifest_fetchevent",
       "packages_spark_html_manifest_test_manifest_makeswworld",
       "packages_spark_html_manifest_test_manifest_test"
-    ],
-    "45": [
-      "packages_spark_src_index_awaitbranchscope",
-      "packages_spark_src_index_closestcomponent",
-      "packages_spark_src_index_issparkcomponent",
-      "packages_spark_src_index_isstaticnode",
-      "packages_spark_src_index_kindof",
-      "packages_spark_src_index_makeloopscope",
-      "packages_spark_src_index_patchawait",
-      "packages_spark_src_index_patchelement",
-      "packages_spark_src_index_patchtext",
-      "packages_spark_src_index_refreshawait",
-      "packages_spark_src_index_setsintersect",
-      "packages_spark_src_index_shouldeval",
-      "packages_spark_src_index_walknode",
-      "packages_spark_src_index_withcapture",
-      "packages_spark_src_index_withsink"
     ],
     "46": [
       "examples_basic_package",
@@ -1261,6 +1207,22 @@
       "examples_jsimports_package_version"
     ],
     "48": [
+      "examples_jsimports_src_main",
+      "packages_spark_html_query_src_index",
+      "packages_spark_html_query_src_index_query",
+      "packages_spark_html_query_test_query",
+      "packages_spark_html_query_test_query_test",
+      "packages_spark_html_query_test_query_tick",
+      "packages_spark_html_router_src_index_d",
+      "packages_spark_html_router_src_index_d_routeroptions",
+      "packages_spark_html_router_src_index_d_routestate",
+      "packages_spark_src_index_d",
+      "packages_spark_src_index_d_mountoptions",
+      "website_src_playground_frame",
+      "website_src_playground_frame_fmt",
+      "website_src_playground_frame_send"
+    ],
+    "49": [
       "packages_create_spark_html_app_template_ssr_nodb_package",
       "packages_create_spark_html_app_template_ssr_nodb_package_dependencies",
       "packages_create_spark_html_app_template_ssr_nodb_package_dependencies_spark_html",
@@ -1276,7 +1238,7 @@
       "packages_create_spark_html_app_template_ssr_nodb_package_type",
       "packages_create_spark_html_app_template_ssr_nodb_package_version"
     ],
-    "49": [
+    "50": [
       "packages_prettier_plugin_spark_index",
       "packages_prettier_plugin_spark_index_formatblock",
       "packages_prettier_plugin_spark_index_formatspark",
@@ -1292,23 +1254,39 @@
       "packages_prettier_plugin_spark_test_format_ok",
       "packages_prettier_plugin_spark_test_format_stripblocks"
     ],
-    "50": [
-      "packages_spark_src_index_anchorownednodes",
-      "packages_spark_src_index_blockend",
-      "packages_spark_src_index_clonetemplatenodes",
-      "packages_spark_src_index_compileexpr",
-      "packages_spark_src_index_evaluate",
-      "packages_spark_src_index_ifchain",
-      "packages_spark_src_index_interpolate",
-      "packages_spark_src_index_leavenode",
-      "packages_spark_src_index_parseifmember",
-      "packages_spark_src_index_patcheach",
-      "packages_spark_src_index_patchif",
-      "packages_spark_src_index_placewithrendered",
-      "packages_spark_src_index_runelementplan",
-      "packages_spark_src_index_runexpr"
-    ],
     "51": [
+      "packages_spark_src_index_bootcomponent",
+      "packages_spark_src_index_coerce",
+      "packages_spark_src_index_compilescript",
+      "packages_spark_src_index_isprerender",
+      "packages_spark_src_index_makeimporter",
+      "packages_spark_src_index_makescope",
+      "packages_spark_src_index_mount",
+      "packages_spark_src_index_origfetchcomponent",
+      "packages_spark_src_index_patch",
+      "packages_spark_src_index_projectslots",
+      "packages_spark_src_index_resolveimportnode",
+      "packages_spark_src_index_resolveimports",
+      "packages_spark_src_index_reveal",
+      "packages_spark_src_index_subscribestore"
+    ],
+    "52": [
+      "packages_spark_src_index_buildelementplan",
+      "packages_spark_src_index_compileexpr",
+      "packages_spark_src_index_compilestmt",
+      "packages_spark_src_index_componentnamefor",
+      "packages_spark_src_index_evaluate",
+      "packages_spark_src_index_execute",
+      "packages_spark_src_index_formstatesnapshot",
+      "packages_spark_src_index_interpolate",
+      "packages_spark_src_index_reporterror",
+      "packages_spark_src_index_runelementplan",
+      "packages_spark_src_index_runexpr",
+      "packages_spark_src_index_schedulererender",
+      "packages_spark_src_index_setupformbinding",
+      "packages_spark_src_index_warnonce"
+    ],
+    "53": [
       "packages_create_spark_html_app_template_package",
       "packages_create_spark_html_app_template_package_dependencies",
       "packages_create_spark_html_app_template_package_dependencies_spark_html",
@@ -1323,7 +1301,22 @@
       "packages_create_spark_html_app_template_package_type",
       "packages_create_spark_html_app_template_package_version"
     ],
-    "52": [
+    "54": [
+      "packages_create_spark_html_app_template_prerender_index",
+      "packages_create_spark_html_app_template_prerender_public_components_about",
+      "packages_create_spark_html_app_template_prerender_public_components_demo_await",
+      "packages_create_spark_html_app_template_prerender_public_components_demo_image",
+      "packages_create_spark_html_app_template_prerender_public_components_demo_persist",
+      "packages_create_spark_html_app_template_prerender_public_components_demo_props",
+      "packages_create_spark_html_app_template_prerender_public_components_demo_todo",
+      "packages_create_spark_html_app_template_prerender_public_components_feature_card",
+      "packages_create_spark_html_app_template_prerender_public_components_footer",
+      "packages_create_spark_html_app_template_prerender_public_components_hero",
+      "packages_create_spark_html_app_template_prerender_public_components_home",
+      "packages_create_spark_html_app_template_prerender_public_components_nav",
+      "packages_create_spark_html_app_template_prerender_public_sample"
+    ],
+    "55": [
       "packages_spark_html_image_src_index",
       "packages_spark_html_image_src_index_htmlfiles",
       "packages_spark_html_image_src_index_localimagepath",
@@ -1337,21 +1330,35 @@
       "packages_spark_html_image_test_image_plugin",
       "packages_spark_html_image_test_image_test"
     ],
-    "53": [
-      "packages_spark_html_persist_src_index",
-      "packages_spark_html_persist_src_index_persist",
-      "packages_spark_src_index_derived",
-      "packages_spark_src_index_markstorekind",
-      "packages_spark_src_index_store",
-      "packages_spark_src_index_storeentry",
-      "packages_spark_src_index_subscribe",
-      "website_src_playground",
-      "website_src_playground_buildsrcdoc",
-      "website_src_playground_default_files",
-      "website_src_playground_frameurl",
-      "website_src_playground_setupplayground"
+    "56": [
+      "packages_spark_src_index_anchorownednodes",
+      "packages_spark_src_index_blockend",
+      "packages_spark_src_index_clonetemplatenodes",
+      "packages_spark_src_index_enternode",
+      "packages_spark_src_index_hydrateblockimports",
+      "packages_spark_src_index_ifchain",
+      "packages_spark_src_index_leavenode",
+      "packages_spark_src_index_parseifmember",
+      "packages_spark_src_index_patcheach",
+      "packages_spark_src_index_patchif",
+      "packages_spark_src_index_placewithrendered",
+      "packages_spark_src_index_renderclones"
     ],
-    "54": [
+    "57": [
+      "packages_spark_src_index_applyawaitstate",
+      "packages_spark_src_index_awaitbranchscope",
+      "packages_spark_src_index_closestcomponent",
+      "packages_spark_src_index_destroycomponent",
+      "packages_spark_src_index_insertclones",
+      "packages_spark_src_index_makeloopscope",
+      "packages_spark_src_index_parseawait",
+      "packages_spark_src_index_patchawait",
+      "packages_spark_src_index_pushprerenderwait",
+      "packages_spark_src_index_refreshawait",
+      "packages_spark_src_index_startawait",
+      "packages_spark_src_index_unmount"
+    ],
+    "58": [
       "packages_spark_html_router_test_router",
       "packages_spark_html_router_test_router_fireclick",
       "packages_spark_html_router_test_router_firepopstate",
@@ -1364,7 +1371,7 @@
       "packages_spark_html_router_test_router_test",
       "packages_spark_html_router_test_router_tick"
     ],
-    "55": [
+    "59": [
       "packages_spark_html_websocket_test_websocket",
       "packages_spark_html_websocket_test_websocket_fakewebsocket",
       "packages_spark_html_websocket_test_websocket_fakewebsocket_close",
@@ -1377,7 +1384,7 @@
       "packages_spark_html_websocket_test_websocket_test",
       "packages_spark_html_websocket_test_websocket_tick"
     ],
-    "56": [
+    "60": [
       "packages_spark_html_offline_src_bun",
       "packages_spark_html_offline_src_bun_sparkoffline",
       "packages_spark_html_offline_src_index",
@@ -1389,19 +1396,19 @@
       "packages_spark_html_offline_test_offline_makeswworld",
       "packages_spark_html_offline_test_offline_test"
     ],
-    "57": [
-      "website_src_highlight",
-      "website_src_highlight_escapehtml",
-      "website_src_highlight_highlightall",
-      "website_src_highlight_highlightcss",
-      "website_src_highlight_highlighthtml",
-      "website_src_highlight_highlightjs",
-      "website_src_highlight_highlightsource",
-      "website_src_highlight_highlighttagbody",
-      "website_src_highlight_injecttokenstyles",
-      "website_src_highlight_span"
+    "61": [
+      "packages_spark_src_index_issparkcomponent",
+      "packages_spark_src_index_isstaticnode",
+      "packages_spark_src_index_kindof",
+      "packages_spark_src_index_patchelement",
+      "packages_spark_src_index_patchtext",
+      "packages_spark_src_index_setsintersect",
+      "packages_spark_src_index_shouldeval",
+      "packages_spark_src_index_walknode",
+      "packages_spark_src_index_withcapture",
+      "packages_spark_src_index_withsink"
     ],
-    "58": [
+    "62": [
       "editors_vscode_extension",
       "editors_vscode_extension_activate",
       "editors_vscode_extension_deactivate",
@@ -1412,7 +1419,7 @@
       "editors_vscode_extension_serveroptions",
       "editors_vscode_extension_vscode"
     ],
-    "59": [
+    "63": [
       "packages_spark_html_head_src_index",
       "packages_spark_html_head_src_index_currentpath",
       "packages_spark_html_head_src_index_head",
@@ -1423,39 +1430,7 @@
       "packages_spark_html_head_src_index_upsertmeta",
       "packages_spark_html_theme_test_theme_t"
     ],
-    "60": [
-      "packages_spark_src_index_buildelementplan",
-      "packages_spark_src_index_compilestmt",
-      "packages_spark_src_index_componentnamefor",
-      "packages_spark_src_index_execute",
-      "packages_spark_src_index_formstatesnapshot",
-      "packages_spark_src_index_reporterror",
-      "packages_spark_src_index_schedulererender",
-      "packages_spark_src_index_setupformbinding",
-      "packages_spark_src_index_warnonce"
-    ],
-    "61": [
-      "packages_spark_ssr_test_ssr",
-      "packages_spark_ssr_test_ssr_makeformsapp",
-      "packages_spark_ssr_test_ssr_makelayoutapp",
-      "packages_spark_ssr_test_ssr_makesiteapp",
-      "packages_spark_ssr_test_ssr_makesourcesapp",
-      "packages_spark_ssr_test_ssr_maketodoapp",
-      "packages_spark_ssr_test_ssr_mounthydratedpage",
-      "packages_spark_ssr_test_ssr_test",
-      "packages_spark_ssr_test_ssr_todoroot"
-    ],
-    "62": [
-      "packages_create_spark_html_app_template_ssr_public_app",
-      "packages_spark_html_theme_src_index_d",
-      "packages_spark_html_theme_src_index_d_themeoptions",
-      "packages_spark_html_theme_src_index_d_themestore",
-      "packages_spark_html_theme_src_index_d_themestore_cycle",
-      "packages_spark_html_theme_src_index_d_themestore_set",
-      "packages_spark_html_theme_src_index_d_themestore_toggle",
-      "packages_spark_html_theme_src_index_theme"
-    ],
-    "63": [
+    "64": [
       "packages_spark_html_bun_src_index_d",
       "packages_spark_html_bun_src_index_d_pipelinestep",
       "packages_spark_html_bun_src_index_d_pipelinestep_devroutes",
@@ -1465,7 +1440,7 @@
       "packages_spark_html_bun_src_index_d_sparkconfig",
       "packages_spark_html_bun_src_index_d_stop"
     ],
-    "64": [
+    "65": [
       "packages_spark_html_motion_test_motion",
       "packages_spark_html_motion_test_motion_animations",
       "packages_spark_html_motion_test_motion_fire",
@@ -1475,17 +1450,27 @@
       "packages_spark_html_motion_test_motion_test",
       "packages_spark_html_motion_test_motion_tick"
     ],
-    "65": [
-      "packages_spark_src_index_applyawaitstate",
-      "packages_spark_src_index_destroycomponent",
-      "packages_spark_src_index_enternode",
-      "packages_spark_src_index_hydrateblockimports",
-      "packages_spark_src_index_insertclones",
-      "packages_spark_src_index_parseawait",
-      "packages_spark_src_index_renderclones",
-      "packages_spark_src_index_unmount"
-    ],
     "66": [
+      "packages_spark_html_websocket_src_index",
+      "packages_spark_html_websocket_src_index_defaults",
+      "packages_spark_html_websocket_src_index_handles",
+      "packages_spark_html_websocket_src_index_namefor",
+      "packages_spark_html_websocket_src_index_parsemessage",
+      "packages_spark_html_websocket_src_index_sockets",
+      "packages_spark_html_websocket_src_index_ws",
+      "packages_spark_test_dom_shim_element_value"
+    ],
+    "67": [
+      "packages_spark_ssr_test_ssr",
+      "packages_spark_ssr_test_ssr_makeformsapp",
+      "packages_spark_ssr_test_ssr_makelayoutapp",
+      "packages_spark_ssr_test_ssr_makesiteapp",
+      "packages_spark_ssr_test_ssr_makesourcesapp",
+      "packages_spark_ssr_test_ssr_maketodoapp",
+      "packages_spark_ssr_test_ssr_test",
+      "packages_spark_ssr_test_ssr_todoroot"
+    ],
+    "68": [
       "packages_spark_test_await",
       "packages_spark_test_await_defer",
       "packages_spark_test_await_fire",
@@ -1495,7 +1480,7 @@
       "packages_spark_test_await_text",
       "packages_spark_test_await_tick"
     ],
-    "67": [
+    "69": [
       "packages_spark_test_await_as",
       "packages_spark_test_await_as_defer",
       "packages_spark_test_await_as_fire",
@@ -1505,7 +1490,7 @@
       "packages_spark_test_await_as_text",
       "packages_spark_test_await_as_tick"
     ],
-    "68": [
+    "70": [
       "packages_spark_test_isolation",
       "packages_spark_test_isolation_c2",
       "packages_spark_test_isolation_fire",
@@ -1515,7 +1500,7 @@
       "packages_spark_test_isolation_txt",
       "packages_spark_test_isolation_warnings"
     ],
-    "69": [
+    "71": [
       "packages_spark_test_perf",
       "packages_spark_test_perf_dynp",
       "packages_spark_test_perf_fire",
@@ -1525,7 +1510,7 @@
       "packages_spark_test_perf_test",
       "packages_spark_test_perf_tick"
     ],
-    "70": [
+    "72": [
       "packages_spark_test_repro",
       "packages_spark_test_repro_buttons",
       "packages_spark_test_repro_cartstore",
@@ -1535,16 +1520,7 @@
       "packages_spark_test_repro_lis",
       "packages_spark_test_repro_shopel"
     ],
-    "71": [
-      "examples_basic_components_semicolons",
-      "examples_basic_semicolons_test",
-      "spark_html_derived",
-      "spark_html_mount",
-      "spark_html_store",
-      "website_public_components_docs_body",
-      "website_public_components_home"
-    ],
-    "72": [
+    "73": [
       "examples_jsimports_components_app",
       "examples_jsimports_components_import_basic",
       "examples_jsimports_index",
@@ -1553,7 +1529,7 @@
       "examples_jsimports_lib_format_formatdate",
       "examples_jsimports_lib_format_pluralize"
     ],
-    "73": [
+    "74": [
       "packages_spark_html_head_test_head",
       "packages_spark_html_head_test_head_headstore",
       "packages_spark_html_head_test_head_nav",
@@ -1562,7 +1538,7 @@
       "packages_spark_html_head_test_head_replacestate",
       "packages_spark_html_head_test_head_test"
     ],
-    "74": [
+    "75": [
       "packages_spark_html_language_server_src_index_d",
       "packages_spark_html_language_server_src_index_d_analysis",
       "packages_spark_html_language_server_src_index_d_declaration",
@@ -1571,7 +1547,16 @@
       "packages_spark_html_language_server_src_index_d_sparklanguageserver_constructor",
       "packages_spark_html_language_server_src_index_d_sparklanguageserver_handle"
     ],
-    "75": [
+    "76": [
+      "packages_spark_html_persist_src_index",
+      "packages_spark_html_persist_src_index_persist",
+      "packages_spark_src_index_derived",
+      "packages_spark_src_index_markstorekind",
+      "packages_spark_src_index_store",
+      "packages_spark_src_index_storeentry",
+      "packages_spark_src_index_subscribe"
+    ],
+    "77": [
       "packages_spark_html_websocket_src_index_d",
       "packages_spark_html_websocket_src_index_d_wsoptions",
       "packages_spark_html_websocket_src_index_d_wsstatus",
@@ -1580,7 +1565,7 @@
       "packages_spark_html_websocket_src_index_d_wsstore_open",
       "packages_spark_html_websocket_src_index_d_wsstore_send"
     ],
-    "76": [
+    "78": [
       "packages_spark_test_css",
       "packages_spark_test_css_appendchild",
       "packages_spark_test_css_has",
@@ -1589,7 +1574,7 @@
       "packages_spark_test_css_setattribute",
       "packages_spark_test_css_test"
     ],
-    "77": [
+    "79": [
       "packages_spark_test_features",
       "packages_spark_test_features_col",
       "packages_spark_test_features_fire",
@@ -1598,7 +1583,7 @@
       "packages_spark_test_features_test",
       "packages_spark_test_features_tick"
     ],
-    "78": [
+    "80": [
       "packages_spark_test_forms_bind",
       "packages_spark_test_forms_bind_fire",
       "packages_spark_test_forms_bind_focus",
@@ -1607,7 +1592,7 @@
       "packages_spark_test_forms_bind_tick",
       "packages_spark_test_forms_bind_txt"
     ],
-    "79": [
+    "81": [
       "packages_spark_test_jsimport",
       "packages_spark_test_jsimport_calls",
       "packages_spark_test_jsimport_fire",
@@ -1616,7 +1601,7 @@
       "packages_spark_test_jsimport_test",
       "packages_spark_test_jsimport_tick"
     ],
-    "80": [
+    "82": [
       "packages_spark_test_run",
       "packages_spark_test_run_appendchild",
       "packages_spark_test_run_coerce",
@@ -1625,7 +1610,7 @@
       "packages_spark_test_run_simulatescopewithprops",
       "packages_spark_test_run_test"
     ],
-    "81": [
+    "83": [
       "packages_spark_test_scale",
       "packages_spark_test_scale_g",
       "packages_spark_test_scale_rows",
@@ -1634,7 +1619,15 @@
       "packages_spark_test_scale_tick",
       "packages_spark_test_scale_txt"
     ],
-    "82": [
+    "84": [
+      "packages_spark_html_devtools_src_index",
+      "packages_spark_html_devtools_src_index_components",
+      "packages_spark_html_devtools_src_index_devtools",
+      "packages_spark_html_devtools_src_index_esc",
+      "packages_spark_html_devtools_src_index_readscope",
+      "packages_spark_html_devtools_src_index_safe"
+    ],
+    "85": [
       "packages_spark_html_motion_src_index",
       "packages_spark_html_motion_src_index_configfor",
       "packages_spark_html_motion_src_index_motion",
@@ -1642,7 +1635,7 @@
       "packages_spark_html_motion_src_index_presets",
       "packages_spark_src_index_lifecycle"
     ],
-    "83": [
+    "86": [
       "packages_spark_html_router_test_nested",
       "packages_spark_html_router_test_nested_has",
       "packages_spark_html_router_test_nested_hasnt",
@@ -1650,7 +1643,7 @@
       "packages_spark_html_router_test_nested_test",
       "packages_spark_html_router_test_nested_tick"
     ],
-    "84": [
+    "87": [
       "packages_spark_test_dom_shim_textnode",
       "packages_spark_test_dom_shim_textnode_after",
       "packages_spark_test_dom_shim_textnode_clonenode",
@@ -1658,7 +1651,7 @@
       "packages_spark_test_dom_shim_textnode_nextsibling",
       "packages_spark_test_dom_shim_textnode_remove"
     ],
-    "85": [
+    "88": [
       "packages_spark_test_errors",
       "packages_spark_test_errors_ok",
       "packages_spark_test_errors_sparkwarns",
@@ -1666,430 +1659,377 @@
       "packages_spark_test_errors_tick",
       "packages_spark_test_errors_warnings"
     ],
-    "86": [
-      "packages_create_spark_html_app_template_ssr_nodb_pages_index",
-      "packages_spark_html_bun_readme",
-      "packages_spark_readme",
-      "packages_spark_ssr_readme",
-      "readme"
-    ],
-    "87": [
+    "89": [
       "packages_spark_html_router_test_notfound",
       "packages_spark_html_router_test_notfound_listeners",
       "packages_spark_html_router_test_notfound_pushstate",
       "packages_spark_html_router_test_notfound_test",
       "packages_spark_html_router_test_notfound_tick"
     ],
-    "88": [
+    "90": [
       "packages_spark_test_deps",
       "packages_spark_test_deps_fire",
       "packages_spark_test_deps_test",
       "packages_spark_test_deps_tick",
       "packages_spark_test_deps_txt"
     ],
-    "89": [
+    "91": [
       "packages_spark_test_quirks",
       "packages_spark_test_quirks_fire",
       "packages_spark_test_quirks_test",
       "packages_spark_test_quirks_tick",
       "packages_spark_test_quirks_txt"
     ],
-    "90": [
+    "92": [
       "examples_jsimports_lib_math",
       "examples_jsimports_lib_math_add",
       "examples_jsimports_lib_math_factorial",
       "examples_jsimports_lib_math_multiply"
     ],
-    "91": [
+    "93": [
       "packages_create_spark_html_app_template_prerender_public_lib_format",
       "packages_create_spark_html_app_template_prerender_public_lib_format_capitalize",
       "packages_create_spark_html_app_template_prerender_public_lib_format_formatdate",
       "packages_create_spark_html_app_template_prerender_public_lib_format_pluralize"
     ],
-    "92": [
+    "94": [
       "packages_spark_html_font_src_index_d",
       "packages_spark_html_font_src_index_d_fontconfig",
       "packages_spark_html_font_src_index_d_fontface",
       "packages_spark_html_font_src_index_d_fontmetrics"
     ],
-    "93": [
+    "95": [
       "packages_spark_html_head_src_ssr",
       "packages_spark_html_head_src_ssr_escapehtml",
       "packages_spark_html_head_src_ssr_lifthead",
       "packages_spark_html_head_src_ssr_renderhead"
     ],
-    "94": [
-      "packages_spark_html_offline_src_index_d",
-      "packages_spark_html_offline_src_index_d_offlinebuildoptions",
-      "packages_spark_html_offline_src_index_d_offlineoptions",
-      "packages_spark_html_offline_src_index_d_offlineswoptions"
-    ],
-    "95": [
+    "96": [
       "packages_spark_html_persist_test_persist",
       "packages_spark_html_persist_test_persist_makestorage",
       "packages_spark_html_persist_test_persist_test",
       "packages_spark_html_persist_test_persist_tick"
     ],
-    "96": [
+    "97": [
       "packages_spark_prerender_test_cli",
       "packages_spark_prerender_test_cli_cli",
       "packages_spark_prerender_test_cli_here",
       "packages_spark_prerender_test_cli_test"
     ],
-    "97": [
+    "98": [
       "packages_spark_test_derived",
       "packages_spark_test_derived_test",
       "packages_spark_test_derived_tick",
       "packages_spark_test_derived_txt"
     ],
-    "98": [
+    "99": [
       "packages_spark_test_reactive_multiline",
       "packages_spark_test_reactive_multiline_fire",
       "packages_spark_test_reactive_multiline_test",
       "packages_spark_test_reactive_multiline_tick"
     ],
-    "99": [
+    "100": [
       "scripts_size_check",
       "scripts_size_check_entry",
       "scripts_size_check_kb",
       "scripts_size_check_root"
     ],
-    "100": [
+    "101": [
+      "examples_basic_components_semicolons",
+      "examples_basic_semicolons_test",
+      "spark_html_mount"
+    ],
+    "102": [
       "examples_jsimports_lib_api",
       "examples_jsimports_lib_api_fetchgreeting",
       "examples_jsimports_lib_api_fetchnumber"
     ],
-    "101": [
+    "103": [
       "examples_jsimports_lib_greeting",
       "examples_jsimports_lib_greeting_defaultgreet",
       "examples_jsimports_lib_greeting_greet"
     ],
-    "102": [
-      "packages_create_spark_html_app_template_ssr_pages_admin_index",
-      "spark_ssr_job",
-      "spark_ssr_table"
+    "104": [
+      "packages_create_spark_html_app_template_ssr_nodb_components_nav",
+      "packages_create_spark_html_app_template_ssr_nodb_components_theme_toggle",
+      "packages_create_spark_html_app_template_ssr_nodb_pages_layout"
     ],
-    "103": [
+    "105": [
+      "packages_create_spark_html_app_template_ssr_nodb_components_post_card",
+      "packages_create_spark_html_app_template_ssr_nodb_pages_index",
+      "packages_create_spark_html_app_template_ssr_nodb_public_img_avatar"
+    ],
+    "106": [
       "packages_spark_html_image_src_index_d",
       "packages_spark_html_image_src_index_d_run",
       "packages_spark_html_image_src_index_d_sparkimageoptions"
     ],
-    "104": [
+    "107": [
       "packages_spark_prerender_src_prerender_d",
       "packages_spark_prerender_src_prerender_d_metamapping",
       "packages_spark_prerender_src_prerender_d_prerenderoptions"
     ],
-    "105": [
+    "108": [
       "packages_spark_prerender_test_fixture_lib_format",
       "packages_spark_prerender_test_fixture_lib_format_capitalize",
       "packages_spark_prerender_test_fixture_lib_format_pluralize"
     ],
-    "106": [
+    "109": [
+      "website_public_components_home",
+      "website_public_components_url_card",
+      "website_public_showcase_spark"
+    ],
+    "110": [
       "website_public_components_showcase",
       "website_public_showcase_dat_taxi",
       "website_public_showcase_novo"
     ],
-    "107": [
+    "111": [
       "website_scripts_gen_stats",
       "website_scripts_gen_stats_computestats",
       "website_scripts_gen_stats_root"
     ],
-    "108": [
+    "112": [
       "examples_basic_components_multiline",
       "examples_basic_multiline_test"
     ],
-    "109": [
+    "113": [
+      "packages_create_spark_html_app_template_index",
+      "packages_create_spark_html_app_template_public_components_hero"
+    ],
+    "114": [
       "packages_create_spark_html_app_template_ssr_components_post_card",
       "packages_create_spark_html_app_template_ssr_pages_index"
     ],
-    "110": [
+    "115": [
+      "packages_create_spark_html_app_template_ssr_components_todo_list",
+      "packages_create_spark_html_app_template_ssr_pages_layout"
+    ],
+    "116": [
       "packages_create_spark_html_app_template_ssr_jobs_notify_author",
       "packages_create_spark_html_app_template_ssr_jobs_notify_author_notifyauthor"
     ],
-    "111": [
+    "117": [
       "packages_create_spark_html_app_template_ssr_lib_mail",
       "packages_create_spark_html_app_template_ssr_lib_mail_send"
     ],
-    "112": [
+    "118": [
       "packages_create_spark_html_app_template_ssr_nodb_lib_post",
       "packages_create_spark_html_app_template_ssr_nodb_lib_post_post"
     ],
-    "113": [
+    "119": [
       "packages_spark_html_devtools_src_index_d",
       "packages_spark_html_devtools_src_index_d_devtoolsoptions"
     ],
-    "114": [
+    "120": [
       "playwright_config",
       "playwright_config_port"
     ],
-    "115": [
+    "121": [
       "scripts_test_bun",
       "scripts_test_bun_has"
     ],
-    "116": [
+    "122": [
       "website_vercel",
       "website_vercel_rewrites"
     ],
-    "117": [
+    "123": [
       "e2e_spark_spec"
     ],
-    "118": [
+    "124": [
       "examples_basic_components_app"
     ],
-    "119": [
+    "125": [
       "examples_basic_components_async_data"
     ],
-    "120": [
+    "126": [
       "examples_basic_components_card"
     ],
-    "121": [
+    "127": [
       "examples_basic_components_cart"
     ],
-    "122": [
+    "128": [
       "examples_basic_components_counter"
     ],
-    "123": [
+    "129": [
       "examples_basic_components_lifecycle"
     ],
-    "124": [
+    "130": [
       "examples_basic_components_profile"
     ],
-    "125": [
+    "131": [
       "examples_basic_components_shop"
     ],
-    "126": [
+    "132": [
       "examples_basic_components_slots_demo"
     ],
-    "127": [
+    "133": [
       "examples_basic_components_todos"
     ],
-    "128": [
+    "134": [
       "examples_basic_components_transitions"
     ],
-    "129": [
+    "135": [
       "examples_basic_index"
     ],
-    "130": [
+    "136": [
       "examples_basic_spark_config"
     ],
-    "131": [
+    "137": [
       "examples_jsimports_components_import_async"
     ],
-    "132": [
+    "138": [
       "github_workflows_deploy_site"
     ],
-    "133": [
+    "139": [
       "github_workflows_e2e"
     ],
-    "134": [
+    "140": [
       "github_workflows_publish_create_spark_html_app"
     ],
-    "135": [
+    "141": [
       "github_workflows_publish_prettier_plugin_spark"
     ],
-    "136": [
+    "142": [
       "github_workflows_publish_spark_html_bun"
     ],
-    "137": [
+    "143": [
       "github_workflows_publish_spark_html_devtools"
     ],
-    "138": [
+    "144": [
       "github_workflows_publish_spark_html_font"
     ],
-    "139": [
+    "145": [
       "github_workflows_publish_spark_html_head"
     ],
-    "140": [
+    "146": [
       "github_workflows_publish_spark_html_image"
     ],
-    "141": [
+    "147": [
       "github_workflows_publish_spark_html_language_server"
     ],
-    "142": [
+    "148": [
       "github_workflows_publish_spark_html_manifest"
     ],
-    "143": [
+    "149": [
       "github_workflows_publish_spark_html_motion"
     ],
-    "144": [
+    "150": [
       "github_workflows_publish_spark_html_offline"
     ],
-    "145": [
+    "151": [
       "github_workflows_publish_spark_html_persist"
     ],
-    "146": [
+    "152": [
       "github_workflows_publish_spark_html_query"
     ],
-    "147": [
+    "153": [
       "github_workflows_publish_spark_html_router"
     ],
-    "148": [
+    "154": [
       "github_workflows_publish_spark_html_sri"
     ],
-    "149": [
+    "155": [
       "github_workflows_publish_spark_html_theme"
     ],
-    "150": [
+    "156": [
       "github_workflows_publish_spark_html_websocket"
     ],
-    "151": [
+    "157": [
       "github_workflows_publish_spark_prerender"
     ],
-    "152": [
+    "158": [
       "github_workflows_publish_spark_ssr"
     ],
-    "153": [
-      "packages_create_spark_html_app_template_index"
-    ],
-    "154": [
-      "packages_create_spark_html_app_template_prerender_index"
-    ],
-    "155": [
-      "packages_create_spark_html_app_template_prerender_public_components_about"
-    ],
-    "156": [
-      "packages_create_spark_html_app_template_prerender_public_components_demo_await"
-    ],
-    "157": [
-      "packages_create_spark_html_app_template_prerender_public_components_demo_image"
-    ],
-    "158": [
-      "packages_create_spark_html_app_template_prerender_public_components_demo_persist"
-    ],
     "159": [
-      "packages_create_spark_html_app_template_prerender_public_components_demo_props"
-    ],
-    "160": [
-      "packages_create_spark_html_app_template_prerender_public_components_demo_todo"
-    ],
-    "161": [
-      "packages_create_spark_html_app_template_prerender_public_components_feature_card"
-    ],
-    "162": [
-      "packages_create_spark_html_app_template_prerender_public_components_footer"
-    ],
-    "163": [
-      "packages_create_spark_html_app_template_prerender_public_components_hero"
-    ],
-    "164": [
-      "packages_create_spark_html_app_template_prerender_public_components_home"
-    ],
-    "165": [
-      "packages_create_spark_html_app_template_prerender_public_components_nav"
-    ],
-    "166": [
       "packages_create_spark_html_app_template_prerender_public_icon"
     ],
-    "167": [
-      "packages_create_spark_html_app_template_prerender_public_sample"
-    ],
-    "168": [
+    "160": [
       "packages_create_spark_html_app_template_prerender_spark_config"
     ],
-    "169": [
+    "161": [
       "packages_create_spark_html_app_template_prerender_src_main"
     ],
-    "170": [
-      "packages_create_spark_html_app_template_public_components_hero"
-    ],
-    "171": [
+    "162": [
       "packages_create_spark_html_app_template_src_main"
     ],
-    "172": [
-      "packages_create_spark_html_app_template_ssr_nodb_components_nav"
-    ],
-    "173": [
-      "packages_create_spark_html_app_template_ssr_nodb_components_post_card"
-    ],
-    "174": [
-      "packages_create_spark_html_app_template_ssr_nodb_components_theme_toggle"
-    ],
-    "175": [
+    "163": [
       "packages_create_spark_html_app_template_ssr_nodb_pages_about"
     ],
-    "176": [
+    "164": [
       "packages_create_spark_html_app_template_ssr_nodb_pages_blog_slug"
     ],
-    "177": [
-      "packages_create_spark_html_app_template_ssr_nodb_pages_layout"
-    ],
-    "178": [
+    "165": [
       "packages_create_spark_html_app_template_ssr_nodb_public_app"
     ],
-    "179": [
-      "packages_create_spark_html_app_template_ssr_nodb_public_img_avatar"
+    "166": [
+      "packages_create_spark_html_app_template_ssr_pages_admin_index"
     ],
-    "180": [
-      "packages_create_spark_html_app_template_ssr_pages_layout"
-    ],
-    "181": [
+    "167": [
       "packages_create_spark_html_app_template_ssr_public_img_avatar_png"
     ],
-    "182": [
+    "168": [
       "packages_spark_html_head_src_ssr_d"
     ],
-    "183": [
+    "169": [
       "packages_spark_html_motion_test_motion_element_animate"
     ],
-    "184": [
-      "packages_spark_html_router_readme"
-    ],
-    "185": [
+    "170": [
       "packages_spark_html_router_test_router_element_focus"
     ],
-    "186": [
+    "171": [
       "packages_spark_src_globals_d"
     ],
-    "187": [
+    "172": [
+      "readme"
+    ],
+    "173": [
       "spark_html_router_router"
     ],
-    "188": [
+    "174": [
       "website_index"
     ],
-    "189": [
+    "175": [
       "website_public_banner_png"
     ],
-    "190": [
+    "176": [
       "website_public_components_demo_manifest"
     ],
-    "191": [
+    "177": [
+      "website_public_components_docs_body"
+    ],
+    "178": [
       "website_public_components_footer"
     ],
-    "192": [
+    "179": [
       "website_public_components_sidebar"
     ],
-    "193": [
-      "website_public_components_url_card"
-    ],
-    "194": [
+    "180": [
       "website_public_og_png"
-    ],
-    "195": [
-      "website_public_showcase_spark"
     ]
   },
   "cohesion": {
-    "0": 0.053194333066025126,
-    "1": 0.06057692307692308,
-    "2": 0.11341463414634147,
-    "3": 0.13086770981507823,
-    "4": 0.06685633001422475,
+    "0": 0.06057692307692308,
+    "1": 0.07549361207897794,
+    "2": 0.13086770981507823,
+    "3": 0.0962566844919786,
+    "4": 0.08505747126436781,
     "5": 0.06896551724137931,
-    "6": 0.15873015873015872,
-    "7": 0.11396011396011396,
-    "8": 0.1282051282051282,
-    "9": 0.13846153846153847,
-    "10": 0.08,
+    "6": 0.11396011396011396,
+    "7": 0.1282051282051282,
+    "8": 0.08,
+    "9": 0.07692307692307693,
+    "10": 0.12923076923076923,
     "11": 0.08333333333333333,
     "12": 0.08,
-    "13": 0.08,
+    "13": 0.08695652173913043,
     "14": 0.08695652173913043,
-    "15": 0.08695652173913043,
-    "16": 0.09420289855072464,
-    "17": 0.08695652173913043,
-    "18": 0.09090909090909091,
-    "19": 0.11462450592885376,
-    "20": 0.1,
+    "15": 0.09420289855072464,
+    "16": 0.08695652173913043,
+    "17": 0.09090909090909091,
+    "18": 0.11462450592885376,
+    "19": 0.22943722943722944,
+    "20": 0.1774891774891775,
     "21": 0.1,
     "22": 0.1,
     "23": 0.1,
@@ -2099,77 +2039,77 @@
     "27": 0.1,
     "28": 0.1,
     "29": 0.1,
-    "30": 0.17894736842105263,
+    "30": 0.1,
     "31": 0.10526315789473684,
     "32": 0.14736842105263157,
-    "33": 0.11764705882352941,
-    "34": 0.13725490196078433,
-    "35": 0.1111111111111111,
-    "36": 0.11764705882352941,
+    "33": 0.24210526315789474,
+    "34": 0.19298245614035087,
+    "35": 0.1695906432748538,
+    "36": 0.19883040935672514,
     "37": 0.11764705882352941,
-    "38": 0.11764705882352941,
+    "38": 0.1111111111111111,
     "39": 0.11764705882352941,
-    "40": 0.18382352941176472,
-    "41": 0.125,
+    "40": 0.11764705882352941,
+    "41": 0.11764705882352941,
     "42": 0.125,
-    "43": 0.13333333333333333,
-    "44": 0.2857142857142857,
-    "45": 0.18095238095238095,
+    "43": 0.125,
+    "44": 0.13333333333333333,
+    "45": 0.2857142857142857,
     "46": 0.14285714285714285,
     "47": 0.14285714285714285,
-    "48": 0.14285714285714285,
-    "49": 0.18681318681318682,
-    "50": 0.2087912087912088,
-    "51": 0.15384615384615385,
-    "52": 0.19696969696969696,
-    "53": 0.2727272727272727,
-    "54": 0.18181818181818182,
-    "55": 0.18181818181818182,
-    "56": 0.35555555555555557,
-    "57": 0.4888888888888889,
-    "58": 0.2777777777777778,
-    "59": 0.2777777777777778,
-    "60": 0.3333333333333333,
-    "61": 0.2222222222222222,
-    "62": 0.2857142857142857,
-    "63": 0.2857142857142857,
+    "48": 0.18681318681318682,
+    "49": 0.14285714285714285,
+    "50": 0.18681318681318682,
+    "51": 0.23076923076923078,
+    "52": 0.24175824175824176,
+    "53": 0.15384615384615385,
+    "54": 0.16666666666666666,
+    "55": 0.19696969696969696,
+    "56": 0.21212121212121213,
+    "57": 0.21212121212121213,
+    "58": 0.18181818181818182,
+    "59": 0.18181818181818182,
+    "60": 0.35555555555555557,
+    "61": 0.26666666666666666,
+    "62": 0.2777777777777778,
+    "63": 0.2777777777777778,
     "64": 0.2857142857142857,
     "65": 0.2857142857142857,
     "66": 0.32142857142857145,
-    "67": 0.32142857142857145,
-    "68": 0.25,
-    "69": 0.25,
+    "67": 0.25,
+    "68": 0.32142857142857145,
+    "69": 0.32142857142857145,
     "70": 0.25,
-    "71": 0.3333333333333333,
-    "72": 0.2857142857142857,
-    "73": 0.3333333333333333,
-    "74": 0.2857142857142857,
+    "71": 0.25,
+    "72": 0.25,
+    "73": 0.2857142857142857,
+    "74": 0.3333333333333333,
     "75": 0.2857142857142857,
     "76": 0.38095238095238093,
-    "77": 0.3333333333333333,
-    "78": 0.2857142857142857,
-    "79": 0.2857142857142857,
+    "77": 0.2857142857142857,
+    "78": 0.38095238095238093,
+    "79": 0.3333333333333333,
     "80": 0.2857142857142857,
-    "81": 0.3333333333333333,
-    "82": 0.4,
+    "81": 0.2857142857142857,
+    "82": 0.2857142857142857,
     "83": 0.3333333333333333,
-    "84": 0.3333333333333333,
-    "85": 0.3333333333333333,
-    "86": 0.4,
-    "87": 0.4,
-    "88": 0.4,
+    "84": 0.4,
+    "85": 0.4,
+    "86": 0.3333333333333333,
+    "87": 0.3333333333333333,
+    "88": 0.3333333333333333,
     "89": 0.4,
-    "90": 0.5,
-    "91": 0.5,
+    "90": 0.4,
+    "91": 0.4,
     "92": 0.5,
-    "93": 0.6666666666666666,
-    "94": 0.6666666666666666,
-    "95": 0.5,
+    "93": 0.5,
+    "94": 0.5,
+    "95": 0.6666666666666666,
     "96": 0.5,
     "97": 0.5,
     "98": 0.5,
     "99": 0.5,
-    "100": 0.6666666666666666,
+    "100": 0.5,
     "101": 0.6666666666666666,
     "102": 0.6666666666666666,
     "103": 0.6666666666666666,
@@ -2177,10 +2117,10 @@
     "105": 0.6666666666666666,
     "106": 0.6666666666666666,
     "107": 0.6666666666666666,
-    "108": 1.0,
-    "109": 1.0,
-    "110": 1.0,
-    "111": 1.0,
+    "108": 0.6666666666666666,
+    "109": 0.6666666666666666,
+    "110": 0.6666666666666666,
+    "111": 0.6666666666666666,
     "112": 1.0,
     "113": 1.0,
     "114": 1.0,
@@ -2249,28 +2189,13 @@
     "177": 1.0,
     "178": 1.0,
     "179": 1.0,
-    "180": 1.0,
-    "181": 1.0,
-    "182": 1.0,
-    "183": 1.0,
-    "184": 1.0,
-    "185": 1.0,
-    "186": 1.0,
-    "187": 1.0,
-    "188": 1.0,
-    "189": 1.0,
-    "190": 1.0,
-    "191": 1.0,
-    "192": 1.0,
-    "193": 1.0,
-    "194": 1.0,
-    "195": 1.0
+    "180": 1.0
   },
   "gods": [
     {
       "id": "packages_spark_test_dom_shim_parsehtml",
       "label": "parseHTML()",
-      "degree": 33
+      "degree": 34
     },
     {
       "id": "packages_spark_test_dom_shim_element",
@@ -2320,8 +2245,41 @@
   ],
   "surprises": [
     {
+      "source": "Home Page",
+      "target": "Spark Landing UI",
+      "source_files": [
+        "website/public/components/home.html",
+        "website/public/showcase/spark.webp"
+      ],
+      "confidence": "INFERRED",
+      "relation": "semantically_similar_to",
+      "why": "inferred connection - not explicitly stated in source; crosses file types (doc \u2194 image); semantically similar concepts with no structural link"
+    },
+    {
       "source": "setupPlayground()",
-      "target": "parseSFC()",
+      "target": "persist()",
+      "source_files": [
+        "website/src/playground.js",
+        "packages/spark-html-persist/src/index.js"
+      ],
+      "confidence": "INFERRED",
+      "relation": "calls",
+      "why": "inferred connection - not explicitly stated in source; connects across different repos/directories; bridges separate communities"
+    },
+    {
+      "source": "setupPlayground()",
+      "target": "store()",
+      "source_files": [
+        "website/src/playground.js",
+        "packages/spark/src/index.js"
+      ],
+      "confidence": "INFERRED",
+      "relation": "calls",
+      "why": "inferred connection - not explicitly stated in source; connects across different repos/directories; bridges separate communities"
+    },
+    {
+      "source": "setupPlayground()",
+      "target": "subscribe()",
       "source_files": [
         "website/src/playground.js",
         "packages/spark/src/index.js"
@@ -2340,43 +2298,10 @@
       "confidence": "INFERRED",
       "relation": "calls",
       "why": "inferred connection - not explicitly stated in source; connects across different repos/directories; bridges separate communities"
-    },
-    {
-      "source": "setupPlayground()",
-      "target": "persist()",
-      "source_files": [
-        "website/src/playground.js",
-        "packages/spark-html-persist/src/index.js"
-      ],
-      "confidence": "INFERRED",
-      "relation": "calls",
-      "why": "inferred connection - not explicitly stated in source; connects across different repos/directories"
-    },
-    {
-      "source": "setupPlayground()",
-      "target": "store()",
-      "source_files": [
-        "website/src/playground.js",
-        "packages/spark/src/index.js"
-      ],
-      "confidence": "INFERRED",
-      "relation": "calls",
-      "why": "inferred connection - not explicitly stated in source; connects across different repos/directories"
-    },
-    {
-      "source": "setupPlayground()",
-      "target": "subscribe()",
-      "source_files": [
-        "website/src/playground.js",
-        "packages/spark/src/index.js"
-      ],
-      "confidence": "INFERRED",
-      "relation": "calls",
-      "why": "inferred connection - not explicitly stated in source; connects across different repos/directories"
     }
   ],
   "tokens": {
-    "input": 21190,
-    "output": 1231
+    "input": 17261,
+    "output": 3063
   }
 }

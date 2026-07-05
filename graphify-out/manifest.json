@@ -80,9 +80,9 @@
     "semantic_hash": "66e4330e39cdf728f368ba6c957ce1ae"
   },
   "packages/create-spark-html-app/package.json": {
-    "mtime": 1783261753.2831197,
-    "ast_hash": "fd49bf5b89ffd08a25fafc03529bc607",
-    "semantic_hash": "fd49bf5b89ffd08a25fafc03529bc607"
+    "mtime": 1783275658.5312405,
+    "ast_hash": "26d26bd3a2e59e8cadfe066df35dc843",
+    "semantic_hash": "26d26bd3a2e59e8cadfe066df35dc843"
   },
   "packages/create-spark-html-app/template-prerender/package.json": {
     "mtime": 1783125192.6130013,
@@ -600,9 +600,9 @@
     "semantic_hash": "fab85a9a0b7e6ea296a1a2985ece5ce8"
   },
   "packages/spark-ssr/package.json": {
-    "mtime": 1783261747.0910692,
-    "ast_hash": "dfafbf17082d8a9f3c3f668680513023",
-    "semantic_hash": "dfafbf17082d8a9f3c3f668680513023"
+    "mtime": 1783275651.9502923,
+    "ast_hash": "2991aa5f481af3e0d9399ded2a6b297e",
+    "semantic_hash": "2991aa5f481af3e0d9399ded2a6b297e"
   },
   "packages/spark-ssr/src/config.js": {
     "mtime": 1783260967.6893637,
@@ -615,9 +615,9 @@
     "semantic_hash": "a68dc74b8acc54174823b623a51149f9"
   },
   "packages/spark-ssr/src/hydrate.js": {
-    "mtime": 1783213968.9583366,
-    "ast_hash": "0e88f0b9c6ea96e4c355338a660db472",
-    "semantic_hash": "0e88f0b9c6ea96e4c355338a660db472"
+    "mtime": 1783269912.2513318,
+    "ast_hash": "7dbff4a43d02c72ab27e6551ab6e13c8",
+    "semantic_hash": "7dbff4a43d02c72ab27e6551ab6e13c8"
   },
   "packages/spark-ssr/src/index.js": {
     "mtime": 1783195295.5569391,
@@ -625,14 +625,14 @@
     "semantic_hash": "63f3806ce7084aa2f6e3af9d34880158"
   },
   "packages/spark-ssr/src/parse.js": {
-    "mtime": 1783261082.5480316,
-    "ast_hash": "06b9b906c669b2f915c2449eb616bc02",
-    "semantic_hash": "06b9b906c669b2f915c2449eb616bc02"
+    "mtime": 1783267729.3432918,
+    "ast_hash": "4d65e1d063978e445d966ecda7ecc9dc",
+    "semantic_hash": "4d65e1d063978e445d966ecda7ecc9dc"
   },
   "packages/spark-ssr/src/render.js": {
-    "mtime": 1783239827.358544,
-    "ast_hash": "e14b8468ec3d0686d189c8ad44e3eb7b",
-    "semantic_hash": "e14b8468ec3d0686d189c8ad44e3eb7b"
+    "mtime": 1783275122.1251702,
+    "ast_hash": "5250b2a34eac42786118e1ad695fa623",
+    "semantic_hash": "5250b2a34eac42786118e1ad695fa623"
   },
   "packages/spark-ssr/src/schema.js": {
     "mtime": 1783261044.922656,
@@ -640,19 +640,19 @@
     "semantic_hash": "aaa242d424fa5b806bfea7b24824530e"
   },
   "packages/spark-ssr/src/server.js": {
-    "mtime": 1783261304.25047,
-    "ast_hash": "4ea92bc82a766a1cfb62f83f706da5e4",
-    "semantic_hash": "4ea92bc82a766a1cfb62f83f706da5e4"
+    "mtime": 1783275356.1725166,
+    "ast_hash": "181664b01fb9bae41442a55afda868b4",
+    "semantic_hash": "181664b01fb9bae41442a55afda868b4"
   },
   "packages/spark-ssr/src/sources.js": {
-    "mtime": 1783194751.7044694,
-    "ast_hash": "f395960f2a8ae3ec905354d247f40d7b",
-    "semantic_hash": "f395960f2a8ae3ec905354d247f40d7b"
+    "mtime": 1783274191.51822,
+    "ast_hash": "40a392ed6538d03606c533e88ef89c36",
+    "semantic_hash": "40a392ed6538d03606c533e88ef89c36"
   },
   "packages/spark-ssr/test/ssr.js": {
-    "mtime": 1783261486.9322617,
-    "ast_hash": "77572dc2021ebecbef131c0486bb8f80",
-    "semantic_hash": "77572dc2021ebecbef131c0486bb8f80"
+    "mtime": 1783275254.5845046,
+    "ast_hash": "7b9163594d6e4fb21bd90045649ffee6",
+    "semantic_hash": "7b9163594d6e4fb21bd90045649ffee6"
   },
   "packages/spark/package.json": {
     "mtime": 1783182178.0512547,
@@ -850,7 +850,7 @@
     "semantic_hash": "cbc8e161fff799ac0f9cf7dfd381808e"
   },
   "website/vercel.json": {
-    "mtime": 1783128932.1423469,
+    "mtime": 1783275600.9218192,
     "ast_hash": "f1874e644097106dd81c10eb62b714eb",
     "semantic_hash": "f1874e644097106dd81c10eb62b714eb"
   },
@@ -920,9 +920,9 @@
     "semantic_hash": "a7a319cd8987a9eb0c6cc3639cf144f7"
   },
   "packages/create-spark-html-app/template/index.html": {
-    "mtime": 1783125173.2267992,
-    "ast_hash": "f0c4f2db0599d38186a66cd3211a685a",
-    "semantic_hash": "f0c4f2db0599d38186a66cd3211a685a"
+    "mtime": 1783234844.622404,
+    "ast_hash": "eb2cce4d25b6601f55b67eb2630209bf",
+    "semantic_hash": "eb2cce4d25b6601f55b67eb2630209bf"
   },
   "website/index.html": {
     "mtime": 1783127752.6017056,
@@ -1325,14 +1325,14 @@
     "semantic_hash": "e251cb07a8bf8d7cf3dba00f2e3b1696"
   },
   "packages/create-spark-html-app/template-prerender/index.html": {
-    "mtime": 1783154938.1806684,
-    "ast_hash": "eff47d9d538b6b8d181f18e764366d8e",
-    "semantic_hash": "eff47d9d538b6b8d181f18e764366d8e"
+    "mtime": 1783125173.2267992,
+    "ast_hash": "f0c4f2db0599d38186a66cd3211a685a",
+    "semantic_hash": "f0c4f2db0599d38186a66cd3211a685a"
   },
   "packages/create-spark-html-app/template-prerender/public/components/hero.html": {
-    "mtime": 1783154941.5207021,
-    "ast_hash": "28db1bc712414546a3875d3cd8ccc0ea",
-    "semantic_hash": "28db1bc712414546a3875d3cd8ccc0ea"
+    "mtime": 1782951105.1086864,
+    "ast_hash": "2763b4452e41fca65cbc7affa47ca106",
+    "semantic_hash": "2763b4452e41fca65cbc7affa47ca106"
   },
   "packages/create-spark-html-app/template-ssr/components/nav.html": {
     "mtime": 1783199400.334427,
@@ -1344,20 +1344,10 @@
     "ast_hash": "f23709b2a94f1f9d7fa36a8a96661852",
     "semantic_hash": "f23709b2a94f1f9d7fa36a8a96661852"
   },
-  "packages/create-spark-html-app/template-ssr/components/post-editor.html": {
-    "mtime": 1783180716.5920315,
-    "ast_hash": "315ed58fb0bbb3b86896177111dc8744",
-    "semantic_hash": "315ed58fb0bbb3b86896177111dc8744"
-  },
   "packages/create-spark-html-app/template-ssr/components/theme-toggle.html": {
     "mtime": 1783180695.604819,
     "ast_hash": "2051f35b4ebc43a87567a5890214d5fd",
     "semantic_hash": "2051f35b4ebc43a87567a5890214d5fd"
-  },
-  "packages/create-spark-html-app/template-ssr/components/todo-list.html": {
-    "mtime": 1783195997.531868,
-    "ast_hash": "9d761f1cf5320921ea969451fec778f2",
-    "semantic_hash": "9d761f1cf5320921ea969451fec778f2"
   },
   "packages/create-spark-html-app/template-ssr/middleware.html": {
     "mtime": 1783180724.6841133,
@@ -1390,9 +1380,9 @@
     "semantic_hash": "c660d33dffe3129aa5e6267696937fc8"
   },
   "packages/create-spark-html-app/template/public/components/hero.html": {
-    "mtime": 1782951105.1086864,
-    "ast_hash": "2763b4452e41fca65cbc7affa47ca106",
-    "semantic_hash": "2763b4452e41fca65cbc7affa47ca106"
+    "mtime": 1783234828.5167093,
+    "ast_hash": "7f29249625eb53d3c569eef97b188e6e",
+    "semantic_hash": "7f29249625eb53d3c569eef97b188e6e"
   },
   "packages/spark-prerender/test/fixture/awaited.html": {
     "mtime": 1782948680.259508,
@@ -1603,5 +1593,100 @@
     "mtime": 1783261566.0195975,
     "ast_hash": "a79f8c5152eedab247dfcdeb7ed3eec8",
     "semantic_hash": "a79f8c5152eedab247dfcdeb7ed3eec8"
+  },
+  "packages/spark-ssr/test/bench.js": {
+    "mtime": 1783273964.963889,
+    "ast_hash": "94051986d981bbca274f2816b75b1b67",
+    "semantic_hash": "94051986d981bbca274f2816b75b1b67"
+  },
+  "packages/create-spark-html-app/template-prerender/public/components/about.html": {
+    "mtime": 1782948680.2465076,
+    "ast_hash": "8b743ab24dbc8be03f7ff8112c361de9",
+    "semantic_hash": "8b743ab24dbc8be03f7ff8112c361de9"
+  },
+  "packages/create-spark-html-app/template-prerender/public/components/demo-await.html": {
+    "mtime": 1782948680.2474284,
+    "ast_hash": "534b6d34ab9a3dd5a4e26d861631fe15",
+    "semantic_hash": "534b6d34ab9a3dd5a4e26d861631fe15"
+  },
+  "packages/create-spark-html-app/template-prerender/public/components/demo-image.html": {
+    "mtime": 1783082698.1553068,
+    "ast_hash": "0c2dcffdab620fe673ec47375e86e14b",
+    "semantic_hash": "0c2dcffdab620fe673ec47375e86e14b"
+  },
+  "packages/create-spark-html-app/template-prerender/public/components/demo-persist.html": {
+    "mtime": 1783014344.079298,
+    "ast_hash": "bd44a16aba6964ee0a58a261f8ba73d2",
+    "semantic_hash": "bd44a16aba6964ee0a58a261f8ba73d2"
+  },
+  "packages/create-spark-html-app/template-prerender/public/components/demo-props.html": {
+    "mtime": 1782948680.2474284,
+    "ast_hash": "0e538caa15e4ca7ab8e6dd9c38282834",
+    "semantic_hash": "0e538caa15e4ca7ab8e6dd9c38282834"
+  },
+  "packages/create-spark-html-app/template-prerender/public/components/demo-todo.html": {
+    "mtime": 1782951105.1086864,
+    "ast_hash": "490344528caf573657fb9acdf8cf58f9",
+    "semantic_hash": "490344528caf573657fb9acdf8cf58f9"
+  },
+  "packages/create-spark-html-app/template-prerender/public/components/feature-card.html": {
+    "mtime": 1782948680.2475076,
+    "ast_hash": "b64cea44f8ea118298b26d1888001c96",
+    "semantic_hash": "b64cea44f8ea118298b26d1888001c96"
+  },
+  "packages/create-spark-html-app/template-prerender/public/components/footer.html": {
+    "mtime": 1783127752.5942926,
+    "ast_hash": "c1eaf253de83b66e7b970fbe41ec491f",
+    "semantic_hash": "c1eaf253de83b66e7b970fbe41ec491f"
+  },
+  "packages/create-spark-html-app/template-prerender/public/components/home.html": {
+    "mtime": 1783014045.623171,
+    "ast_hash": "f11d3f9f0199147e10024c4ba4513288",
+    "semantic_hash": "f11d3f9f0199147e10024c4ba4513288"
+  },
+  "packages/create-spark-html-app/template-prerender/public/components/nav.html": {
+    "mtime": 1783014020.9345806,
+    "ast_hash": "7c4d8c96d09cce05522b314b7b00df6e",
+    "semantic_hash": "7c4d8c96d09cce05522b314b7b00df6e"
+  },
+  "packages/create-spark-html-app/template-ssr-nodb/components/nav.html": {
+    "mtime": 1783237241.5200856,
+    "ast_hash": "80d77617d9acd3357b25c1910fa9ee2a",
+    "semantic_hash": "80d77617d9acd3357b25c1910fa9ee2a"
+  },
+  "packages/create-spark-html-app/template-ssr-nodb/components/theme-toggle.html": {
+    "mtime": 1783237205.8472784,
+    "ast_hash": "2051f35b4ebc43a87567a5890214d5fd",
+    "semantic_hash": "2051f35b4ebc43a87567a5890214d5fd"
+  },
+  "packages/create-spark-html-app/template-ssr-nodb/pages/_layout.html": {
+    "mtime": 1783237231.6949906,
+    "ast_hash": "c1160cc38cc10fdb7b63091b0f2cd220",
+    "semantic_hash": "c1160cc38cc10fdb7b63091b0f2cd220"
+  },
+  "packages/create-spark-html-app/template-ssr-nodb/pages/about.html": {
+    "mtime": 1783237292.3725765,
+    "ast_hash": "5797cb800304c16ba75e6ed372131f03",
+    "semantic_hash": "5797cb800304c16ba75e6ed372131f03"
+  },
+  "packages/create-spark-html-app/template-ssr-nodb/pages/blog/[slug].html": {
+    "mtime": 1783237283.3694894,
+    "ast_hash": "42043b3e2db3c35ea15a8cabf62524a4",
+    "semantic_hash": "42043b3e2db3c35ea15a8cabf62524a4"
+  },
+  "packages/create-spark-html-app/template-prerender/public/icon.png": {
+    "mtime": 1783014045.7569637,
+    "ast_hash": "96c06a46b120682049f2acbff1255a7e",
+    "semantic_hash": "96c06a46b120682049f2acbff1255a7e"
+  },
+  "packages/create-spark-html-app/template-prerender/public/sample.jpg": {
+    "mtime": 1783014045.7451706,
+    "ast_hash": "d46072100353b26a4f610d0457ab0863",
+    "semantic_hash": "d46072100353b26a4f610d0457ab0863"
+  },
+  "packages/create-spark-html-app/template-ssr-nodb/public/img/avatar.png": {
+    "mtime": 1783237205.852346,
+    "ast_hash": "95cca61c62a738551c711b599449ed66",
+    "semantic_hash": "95cca61c62a738551c711b599449ed66"
   }
 }
