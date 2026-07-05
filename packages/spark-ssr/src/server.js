@@ -297,8 +297,16 @@ export async function serve(options = {}) {
   }
   // Reconnect-then-reload: after a server restart the EventSource reconnects,
   // and a fresh open following an error means "the server came back" — reload.
-  const RELOAD_CLIENT = '<script>(()=>{const e=new EventSource("/__spark/reload");let d=0;'
-    + 'e.onmessage=()=>location.reload();e.onerror=()=>{d=1};e.onopen=()=>{if(d)location.reload()}})()</script>';
+  // Close on pagehide: a live EventSource holds one of the browser's ~6
+  // per-host HTTP/1.1 sockets, and one that outlives its page starves the
+  // next navigation — rapid link-clicking (or a service worker that keeps a
+  // controlled client's sockets around) piles them up until the tab hangs
+  // loading. Freeing the socket the instant we leave keeps the pool clear;
+  // reopen if the page is restored from the back/forward cache.
+  const RELOAD_CLIENT = '<script>(()=>{let e,d=0;const open=()=>{e=new EventSource("/__spark/reload");'
+    + 'e.onmessage=()=>location.reload();e.onerror=()=>{d=1};e.onopen=()=>{if(d)location.reload()}};open();'
+    + 'addEventListener("pagehide",()=>{if(e)e.close()});'
+    + 'addEventListener("pageshow",v=>{if(v.persisted)open()})})()</script>';
 
   // Heartbeats keep every SSE socket outside Bun's idleTimeout (the default
   // would kill them at 10 s — and a killed reload socket reconnects, which

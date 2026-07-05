@@ -155,9 +155,20 @@ export function clientScript({ analysis, plan, table, cols, key, live }) {
   // live (§9): every write the server sees on this table pings the channel;
   // every open tab refetches through its own session. Realtime as one
   // attribute — no socket code, no pub/sub setup.
+  // Close on pagehide so the channel's HTTP/1.1 socket frees the instant we
+  // navigate away — a live EventSource that outlives its page eats one of the
+  // browser's ~6 per-host connections, and enough of them (rapid navigation
+  // across live pages) starve the next page's own request until the tab hangs.
+  // Reopen and refetch on a back/forward-cache restore.
   if (live && listVar) {
-    L.push(`const __live = new EventSource('/__spark/live');`);
-    L.push(`__live.onmessage = (e) => { if (e.data === '${table}') __refresh(); };`);
+    L.push(`let __live;`);
+    L.push(`function __openLive() {`);
+    L.push(`  __live = new EventSource('/__spark/live');`);
+    L.push(`  __live.onmessage = (e) => { if (e.data === '${table}') __refresh(); };`);
+    L.push(`}`);
+    L.push(`__openLive();`);
+    L.push(`addEventListener('pagehide', () => { if (__live) __live.close(); });`);
+    L.push(`addEventListener('pageshow', (e) => { if (e.persisted) { __openLive(); __refresh(); } });`);
   }
   return L.join('\n') + '\n';
 }
