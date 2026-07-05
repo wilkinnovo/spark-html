@@ -1359,6 +1359,99 @@ await test('url source (§8): server-side fetch, JSON in page scope', async () =
 
 await sources.stop(true);
 
+// ── Tier 3/4: jobs & mail, config-less start, OpenAPI ───────────────────
+await test('config-less start (T4.9): no spark.json → db defaults to SQLite, table + CRUD work', async () => {
+  const root = mkdtempSync(join(tmpdir(), 'spark-ssr-nocfg-'));
+  // A single index.html, no spark.json, no pages/ — the whole app.
+  writeFileSync(join(root, 'index.html'),
+    '<template each="t in tasks"><p class="t">{t.label}</p></template>\n<spark-ssr table="tasks" />');
+  const s = await serve({ root, port: 0, quiet: true });
+  const B = `http://localhost:${s.port}`;
+  try {
+    assert.equal(s.config.db, 'sqlite://./dev.db', 'db defaulted with no spark.json');
+    const post = await fetch(`${B}/api/tasks`, {
+      method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ label: 'first' }),
+    });
+    assert.equal(post.status, 201, 'table auto-created, insert works');
+    const html = await (await fetch(`${B}/`)).text();
+    assert.ok(html.includes('class="t">first<'), 'row renders — SQLite was wired with zero config');
+  } finally { await s.stop?.(); assert.ok(existsSync(join(root, 'dev.db')), 'dev.db created in the project'); }
+});
+
+await test('jobs + mail (T3.8): on="insert:orders" fires jobs/notify.js; req.mail() reaches the module sender', async () => {
+  const root = mkdtempSync(join(tmpdir(), 'spark-ssr-jobs-'));
+  writeFileSync(join(root, 'spark.json'), JSON.stringify({ db: 'sqlite::memory:', mail: './lib/mail.js' }));
+  mkdirSync(join(root, 'pages'), { recursive: true });
+  mkdirSync(join(root, 'lib'));
+  mkdirSync(join(root, 'jobs'));
+  // The mail sender: a module whose default export records every message.
+  writeFileSync(join(root, 'lib', 'mail.js'),
+    "import { writeFileSync, existsSync, readFileSync } from 'node:fs';\n"
+    + "import { join } from 'node:path';\n"
+    + "const out = join(import.meta.dir, 'outbox.json');\n"
+    + 'export default (msg) => {\n'
+    + '  const box = existsSync(out) ? JSON.parse(readFileSync(out, "utf8")) : [];\n'
+    + '  box.push(msg); writeFileSync(out, JSON.stringify(box));\n'
+    + '  return { ok: true };\n};\n');
+  // Two jobs: one triggered by a write, one on a fast schedule.
+  writeFileSync(join(root, 'jobs', 'notify.js'),
+    'export default async (req, db) => { await req.mail({ to: "ops@x.co", subject: "New order " + (req.row?.item ?? "") }); };\n');
+  writeFileSync(join(root, 'jobs', 'beat.js'),
+    "export default async (req, db) => { await db.query(\"INSERT INTO beats (label) VALUES ('x')\"); };\n");
+  writeFileSync(join(root, 'pages', 'index.html'),
+    '<template each="o in orders"><p>{o.item}</p></template>\n'
+    + '<template each="b in beats"><p>{b.label}</p></template>\n'
+    + '<spark-ssr table="orders" />\n<spark-ssr table="beats" />\n'
+    + '<spark-ssr job="notify" on="insert:orders" />\n'
+    + '<spark-ssr job="beat" every="40ms" />');
+  const s = await serve({ root, port: 0, quiet: true });
+  const B = `http://localhost:${s.port}`;
+  try {
+    // A write to orders fires the notify job, which calls req.mail().
+    await fetch(`${B}/api/orders`, {
+      method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ item: 'book' }),
+    });
+    const outbox = join(root, 'lib', 'outbox.json');
+    let box = [];
+    for (let i = 0; i < 30 && !box.length; i++) {
+      await new Promise((r) => setTimeout(r, 20));
+      if (existsSync(outbox)) box = JSON.parse(readFileSync(outbox, 'utf8'));
+    }
+    assert.equal(box.length, 1, 'notify job ran once on the insert');
+    assert.equal(box[0].subject, 'New order book', 'req.mail delivered to the module sender with the row');
+
+    // The scheduled job keeps inserting; poll until it has run.
+    let beats = [];
+    for (let i = 0; i < 30 && beats.length < 1; i++) {
+      await new Promise((r) => setTimeout(r, 20));
+      beats = await (await fetch(`${B}/api/beats`)).json();
+    }
+    assert.ok(beats.length >= 1, 'every="40ms" job fired on schedule');
+  } finally { await s.stop?.(); }
+});
+
+await test('OpenAPI + typed client (T4.10): /__spark/openapi.json and /__spark/client.ts from the plan', async () => {
+  const root = mkdtempSync(join(tmpdir(), 'spark-ssr-oapi-'));
+  writeFileSync(join(root, 'spark.json'), JSON.stringify({ db: 'sqlite::memory:' }));
+  writeFileSync(join(root, 'index.html'),
+    '<template each="t in todos"><p>{t.title}</p></template>\n<spark-ssr table="todos" />');
+  const s = await serve({ root, port: 0, quiet: true });
+  const B = `http://localhost:${s.port}`;
+  try {
+    const doc = await (await fetch(`${B}/__spark/openapi.json`)).json();
+    assert.ok(String(doc.openapi).startsWith('3.'), 'OpenAPI 3.x document');
+    assert.ok(doc.paths['/api/todos'] && doc.paths['/api/todos'].get, 'GET /api/todos enumerated');
+    assert.ok(doc.paths['/api/todos'].post, 'POST /api/todos enumerated');
+    const byId = doc.paths['/api/todos/{id}'];
+    assert.ok(byId && byId.patch && byId.patch.parameters?.some((p) => p.name === 'id'), '{id} path param typed');
+
+    const client = await (await fetch(`${B}/__spark/client.ts`)).text();
+    assert.ok(client.includes('export function createClient'), 'client exports createClient');
+    assert.ok(/getApiTodos\s*\(/.test(client), 'a generated method per route');
+    assert.ok(client.includes('patchApiTodosById'), 'path-param route → By<Param> method');
+  } finally { await s.stop?.(); }
+});
+
 // ── spark-ssr db / db push (§7) ─────────────────────────────────────────
 await test('cli db: shows the inferred schema; db push creates it; then it matches', async () => {
   const root = mkdtempSync(join(tmpdir(), 'spark-ssr-db-'));
@@ -1389,6 +1482,43 @@ await test('cli db: shows the inferred schema; db push creates it; then it match
 
   const again = Bun.spawnSync(['bun', cli, 'db', '--root', root]);
   assert.ok(String(again.stdout).includes('already matches'), 'idempotent');
+});
+
+await test('safe schema evolution (T3.7): retype needs --force; db push --force rebuilds and keeps data', async () => {
+  const root = mkdtempSync(join(tmpdir(), 'spark-ssr-evolve-'));
+  writeFileSync(join(root, 'spark.json'), JSON.stringify({ db: 'sqlite://./dev.db' }));
+  mkdirSync(join(root, 'seed'));
+  const cli = join(import.meta.dir, '..', 'bin', 'cli.js');
+  const page = '<template each="p in products"><p>{p.price}</p></template>\n'
+    + '<spark-ssr table="products" seed="./seed/products.json" />';
+  writeFileSync(join(root, 'index.html'), page);
+
+  // v1: the seed's string value makes `price` TEXT. Create + seed one row.
+  writeFileSync(join(root, 'seed', 'products.json'), JSON.stringify([{ price: 'cheap' }]));
+  Bun.spawnSync(['bun', cli, 'db', 'push', '--root', root]);
+  const { Database } = await import('bun:sqlite');
+  let sdb = new Database(join(root, 'dev.db'));
+  assert.equal(sdb.query('PRAGMA table_info(products)').all().find((c) => c.name === 'price').type, 'TEXT', 'price starts TEXT');
+  sdb.close();
+
+  // v2: a numeric seed value now implies INTEGER — a destructive retype.
+  writeFileSync(join(root, 'seed', 'products.json'), JSON.stringify([{ price: 5 }]));
+  const diff = Bun.spawnSync(['bun', cli, 'db', 'diff', '--root', root]);
+  assert.ok(String(diff.stdout).includes('will change products.price TEXT → INTEGER (needs --force)'), 'diff flags the retype as needing --force');
+
+  // Plain push must NOT change the type — never silently retype.
+  Bun.spawnSync(['bun', cli, 'db', 'push', '--root', root]);
+  sdb = new Database(join(root, 'dev.db'));
+  assert.equal(sdb.query('PRAGMA table_info(products)').all().find((c) => c.name === 'price').type, 'TEXT', 'push (no force) kept TEXT');
+  sdb.close();
+
+  // --force rebuilds the table to INTEGER, preserving the existing row.
+  const forced = Bun.spawnSync(['bun', cli, 'db', 'push', '--force', '--root', root]);
+  assert.ok(String(forced.stdout).includes('changed price TEXT → INTEGER'), 'force logs the change');
+  sdb = new Database(join(root, 'dev.db'));
+  assert.equal(sdb.query('PRAGMA table_info(products)').all().find((c) => c.name === 'price').type, 'INTEGER', 'price retyped to INTEGER');
+  assert.equal(sdb.query('SELECT COUNT(*) AS n FROM products').get().n, 1, 'the seeded row survived the rebuild');
+  sdb.close();
 });
 
 // ── CLI: build assembles a deployable dist/ ─────────────────────────────

@@ -23,3 +23,9 @@
 <spark-ssr table="users" seed="./seed/users.json" />
 <spark-ssr table="posts" seed="./seed/posts.json" />
 <spark-ssr table="todos" seed="./seed/todos.json" live />
+
+<!-- Background work, declared in the template: publish a post and jobs/
+     notify-author.js runs with the new row in scope and mails the author.
+     `on="insert:posts"` fires after every INSERT; `every="1d"` would schedule
+     it instead. mail() comes from spark.json "mail". -->
+<spark-ssr job="notify-author" on="insert:posts" />

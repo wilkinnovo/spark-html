@@ -62,6 +62,12 @@ from the environment at startup. `cors: true` allows all origins on `/api/*`;
 an array allows specific ones. `fonts` renders spark-html-font's head tags
 (preloads, `@font-face` with a size-adjusted no-shift fallback, a
 `--font-<slug>` var) into every page — same shapes as its build-pipeline step.
+`mail` wires the sender for jobs and handlers (see below).
+
+**No spark.json at all?** `db` defaults to `sqlite://./dev.db`, so
+`bun spark-ssr` runs on a folder holding one `index.html` — zero config to
+begin. (A spark.json that *exists* but omits `db` stays deliberately
+database-free — the markdown-blog mode.)
 
 ## Routing
 
@@ -186,7 +192,9 @@ and `{values.title}` in scope (form post).
 
 ```bash
 bun spark-ssr db        # show inferred schema vs live DB (a diff)
-bun spark-ssr db push   # create/alter tables to match the templates
+bun spark-ssr db diff   # the pending plan, spelled out (alias of the above)
+bun spark-ssr db push   # apply additive changes (create tables, add columns)
+bun spark-ssr db push --force   # …and destructive ones (retype, drop columns)
 ```
 
 Column inference: `{todo.title}` → TEXT, `bind:checked` → boolean,
@@ -200,8 +208,12 @@ auth is configured and the page reads the session. Seed rows sharpen types:
 Seeds apply once, idempotently (only into an empty table; auth-table
 passwords hash on the way in). `serve` runs the safe half automatically —
 missing tables are created and seeds applied at startup, so a fresh clone
-runs on `bun spark-ssr` alone. Columns are never dropped without
-`db push --force`. Seed files are never served as static assets.
+runs on `bun spark-ssr` alone. **Safe evolution:** additive changes (new
+tables, new columns) apply freely; a destructive one — dropping a column the
+templates no longer name, or a **retype** (a column whose implied type
+changed) — is reported by `db diff` and needs `db push --force`. On SQLite a
+forced retype rebuilds the table and copies the rows across; it never silently
+drops data. Seed files are never served as static assets.
 
 ## `live` — HTML that reacts across the wire
 
@@ -226,6 +238,39 @@ stays for custom protocols; `live` is the zero-config 90%.
 
 `cache="60"` on any block adds a per-source TTL, invalidated automatically
 when a table it reads from changes.
+
+## Background jobs & mail
+
+```html
+<spark-ssr job="digest"  every="1d" />              <!-- jobs/digest.js on a schedule -->
+<spark-ssr job="onOrder" on="insert:orders" />      <!-- …after every matching write -->
+```
+
+A job is a module `jobs/<name>.js` with the same shape as a data source —
+`export default (req, db) => …`. `every="…"` (`ms`/`s`/`m`/`h`/`d`) schedules
+it; `on="insert:orders"` (or `update:`/`delete:`/`*:`) fires it after a write,
+with the affected row on `req.row`.
+
+Mail is one line of config — `"mail"` in spark.json is a module
+(`"./lib/mail.js"`, default export `(msg, ctx)`) or a `{ url, from, headers }`
+webhook. `mail()` is in scope in every page/api/middleware `<script>` and on
+`req.mail` in jobs; with nothing configured it logs, so it always resolves.
+
+```js
+// jobs/onOrder.js
+export default async (req, db) => {
+  await req.mail({ to: 'ops@shop.co', subject: `Order ${req.row.id}`, text: '…' });
+};
+```
+
+## OpenAPI + a typed client — generated, never authored
+
+- **`/__spark/openapi.json`** — an OpenAPI 3.1 document of every endpoint the
+  templates imply, with path params and request/response shapes.
+- **`/__spark/client.ts`** — a typed `createClient()` with one method per
+  route. External consumers and tests get types for free.
+
+Both derive from the live route table and ship in production too.
 
 ## Dev tools
 

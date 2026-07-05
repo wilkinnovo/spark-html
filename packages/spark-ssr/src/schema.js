@@ -156,9 +156,25 @@ function createSql(table, spec, kind, withScope) {
   return `CREATE TABLE ${q(table)} (\n  ${cols.join(',\n  ')}\n)`;
 }
 
+// SQLite type affinity buckets — the coarse grain a retype actually matters
+// at. INTEGER vs TEXT is a real change; "INT" vs "INTEGER" is not. Unknown /
+// empty live types read as TEXT affinity (SQLite's own default).
+function affinity(type) {
+  const s = String(type || '').toUpperCase();
+  if (/INT/.test(s)) return 'INTEGER';
+  if (/REAL|FLOA|DOUB|NUMERIC|DECIMAL/.test(s)) return 'REAL';
+  return 'TEXT';
+}
+
+// Reserved columns are framework-owned — never diffed as a retype.
+const NEVER_RETYPE = new Set(['id', 'user_id', 'created_at']);
+
 /**
- * Diff the inferred schema against the live database.
- * Returns [{ table, create?, add:[{name,type}], extra:[name] }].
+ * Diff the inferred schema against the live database (Tier 3.7).
+ * Additive changes (create, add) apply freely. Destructive ones — a column
+ * the templates no longer name (`extra`) or one whose implied type changed
+ * (`retype`) — are reported but need `db push --force`.
+ * Returns [{ table, create?, add:[{name,type}], retype:[{name,from,to}], extra:[name] }].
  */
 export async function diffSchema(db, schema) {
   const out = [];
@@ -166,19 +182,43 @@ export async function diffSchema(db, schema) {
     const live = await db.columns(table);
     const withScope = !!spec.scoped;
     if (!live.length) {
-      out.push({ table, create: createSql(table, spec, db.kind, withScope), add: [], extra: [] });
+      out.push({ table, create: createSql(table, spec, db.kind, withScope), add: [], retype: [], extra: [] });
       continue;
     }
-    const liveNames = new Set(live.map((c) => c.name));
+    const liveTypes = new Map(live.map((c) => [c.name, c.type]));
+    const liveNames = new Set(liveTypes.keys());
     const want = { ...(withScope ? { user_id: 'INTEGER' } : {}), ...spec.columns, created_at: 'TEXT' };
     const add = Object.entries(want)
       .filter(([n]) => !liveNames.has(n))
       .map(([name, type]) => ({ name, type }));
+    const retype = Object.entries(want)
+      .filter(([n]) => liveNames.has(n) && !NEVER_RETYPE.has(n)
+        && affinity(liveTypes.get(n)) !== affinity(want[n]))
+      .map(([name, to]) => ({ name, from: liveTypes.get(name) || '(none)', to }));
     const wantNames = new Set(['id', ...Object.keys(want)]);
     const extra = [...liveNames].filter((n) => !wantNames.has(n));
-    if (add.length || extra.length) out.push({ table, add, extra });
+    if (add.length || retype.length || extra.length) out.push({ table, add, retype, extra });
   }
   return out;
+}
+
+// Destructive retype on SQLite: no ALTER COLUMN TYPE, so rebuild the table
+// from the inferred spec and copy the surviving columns' data across (SQLite
+// casts on INSERT … SELECT). This is a full reconcile — extras drop too, which
+// is exactly what --force means. Ids and created_at carry over verbatim.
+async function rebuildTable(db, table, spec) {
+  const withScope = !!spec.scoped;
+  const newCols = ['id', ...(withScope ? ['user_id'] : []), ...Object.keys(spec.columns), 'created_at'];
+  const liveNames = new Set((await db.columns(table)).map((c) => c.name));
+  const copy = newCols.filter((n) => liveNames.has(n));
+  const tmp = `${table}__spark_rebuild`;
+  await db.query(`ALTER TABLE ${q(table)} RENAME TO ${q(tmp)}`);
+  await db.query(createSql(table, spec, db.kind, withScope));
+  if (copy.length) {
+    const cols = copy.map(q).join(', ');
+    await db.query(`INSERT INTO ${q(table)} (${cols}) SELECT ${cols} FROM ${q(tmp)}`);
+  }
+  await db.query(`DROP TABLE ${q(tmp)}`);
 }
 
 /**
@@ -194,9 +234,24 @@ export async function pushSchema(db, schema, { force = false, createOnly = false
       continue;
     }
     if (createOnly) continue;
+    const retype = d.retype || [];
+    // A forced retype on SQLite rebuilds the whole table (adds + retypes +
+    // drops in one reconcile), so the piecemeal ALTERs below are skipped.
+    if (force && retype.length && db.kind !== 'postgres') {
+      await rebuildTable(db, d.table, schema[d.table]);
+      for (const col of retype) log(`${d.table}: changed ${col.name} ${col.from} → ${col.to}`);
+      for (const col of d.extra) if (col !== 'id' && col !== 'user_id') log(`${d.table}: dropped ${col}`);
+      continue;
+    }
     for (const col of d.add) {
       await db.query(`ALTER TABLE ${q(d.table)} ADD COLUMN ${q(col.name)} ${col.type}`);
       log(`${d.table}: added ${col.name} ${col.type}`);
+    }
+    for (const col of retype) {
+      if (!force) { log(`${d.table}: column ${col.name} is ${col.from} but the templates imply ${col.to} (kept — use --force to change)`); continue; }
+      // Postgres can retype in place with an explicit cast.
+      await db.query(`ALTER TABLE ${q(d.table)} ALTER COLUMN ${q(col.name)} TYPE ${col.to} USING ${q(col.name)}::${col.to.toLowerCase()}`);
+      log(`${d.table}: changed ${col.name} ${col.from} → ${col.to}`);
     }
     for (const col of d.extra) {
       if (!force) { log(`${d.table}: column ${col} is not in the templates (kept — use --force to drop)`); continue; }

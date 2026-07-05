@@ -5,6 +5,7 @@
  *   bun spark-ssr                serve the current directory (default)
  *   bun spark-ssr --port 3000    pick a port
  *   bun spark-ssr db             show the inferred schema vs the live DB
+ *   bun spark-ssr db diff        print the pending schema plan (alias of db)
  *   bun spark-ssr db push        create/alter tables to match the templates
  *   bun spark-ssr build          assemble dist/ (+ compiled binary)
  *   bun spark-ssr start          serve dist/ if built, else the project
@@ -34,6 +35,7 @@ function parseArgs(argv) {
     else if (a === '--force') opts.force = true;
     else if (a === 'build' || a === 'start' || a === 'serve' || a === 'db') opts.cmd = a;
     else if (a === 'push' && opts.cmd === 'db') opts.push = true;
+    else if (a === 'diff' && opts.cmd === 'db') opts.diff = true; // explicit alias of the plan view
     else if (a.startsWith('--')) { console.error(`Unknown option: ${a}`); process.exit(2); }
   }
   return opts;
@@ -43,7 +45,7 @@ const HELP = `spark-ssr — zero-config SSR for spark-html on Bun
 
 Usage:
   bun spark-ssr [serve] [--port <n>] [--root <dir>]
-  bun spark-ssr db [push] [--force]
+  bun spark-ssr db [diff|push] [--force]
   bun spark-ssr build [--no-compile] [--docker]
   bun spark-ssr start
 `;
@@ -140,12 +142,16 @@ async function dbCmd(root, { push, force }) {
       console.log('\n✓ live database already matches');
     } else {
       console.log('');
+      let destructive = false;
       for (const d of diff) {
         if (d.create) console.log(`will create ${d.table}`);
         for (const c of d.add) console.log(`will add ${d.table}.${c.name} ${c.type}`);
-        for (const c of d.extra) console.log(`extra column ${d.table}.${c} (kept; --force drops)`);
+        for (const c of d.retype || []) { destructive = true; console.log(`will change ${d.table}.${c.name} ${c.from} → ${c.to} (needs --force)`); }
+        for (const c of d.extra) { destructive = true; console.log(`extra column ${d.table}.${c} (kept; --force drops)`); }
       }
-      console.log('\nrun `bun spark-ssr db push` to apply');
+      console.log(destructive
+        ? '\nadditive changes: `bun spark-ssr db push`   destructive changes: `bun spark-ssr db push --force`'
+        : '\nrun `bun spark-ssr db push` to apply');
     }
   }
   await db.close();

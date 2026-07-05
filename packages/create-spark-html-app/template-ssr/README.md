@@ -39,6 +39,10 @@ disabled.
 | Auth-scoped CRUD | `posts` and `todos` carry `user_id` → their APIs are session-scoped (401 anonymous) |
 | Draft privacy | the `[slug]` query: `published = 1 OR :session.id IS NOT NULL` — authors preview drafts |
 | Middleware | `middleware.html` disables public signups (single-author blog) |
+| Background jobs | `<spark-ssr job="notify-author" on="insert:posts" />` runs `jobs/notify-author.js` after every new post |
+| Declarative mail | `spark.json` `"mail": "./lib/mail.js"` — `req.mail(…)` from a job/handler; the default logs, swap for your provider |
+| OpenAPI + typed client | `/__spark/openapi.json` and `/__spark/client.ts` — generated from the inferred backend, never authored |
+| Safe schema evolution | `bun run db` (diff) applies additive changes; a destructive retype/drop needs `bun spark-ssr db push --force` |
 | Aggregates | `about.html`'s `COUNT(*)` serves an object → `{stats.n}` |
 | Dark/light theme | spark-html-theme — `app.js` one-liner + `theme-toggle.html`; no-flash init is auto-inlined |
 | Fonts | spark.json `"fonts"` → spark-html-font tags in every `<head>` |
@@ -57,6 +61,11 @@ disabled.
   `search`); `guard="…"` protects the page.
 - Plain forms to `/api/*` work without JavaScript — success 303s back,
   the markup's constraint attributes validate on the server.
+- `job="…"` on a `<spark-ssr>` runs `jobs/<name>.js` on a schedule
+  (`every="1d"`) or after a write (`on="insert:posts"`); `mail()` is wired
+  from `spark.json` `"mail"`. External consumers get a generated
+  [`/__spark/openapi.json`](http://localhost:3000/__spark/openapi.json) and a
+  typed `/__spark/client.ts` for free.
 - Everything hot-reloads — pages, layouts, components, queries, middleware
   — and dev errors land on the page, not in a bare 500. Open
   [/__spark/plan](http://localhost:3000/__spark/plan) to see the inferred

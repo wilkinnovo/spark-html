@@ -29,13 +29,22 @@ function resolveEnv(v) {
 
 export function loadConfig(root) {
   const file = join(root, 'spark.json');
-  const raw = existsSync(file) ? JSON.parse(readFileSync(file, 'utf8')) : {};
+  const exists = existsSync(file);
+  const raw = exists ? JSON.parse(readFileSync(file, 'utf8')) : {};
   const cfg = resolveEnv(raw);
   return {
-    db: cfg.db || null,
+    // Config-less start (Tier 4.9): with NO spark.json at all, `db` defaults to
+    // a local SQLite file, so `bun spark-ssr` runs on a folder holding one
+    // index.html — zero files to begin. A spark.json that exists but omits `db`
+    // stays deliberately database-free (the markdown-blog templates rely on it).
+    db: cfg.db || (exists ? null : 'sqlite://./dev.db'),
     auth: cfg.auth || null,
     cors: cfg.cors ?? false,
     uploads: cfg.uploads || 'uploads',
+    // Declarative mail (Tier 3.8): a module path ("./lib/mail.js" — default
+    // export (msg) => …), a { url, from, headers } webhook, or null for the
+    // dev logger. Jobs and handlers call mail() the same way regardless.
+    mail: cfg.mail || null,
     // Companion-package config, same shapes their build-pipeline steps take:
     // "fonts" → spark-html-font tags in every <head>; "images" → options for
     // the spark-html-image pass `spark-ssr build` runs when it's installed.
