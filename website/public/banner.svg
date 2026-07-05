@@ -48,7 +48,7 @@
     <rect x="170" y="272" width="88" height="32" rx="8" fill="#0b0b0b" stroke="#1c1c1c"/>
     <text x="214" y="293" text-anchor="middle"><tspan fill="#ffd24a">0</tspan><tspan fill="#888888"> deps</tspan></text>
     <rect x="268" y="272" width="120" height="32" rx="8" fill="#0b0b0b" stroke="#1c1c1c"/>
-    <text x="328" y="293" text-anchor="middle"><tspan fill="#ffd24a">19</tspan><tspan fill="#888888"> packages</tspan></text>
+    <text x="328" y="293" text-anchor="middle"><tspan fill="#ffd24a">20</tspan><tspan fill="#888888"> packages</tspan></text>
     <rect x="398" y="272" width="112" height="32" rx="8" fill="#0b0b0b" stroke="#1c1c1c"/>
     <text x="454" y="293" text-anchor="middle"><tspan fill="#ffd24a">MIT</tspan><tspan fill="#888888"> license</tspan></text>
   </g>

@@ -182,7 +182,7 @@ Spark trades completeness for simplicity — these are deliberate edges, not roa
 |---|---|
 | [`spark-html-bun`](packages/spark-html-bun/README.md) | Dev server, bundler &amp; preview on Bun — `spark dev`/`build`/`preview`, scoped HMR, no-build dev, the post-build pipeline. |
 | [`spark-prerender`](packages/spark-prerender/README.md) | Build-time SEO prerender — real HTML per route (+ sitemap/robots), no SSR server, no app changes. |
-| [`spark-ssr`](packages/spark-ssr/README.md) | Zero-config SSR on Bun — the template infers the data, routes &amp; CRUD API (`<spark-ssr>`), sessions, uploads, middleware. |
+| [`spark-ssr`](packages/spark-ssr/README.md) | Full-stack SSR on Bun — the template is the backend: inferred schema, REST/CRUD API, auth &amp; sessions, jobs/mail, and source-agnostic hydration (`<spark-ssr>`). |
 | [`spark-html-image`](packages/spark-html-image/README.md) | Build-time image optimization — `<img>` rewritten to webp/avif with responsive `srcset`, zero config. |
 | [`spark-html-font`](packages/spark-html-font/README.md) | Font loading optimizer — `@font-face` + preload + size-adjusted fallbacks, no FOUT, no layout shift. |
 | [`spark-html-manifest`](packages/spark-html-manifest/README.md) | PWA manifest + icons + head tags (and optional service worker) from one config. |
@@ -200,7 +200,7 @@ Spark trades completeness for simplicity — these are deliberate edges, not roa
 ## This repo
 
 ```
-packages/        spark-html + its 18 sibling/tooling packages — 19 in all
+packages/        spark-html + its 19 sibling/tooling packages — 20 in all
 examples/        basic (Bun app) · jsimports · no-build (CDN, zero tooling)
 editors/         Zed + VS Code extensions for .html component highlighting
 website/         the docs/playground/tutorials site — built with Spark itself
@@ -210,7 +210,7 @@ website/         the docs/playground/tutorials site — built with Spark itself
 bun install      # links workspaces
 bun run dev      # the example app
 bun run site     # the website
-bun run test     # 800+ assertions, pure node, no browser
+bun run test     # 1200+ assertions, pure node, no browser
 bun run e2e      # Playwright: mount → hydrate → router → theme, live tutorials
 ```
 
