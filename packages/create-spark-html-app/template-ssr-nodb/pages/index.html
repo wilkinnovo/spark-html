@@ -20,9 +20,17 @@
 
 <main>
   <input class="search" bind:value="q" placeholder="Filter posts…" aria-label="Filter posts">
+  <!-- The card is inlined (not a component) so it hydrates cleanly: a page
+       that hydrates renders its own loop, and passing a loop row into a child
+       component's prop is the one thing that doesn't survive the client
+       re-render. Inline markup filters live off {q} with zero JS. -->
   <template each="post in posts">
     <template if="!q || (post.title + ' ' + post.excerpt).toLowerCase().includes(q.toLowerCase())">
-      <div import="/components/post-card" post="{post}"></div>
+      <article class="card">
+        <h2><a href="/blog/{post.slug}">{post.title}</a></h2>
+        <p>{post.excerpt}</p>
+        <p class="meta">{post.date}</p>
+      </article>
     </template>
   </template>
   <template if="posts.length === 0">

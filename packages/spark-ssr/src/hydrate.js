@@ -134,6 +134,9 @@ function stripDeclarations(code, names) {
 
 // The synthesized component script. Plain functions, no template literals,
 // no code-shaped strings (the runtime's script rewriter is not string-aware).
+// Every generated local/param is `__`-prefixed: the rewriter turns any bare
+// assignment to a top-level state name into a reactive write, so a helper
+// local named `body`/`q`/`row` would clobber the page's own {body}/{q} state.
 export function clientScript({ analysis, plan, tables = [], colsByTable = {}, key, liveTables = [], authorScript = '', auto }) {
   const L = [];
   const provided = new Set();               // names the framework declares
@@ -166,10 +169,10 @@ export function clientScript({ analysis, plan, tables = [], colsByTable = {}, ke
   // string so ?q / ?sort / ?page-driven sources refetch in context.
   if (plan.length && !defined.has('refresh')) {
     L.push(`async function refresh() {`);
-    L.push(`  const q = typeof location !== 'undefined' ? location.search : '';`);
-    L.push(`  const r = await fetch('/__spark/data/${key}.json' + q);`);
-    L.push(`  const d = await r.json();`);
-    for (const p of plan) L.push(`  ${p.var} = d.${p.var};`);
+    L.push(`  const __qs = typeof location !== 'undefined' ? location.search : '';`);
+    L.push(`  const __r = await fetch('/__spark/data/${key}.json' + __qs);`);
+    L.push(`  const __d = await __r.json();`);
+    for (const p of plan) L.push(`  ${p.var} = __d.${p.var};`);
     L.push(`}`);
   }
 
@@ -181,18 +184,18 @@ export function clientScript({ analysis, plan, tables = [], colsByTable = {}, ke
   // string argument when several are in play: api_create('posts', {…}).
   if (tables.length) {
     L.push(`const __table = ${JSON.stringify(defaultTable)};`);
-    L.push(`function __api(a) { if (typeof a === 'string') return a; if (!__table) throw new Error('spark-ssr: page has multiple tables — pass one, e.g. api_create("posts", {…})'); return __table; }`);
+    L.push(`function __api(__a) { if (typeof __a === 'string') return __a; if (!__table) throw new Error('spark-ssr: page has multiple tables — pass one, e.g. api_create("posts", {…})'); return __table; }`);
     if (!defined.has('api_create')) {
-      L.push(`async function api_create(a, b) { const t = __api(a); const body = typeof a === 'string' ? b : a;`);
-      L.push(`  const r = await fetch('/api/' + t, { method: 'POST', headers: ${JSON.stringify(H)}, body: JSON.stringify(body) }); return r.json(); }`);
+      L.push(`async function api_create(__a, __b) { const __t = __api(__a); const __body = typeof __a === 'string' ? __b : __a;`);
+      L.push(`  const __r = await fetch('/api/' + __t, { method: 'POST', headers: ${JSON.stringify(H)}, body: JSON.stringify(__body) }); return __r.json(); }`);
     }
     if (!defined.has('api_update')) {
-      L.push(`async function api_update(a, b, c) { const s = typeof a === 'string'; const t = __api(a); const id = s ? b : a; const body = s ? c : b;`);
-      L.push(`  const r = await fetch('/api/' + t + '/' + id, { method: 'PATCH', headers: ${JSON.stringify(H)}, body: JSON.stringify(body) }); return r.json(); }`);
+      L.push(`async function api_update(__a, __b, __c) { const __s = typeof __a === 'string'; const __t = __api(__a); const __id = __s ? __b : __a; const __body = __s ? __c : __b;`);
+      L.push(`  const __r = await fetch('/api/' + __t + '/' + __id, { method: 'PATCH', headers: ${JSON.stringify(H)}, body: JSON.stringify(__body) }); return __r.json(); }`);
     }
     if (!defined.has('api_delete')) {
-      L.push(`async function api_delete(a, b) { const s = typeof a === 'string'; const t = __api(a); const id = s ? b : a;`);
-      L.push(`  const r = await fetch('/api/' + t + '/' + id, { method: 'DELETE' }); return r.json(); }`);
+      L.push(`async function api_delete(__a, __b) { const __s = typeof __a === 'string'; const __t = __api(__a); const __id = __s ? __b : __a;`);
+      L.push(`  const __r = await fetch('/api/' + __t + '/' + __id, { method: 'DELETE' }); return __r.json(); }`);
     }
   }
 
@@ -207,28 +210,28 @@ export function clientScript({ analysis, plan, tables = [], colsByTable = {}, ke
     const cols = colsByTable[defaultTable] || [];
     if (wants(insert)) {
       L.push(`async function ${insert.name}() {`);
-      L.push('  const body = {};');
+      L.push('  const __body = {};');
       const colNames = cols.map((c) => c.name);
       const fallback = primaryColumn(cols);
       for (const b of analysis.topBinds) {
         const col = colNames.includes(b.v) ? b.v : fallback;
-        if (col) L.push(`  body.${col} = ${b.v};`);
+        if (col) L.push(`  __body.${col} = ${b.v};`);
       }
-      L.push(`  await api_create(body);`);
+      L.push(`  await api_create(__body);`);
       for (const b of analysis.topBinds) L.push(`  ${b.v} = ${b.kind === 'checked' ? 'false' : "''"};`);
       L.push('  await refresh();');
       L.push('}');
     }
     if (wants(update)) {
-      L.push(`async function ${update.name}(row) {`);
-      L.push('  const body = {};');
-      for (const f of [...new Set(analysis.rowBinds.map((b) => b.field))]) L.push(`  body.${f} = row.${f};`);
-      L.push(`  await api_update(row.id, body);`);
+      L.push(`async function ${update.name}(__row) {`);
+      L.push('  const __body = {};');
+      for (const f of [...new Set(analysis.rowBinds.map((b) => b.field))]) L.push(`  __body.${f} = __row.${f};`);
+      L.push(`  await api_update(__row.id, __body);`);
       L.push('}');
     }
     if (wants(del)) {
-      L.push(`async function ${del.name}(row) {`);
-      L.push(`  await api_delete(row.id);`);
+      L.push(`async function ${del.name}(__row) {`);
+      L.push(`  await api_delete(__row.id);`);
       L.push('  await refresh();');
       L.push('}');
     }

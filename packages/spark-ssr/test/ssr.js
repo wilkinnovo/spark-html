@@ -272,7 +272,7 @@ await test('client component: await unwrapped, row handlers get their row, scrip
   assert.ok(html.includes('let todos = __init.todos'), 'list state');
   assert.ok(html.includes("let draft = ''"), 'local state');
   assert.ok(/async function add\(\)/.test(html), 'insert handler');
-  assert.ok(html.includes('body.title = draft'), 'bind mapped to the text column');
+  assert.ok(html.includes('__body.title = draft'), 'bind mapped to the text column');
   assert.ok(html.includes("method: 'PATCH'") && html.includes("method: 'DELETE'"), 'update+delete verbs');
   // linkedom can park template children in .content AND .childNodes — the
   // await unwrap must emit them ONCE (duplicated inputs were live twins).
@@ -317,8 +317,8 @@ await test('ambient helpers (§1): a page <script> gets api_* + refresh, auto-fi
   assert.ok(comp.includes('async function refresh()'), 'ambient refresh injected');
   assert.ok(comp.includes('const __table = "todos"'), 'single table inferred');
   assert.ok(/async function add\(\)/.test(comp), 'insert handler synthesized');
-  assert.ok(comp.includes('body.title = draft'), 'bind mapped to the primary column');
-  assert.ok(/async function remove\(row\)/.test(comp), 'delete handler synthesized');
+  assert.ok(comp.includes('__body.title = draft'), 'bind mapped to the primary column');
+  assert.ok(/async function remove\(__row\)/.test(comp), 'delete handler synthesized');
   assert.equal((comp.match(/function toggle\b/g) || []).length, 1, 'author toggle kept, not regenerated');
   assert.ok(comp.includes('api_update(t.id'), 'author toggle body preserved');
 });
@@ -336,6 +336,26 @@ await test('auto="none" (§1): suppresses synthesized handlers, keeps ambient he
   assert.ok(comp.includes('async function api_create'), 'ambient helpers still present');
   assert.equal((comp.match(/function add\b/g) || []).length, 1, 'no synthesized add — author owns it');
   assert.equal((comp.match(/function remove\b/g) || []).length, 1, 'no synthesized remove — author owns it');
+});
+
+await test('§1 no state collision: generated locals never clobber page state (body/q/row)', async () => {
+  // The spark-html rewriter turns a bare `body = …` into a write to the {body}
+  // state (the textarea). A helper local named `body` would push the request
+  // body object into the field — [object Object]. Every generated local/param
+  // must be __-prefixed. A page with a `body` bind + a table exercises it.
+  writeFileSync(join(todoRoot, 'collide.html'), `<input bind:value="body" placeholder="Body">
+<button onclick={add}>Add</button>
+<template each="t in todos"><span>{t.title}</span><button onclick={del}>x</button></template>
+<spark-ssr table="todos" />
+`);
+  const comp = await (await fetch(`${T}/__spark/page/collide.html`)).text();
+  assert.ok(comp.includes('let body ='), 'the page owns a {body} state var');
+  // No bare `const body`/`const q`/`const row`/`const id` in the generated
+  // helpers — those would collide with reactive state of the same name.
+  for (const bad of [/\bconst body\b/, /\bconst q\b/, /\bconst r\b(?!\w)/, /\bconst d\b(?!\w)/, /\(row\)/, /\bconst id\b/]) {
+    assert.ok(!bad.test(comp), `generated helper avoids ${bad}`);
+  }
+  assert.ok(comp.includes('__body') && comp.includes('__row.id'), 'helpers use __-prefixed internals');
 });
 
 // Boot the real spark-html runtime against a hydrating page and return the
