@@ -17,7 +17,7 @@ import {
   extractBlocks, analyze, mergeAnalyses, dataPlan, rewriteParams, singleShaped,
   maskComments, extractForms, validateFields, sqlTables, singular,
 } from './parse.js';
-import { renderFragment, evalExpr } from './render.js';
+import { renderFragment, renderFragmentTo, evalExpr } from './render.js';
 import { clientComponent, initModule } from './hydrate.js';
 import { urlSource, globSource, moduleSource, makeSourceCache } from './sources.js';
 import { inferSchema, diffSchema, pushSchema, seedTables } from './schema.js';
@@ -319,6 +319,7 @@ export async function serve(options = {}) {
     sweep(); // baseline — the first pass records, it doesn't reload anyone
     watchTimer = setInterval(() => {
       if (!sweep()) return;
+      columnsCache.clear(); // a file changed — a `db push` may have too (§10)
       for (const c of sseClients) {
         try { c.enqueue(sseEnc.encode('data: reload\n\n')); } catch { sseClients.delete(c); }
       }
@@ -362,6 +363,7 @@ export async function serve(options = {}) {
         try { c.enqueue(sseEnc.encode(': ping\n\n')); } catch { set.delete(c); }
       }
     }
+    sourceCache.sweep(); // expired cache entries freed eagerly (§5)
   }, 25000);
   heartbeat.unref?.();
 
@@ -624,8 +626,21 @@ export async function serve(options = {}) {
   const tableOpts = new Map();
   let validators = new Map();
 
+  // db.columns runs a PRAGMA / information_schema query — cached per table
+  // (§10), cleared whenever the schema might have moved (ensureSchema, or any
+  // file change in dev, where a `db push --force` usually rides along).
+  const columnsCache = new Map(); // table → [{ name, type }]
+  async function columnsOf(table) {
+    let cols = columnsCache.get(table);
+    if (!cols) {
+      cols = await db.columns(table);
+      if (cols.length) columnsCache.set(table, cols);
+    }
+    return cols;
+  }
+
   async function tableInfo(table) {
-    const cols = await db.columns(table);
+    const cols = await columnsOf(table);
     const names = cols.map((c) => c.name);
     const scoped = !!config.auth && names.includes('user_id') && config.auth.table !== table;
     return { cols, names, scoped };
@@ -887,6 +902,7 @@ export async function serve(options = {}) {
     } catch (e) {
       if (!quiet) console.warn(`[spark-ssr] schema: ${e.message}`);
     }
+    columnsCache.clear(); // tables may have gained columns (§10)
     schemaDirty = false;
   }
   mailSender = await loadMailSender();
@@ -1014,13 +1030,22 @@ export async function serve(options = {}) {
   }
 
   // ── components + static ──
+  // mtime-cached reads: the renderer caches compiled component programs by
+  // source string, so serving the SAME string until the file changes makes
+  // component composition allocation-free on the request path (§1).
+  const componentFiles = new Map(); // file → { mtime, source }
   async function loadComponent(spec) {
     let rel = String(spec).split(/[?#]/)[0].replace(/^\/+/, '');
     if (!rel.endsWith('.html')) rel += '.html';
     for (const base of [root, join(root, 'public'), pagesDir]) {
       const file = resolve(base, rel);
       if (file.startsWith(base) && existsSync(file) && statSync(file).isFile()) {
-        return readFileSync(file, 'utf8');
+        const mtime = statSync(file).mtimeMs;
+        const hit = componentFiles.get(file);
+        if (hit && hit.mtime === mtime) return hit.source;
+        const source = readFileSync(file, 'utf8');
+        componentFiles.set(file, { mtime, source });
+        return source;
       }
     }
     return null;
@@ -1056,10 +1081,15 @@ export async function serve(options = {}) {
   const namesOf = (code) =>
     [...String(code).matchAll(/^\s*(?:let|const|var)\s+([a-zA-Z_$][\w$]*)/gm)].map((m) => m[1]);
 
-  async function runPageScript(code, req) {
-    const names = namesOf(code);
-    const fn = new AsyncFunction('req', 'db', 'fetch', 'mail', code + '\n;return { ' + names.join(', ') + ' };');
-    try { return await fn(req, db, makeAppFetch(req), mail); }
+  // Compiled once per parsed page (§3): pd is the mtime-invalidated cache
+  // entry, so hanging the AsyncFunction off it recompiles exactly when the
+  // file changes — not on every request.
+  async function runPageScript(pd, req) {
+    if (!pd.scriptFn) {
+      const names = namesOf(pd.code);
+      pd.scriptFn = new AsyncFunction('req', 'db', 'fetch', 'mail', pd.code + '\n;return { ' + names.join(', ') + ' };');
+    }
+    try { return await pd.scriptFn(req, db, makeAppFetch(req), mail); }
     catch (e) {
       if (!quiet) console.warn(`[spark-ssr] page <script> threw: ${e.message}`);
       if (live) e.__sparkPageScript = true;
@@ -1094,6 +1124,10 @@ export async function serve(options = {}) {
     }
     return out;
   }
+
+  // Split point the streaming path (§7) uses to get the shell's prefix and
+  // suffix around the body.
+  const SHELL_MARK = '\u0000SPARK_BODY\u0000';
 
   function shell(page, body, { hydrate, mount, headExtra = '', scripts = '' }) {
     const title = page.key === 'index' ? 'Spark' : page.key.split('/').pop().replace(/\[|\]/g, '');
@@ -1177,7 +1211,7 @@ export async function serve(options = {}) {
         const hit = sourceCache.get(key);
         if (hit) return hit.value;
       }
-      const value = globSource(src.binding.value, root);
+      const value = await globSource(src.binding.value, root);
       if (ttl) sourceCache.set(key, value, ttl);
       return value;
     }
@@ -1195,26 +1229,35 @@ export async function serve(options = {}) {
     // A page's <script> runs on the server (the escape hatch) UNLESS the page
     // hydrates — then it's the client component's script (handlers, not data),
     // so it must not run here. Its data still comes from the <spark-ssr> blocks.
-    if (pd.code && !shouldHydrate(pd)) Object.assign(scope, await runPageScript(pd.code, req));
+    if (pd.code && !shouldHydrate(pd)) Object.assign(scope, await runPageScript(pd, req));
     for (const p of pd.plan) {
       if (scope[p.var] !== undefined) continue; // the page <script> won
       scope[p.var] = await resolveSource(p, req);
     }
     // Relations (§): each="c in post.comments" attaches the child rows onto the
-    // parent object(s) via the inferred foreign key — one small query per
-    // parent, no JOIN in the template. Identifiers come from the parsed
-    // template (word chars only), so they're safe to interpolate.
+    // parent object(s) via the inferred foreign key — no JOIN in the template.
+    // Batched (§8): one `WHERE fk IN (…)` for the whole parent list, grouped
+    // by FK in memory — a 50-post page is one round-trip, not 50. Identifiers
+    // come from the parsed template (word chars only), so they're safe to
+    // interpolate.
     for (const r of pd.analysis.relations || []) {
       const parent = scope[r.parent];
       if (parent == null) continue;
       const fk = singular(r.parent) + '_id';
-      const attach = async (obj) => {
-        if (!obj || obj.id == null || obj[r.rel] !== undefined) return;
-        try { obj[r.rel] = await db.query(`SELECT * FROM ${r.rel} WHERE ${fk} = ?`, [obj.id]); }
-        catch { obj[r.rel] = []; }
-      };
-      if (Array.isArray(parent)) { for (const o of parent) await attach(o); }
-      else await attach(parent);
+      const targets = (Array.isArray(parent) ? parent : [parent])
+        .filter((o) => o && o.id != null && o[r.rel] === undefined);
+      if (!targets.length) continue;
+      const ids = [...new Set(targets.map((o) => o.id))];
+      let byId = new Map();
+      try {
+        const rows = await db.query(
+          `SELECT * FROM ${r.rel} WHERE ${fk} IN (${ids.map(() => '?').join(', ')})`, ids);
+        for (const row of rows) {
+          const k = row[fk];
+          (byId.get(k) || byId.set(k, []).get(k)).push(row);
+        }
+      } catch { byId = new Map(); }
+      for (const o of targets) o[r.rel] = byId.get(o.id) || [];
     }
     return scope;
   }
@@ -1229,8 +1272,60 @@ export async function serve(options = {}) {
       + `spark-ssr: this page reads ${items} but no source provides it</div>`;
   }
 
+  // ── full-page response cache (§6) ──
+  // Anonymous GETs of pages whose output is a pure function of (path, query)
+  // render identically for every visitor — serve the HTML string straight
+  // from memory. Auto-detected, production only (dev must re-render), and
+  // strictly gated: no server <script> that runs per request, no module
+  // sources (arbitrary code), no SQL reading :header/:body. Session-reading
+  // pages stay eligible — anonymous visitors all see session = null — but a
+  // request carrying any spark_ cookie (session or flash) bypasses the cache
+  // entirely, and a response that sets a cookie is never stored. Entries ride
+  // the source cache, so writes through the server invalidate them by table
+  // and the heartbeat sweep frees expired ones. `responseCache` in spark.json:
+  // false disables, a number overrides the TTL (default 60s).
+  const pageCacheTtl = typeof config.responseCache === 'number' ? config.responseCache : 60;
+  function pageCacheable(pd) {
+    if (pd.cacheable !== undefined) return pd.cacheable;
+    let ok = !live && config.responseCache !== false;
+    if (ok && pd.code && !shouldHydrate(pd)) ok = false;
+    for (const p of ok ? pd.plan : []) {
+      if (p.source.kind === 'module') { ok = false; break; }
+      const sql = p.source.kind === 'query' ? p.source.route.sql
+        : p.source.kind === 'sql' ? p.source.binding.sql : null;
+      if (sql && /:(header|body)\./.test(sql)) { ok = false; break; }
+    }
+    return (pd.cacheable = ok);
+  }
+  function pageTables(pd) {
+    if (pd.cacheTables) return pd.cacheTables;
+    const tables = new Set();
+    for (const p of pd.plan) {
+      if (p.source.kind === 'table') tables.add(p.source.table);
+      const sql = p.source.kind === 'query' ? p.source.route.sql
+        : p.source.kind === 'sql' ? p.source.binding.sql : null;
+      if (sql) for (const t of sqlTables(sql)) tables.add(t);
+    }
+    return (pd.cacheTables = tables);
+  }
+
   async function servePage(page, req, extra = null) {
     const pd = pageData(page, cache, pagesDir);
+
+    const cacheKey = !extra && req.method === 'GET' && pageCacheable(pd)
+      && !(req.headers.cookie || '').includes('spark_')
+      ? 'p|' + req.path + '|' + JSON.stringify(Object.entries(req.query).sort())
+      : null;
+    if (cacheKey) {
+      const hit = sourceCache.get(cacheKey);
+      if (hit) {
+        return new Response(hit.value.html, {
+          status: hit.value.status,
+          headers: { 'content-type': 'text/html; charset=utf-8' },
+        });
+      }
+    }
+
     const scope = await buildScope(pd, req);
     if (extra) Object.assign(scope, extra.scope || {});
 
@@ -1269,6 +1364,46 @@ export async function serve(options = {}) {
     // and their own <script> comes alive (counters, demos, …).
     const hasComponents = /\bimport\s*=\s*"/.test(pd.html);
     const rctx = { loadComponent, keepImports: !hydrate, dev: live };
+    let headExtra = pd.head ? renderHead(pd.head, (e) => evalExpr(e, scope)) : '';
+    if (headExtra) headExtra = withOgTags(headExtra);
+    const shellOpts = { hydrate, mount: hydrate || hasComponents, headExtra, scripts: pd.scripts };
+    const headers = { 'content-type': 'text/html; charset=utf-8' };
+    // A shown flash is consumed — clear the cookie so it appears exactly once.
+    if (scope.flash) headers['set-cookie'] = FLASH_COOKIE('', true);
+
+    // Streaming (§7): with the precompiled renderer (§1) a big list page can
+    // flush its shell + head immediately and stream rows as they render —
+    // lower time-to-first-byte and no whole-page string held in memory.
+    // Production list pages only, and only when nothing needs the finished
+    // body: no <spark-flash/pager/search> post-processing, no declarative
+    // status= (a streamed status line is already sent), no cache store.
+    if (!cacheKey && streamablePage(pd)) {
+      const [shellPre, shellPost] = shell(page, SHELL_MARK, shellOpts).split(SHELL_MARK);
+      const status = (extra && extra.status) || 200;
+      const path = req.path;
+      const stream = new ReadableStream({
+        async start(c) {
+          try {
+            c.enqueue(sseEnc.encode(shellPre)); // head flushes before the first row renders
+            let buf = '';
+            const sink = {
+              push(s) {
+                buf += s;
+                if (buf.length >= 16384) { c.enqueue(sseEnc.encode(buf)); buf = ''; }
+              },
+            };
+            await renderFragmentTo(sink, pd.html, scope, rctx);
+            c.enqueue(sseEnc.encode(buf + shellPost));
+          } catch (e) {
+            if (!quiet) console.error(`[spark-ssr] stream ${path} — ${e.stack || e.message}`);
+            try { c.enqueue(sseEnc.encode('<!-- spark-ssr: render failed mid-stream -->' + shellPost)); } catch { /* client gone */ }
+          }
+          try { c.close(); } catch { /* already closed */ }
+        },
+      });
+      return new Response(stream, { status, headers });
+    }
+
     let body = await renderFragment(pd.html, scope, rctx);
     // <spark-flash/> — a drop-in styled toast that shows the one-shot {flash}
     // message and nothing when there isn't one. Layout writes it once.
@@ -1289,21 +1424,28 @@ export async function serve(options = {}) {
         return searchHtml(req.query, ph);
       });
     }
-    let headExtra = pd.head ? renderHead(pd.head, (e) => evalExpr(e, scope)) : '';
-    if (headExtra) headExtra = withOgTags(headExtra);
-    let html = shell(page, body, {
-      hydrate, mount: hydrate || hasComponents, headExtra, scripts: pd.scripts,
-    });
+    let html = shell(page, body, shellOpts);
     if (live && pd.plan.unresolved && pd.plan.unresolved.length) {
       html = html.replace('</body>', unresolvedBanner(pd.plan.unresolved) + '\n</body>');
     }
-    const headers = { 'content-type': 'text/html; charset=utf-8' };
-    // A shown flash is consumed — clear the cookie so it appears exactly once.
-    if (scope.flash) headers['set-cookie'] = FLASH_COOKIE('', true);
-    return new Response(html, {
-      status: (extra && extra.status) || rctx.status || 200,
-      headers,
-    });
+    const status = (extra && extra.status) || rctx.status || 200;
+    // Store for the next anonymous visitor (§6) — never a response that
+    // carries a cookie, never a non-200.
+    if (cacheKey && status === 200 && !headers['set-cookie']) {
+      sourceCache.set(cacheKey, { html, status }, pageCacheTtl, pageTables(pd));
+    }
+    return new Response(html, { status, headers });
+  }
+
+  // A page the streaming path (§7) can serve: production, has at least one
+  // list loop (where streaming pays), and nothing that needs the finished
+  // body string before the first byte goes out.
+  function streamablePage(pd) {
+    if (pd.streamable !== undefined) return pd.streamable;
+    return (pd.streamable = !live
+      && pd.analysis.eachRoots.size > 0
+      && !/<spark-(flash|pager|search)\b/i.test(pd.html)
+      && !/<template\b[^>]*\bstatus\s*=/i.test(pd.html));
   }
 
   // The default flash toast (self-contained, design-system styled). Empty when
@@ -1652,7 +1794,7 @@ code{color:#fdba74}em{color:#a8a29e}</style></head><body>
         try { vals = await enumerateParam(sql, param); } catch { /* dynamic route stays out */ }
       } else {
         const glob = pd.plan.find((p) => p.source.kind === 'glob');
-        if (glob) vals = globSource(glob.source.binding.value, root).map((r) => r.slug);
+        if (glob) vals = (await globSource(glob.source.binding.value, root)).map((r) => r.slug);
       }
       for (const v of vals) urls.push(page.route.replace(`[${param}]`, encodeURIComponent(String(v))));
     }
@@ -1804,7 +1946,7 @@ code{color:#fdba74}em{color:#a8a29e}</style></head><body>
           const pd = pageData(page, cache, pagesDir);
           const tables = [...new Set(pd.blocks.filter((b) => b.table).map((b) => b.table))];
           const colsByTable = {};
-          if (db) for (const t of tables) colsByTable[t] = await db.columns(t);
+          if (db) for (const t of tables) colsByTable[t] = await columnsOf(t);
           const autoBlock = pd.blocks.find((b) => b.table && b.auto !== undefined);
           const html = clientComponent({
             html: pd.html, analysis: pd.analysis, plan: pd.plan, key,

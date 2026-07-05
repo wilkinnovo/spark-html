@@ -12,6 +12,7 @@ import { parseHTML } from 'linkedom';
 import {
   serve, rewriteParams, analyze, extractBlocks, dataPlan, singleShaped,
   extractForms, validateFields, parseFrontMatter, sqlTables, renderFragment,
+  makeSourceCache,
 } from '../src/index.js';
 
 let pass = 0, fail = 0;
@@ -1040,6 +1041,119 @@ await test('await (§): a rejected <template await> with no catch shows a defaul
   const ok = await renderFragment('<template await="p" as="v"><p id="ok">{v}</p></template>',
     { p: Promise.resolve('yes') }, { dev: false });
   assert.ok(ok.includes('id="ok">yes<'), 'resolved value renders');
+});
+
+await test('source cache (§5): LRU bound, table-indexed invalidation, sweep frees expired entries', () => {
+  const c = makeSourceCache({ max: 3 });
+  c.set('a', 1, 60, new Set(['todos']));
+  c.set('b', 2, 60, new Set(['todos', 'users']));
+  c.set('c', 3, 60, new Set(['posts']));
+  assert.equal(c.size(), 3);
+  c.get('a'); // refresh a's recency — b is now the oldest
+  c.set('d', 4, 60, new Set());
+  assert.equal(c.size(), 3, 'bounded at max');
+  assert.equal(c.get('b'), undefined, 'LRU entry evicted');
+  assert.ok(c.get('a') && c.get('c') && c.get('d'), 'recent entries survive');
+
+  c.invalidate('todos');
+  assert.equal(c.get('a'), undefined, 'write through todos sweeps its readers');
+  assert.ok(c.get('c'), 'other tables untouched');
+
+  c.set('e', 5, -1, new Set(['posts'])); // already expired
+  c.sweep();
+  assert.equal(c.get('e'), undefined, 'sweep frees expired entries');
+  assert.ok(c.get('c'), 'live entries survive the sweep');
+});
+
+await test('renderer (§1): precompiled-program parity — slots, :class merge, spark-ignore, booleans, if-chain', async () => {
+  // A literal <slot> on a PAGE (outside any component) stays a real element.
+  const pageSlot = await renderFragment('<slot name="x">fallback {y}</slot>', { y: 'Y' });
+  assert.ok(pageSlot.includes('<slot name="x">fallback Y</slot>'), 'page-level slot kept + interpolated');
+
+  // :class merges into an existing static class; false/null dynamic attrs
+  // vanish; true renders bare for boolean attributes.
+  const attrs = await renderFragment(
+    '<li class="a" :class="on ? \'b\' : null" :data-id="id" :required="yes" :hidden="no">x</li>',
+    { on: true, id: 7, yes: true, no: false });
+  assert.ok(attrs.includes('class="a b"'), ':class merged into static class');
+  assert.ok(attrs.includes('data-id="7"'), 'dynamic attr rendered');
+  assert.ok(/\brequired[\s>]/.test(attrs) && !attrs.includes('required="'), 'true → bare boolean attr');
+  assert.ok(!attrs.includes('hidden'), 'false → attribute omitted');
+
+  // spark-ignore subtrees render verbatim — no interpolation, handlers kept.
+  const ignored = await renderFragment('<div spark-ignore><b onclick={x}>{raw}</b></div>', { raw: 'NO' });
+  assert.ok(ignored.includes('{raw}') && ignored.includes('onclick="{x}"'), 'spark-ignore untouched');
+
+  // if / else-if / else chain: exactly one branch renders, and the chain
+  // can set the response status declaratively.
+  const ctx = {};
+  const chain = await renderFragment(
+    '<template if="n === 1"><p>one</p></template>\n'
+    + '<template else-if="n === 2"><p>two</p></template>\n'
+    + '<template else status="404"><p>fallback</p></template>', { n: 5 }, ctx);
+  assert.ok(chain.includes('fallback') && !chain.includes('one') && !chain.includes('two'), 'else branch wins');
+  assert.equal(ctx.status, 404, 'winning branch sets ctx.status');
+
+  // Interpolated text is HTML-escaped (the XSS floor the old DOM path had).
+  const escaped = await renderFragment('<p>{evil}</p>', { evil: '<script>alert(1)</script>' });
+  assert.ok(!escaped.includes('<script>') && escaped.includes('&lt;script&gt;'), 'interpolation escapes HTML');
+});
+
+await test('response cache (§6): anonymous GETs serve from memory; a write through the server invalidates', async () => {
+  const root = mkdtempSync(join(tmpdir(), 'spark-ssr-rescache-'));
+  writeFileSync(join(root, 'spark.json'), JSON.stringify({ db: 'sqlite::memory:' }));
+  writeFileSync(join(root, 'index.html'),
+    '<ul><template each="todo in todos"><li class="t">{todo.title}</li></template></ul>\n'
+    + '<spark-ssr table="todos" />');
+  const s = await serve({ root, port: 0, quiet: true, watch: false }); // production: cache on
+  const B = `http://localhost:${s.port}`;
+  try {
+    await s.db.query("INSERT INTO todos (title) VALUES ('First')");
+    const p1 = await (await fetch(`${B}/`)).text();
+    assert.ok(p1.includes('First'), 'first render');
+
+    // A direct db write the server never saw — the cached page still serves.
+    await s.db.query("INSERT INTO todos (title) VALUES ('Sneaky')");
+    const p2 = await (await fetch(`${B}/`)).text();
+    assert.ok(!p2.includes('Sneaky'), 'served from cache (direct write invisible within TTL)');
+
+    // A write THROUGH the server invalidates by table.
+    const w = await fetch(`${B}/api/todos`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ title: 'Loud' }),
+    });
+    assert.equal(w.status, 201);
+    const p3 = await (await fetch(`${B}/`)).text();
+    assert.ok(p3.includes('Loud') && p3.includes('Sneaky'), 'cache invalidated, fresh render');
+
+    // A request carrying a spark_ cookie bypasses the cache entirely.
+    await s.db.query("INSERT INTO todos (title) VALUES ('ForUser')");
+    const p4 = await (await fetch(`${B}/`, { headers: { cookie: 'spark_session=x.y' } })).text();
+    assert.ok(p4.includes('ForUser'), 'cookie-carrying request rendered fresh');
+  } finally { await s.stop(true); }
+});
+
+await test('streaming (§7): a production list page streams — full document arrives intact', async () => {
+  const root = mkdtempSync(join(tmpdir(), 'spark-ssr-stream-'));
+  // responseCache off so the streaming path (not the §6 cache) serves the page.
+  writeFileSync(join(root, 'spark.json'), JSON.stringify({ db: 'sqlite::memory:', responseCache: false }));
+  writeFileSync(join(root, 'rows.html'),
+    '<h1>{title ?? "Rows"}</h1><ul><template each="r in rows"><li class="r">{r.title}</li></template></ul>\n'
+    + '<spark-ssr>\n  GET /api/rows → rows = SELECT * FROM rows\n</spark-ssr>');
+  const s = await serve({ root, port: 0, quiet: true, watch: false });
+  const B = `http://localhost:${s.port}`;
+  try {
+    await s.db.query('CREATE TABLE IF NOT EXISTS rows (id INTEGER PRIMARY KEY, title TEXT)');
+    for (let i = 0; i < 50; i++) await s.db.query('INSERT INTO rows (title) VALUES (?)', ['Row ' + i]);
+    const res = await fetch(`${B}/rows`);
+    assert.equal(res.status, 200);
+    const html = await res.text();
+    assert.equal((html.match(/class="r"/g) || []).length, 50, 'all rows streamed');
+    assert.ok(html.includes('Row 0') && html.includes('Row 49'), 'first and last rows present');
+    assert.ok(html.trimEnd().endsWith('</html>'), 'document closed cleanly');
+    assert.ok(html.includes('<head>'), 'shell prefix flushed');
+  } finally { await s.stop(true); }
 });
 
 await test('relations (§): each="c in post.comments" infers a comments table (post_id FK) and joins it', async () => {

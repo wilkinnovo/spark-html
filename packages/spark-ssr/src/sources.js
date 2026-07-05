@@ -11,7 +11,8 @@
  * which tables their SQL read, and any write to a `live` table sweeps them.
  */
 import { join, resolve, basename, extname } from 'node:path';
-import { readdirSync, readFileSync, statSync, existsSync } from 'node:fs';
+import { statSync, existsSync } from 'node:fs';
+import { readdir, readFile, stat } from 'node:fs/promises';
 import { pathToFileURL } from 'node:url';
 
 // ── URL source ─────────────────────────────────────────────────────────
@@ -58,7 +59,15 @@ function globRegex(pattern) {
   return new RegExp('^' + esc + '$');
 }
 
-export function globSource(pattern, root) {
+// Parsed rows cache (§4): re-reading, re-front-matter-parsing and re-sorting
+// the same files on every request was most of a markdown site's render cost.
+// The walk still happens (readdir + stat are cheap and catch adds/removes),
+// but a file whose mtime hasn't moved reuses its parsed row, and an entirely
+// unchanged corpus returns the same rows array. I/O is fs/promises now, so a
+// glob render yields instead of blocking the event loop (§4).
+const GLOB_CACHE = new Map(); // `${root}|${pattern}` → { rows, files: Map(path → { mtime, row }) }
+
+export async function globSource(pattern, root) {
   const rel = String(pattern).replace(/^\.\//, '');
   const rx = globRegex(rel);
   // Walk from the deepest literal directory prefix.
@@ -69,30 +78,44 @@ export function globSource(pattern, root) {
     if (existsSync(next) && statSync(next).isDirectory()) start = next;
     else break;
   }
-  const rows = [];
-  (function walk(dir) {
-    let names;
-    try { names = readdirSync(dir); } catch { return; }
-    for (const f of names) {
-      if (f.startsWith('.')) continue;
-      const full = join(dir, f);
-      const st = statSync(full);
-      if (st.isDirectory()) { walk(full); continue; }
+  const key = root + '|' + rel;
+  const cached = GLOB_CACHE.get(key);
+  const prev = cached ? cached.files : new Map();
+  const files = new Map();
+  let changed = !cached;
+  await (async function walk(dir) {
+    let entries;
+    try { entries = await readdir(dir, { withFileTypes: true }); } catch { return; }
+    for (const e of entries) {
+      if (e.name.startsWith('.')) continue;
+      const full = join(dir, e.name);
+      if (e.isDirectory()) { await walk(full); continue; }
       const relPath = full.slice(root.length + 1).split('\\').join('/');
       if (!rx.test(relPath)) continue;
-      const raw = readFileSync(full, 'utf8');
+      let st;
+      try { st = await stat(full); } catch { continue; }
+      const hit = prev.get(full);
+      if (hit && hit.mtime === st.mtimeMs) { files.set(full, hit); continue; }
+      const raw = await readFile(full, 'utf8');
       const { data, body } = parseFrontMatter(raw);
-      rows.push({
-        slug: basename(f, extname(f)),
-        path: '/' + relPath,
+      files.set(full, {
         mtime: st.mtimeMs,
-        ...data,
-        body,
+        row: {
+          slug: basename(e.name, extname(e.name)),
+          path: '/' + relPath,
+          mtime: st.mtimeMs,
+          ...data,
+          body,
+        },
       });
+      changed = true;
     }
   })(start);
+  if (!changed && files.size === prev.size) return cached.rows;
+  const rows = [...files.values()].map((f) => f.row);
   // Date-ish front matter first when present, else filename order.
   rows.sort((a, b) => (a.date && b.date) ? String(b.date).localeCompare(String(a.date)) : a.slug.localeCompare(b.slug));
+  GLOB_CACHE.set(key, { rows, files });
   return rows;
 }
 
@@ -109,23 +132,58 @@ export async function moduleSource(spec, root, req, db, { watch = true } = {}) {
 }
 
 // ── the per-source TTL cache (cache="…") ───────────────────────────────
-export function makeSourceCache() {
-  const store = new Map(); // key → { value, expires, tables:Set }
+// Bounded (§5): table-scoped keys include session id + query params, so a
+// busy multi-user app accumulates one entry per (user × query-combo) —
+// unbounded, and entries never requested again were never freed. Now: LRU
+// eviction at `max`, a sweep() the server calls on its heartbeat to free
+// expired entries eagerly, and a per-table key index so invalidate(table)
+// touches only that table's keys instead of scanning the whole map.
+export function makeSourceCache({ max = 500 } = {}) {
+  const store = new Map(); // key → { value, expires, tables:Set } — Map order = LRU order
+  const byTable = new Map(); // table → Set(key)
+  const unindex = (key, hit) => {
+    for (const t of hit.tables) {
+      const set = byTable.get(t);
+      if (set) { set.delete(key); if (!set.size) byTable.delete(t); }
+    }
+  };
+  const drop = (key) => {
+    const hit = store.get(key);
+    if (!hit) return;
+    store.delete(key);
+    unindex(key, hit);
+  };
   return {
     get(key) {
       const hit = store.get(key);
       if (!hit) return undefined;
-      if (hit.expires < Date.now()) { store.delete(key); return undefined; }
+      if (hit.expires < Date.now()) { drop(key); return undefined; }
+      // Refresh recency: re-insert so the oldest entry is always first.
+      store.delete(key);
+      store.set(key, hit);
       return hit;
     },
     set(key, value, ttlSeconds, tables = new Set()) {
+      drop(key); // replace cleanly (old entry may index different tables)
+      if (store.size >= max) drop(store.keys().next().value); // evict LRU
       store.set(key, { value, expires: Date.now() + ttlSeconds * 1000, tables });
+      for (const t of tables) {
+        (byTable.get(t) || byTable.set(t, new Set()).get(t)).add(key);
+      }
     },
     // A write went through table t — every cached source that read it is stale.
     invalidate(table) {
-      for (const [k, v] of store) if (v.tables.has(table)) store.delete(k);
+      const keys = byTable.get(table);
+      if (!keys) return;
+      for (const key of [...keys]) drop(key);
     },
-    clear() { store.clear(); },
+    // Called on the server's heartbeat: expired entries that would otherwise
+    // wait for a get() that may never come.
+    sweep() {
+      const now = Date.now();
+      for (const [k, v] of store) if (v.expires < now) drop(k);
+    },
+    clear() { store.clear(); byTable.clear(); },
     size() { return store.size; },
   };
 }

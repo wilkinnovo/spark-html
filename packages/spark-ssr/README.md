@@ -419,6 +419,34 @@ scope; the return value becomes the JSON response).
   the table (login/signup endpoints) without any page declaring it; disable
   public signup in `middleware.html` if the app is invite-only.
 
+## Performance — fast by default, nothing to configure
+
+The request path allocates almost nothing:
+
+- **Precompiled templates.** Every page and component is parsed **once**
+  (mtime-invalidated) and compiled into a flat render program; a request is a
+  loop that emits strings. No DOM is built, no HTML is re-parsed, no
+  serializer runs per request. A 1,000-row table renders ~6× faster than the
+  0.6 renderer and RSS stays flat under load.
+- **Full-page response cache.** In production, anonymous GETs of pages whose
+  output is a pure function of `(path, query)` are served straight from
+  memory — auto-detected (no per-request `<script>`, no module sources, no
+  header/body-reading SQL; requests carrying a session or flash cookie always
+  bypass it) and invalidated by the same write hooks that power `live`.
+  `"responseCache"` in spark.json: a number overrides the 60 s TTL, `false`
+  disables. A public blog page serves at in-memory-string speed.
+- **Streaming.** Production list pages flush the `<head>` immediately and
+  stream rows as they render — first byte before the first row.
+- **Batched relations.** `each="c in post.comments"` over a 50-post list is
+  one `WHERE post_id IN (…)` query, not 50.
+- **Bounded caches.** Per-source `cache="…"` entries live in an LRU indexed
+  by table (writes invalidate exactly the affected keys); glob sources re-read
+  only files whose mtime moved; page/handler scripts compile once; column
+  metadata is cached per table.
+
+`test/bench.js` measures all of it (p50/p99 latency + RSS) — run it around
+any render-path change.
+
 ## Deploy
 
 ```bash
