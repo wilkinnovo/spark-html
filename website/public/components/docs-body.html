@@ -22,6 +22,7 @@
     <a href="#debugging">Debugging</a>
     <a href="#errors">Error handling</a>
     <a href="#prerender">Prerender / SEO</a>
+    <a href="#ssr">Full-stack (spark-ssr)</a>
     <a href="#ecosystem">Ecosystem</a>
     <a href="#limits">Limitations</a>
   </aside>
@@ -358,7 +359,71 @@ bunx spark-prerender dist/index.html dist/docs.html</pre>
   let photos = [];
   async function load() { photos = await (await fetch('/api/photos')).json(); }
 &lt;/script&gt;</pre>
-    <p class="note">There's also a build step (<code>spark-prerender/bun</code>) that prerenders <code>dist/*.html</code> automatically on <code>spark build</code>. See the package README for options.</p>
+    <p class="note">There's also a build step (<code>spark-prerender/bun</code>) that prerenders <code>dist/*.html</code> automatically on <code>spark build</code>. See the package README for options. Need per-request or per-user pages (auth, live data, a database) rather than build-time HTML? That's <a href="#ssr">spark-ssr</a>.</p>
+
+    <h2 id="ssr">Full-stack: spark-ssr</h2>
+    <p>Prerender is the static answer to SEO; <code>spark-ssr</code> is the dynamic one — a complete server-rendered framework where the same Spark markup <em>is</em> the whole app. There's no separate backend to write: the <strong>HTML template is the spec</strong>. Declare the data a page needs in a <code>&lt;spark-ssr&gt;</code> block and the server infers the rest — the database schema, a REST API, routes from filenames, auth from a <code>user_id</code> column — then renders the page on the server (real HTML for crawlers) and hydrates it in the browser with the same runtime you already know.</p>
+    <pre spark-ignore>bunx create-spark-html-app@latest myapp   # choose "SSR"
+cd myapp &amp;&amp; bun install &amp;&amp; bun dev</pre>
+
+    <h3 id="ssr-template">The template is the backend</h3>
+    <p>A page is an HTML file under <code>pages/</code>. Add one line and the CRUD backend exists — no SQL, no migrations, no server file:</p>
+    <pre spark-ignore>&lt;!-- pages/index.html --&gt;
+&lt;template each="todo in todos"&gt;
+  &lt;label&gt;
+    &lt;input type="checkbox" bind:checked="todo.done" onchange={toggle}&gt;
+    {todo.title}
+    &lt;button onclick={remove}&gt;✕&lt;/button&gt;
+  &lt;/label&gt;
+&lt;/template&gt;
+&lt;input bind:value="draft" placeholder="New task"&gt;
+&lt;button onclick={add}&gt;Add&lt;/button&gt;
+
+&lt;spark-ssr table="todos" live /&gt;</pre>
+    <p>From that single declaration, spark-ssr infers a <code>todos</code> table from how the template reads it (<code>title</code> becomes TEXT, <code>done</code> becomes INTEGER) and creates it; generates <code>GET/POST/PATCH/DELETE /api/todos</code>; renders the rows to HTML on the server; and hydrates the page so it's interactive — no <code>&lt;script&gt;</code>, no fetch plumbing. With <code>live</code>, every write pings a server-sent event stream and every open tab refetches, so the list stays in sync in real time.</p>
+
+    <h3 id="ssr-data">Any data source</h3>
+    <p>A page's data doesn't have to be a table. Name a variable in the block and point it at SQL, a URL, a markdown glob, or a JS module — the page renders and hydrates the same way, database or not:</p>
+    <pre spark-ignore>&lt;spark-ssr&gt;
+  posts   = SELECT * FROM posts WHERE published = 1
+  repo    = https://api.github.com/repos/you/proj   &lt;!-- fetched server-side --&gt;
+  docs    = ./content/*.md      &lt;!-- markdown blog, zero database --&gt;
+  weather = ./lib/weather.js    &lt;!-- (req, db) =&gt; value — bring any ORM --&gt;
+&lt;/spark-ssr&gt;</pre>
+
+    <h3 id="ssr-script">Ambient helpers — less script</h3>
+    <p>When a page needs custom logic, its <code>&lt;script&gt;</code> becomes the client component — and four helpers are in scope with no imports and no fetch boilerplate. Your state is seeded from the page's data, and any handler your template references but you don't write is <strong>synthesized</strong> for you:</p>
+    <pre spark-ignore>&lt;input bind:value="title"&gt;&lt;button onclick={create}&gt;Save&lt;/button&gt;
+&lt;template each="p in posts"&gt;
+  &lt;button onclick={toggle(p)}&gt;{p.published ? 'Unpublish' : 'Publish'}&lt;/button&gt;
+  &lt;button onclick={remove(p)}&gt;Delete&lt;/button&gt;   &lt;!-- synthesized --&gt;
+&lt;/template&gt;
+&lt;script&gt;
+  async function create() {
+    const slug = title.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+    await api_create({ slug, title });   // POST /api/posts
+    title = ''; refresh();               // refetch every declared source
+  }
+  async function toggle(p) {
+    await api_update(p.id, { published: p.published ? 0 : 1 });
+    refresh();
+  }
+&lt;/script&gt;
+&lt;spark-ssr table="posts" /&gt;</pre>
+    <p>The helpers are <code>api_create(body)</code>, <code>api_update(id, body)</code>, <code>api_delete(id)</code>, and <code>refresh()</code>. More than one table on a page? Pass it explicitly: <code>api_create('posts', {…})</code>. Want none of it — write your own <code>fetch</code> and don't set <code>table=</code>; that's the classic escape hatch.</p>
+
+    <h3 id="ssr-more">Batteries included</h3>
+    <p>The rest of a real app is declared the same way — in the markup:</p>
+    <ul>
+      <li><strong>Auth</strong> — email/password sessions inferred from a <code>user_id</code> column, plus built-in <code>/login</code>, <code>/signup</code> and <code>/logout</code> pages with zero UI written.</li>
+      <li><strong>Guards</strong> — <code>&lt;spark-ssr guard="session" redirect="/login" /&gt;</code> protects a page in one line.</li>
+      <li><strong>No-JS forms</strong> — a plain <code>&lt;form action="/api/…"&gt;</code> works without JavaScript (303 back on success), with the markup's constraint attributes validated server-side.</li>
+      <li><strong>Relations</strong> — <code>each="c in post.comments"</code> infers a <code>comments</code> table with a <code>post_id</code> foreign key and joins it — no SQL join in the template.</li>
+      <li><strong>Jobs &amp; mail</strong> — <code>&lt;spark-ssr job="digest" every="1d" /&gt;</code> or <code>on="insert:orders"</code> runs a module on a schedule or after a write; <code>mail()</code> is wired from config.</li>
+      <li><strong>Free extras</strong> — <code>sitemap.xml</code>, <code>robots.txt</code>, OpenAPI (<code>/__spark/openapi.json</code>) and a typed client, all generated from the inferred backend.</li>
+    </ul>
+    <p>Deploy with <code>bun spark-ssr build</code> (a <code>dist/</code> plus a compiled single binary, and optionally a Dockerfile). The full reference lives on the <a href="https://www.npmjs.com/package/spark-ssr" target="_blank" rel="noopener">npm page</a>.</p>
+    <p class="note"><strong>Prerender vs SSR.</strong> Reach for <code>spark-prerender</code> when the content is known at build time (marketing, docs, a blog you rebuild) — it needs no running server. Reach for <code>spark-ssr</code> when pages are per-request or per-user (dashboards, auth, live data) — one server renders the page and serves the API.</p>
 
     <h2 id="ecosystem">Ecosystem</h2>
     <p>The core stays tiny on purpose; everything else ships as a small, single-purpose sibling package. Add only what you use — each one is documented on its npm page:</p>
@@ -375,6 +440,7 @@ bunx spark-prerender dist/index.html dist/docs.html</pre>
       <tr><td><a href="https://www.npmjs.com/package/spark-html-persist" target="_blank" rel="noopener"><code>spark-html-persist</code></a></td><td>Persist stores to localStorage/sessionStorage in one line.</td></tr>
       <tr><td><a href="https://www.npmjs.com/package/spark-html-websocket" target="_blank" rel="noopener"><code>spark-html-websocket</code></a></td><td>A WebSocket as a reactive store — auto-reconnect, JSON, <code>send()</code>.</td></tr>
       <tr><td><a href="https://www.npmjs.com/package/spark-prerender" target="_blank" rel="noopener"><code>spark-prerender</code></a></td><td>Build-time SEO prerender + sitemap/robots — no SSR server.</td></tr>
+      <tr><td><a href="https://www.npmjs.com/package/spark-ssr" target="_blank" rel="noopener"><code>spark-ssr</code></a></td><td>Full-stack SSR framework — the template is the backend: inferred DB, REST, auth, jobs. <a href="#ssr">Docs&nbsp;↑</a></td></tr>
       <tr><td><a href="https://www.npmjs.com/package/spark-html-image" target="_blank" rel="noopener"><code>spark-html-image</code></a></td><td>Build-time image optimization — webp/avif + responsive <code>srcset</code>, zero config.</td></tr>
       <tr><td><a href="https://www.npmjs.com/package/spark-html-font" target="_blank" rel="noopener"><code>spark-html-font</code></a></td><td>Font loading optimizer — preload + size-adjusted fallbacks, no FOUT.</td></tr>
       <tr><td><a href="https://www.npmjs.com/package/spark-html-manifest" target="_blank" rel="noopener"><code>spark-html-manifest</code></a></td><td>PWA manifest + icons + head tags (and optional service worker) from one config.</td></tr>
@@ -395,6 +461,7 @@ bunx spark-prerender dist/index.html dist/docs.html</pre>
       <tr><td>Loop reconciliation</td><td>Reuse is positional by default; reordering a list without a <code>key</code> keeps nodes in place and rewrites their contents. Add <code>key="…"</code> for identity-stable moves.</td></tr>
       <tr><td>Code-shaped strings</td><td>The script rewriter is not string-aware: a multiline string that <em>looks like</em> JS declarations (live-editor sources, executable snippets) can be rewritten inside the string. Keep such strings in imported <code>.js</code> modules; display-only samples in markup are fine under <code>spark-ignore</code>.</td></tr>
       <tr><td>Coarse store updates</td><td>Stores are deeply reactive (an in-place <code>cart.items.push(x)</code> notifies every subscriber), but each notification re-renders subscribers with a full (cheap) pass — store reads aren't tracked per key the way component-local state is. For shared computed values, <code>derived()</code> recomputes once and only notifies when a key actually changes (memoized).</td></tr>
+      <tr><td>SSR hydration &amp; components</td><td>On a <code>spark-ssr</code> page that hydrates, a loop row passed into a child component's prop (<code>&lt;div import="/card" post="{p}"&gt;</code> <em>inside</em> an <code>each</code>) doesn't survive the client re-render — inline the markup in the loop instead. Static (non-hydrating) pages and top-level component props are unaffected.</td></tr>
     </table>
   </main>
 </div>
