@@ -1,0 +1,1 @@
+{"nodes": [], "edges": [], "hyperedges": [{"id": "spark_ecosystem_publishing", "label": "Spark NPM Publishing Flow", "nodes": ["packages_spark", "packages_spark_prerender", "packages_create_spark_html_app"], "relation": "participate_in", "confidence": "EXTRACTED", "confidence_score": 1.0, "source_file": ".github/workflows/publish-npm.yml"}]}

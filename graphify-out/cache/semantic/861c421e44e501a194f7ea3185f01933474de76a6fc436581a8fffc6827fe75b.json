@@ -1,0 +1,1 @@
+{"nodes": [], "edges": [{"source": "packages_create_spark_html_app_template_ssr_public_img_avatar_png", "target": "packages_create_spark_html_app_template_ssr_pages_about", "relation": "references", "confidence": "EXTRACTED", "confidence_score": 1.0, "source_file": "packages/create-spark-html-app/template-ssr/pages/about.html"}], "hyperedges": []}
