@@ -232,10 +232,12 @@ async function main() {
 
   // 3 ─ pick the project type + features, copy the template ────────────
   const type = await pickType();
-  const features = type === 'client' ? await pickFeatures() : {};
+  // The prerender template is the full showcase (router, todos, demos) whose
+  // optional pieces are toggled via @spark markers; client and ssr ship fixed.
+  const features = type === 'prerender' ? await pickFeatures() : {};
   mkdirSync(targetDir, { recursive: true });
   cpSync(templateFor(type), targetDir, { recursive: true });
-  if (type === 'client') applyFeatures(targetDir, features);
+  if (type === 'prerender') applyFeatures(targetDir, features);
 
   // npm renames/strips dotfiles on publish, so the template ships them
   // with safe underscore prefixes. Restore the real names here.
@@ -253,7 +255,7 @@ async function main() {
   const pkg = JSON.parse(readFileSync(pkgPath, 'utf8'));
   pkg.name = projectName;
   // Drop dependencies that belong to excluded features.
-  for (const f of type === 'client' ? FEATURES : []) {
+  for (const f of type === 'prerender' ? FEATURES : []) {
     if (features[f.key]) continue;
     for (const dep of f.deps) {
       if (pkg.dependencies) delete pkg.dependencies[dep];
@@ -286,8 +288,8 @@ async function main() {
   // 5 ─ celebrate + print next steps ───────────────────────────────────
   const rel = relative(process.cwd(), targetDir) || '.';
   const flavor = type === 'ssr' ? 'SSR — spark-ssr, zero config, no build'
-    : type === 'prerender' ? 'prerendered static site — spark-prerender'
-    : `head, persist, prerender, devtools + ${FEATURES.filter((f) => features[f.key]).map((f) => f.key).join(', ') || 'core only'}`;
+    : type === 'prerender' ? `prerendered showcase — router, todos, demos + ${FEATURES.filter((f) => features[f.key]).map((f) => f.key).join(', ') || 'core only'}`
+    : 'client-only — a single reactive counter to build on';
   stdout.write(`\n${c.green('✔')} Scaffolded ${c.bold(projectName)} in ${c.cyan(rel)} ${c.dim(`(${flavor})`)}\n\n`);
   stdout.write(`${c.bold('Next steps:')}\n`);
   if (rel !== '.') stdout.write(`  ${c.dim('1.')} cd ${rel}\n`);

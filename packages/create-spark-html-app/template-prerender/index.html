@@ -1,13 +1,214 @@
 <!doctype html>
 <html lang="en">
   <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Spark Static App</title>
-    <link rel="stylesheet" href="/src/style.css" />
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Spark App</title>
+    <meta name="description" content="A reactive app built with Spark — single-file HTML components, no compiler, no virtual DOM." />
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚡</text></svg>" />
+    <!-- Fonts are injected by spark-html-font/bun (see spark.config.js):
+         preconnects, the stylesheet, and a size-adjusted fallback face so the
+         swap never moves the page. -->
+    <style>
+      /* Design system — the same palette and monospace type as the Spark
+               website. Tokens + base + a shared card/button/input system live here in
+               <head> so they apply globally before any component boots. Light & dark
+               are driven by [data-theme] (spark-html-theme writes it). */
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      :root {
+        --bg: #000;
+        --surface: #0a0a0a;
+        --surface-2: #101014;
+        --border: #1a1a1a;
+        --border-strong: #333;
+        --text: #fff;
+        --muted: #888;
+        --muted-dim: #555;
+        --spark: #ffd24a;
+        --spark-ink: #ffd24a;
+        --danger: #ff6b6b;
+        --radius: 12px;
+        /* the injected --font-jetbrains-mono stack includes the fallback face;
+           the var() fallback list covers a config without the font step */
+        --font: var(--font-jetbrains-mono, "JetBrains Mono", ui-monospace, monospace);
+      }
+      [data-theme="light"] {
+        --bg: #fff;
+        --surface: #fafafa;
+        --surface-2: #f4f4f5;
+        --border: #ededed;
+        --border-strong: #d4d4d4;
+        --text: #1a1a1a;
+        --muted: #666;
+        --muted-dim: #999;
+        --spark: #ffd24a;
+        --spark-ink: #9a6a00;
+        --danger: #d63b3b;
+      }
+      html {
+        scroll-behavior: smooth;
+      }
+      body {
+        font-family: var(--font);
+        background: var(--bg);
+        color: var(--text);
+        line-height: 1.6;
+        -webkit-font-smoothing: antialiased;
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+      }
+      ::selection {
+        background: var(--spark);
+        color: #000;
+      }
+      [data-theme="light"] ::selection {
+        background: #ffe9a8;
+        color: #111;
+      }
+      a {
+        color: var(--spark-ink);
+        text-decoration: none;
+      }
+      [hidden] {
+        display: none !important;
+      }
+      .routes {
+        flex: 1;
+        width: 100%;
+        max-width: 960px;
+        margin: 0 auto;
+        padding: 0 24px;
+      }
+
+      /* Shared component system — components lean on these instead of each
+               redefining a card/button/input. */
+      .card {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 22px;
+      }
+      .card h2 {
+        font-size: 16px;
+        font-weight: 700;
+        margin-bottom: 4px;
+        letter-spacing: -0.01em;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+      .tag {
+        font-size: 10px;
+        font-weight: 500;
+        color: var(--spark-ink);
+        border: 1px solid var(--border-strong);
+        padding: 1px 7px;
+        border-radius: 999px;
+      }
+      .hint {
+        font-size: 12.5px;
+        color: var(--muted);
+        margin-bottom: 16px;
+        line-height: 1.5;
+      }
+      code {
+        background: var(--surface-2);
+        color: var(--spark-ink);
+        padding: 1px 6px;
+        border-radius: 4px;
+        font-size: 12px;
+      }
+      .row {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        flex-wrap: wrap;
+      }
+
+      button,
+      .btn {
+        font-family: inherit;
+        font-size: 13px;
+        cursor: pointer;
+        padding: 8px 15px;
+        border-radius: 8px;
+        border: 1px solid var(--border-strong);
+        background: var(--surface-2);
+        color: var(--text);
+        transition:
+          border-color 0.12s,
+          background 0.12s,
+          color 0.12s,
+          transform 0.08s;
+      }
+      button:hover:not(:disabled) {
+        border-color: var(--spark);
+        color: var(--spark-ink);
+      }
+      button:active:not(:disabled) {
+        transform: scale(0.97);
+      }
+      button:disabled {
+        opacity: 0.4;
+        cursor: not-allowed;
+      }
+      button.primary {
+        background: var(--spark);
+        color: #000;
+        border-color: var(--spark);
+        font-weight: 700;
+      }
+      button.primary:hover:not(:disabled) {
+        color: #000;
+        filter: brightness(1.06);
+      }
+
+      label {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        font-size: 12px;
+        color: var(--muted);
+      }
+      input,
+      textarea {
+        font-family: inherit;
+        font-size: 14px;
+        width: 100%;
+        background: var(--bg);
+        color: var(--text);
+        border: 1px solid var(--border-strong);
+        border-radius: 8px;
+        padding: 9px 12px;
+      }
+      input:focus,
+      textarea:focus {
+        outline: none;
+        border-color: var(--spark);
+      }
+    </style>
   </head>
   <body>
-    <div import="components/hero"></div>
+    <div import="components/nav"></div>
+    <main class="routes">
+      <!-- @spark:router -->
+      <template route="/"><div import="components/home"></div></template>
+      <template route="/about"><div import="components/about"></div></template>
+      <!-- @spark:end -->
+      <!-- @spark:!router -->
+      <div import="components/home"></div>
+      <!-- @spark:end -->
+    </main>
+    <div import="components/footer"></div>
+
     <script type="module" src="/src/main.js"></script>
   </body>
 </html>

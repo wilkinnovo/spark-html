@@ -896,6 +896,30 @@ await test('layouts (§2): nested folders nest their layouts', async () => {
   assert.equal(res.headers.get('location'), '/login');
 });
 
+await test('layouts (§2): a <slot> written inside a layout comment is not the slot', async () => {
+  // Regression: the starter layout's explainer comment mentions "<slot>". Slot
+  // composition must mask comments, or the page gets injected inside the comment
+  // (nav ends up after the content and the comment text leaks onto the page).
+  const root = mkdtempSync(join(tmpdir(), 'spark-ssr-slotcomment-'));
+  writeFileSync(join(root, 'spark.json'), JSON.stringify({ db: 'sqlite::memory:' }));
+  mkdirSync(join(root, 'pages'), { recursive: true });
+  writeFileSync(join(root, 'pages', '_layout.html'),
+    '<!-- <slot> is the page; its <spark-ssr> vars are in scope. -->\n' +
+    '<nav id="chrome">nav</nav>\n<slot></slot>');
+  writeFileSync(join(root, 'pages', 'index.html'), '<main id="page">hello</main>');
+  const s = await serve({ root, port: 0, quiet: true });
+  try {
+    const body = (await (await fetch(`http://localhost:${s.port}/`)).text())
+      .split(/<body[^>]*>/)[1] || '';
+    assert.ok(body.indexOf('id="chrome"') < body.indexOf('id="page"'),
+      'nav (before the real slot) renders before the page content');
+    // The comment survives intact — its "<slot>" was not consumed as the slot.
+    assert.ok(/<!--[^]*?<slot>[^]*?-->/.test(body), 'comment kept its literal <slot>');
+  } finally {
+    await s.stop?.();
+  }
+});
+
 await test('guard (§3): status variant answers 401; named binding exposes no endpoint', async () => {
   assert.equal((await fetch(`${L}/vip`)).status, 401);
   assert.equal((await fetch(`${L}/api/author`)).status, 404, 'var = SELECT … is page data only');

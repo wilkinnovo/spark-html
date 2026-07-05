@@ -65,7 +65,9 @@ await test('dev: the page gets an import map + the HMR client', async () => {
   const res = await fetch(`${D}/`);
   const html = await res.text();
   assert.ok(html.includes('<script type="importmap">'), 'import map injected');
-  assert.ok(html.includes('"spark-html":"/@modules/spark-html"'), 'bare specifier mapped');
+  // Mapped to the entry FILE (…/index.js), not the bare package dir — so a
+  // package's own relative sibling import resolves under /@modules/<pkg>/.
+  assert.ok(html.includes('"spark-html":"/@modules/spark-html/'), 'bare specifier mapped to its entry file');
   assert.ok(html.includes('/__spark_hmr'), 'HMR client injected');
   assert.ok(html.includes('<div import="components/hello">'), 'markup untouched');
 });
@@ -75,6 +77,14 @@ await test('dev: /@modules/spark-html serves the resolved runtime as JS', async 
   assert.equal(res.status, 200);
   assert.equal(res.headers.get('content-type'), 'text/javascript');
   assert.ok((await res.text()).includes('function mount'), 'the real runtime');
+});
+
+await test('dev: /@modules/<pkg>/<file> serves sibling files (relative imports)', async () => {
+  // A package entry that imports './sibling.js' resolves it to this URL form;
+  // it must serve the file from inside the package dir, not 404.
+  const res = await fetch(`${D}/@modules/spark-html/index.js`);
+  assert.equal(res.status, 200);
+  assert.ok((await res.text()).includes('function mount'), 'entry served by file path');
 });
 
 await test('dev: extensionless paths fall back to the app shell (SPA)', async () => {

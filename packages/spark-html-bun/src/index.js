@@ -46,7 +46,7 @@
  *     devRoutes?({ config }) → { '/path': { type, body() } },  // dev serving
  *     transformHtml?(html, { dev }) }                  // dev page injection
  */
-import { join, resolve, extname, basename, sep } from 'node:path';
+import { join, resolve, dirname, extname, basename, sep } from 'node:path';
 import { existsSync, watch, readdirSync, statSync, readFileSync } from 'node:fs';
 import { rm, mkdir, cp, readFile } from 'node:fs/promises';
 
@@ -200,16 +200,34 @@ function connect() {
 connect();
 `;
 
+// Resolve a bare package to the { dir, entry } of its module entry file, so we
+// can serve the entry AND its sibling files under one /@modules/<pkg>/ prefix.
+// Cached — the resolution doesn't change while the server is up.
+const moduleInfoCache = new Map();
+function moduleEntry(pkg, projectRoot) {
+  const key = projectRoot + '\0' + pkg;
+  if (moduleInfoCache.has(key)) return moduleInfoCache.get(key);
+  let info = null;
+  try {
+    const file = Bun.resolveSync(pkg, projectRoot);
+    info = { dir: dirname(file), entry: file.slice(file.lastIndexOf('/') + 1) };
+  } catch { /* unresolvable — leave null */ }
+  moduleInfoCache.set(key, info);
+  return info;
+}
+
 // Import map for the app's bare specifiers: every dependency in package.json
-// maps to /@modules/<name>, which the dev server resolves with Bun's resolver.
-// Spark packages are single-file modules whose only bare import is
-// 'spark-html' (also in the map), so no rewriting is needed anywhere.
+// maps to /@modules/<name>/<entry-file>. The trailing entry filename matters —
+// a package's own relative imports (e.g. spark-html-theme's `./init.js`) resolve
+// against that URL, so they land at /@modules/<name>/init.js and stay inside the
+// package instead of collapsing to /@modules/init.js (a 404 that blanks the app).
 function buildImportMap(projectRoot) {
   const imports = {};
   try {
     const pkg = JSON.parse(readFileSync(join(projectRoot, 'package.json'), 'utf8'));
     for (const dep of Object.keys({ ...pkg.dependencies, ...pkg.devDependencies })) {
-      imports[dep] = `/@modules/${dep}`;
+      const info = moduleEntry(dep, projectRoot);
+      if (info) imports[dep] = `/@modules/${dep}/${info.entry}`;
     }
   } catch { /* no package.json — no bare imports to map */ }
   return imports;
@@ -285,15 +303,22 @@ export async function dev(overrides = {}) {
         return new Response(await route.body(), { headers: { 'Content-Type': route.type } });
       }
 
-      // Bare-specifier modules: /@modules/<name> → Bun-resolved entry file.
+      // Bare-specifier modules: /@modules/<name>/<file> → the package's entry
+      // (or a sibling file it imports relatively), served from the entry's dir.
       if (path.startsWith('/@modules/')) {
-        const spec = path.slice('/@modules/'.length);
-        try {
-          const file = Bun.resolveSync(spec, projectRoot);
-          return new Response(Bun.file(file), { headers: { 'Content-Type': 'text/javascript' } });
-        } catch {
-          return new Response(`/* cannot resolve "${spec}" */`, { status: 404, headers: { 'Content-Type': 'text/javascript' } });
+        const rest = path.slice('/@modules/'.length);
+        const slash = rest.indexOf('/');
+        const pkg = slash === -1 ? rest : rest.slice(0, slash);
+        const subpath = slash === -1 ? '' : rest.slice(slash + 1);
+        const info = moduleEntry(pkg, projectRoot);
+        if (info) {
+          const file = resolve(info.dir, subpath || info.entry);
+          // Guard against escaping the package dir via a crafted subpath.
+          if (file.startsWith(info.dir + sep) && isFile(file)) {
+            return new Response(Bun.file(file), { headers: { 'Content-Type': 'text/javascript' } });
+          }
         }
+        return new Response(`/* cannot resolve "${rest}" */`, { status: 404, headers: { 'Content-Type': 'text/javascript' } });
       }
 
       // Static lookup: project root first (index.html, src/…), then publicDir.

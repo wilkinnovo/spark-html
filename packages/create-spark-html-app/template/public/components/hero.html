@@ -1,75 +1,23 @@
-<header class="hero">
-  <span class="bolt" :class="igniting ? 'bolt lit' : 'bolt'" onclick="{ignite}" title="Strike the bolt">⚡</span>
-
-  <h1>HTML that <span class="grad">reacts</span>.</h1>
+<main>
+  <h1>⚡ {greeting}</h1>
   <p class="tagline">
-    Single-file reactive components — no compiler, no virtual DOM, no build step.
-    Everything below is live the moment the page loads.
+    A single-file reactive component — no compiler, no virtual DOM, no build
+    step. Edit this file and save; the page updates instantly.
   </p>
 
   <div class="counter">
-    <button class="round" onclick="{count = Math.max(0, count - 1)}" :disabled="count <= 0" aria-label="decrement">–</button>
-    <div class="readout">
-      <span class="num">{count}</span>
-      <span class="sub">doubled is {doubled} · {capitalize(mood)}</span>
-    </div>
-    <button class="round plus" onclick="{count++}" aria-label="increment">+</button>
+    <button onclick={dec} aria-label="decrement">–</button>
+    <span class="count">{count}</span>
+    <button onclick={inc} aria-label="increment">+</button>
   </div>
 
-  <p class="store-line">
-    You've struck the bolt <strong>{app.sparks}</strong>
-    {pluralize(app.sparks, 'time')} — that lives in a shared store.
-  </p>
-</header>
+  <p class="doubled" :hidden="count === 0">doubled is {doubled}</p>
+</main>
 
 <script>
-  import { capitalize, pluralize } from '../lib/format.js';
-
+  let greeting = 'HTML that reacts';
   let count = 0;
-  let igniting = false;
-
   $: doubled = count * 2;
-  $: mood = count === 0 ? 'a calm start' : count < 5 ? 'warming up' : 'on fire';
-
-  const app = useStore('app');
-
-  function ignite() {
-    app.sparks++;
-    igniting = true;
-    setTimeout(() => { igniting = false; }, 450);
-  }
+  function inc() { count++; }
+  function dec() { count--; }
 </script>
-
-<style>
-  .hero { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 16px; padding-top: 32px; }
-  .bolt {
-    font-size: 32px; line-height: 1; cursor: pointer; user-select: none;
-    filter: drop-shadow(0 0 14px rgba(255, 210, 74, .45));
-    transition: transform .2s ease, filter .2s ease;
-  }
-  .bolt:hover { transform: translateY(-1px) scale(1.06); }
-  .bolt.lit { animation: zap .45s ease; }
-  @keyframes zap {
-    0%   { transform: scale(1); filter: drop-shadow(0 0 14px rgba(255, 210, 74, .45)); }
-    40%  { transform: scale(1.35) rotate(-8deg); filter: drop-shadow(0 0 34px rgba(255, 210, 74, .95)); }
-    100% { transform: scale(1); filter: drop-shadow(0 0 14px rgba(255, 210, 74, .45)); }
-  }
-
-  h1 { font-size: clamp(32px, 6vw, 48px); font-weight: 800; letter-spacing: -.03em; }
-  .grad {
-    background: linear-gradient(110deg, var(--text), var(--spark));
-    -webkit-background-clip: text; background-clip: text; color: transparent;
-  }
-  .tagline { max-width: 480px; color: var(--muted); font-size: 14px; }
-
-  .counter { display: flex; align-items: center; justify-content: center; gap: 22px; margin-top: 8px; }
-  .round {
-    width: 44px; height: 44px; border-radius: 50%; font-size: 22px; padding: 0;
-  }
-  .round.plus { background: var(--surface-2); }
-  .readout { min-width: 130px; }
-  .num { display: block; font-size: 42px; font-weight: 800; font-variant-numeric: tabular-nums; line-height: 1.1; }
-  .sub { font-size: 11px; color: var(--muted); }
-  .store-line { font-size: 13px; color: var(--muted); margin-top: 4px; }
-  .store-line strong { color: var(--spark-ink); }
-</style>

@@ -172,11 +172,18 @@ function pageData(page, cache, pagesDir) {
   const pageP = parsed[parsed.length - 1];
 
   // Compose bodies innermost-out: the page replaces each layout's <slot>.
+  // Comments are masked first so a literal <slot> written inside a layout
+  // comment (the template's own explainer text does this) isn't mistaken for
+  // the real slot — which would inject the whole page inside the comment.
   let body = pageP.body;
   for (let i = parsed.length - 2; i >= 0; i--) {
     const lay = parsed[i].body;
     const SLOT = /<slot\b[^>]*>(?:\s*<\/slot>)?/i;
-    body = SLOT.test(lay) ? lay.replace(SLOT, () => body) : lay + body;
+    const { masked, restore } = maskComments(lay);
+    const m = masked.match(SLOT);
+    body = m
+      ? restore(masked.slice(0, m.index)) + body + restore(masked.slice(m.index + m[0].length))
+      : lay + body;
   }
 
   const blocks = parsed.flatMap((p) => p.blocks);

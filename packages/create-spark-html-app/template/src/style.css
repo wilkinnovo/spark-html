@@ -1,0 +1,32 @@
+:root { color-scheme: light dark; }
+body {
+  font-family: ui-monospace, "JetBrains Mono", "SF Mono", Menlo, monospace;
+  max-width: 36rem;
+  margin: 4rem auto;
+  padding: 0 1.5rem;
+  line-height: 1.6;
+}
+main { text-align: center; }
+h1 { font-size: clamp(1.8rem, 6vw, 2.6rem); letter-spacing: -0.02em; }
+.tagline { color: gray; font-size: 0.95rem; }
+.counter {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1.25rem;
+  margin: 2rem 0 0.5rem;
+}
+.count { font-size: 2rem; font-variant-numeric: tabular-nums; min-width: 2ch; }
+button {
+  font: inherit;
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 999px;
+  border: 1px solid currentColor;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font-size: 1.25rem;
+}
+button:active { transform: scale(0.94); }
+.doubled { color: gray; font-size: 0.9rem; }

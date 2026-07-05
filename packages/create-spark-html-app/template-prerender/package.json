@@ -1,5 +1,5 @@
 {
-  "name": "spark-static-app",
+  "name": "spark-app",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -9,10 +9,19 @@
     "preview": "spark preview"
   },
   "dependencies": {
-    "spark-html": "latest"
+    "spark-html": "latest",
+    "spark-html-router": "latest",
+    "spark-html-theme": "latest",
+    "spark-html-head": "latest",
+    "spark-html-persist": "latest",
+    "spark-html-sri": "latest",
+    "spark-html-manifest": "latest"
   },
   "devDependencies": {
     "spark-html-bun": "latest",
-    "spark-prerender": "latest"
+    "spark-prerender": "latest",
+    "spark-html-devtools": "latest",
+    "spark-html-image": "latest",
+    "spark-html-font": "latest"
   }
 }
