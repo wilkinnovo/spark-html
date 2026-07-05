@@ -11,7 +11,7 @@ import { parseHTML } from 'linkedom';
 
 import {
   serve, rewriteParams, analyze, extractBlocks, dataPlan, singleShaped,
-  extractForms, validateFields, parseFrontMatter, sqlTables,
+  extractForms, validateFields, parseFrontMatter, sqlTables, renderFragment,
 } from '../src/index.js';
 
 let pass = 0, fail = 0;
@@ -775,6 +775,187 @@ await test('no-JS auth (§5): login form post → 303 + session cookie; logout f
   assert.ok((out.headers.get('set-cookie') || '').includes('Max-Age=0'), 'session cleared');
 });
 
+await test('built-in auth (§): /login, /signup, /logout, guard redirect — no page written', async () => {
+  const root = mkdtempSync(join(tmpdir(), 'spark-ssr-auth-'));
+  writeFileSync(join(root, 'spark.json'),
+    JSON.stringify({ db: 'sqlite::memory:', auth: { table: 'users', identity: 'email', secret: 'test-secret-xyz' } }));
+  mkdirSync(join(root, 'pages'), { recursive: true });
+  writeFileSync(join(root, 'pages', 'index.html'), '<h1>Home</h1>');
+  // Bare guard, no redirect/status → defaults to /login when auth is configured.
+  writeFileSync(join(root, 'pages', 'admin.html'), '<h1 id="a">Admin</h1>\n<spark-ssr guard="session" />');
+  const s = await serve({ root, port: 0, quiet: true });
+  const B = `http://localhost:${s.port}`;
+  // Configuring auth auto-registers the users table; create the account through
+  // the signup endpoint (hashes the password), the same path the form uses.
+  await fetch(`${B}/api/users`, {
+    method: 'POST', headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ email: 'me@x.com', password: 'secret' }),
+  });
+  try {
+    const login = await fetch(`${B}/login`);
+    assert.equal(login.status, 200);
+    const lh = await login.text();
+    assert.ok(lh.includes('Sign in') && lh.includes('action="/api/users?auth"'), 'default login form');
+    assert.ok((await (await fetch(`${B}/signup`)).text()).includes('Create account'), 'default signup form');
+
+    // A guarded page with no session bounces to /login with a ?next back.
+    const g = await fetch(`${B}/admin`, { redirect: 'manual' });
+    assert.equal(g.status, 303);
+    assert.equal(g.headers.get('location'), '/login?next=%2Fadmin');
+
+    // Bad login (browser form) bounces back to /login?error=1.
+    const bad = await fetch(`${B}/api/users?auth`, {
+      method: 'POST', redirect: 'manual',
+      headers: { 'content-type': 'application/x-www-form-urlencoded', accept: 'text/html', referer: `${B}/login` },
+      body: 'email=me%40x.com&password=nope',
+    });
+    assert.equal(bad.status, 303);
+    assert.equal(bad.headers.get('location'), '/login?error=1', 'error shown on the built-in form');
+
+    // Good login sets the session cookie.
+    const good = await fetch(`${B}/api/users?auth`, {
+      method: 'POST', redirect: 'manual',
+      headers: { 'content-type': 'application/x-www-form-urlencoded', accept: 'text/html', referer: `${B}/login` },
+      body: 'email=me%40x.com&password=secret',
+    });
+    assert.equal(good.status, 303);
+    const cookie = (good.headers.get('set-cookie') || '').split(';')[0];
+    assert.ok(cookie.startsWith('spark_session='), 'cookie issued');
+
+    // Signed in: /login redirects home, and the guarded page renders.
+    const loggedInLogin = await fetch(`${B}/login`, { headers: { cookie }, redirect: 'manual' });
+    assert.equal(loggedInLogin.status, 303, 'no login form for a signed-in visitor');
+    const admin = await fetch(`${B}/admin`, { headers: { cookie } });
+    assert.equal(admin.status, 200);
+    assert.ok((await admin.text()).includes('id="a"'), 'guard passes with a session');
+
+    // Logout clears the cookie.
+    const out = await fetch(`${B}/logout`, { redirect: 'manual' });
+    assert.equal(out.status, 303);
+    assert.ok((out.headers.get('set-cookie') || '').includes('Max-Age=0'), 'session cleared');
+
+    // A user page always overrides the built-in.
+    writeFileSync(join(root, 'pages', 'login.html'), '<h1 id="mine">My login</h1>');
+    assert.ok((await (await fetch(`${B}/login`)).text()).includes('id="mine"'), 'pages/login.html wins');
+  } finally { await s.stop?.(); }
+});
+
+await test('flash (§): flash="…" on a form → one-shot {flash} + <spark-flash> on the next page', async () => {
+  const root = mkdtempSync(join(tmpdir(), 'spark-ssr-flash-'));
+  writeFileSync(join(root, 'spark.json'), JSON.stringify({ db: 'sqlite::memory:' }));
+  mkdirSync(join(root, 'pages'), { recursive: true });
+  writeFileSync(join(root, 'pages', 'index.html'),
+    '<spark-flash></spark-flash>\n<p id="f">{flash}</p>\n<p id="s">{session ? \'in\' : \'out\'}</p>\n'
+    + '<form action="/api/notes" method="post" redirect="/" flash="Saved!"><input name="text"><button>Add</button></form>\n'
+    + '<spark-ssr table="notes" />');
+  const s = await serve({ root, port: 0, quiet: true });
+  const B = `http://localhost:${s.port}`;
+  try {
+    // The flash="…" attribute became a hidden _flash field; session is ambient.
+    const page = await (await fetch(`${B}/`)).text();
+    assert.ok(page.includes('name="_flash"') && page.includes('value="Saved!"'), 'flash attr → hidden field');
+    assert.ok(page.includes('id="s">out<'), '{session} ambient (signed out)');
+    assert.ok(!/<spark-flash/i.test(page), '<spark-flash> replaced (empty when no message)');
+
+    // Submit as a browser: success 303 carries the signed flash cookie.
+    const post = await fetch(`${B}/api/notes`, {
+      method: 'POST', redirect: 'manual',
+      headers: { 'content-type': 'application/x-www-form-urlencoded', accept: 'text/html', referer: `${B}/` },
+      body: 'text=hi&_redirect=/&_flash=' + encodeURIComponent('Saved!'),
+    });
+    assert.equal(post.status, 303);
+    const flashCookie = (post.headers.get('set-cookie') || '').split(';')[0];
+    assert.ok(flashCookie.startsWith('spark_flash='), 'flash cookie set');
+
+    // The next page shows it once, renders the toast, and clears the cookie.
+    const shown = await fetch(`${B}/`, { headers: { cookie: flashCookie } });
+    const shownHtml = await shown.text();
+    assert.ok(shownHtml.includes('id="f">Saved!<'), '{flash} interpolates the message');
+    assert.ok(shownHtml.includes('role="status"') && shownHtml.includes('Saved!'), '<spark-flash> toast rendered');
+    assert.ok((shown.headers.get('set-cookie') || '').includes('spark_flash=; Path=/; SameSite=Lax; Max-Age=0'), 'flash cleared after showing');
+  } finally { await s.stop?.(); }
+});
+
+await test('list UI (§10): <spark-pager> and <spark-search> drive ?page/?q with no wiring', async () => {
+  const root = mkdtempSync(join(tmpdir(), 'spark-ssr-list-'));
+  writeFileSync(join(root, 'spark.json'), JSON.stringify({ db: 'sqlite::memory:' }));
+  mkdirSync(join(root, 'pages'), { recursive: true });
+  writeFileSync(join(root, 'pages', 'index.html'),
+    '<spark-search placeholder="Find posts"></spark-search>\n'
+    + '<template each="p in posts"><p class="p">{p.title}</p></template>\n'
+    + '<spark-pager for="posts"></spark-pager>\n'
+    + '<spark-ssr table="posts" limit="2" search="title" />');
+  const s = await serve({ root, port: 0, quiet: true });
+  for (let i = 1; i <= 5; i++) await s.db.query('INSERT INTO posts (title) VALUES (?)', [`Post ${i}`]);
+  const B = `http://localhost:${s.port}`;
+  const count = (h, re) => (h.match(re) || []).length;
+  try {
+    const p1 = await (await fetch(`${B}/`)).text();
+    assert.equal(count(p1, /<p class="p">/g), 2, 'page size honored (limit=2)');
+    assert.ok(p1.includes('class="spark-pager"'), 'pager rendered');
+    assert.ok(p1.includes('aria-current="page"') && />1<\/span>/.test(p1), 'page 1 is current');
+    assert.ok(p1.includes('page=2'), 'a link to page 2 exists');
+    assert.ok(p1.includes('name="q"') && p1.includes('Find posts'), 'search box rendered');
+
+    const p2 = await (await fetch(`${B}/?page=2`)).text();
+    assert.ok(/aria-current="page"[^>]*>2<\/span>/.test(p2), 'page 2 becomes current');
+    assert.equal(count(p2, /<p class="p">/g), 2, 'second page also full');
+
+    const q = await (await fetch(`${B}/?q=Post%203`)).text();
+    assert.ok(q.includes('value="Post 3"'), 'search input reflects ?q');
+    assert.ok(q.includes('>Post 3<'), 'results filtered by ?q');
+  } finally { await s.stop?.(); }
+});
+
+await test('await (§): a rejected <template await> with no catch shows a default error boundary', async () => {
+  // No catch branch → the zero-config error boundary, never a blank section.
+  const bare = await renderFragment('<template await="p"><p id="ok">ok</p></template>',
+    { p: Promise.reject(new Error('boom')) }, { dev: false });
+  assert.ok(bare.includes('data-spark-await-error'), 'default boundary rendered');
+  assert.ok(!bare.includes('id="ok"'), 'the resolved branch did not render');
+  assert.ok(bare.includes('could not be loaded'), 'generic message in production');
+
+  // dev surfaces the real reason.
+  const dev = await renderFragment('<template await="p"><p>ok</p></template>',
+    { p: Promise.reject(new Error('boom')) }, { dev: true });
+  assert.ok(dev.includes('boom'), 'dev shows the failure reason');
+
+  // An explicit <template catch> still wins over the default.
+  const caught = await renderFragment(
+    '<template await="p"><template catch><p id="caught">caught</p></template></template>',
+    { p: Promise.reject(new Error('x')) }, { dev: false });
+  assert.ok(caught.includes('id="caught"') && !caught.includes('data-spark-await-error'), 'catch branch wins');
+
+  // A resolved promise still renders its content.
+  const ok = await renderFragment('<template await="p" as="v"><p id="ok">{v}</p></template>',
+    { p: Promise.resolve('yes') }, { dev: false });
+  assert.ok(ok.includes('id="ok">yes<'), 'resolved value renders');
+});
+
+await test('relations (§): each="c in post.comments" infers a comments table (post_id FK) and joins it', async () => {
+  const root = mkdtempSync(join(tmpdir(), 'spark-ssr-rel-'));
+  writeFileSync(join(root, 'spark.json'), JSON.stringify({ db: 'sqlite::memory:' }));
+  mkdirSync(join(root, 'pages', 'post'), { recursive: true });
+  writeFileSync(join(root, 'pages', 'post', '[id].html'),
+    '<h1 id="t">{post.title}</h1>\n'
+    + '<template each="c in post.comments"><p class="c">{c.body}</p></template>\n'
+    + '<spark-ssr>\n  post = SELECT * FROM posts WHERE id = :id LIMIT 1\n</spark-ssr>');
+  const s = await serve({ root, port: 0, quiet: true });
+  await s.db.query('CREATE TABLE posts (id INTEGER PRIMARY KEY, title TEXT)');
+  await s.db.query("INSERT INTO posts (id, title) VALUES (1, 'Hello')");
+  const B = `http://localhost:${s.port}`;
+  try {
+    // The comments table was inferred + created at startup — insert related rows.
+    const cols = (await s.db.columns('comments')).map((c) => c.name);
+    assert.ok(cols.includes('post_id') && cols.includes('body'), 'inferred FK + field columns');
+    await s.db.query("INSERT INTO comments (post_id, body) VALUES (1, 'first'), (1, 'second'), (2, 'other')");
+    const html = await (await fetch(`${B}/post/1`)).text();
+    assert.ok(html.includes('id="t">Hello<'), 'the parent row renders');
+    assert.ok(html.includes('>first<') && html.includes('>second<'), 'related rows joined onto the parent');
+    assert.ok(!html.includes('>other<'), 'only this post’s comments (FK scoped)');
+  } finally { await s.stop?.(); }
+});
+
 await test('SEO (T3): og:title/og:description derive from the lifted head', async () => {
   const html = await (await fetch(`${S}/seo`)).text();
   const [head] = html.split('</head>');
@@ -959,6 +1140,26 @@ await test('errors: unknown route gets a styled default 404; pages/404.html over
   assert.ok((await res.text()).includes('id="custom"'), 'the app 404 page overrides the default');
   assert.equal((await fetch(`http://localhost:${s.port}/404`)).status, 404, '404.html is not itself a route');
   await s.stop?.();
+});
+
+await test('auto-404 (§3): a [param] page with an empty single-row lookup 404s without an else branch', async () => {
+  const root = mkdtempSync(join(tmpdir(), 'spark-ssr-auto404-'));
+  writeFileSync(join(root, 'spark.json'), JSON.stringify({ db: 'sqlite::memory:' }));
+  mkdirSync(join(root, 'pages', 'item'), { recursive: true });
+  // No <template else> — the page just reads {item.title}.
+  writeFileSync(join(root, 'pages', 'item', '[id].html'),
+    '<h1 id="t">{item.title}</h1>\n<spark-ssr>\n  item = SELECT * FROM posts WHERE id = :id LIMIT 1\n</spark-ssr>');
+  const s = await serve({ root, port: 0, quiet: true });
+  await s.db.query('CREATE TABLE posts (id INTEGER PRIMARY KEY, title TEXT)');
+  await s.db.query("INSERT INTO posts (id, title) VALUES (1, 'Real')");
+  try {
+    const ok = await fetch(`http://localhost:${s.port}/item/1`);
+    assert.equal(ok.status, 200, 'an existing row renders');
+    assert.ok((await ok.text()).includes('id="t">Real<'));
+    const gone = await fetch(`http://localhost:${s.port}/item/999`);
+    assert.equal(gone.status, 404, 'a missing row is an automatic 404');
+    assert.ok((await gone.text()).includes('Page not found'), 'the default 404 renders');
+  } finally { await s.stop?.(); }
 });
 
 await test('ambient {path}: the current request path is page scope (nav highlighting)', async () => {

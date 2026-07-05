@@ -94,18 +94,24 @@ async function walkNode(node, scope, ctx, depth) {
 
   if (node.hasAttribute('import')) return renderImport(node, scope, ctx, depth);
 
-  // No-JS forms (§5): a redirect="…" attribute on a form posting to /api/*
-  // becomes a hidden _redirect field, so the plain-browser 303 knows where
-  // to land. The attribute itself never reaches the browser.
-  if (tag === 'form' && node.hasAttribute('redirect')) {
-    const to = node.getAttribute('redirect');
-    node.removeAttribute('redirect');
-    if ((node.getAttribute('action') || '').startsWith('/api/')) {
-      const hidden = ctx.document.createElement('input');
-      hidden.setAttribute('type', 'hidden');
-      hidden.setAttribute('name', '_redirect');
-      hidden.setAttribute('value', to);
-      node.appendChild(hidden);
+  // No-JS forms (§5): redirect="…" and flash="…" attributes on a form posting
+  // to /api/* become hidden _redirect / _flash fields, so the plain-browser 303
+  // knows where to land and what one-shot message to show. The attributes
+  // themselves never reach the browser.
+  if (tag === 'form' && (node.hasAttribute('redirect') || node.hasAttribute('flash'))) {
+    const isApi = (node.getAttribute('action') || '').startsWith('/api/');
+    const addHidden = (name, value) => {
+      const h = ctx.document.createElement('input');
+      h.setAttribute('type', 'hidden');
+      h.setAttribute('name', name);
+      h.setAttribute('value', value);
+      node.appendChild(h);
+    };
+    for (const [attr, field] of [['redirect', '_redirect'], ['flash', '_flash']]) {
+      if (!node.hasAttribute(attr)) continue;
+      const v = node.getAttribute(attr);
+      node.removeAttribute(attr);
+      if (isApi) addHidden(field, v);
     }
   }
 
@@ -184,10 +190,33 @@ async function renderAwait(node, scope, ctx, depth) {
   const as = node.getAttribute('as');
   if (as) branchScope[as] = failed || value;
   // Resolved: the then-branch when declared, otherwise the direct content
-  // (the doc's `<template await="todos">…</template>` shorthand).
+  // (the doc's `<template await="todos">…</template>` shorthand). Failed: the
+  // catch-branch if written, otherwise a default inline error boundary — so an
+  // await that throws degrades to a message, never a silently blank section.
+  if (failed && !catchNodes.length) {
+    node.parentNode?.insertBefore(defaultAwaitError(node, failed, ctx), node);
+    node.remove();
+    return;
+  }
   const branch = failed ? catchNodes : thenNodes.length ? thenNodes : direct;
   await insertRendered(branch, node, branchScope, ctx, depth);
   node.remove();
+}
+
+// The zero-config error boundary for a failed <template await> with no catch.
+function defaultAwaitError(node, failed, ctx) {
+  const doc = node.ownerDocument || (ctx && ctx.document);
+  const el = doc.createElement('div');
+  el.setAttribute('role', 'alert');
+  el.setAttribute('data-spark-await-error', '');
+  el.setAttribute('style',
+    'border:1px solid #ff6b6b;background:rgba(255,107,107,.1);color:#ff6b6b;'
+    + 'border-radius:8px;padding:.6rem .8rem;font-size:.85rem');
+  // Dev shows the real reason; production stays generic.
+  el.textContent = ctx && ctx.dev
+    ? '⚠ Failed to load: ' + (failed && (failed.message || String(failed)))
+    : '⚠ This section could not be loaded.';
+  return el;
 }
 
 async function renderIfChain(node, scope, ctx, depth) {

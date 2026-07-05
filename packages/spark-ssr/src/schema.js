@@ -20,6 +20,7 @@
  */
 import { join, resolve } from 'node:path';
 import { existsSync, readFileSync } from 'node:fs';
+import { singular } from './parse.js';
 
 const INPUT_TYPE = {
   checkbox: 'INTEGER', number: 'REAL', range: 'REAL',
@@ -85,6 +86,18 @@ export function inferSchema(pagesData, config, root) {
       }
     }
 
+  }
+
+  // Relations (§): each="c in post.comments" declares a child table `comments`
+  // with a `post_id` foreign key. The loop var's read fields ({c.body}) type
+  // its columns — nested data with no JOIN written by hand.
+  for (const pd of pagesData) {
+    for (const r of (pd.analysis && pd.analysis.relations) || []) {
+      const t = ensure(r.rel);
+      const fk = singular(r.parent) + '_id';
+      if (!t.columns[fk]) t.columns[fk] = 'INTEGER';
+      for (const f of (pd.analysis.memberFields.get(r.loopVar) || [])) setCol(t, f, 'TEXT');
+    }
   }
 
   // The auth table always exists once auth is configured: its identity

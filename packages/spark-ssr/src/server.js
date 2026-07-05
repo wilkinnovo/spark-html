@@ -14,7 +14,7 @@ import { loadConfig } from './config.js';
 import { connect } from './db.js';
 import {
   extractBlocks, analyze, mergeAnalyses, dataPlan, rewriteParams, singleShaped,
-  maskComments, extractForms, validateFields, sqlTables,
+  maskComments, extractForms, validateFields, sqlTables, singular,
 } from './parse.js';
 import { renderFragment, evalExpr } from './render.js';
 import { clientComponent, initModule } from './hydrate.js';
@@ -240,6 +240,28 @@ function readSession(cookieHeader, secret) {
 }
 const SESSION_COOKIE = (value, clear = false) =>
   `spark_session=${clear ? '' : value}; Path=/; HttpOnly; SameSite=Lax${clear ? '; Max-Age=0' : ''}`;
+
+// One-shot flash messages: a signed, read-once cookie. Set on a form's success
+// 303 (flash="…") and exposed as ambient {flash} on the very next page, then
+// cleared — the "Saved!" / "Signed out" toast every app needs, no state store.
+function signFlash(msg, secret) {
+  const data = b64(String(msg));
+  return data + '.' + createHmac('sha256', secret).update(data).digest('base64url');
+}
+function readFlash(cookieHeader, secret) {
+  const raw = String(cookieHeader || '').split(/;\s*/)
+    .map((p) => p.split('=')).find((kv) => kv[0].trim() === 'spark_flash');
+  if (!raw || !raw[1]) return null;
+  const [data, mac] = raw[1].split('.');
+  if (!data || !mac) return null;
+  const expect = createHmac('sha256', secret).update(data).digest('base64url');
+  try {
+    if (!timingSafeEqual(Buffer.from(mac), Buffer.from(expect))) return null;
+    return Buffer.from(data, 'base64url').toString('utf8');
+  } catch { return null; }
+}
+const FLASH_COOKIE = (value, clear = false) =>
+  `spark_flash=${clear ? '' : value}; Path=/; SameSite=Lax${clear ? '; Max-Age=0' : ''}`;
 
 // Roles in one column: an is_admin (or role) column on the auth table
 // unlocks guard="session.is_admin" and unscoped reads for admins.
@@ -1049,13 +1071,30 @@ export async function serve(options = {}) {
   }
 
   async function buildScope(pd, req) {
-    // `path` is ambient like `session` — the layout's nav highlights the
-    // current page with it. Query/params may shadow it deliberately.
-    const scope = { path: req.path, ...req.query, ...req.params, session: req.session };
+    // `path`, `session` and `flash` are ambient — no query declares them. The
+    // layout reads {session} for the signed-in user and {flash} (or the
+    // <spark-flash> toast) for the one-shot message from the last redirect.
+    const scope = { path: req.path, flash: readFlash(req.headers.cookie, secret), ...req.query, ...req.params, session: req.session };
     if (pd.code) Object.assign(scope, await runPageScript(pd.code, req));
     for (const p of pd.plan) {
       if (scope[p.var] !== undefined) continue; // the page <script> won
       scope[p.var] = await resolveSource(p, req);
+    }
+    // Relations (§): each="c in post.comments" attaches the child rows onto the
+    // parent object(s) via the inferred foreign key — one small query per
+    // parent, no JOIN in the template. Identifiers come from the parsed
+    // template (word chars only), so they're safe to interpolate.
+    for (const r of pd.analysis.relations || []) {
+      const parent = scope[r.parent];
+      if (parent == null) continue;
+      const fk = singular(r.parent) + '_id';
+      const attach = async (obj) => {
+        if (!obj || obj.id == null || obj[r.rel] !== undefined) return;
+        try { obj[r.rel] = await db.query(`SELECT * FROM ${r.rel} WHERE ${fk} = ?`, [obj.id]); }
+        catch { obj[r.rel] = []; }
+      };
+      if (Array.isArray(parent)) { for (const o of parent) await attach(o); }
+      else await attach(parent);
     }
     return scope;
   }
@@ -1075,12 +1114,32 @@ export async function serve(options = {}) {
     const scope = await buildScope(pd, req);
     if (extra) Object.assign(scope, extra.scope || {});
 
-    // Declarative guard (§3): <spark-ssr guard="session" redirect="/login" />
+    // Declarative guard (§3): <spark-ssr guard="session" redirect="/login" />.
+    // With auth configured, a bare `guard="session"` (no redirect, no status)
+    // defaults to sending the visitor to /login with a ?next back to here —
+    // the built-in login form returns them once they sign in.
     for (const b of pd.blocks) {
       if (!b.guard) continue;
       if (!evalExpr(b.guard, scope)) {
         if (b.redirect) return new Response(null, { status: 303, headers: { location: b.redirect } });
+        if (config.auth && !b.status) {
+          return new Response(null, { status: 303, headers: { location: '/login?next=' + encodeURIComponent(req.path) } });
+        }
         return errorPage(b.status || 403);
+      }
+    }
+
+    // Auto-404 (§3): a dynamic [param] page that looks up one row and finds
+    // nothing IS a 404 — no need to hand-write <template else status="404">.
+    // Only fires when the page reads that row as an object ({post.title}); an
+    // explicit if/else branch in the page opts out (it renders its own answer),
+    // and form re-renders (extra.status) are left alone.
+    if (!extra && page.segs.some((s) => s.startsWith('['))
+      && !/<template\b[^>]*\b(?:else|else-if)\b/i.test(pd.html)) {
+      for (const p of pd.plan) {
+        if (p.shape === 'row' && pd.analysis.memberRoots.has(p.var) && scope[p.var] == null) {
+          return errorPage(404);
+        }
       }
     }
 
@@ -1089,8 +1148,27 @@ export async function serve(options = {}) {
     // page host won't rebuild wholesale, so a client mount re-resolves them
     // and their own <script> comes alive (counters, demos, …).
     const hasComponents = /\bimport\s*=\s*"/.test(pd.html);
-    const rctx = { loadComponent, keepImports: !hydrate };
-    const body = await renderFragment(pd.html, scope, rctx);
+    const rctx = { loadComponent, keepImports: !hydrate, dev: live };
+    let body = await renderFragment(pd.html, scope, rctx);
+    // <spark-flash/> — a drop-in styled toast that shows the one-shot {flash}
+    // message and nothing when there isn't one. Layout writes it once.
+    if (/<spark-flash\b/i.test(body)) {
+      body = body.replace(/<spark-flash\b[^>]*>(?:\s*<\/spark-flash>)?/gi, () => flashToast(scope.flash));
+    }
+    // <spark-pager for="posts"/> and <spark-search/> — the default UI over the
+    // list conventions (§10): ?page/?sort links and a ?q search box, no wiring.
+    if (/<spark-pager\b/i.test(body)) {
+      body = body.replace(/<spark-pager\b([^>]*)>(?:\s*<\/spark-pager>)?/gi, (_m, attrs) => {
+        const name = (attrs.match(/\bfor\s*=\s*"([^"]*)"/) || [])[1];
+        return pagerHtml(name ? scope[name] : null, req.query);
+      });
+    }
+    if (/<spark-search\b/i.test(body)) {
+      body = body.replace(/<spark-search\b([^>]*)>(?:\s*<\/spark-search>)?/gi, (_m, attrs) => {
+        const ph = (attrs.match(/\bplaceholder\s*=\s*"([^"]*)"/) || [])[1] || 'Search…';
+        return searchHtml(req.query, ph);
+      });
+    }
     let headExtra = pd.head ? renderHead(pd.head, (e) => evalExpr(e, scope)) : '';
     if (headExtra) headExtra = withOgTags(headExtra);
     let html = shell(page, body, {
@@ -1099,10 +1177,70 @@ export async function serve(options = {}) {
     if (live && pd.plan.unresolved && pd.plan.unresolved.length) {
       html = html.replace('</body>', unresolvedBanner(pd.plan.unresolved) + '\n</body>');
     }
+    const headers = { 'content-type': 'text/html; charset=utf-8' };
+    // A shown flash is consumed — clear the cookie so it appears exactly once.
+    if (scope.flash) headers['set-cookie'] = FLASH_COOKIE('', true);
     return new Response(html, {
       status: (extra && extra.status) || rctx.status || 200,
-      headers: { 'content-type': 'text/html; charset=utf-8' },
+      headers,
     });
+  }
+
+  // The default flash toast (self-contained, design-system styled). Empty when
+  // there's no message, so <spark-flash/> can live permanently in the layout.
+  function flashToast(msg) {
+    if (!msg) return '';
+    return '<div role="status" style="position:fixed;left:50%;bottom:1.25rem;transform:translateX(-50%);'
+      + 'z-index:9999;max-width:90vw;background:#ffd24a;color:#000;font-weight:700;'
+      + 'font-family:inherit;font-size:.85rem;padding:.6rem 1rem;border-radius:10px;'
+      + 'box-shadow:0 6px 24px rgba(0,0,0,.35)">' + escapeHtml(msg) + '</div>';
+  }
+
+  // <spark-pager for="posts"/> — numbered prev/next links over a list source's
+  // .page/.pages, preserving the current ?q/?sort. Renders nothing for a single
+  // page. Server-side only; a plain <a> nav, so it works with JS disabled.
+  function pagerHtml(list, query) {
+    if (!list || !(list.pages > 1)) return '';
+    const cur = Number(list.page) || 1;
+    const last = Number(list.pages);
+    const base = { ...query };
+    delete base.page;
+    const href = (p) => {
+      const q = new URLSearchParams(base);
+      q.set('page', String(p));
+      return '?' + q.toString();
+    };
+    const cell = 'min-width:2rem;text-align:center;padding:.35rem .55rem;border-radius:8px;'
+      + 'border:1px solid #333;font-size:.85rem;text-decoration:none;color:inherit';
+    const item = (p, label, { on, off } = {}) => off
+      ? `<span style="${cell};opacity:.35">${label}</span>`
+      : on
+        ? `<span aria-current="page" style="${cell};background:#ffd24a;color:#000;border-color:#ffd24a;font-weight:700">${label}</span>`
+        : `<a href="${href(p)}" style="${cell}">${label}</a>`;
+    const nums = [];
+    for (let p = 1; p <= last; p++) {
+      if (p === 1 || p === last || Math.abs(p - cur) <= 1) nums.push(p);
+      else if (nums[nums.length - 1] !== '…') nums.push('…');
+    }
+    const parts = [item(cur - 1, '‹', { off: cur <= 1 })];
+    for (const n of nums) {
+      parts.push(n === '…' ? `<span style="${cell};border-color:transparent">…</span>` : item(n, String(n), { on: n === cur }));
+    }
+    parts.push(item(cur + 1, '›', { off: cur >= last }));
+    return '<nav class="spark-pager" role="navigation" aria-label="Pagination" '
+      + 'style="display:flex;gap:.35rem;justify-content:center;align-items:center;flex-wrap:wrap;margin:1.25rem 0">'
+      + parts.join('') + '</nav>';
+  }
+
+  // <spark-search placeholder="Search…"/> — a no-JS GET search box bound to ?q,
+  // carrying the current ?sort so a search doesn't drop the sort order.
+  function searchHtml(query, placeholder) {
+    const sort = query.sort ? `<input type="hidden" name="sort" value="${escapeHtml(query.sort)}">` : '';
+    return '<form method="get" role="search" class="spark-search" style="margin:0 0 1.25rem">'
+      + sort
+      + `<input type="search" name="q" value="${escapeHtml(query.q || '')}" placeholder="${escapeHtml(placeholder)}" `
+      + 'style="width:100%;font:inherit;color:inherit;background:transparent;border:1px solid #333;'
+      + 'border-radius:8px;padding:.5rem .7rem"></form>';
   }
 
   // Human copy for the built-in default error screen (used when the app ships
@@ -1166,6 +1304,80 @@ export async function serve(options = {}) {
     }
     const body = defaultErrorPage(status) + (live ? '\n' + RELOAD_CLIENT : '');
     return new Response(body, { status, headers: { 'content-type': 'text/html; charset=utf-8' } });
+  }
+
+  // Built-in, overridable auth screens. Configuring `auth` in spark.json is
+  // enough to get working /login, /logout and /signup — no page to write. Drop
+  // a pages/login.html (etc.) to override; a user page always wins the route.
+  // These are self-contained (design system inline) so they render before any
+  // layout or data exists — same robustness contract as the error pages.
+  function authScreen(kind, { next, error } = {}) {
+    const identity = (config.auth && config.auth.identity) || 'email';
+    const table = config.auth && config.auth.table;
+    const idType = /email/i.test(identity) ? 'email' : 'text';
+    const nextField = next && String(next).startsWith('/') ? escapeHtml(next) : '';
+    const isSignup = kind === 'signup';
+    const action = isSignup ? `/api/${table}` : `/api/${table}?auth`;
+    const title = isSignup ? 'Create account' : 'Sign in';
+    const errMsg = error
+      ? (isSignup ? 'Could not create that account — it may already exist.' : 'Wrong ' + identity + ' or password.')
+      : '';
+    const alt = isSignup
+      ? `Already have an account? <a href="/login${nextField ? '?next=' + encodeURIComponent(nextField) : ''}">Sign in</a>`
+      : `Need an account? <a href="/signup${nextField ? '?next=' + encodeURIComponent(nextField) : ''}">Create one</a>`;
+    return `<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>${title}</title>
+<style>
+  :root{color-scheme:dark light}*{box-sizing:border-box}
+  body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;
+    background:#000;color:#fff;padding:2rem;
+    font-family:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,monospace;line-height:1.6}
+  @media(prefers-color-scheme:light){body{background:#fff;color:#1a1a1a}}
+  form{width:100%;max-width:22rem;background:#0a0a0a;border:1px solid #1a1a1a;border-radius:12px;padding:1.75rem}
+  @media(prefers-color-scheme:light){form{background:#fafafa;border-color:#ededed}}
+  .bolt{font-size:1.5rem;text-align:center;filter:drop-shadow(0 0 14px rgba(255,210,74,.45))}
+  h1{font-size:1.15rem;font-weight:700;text-align:center;margin:.25rem 0 1.25rem}
+  label{display:block;font-size:.8rem;color:#888;margin:0 0 .9rem}
+  @media(prefers-color-scheme:light){label{color:#666}}
+  input{width:100%;margin-top:.3rem;font:inherit;color:inherit;background:transparent;
+    border:1px solid #333;border-radius:8px;padding:.55rem .7rem}
+  @media(prefers-color-scheme:light){input{border-color:#d4d4d4}}
+  input:focus{outline:none;border-color:#ffd24a}
+  button{width:100%;margin-top:.5rem;font:inherit;font-weight:700;cursor:pointer;color:#000;
+    background:#ffd24a;border:0;border-radius:8px;padding:.6rem}
+  button:active{transform:scale(.99)}
+  .err{background:rgba(255,107,107,.12);border:1px solid #ff6b6b;color:#ff6b6b;
+    border-radius:8px;padding:.5rem .7rem;font-size:.82rem;margin:0 0 1rem}
+  .alt{text-align:center;font-size:.82rem;color:#888;margin:1rem 0 0}
+  .alt a{color:#ffd24a}@media(prefers-color-scheme:light){.alt a{color:#9a6a00}}
+</style></head>
+<body>
+<form method="post" action="${action}">
+  <div class="bolt">⚡</div>
+  <h1>${title}</h1>
+  ${errMsg ? `<p class="err">${escapeHtml(errMsg)}</p>` : ''}
+  ${nextField ? `<input type="hidden" name="_redirect" value="${nextField}">` : (isSignup ? '<input type="hidden" name="_redirect" value="/login">' : '')}
+  <label>${escapeHtml(identity[0].toUpperCase() + identity.slice(1))}
+    <input name="${escapeHtml(identity)}" type="${idType}" autocomplete="username" required autofocus></label>
+  <label>Password
+    <input name="password" type="password" autocomplete="${isSignup ? 'new-password' : 'current-password'}" required></label>
+  <button>${title}</button>
+  <p class="alt">${alt}</p>
+</form>
+${live ? RELOAD_CLIENT : ''}
+</body></html>`;
+  }
+
+  // Which built-in auth screen a path maps to (only when auth is configured and
+  // the app ships no page of its own for it — a user page always wins first).
+  function builtinAuthKind(pathname) {
+    if (!config.auth) return null;
+    if (pathname === '/login') return 'login';
+    if (pathname === '/signup') return 'signup';
+    return null;
   }
 
   // Dev-only error overlay (§4): the real error — SQL, file, line — on the
@@ -1459,6 +1671,10 @@ code{color:#fdba74}em{color:#a8a29e}</style></head><body>
               const headers = new Headers({ location: back });
               const sc = res.headers.get('set-cookie');
               if (sc) headers.set('set-cookie', sc);
+              // flash="…" on the form → a one-shot message on the next page.
+              if (typeof fields._flash === 'string' && fields._flash) {
+                headers.append('set-cookie', FLASH_COOKIE(signFlash(fields._flash, secret)));
+              }
               return finish(new Response(null, { status: 303, headers }));
             }
             let errors = null;
@@ -1475,6 +1691,14 @@ code{color:#fdba74}em{color:#a8a29e}</style></head><body>
                   return finish(await servePage(rp.page, rreq, {
                     scope: { errors, values: fields }, status: res.status,
                   }));
+                }
+                // No page owns the referer — but a built-in auth screen might.
+                // Bounce back to it with ?error so the form shows the message.
+                const kind = builtinAuthKind(r.pathname);
+                if (kind) {
+                  const nx = r.searchParams.get('next');
+                  const q = 'error=1' + (nx ? '&next=' + encodeURIComponent(nx) : '');
+                  return finish(new Response(null, { status: 303, headers: { location: `${r.pathname}?${q}` } }));
                 }
               } catch { /* fall through to the raw response */ }
             }
@@ -1494,6 +1718,22 @@ code{color:#fdba74}em{color:#a8a29e}</style></head><body>
         if (hit) {
           const req = wrapReq(request, url, hit.params, session, srv);
           return finish(await servePage(hit.page, req));
+        }
+
+        // Built-in auth screens (only if auth is configured and no user page
+        // claimed the route above). /logout clears the session and 303s home.
+        if (config.auth && (pathname === '/logout')) {
+          return finish(new Response(null, {
+            status: 303,
+            headers: { location: '/', 'set-cookie': SESSION_COOKIE('', true) },
+          }));
+        }
+        const authKind = builtinAuthKind(pathname);
+        if (authKind && request.method === 'GET') {
+          // A signed-in visitor never needs the login/signup form.
+          if (session) return finish(new Response(null, { status: 303, headers: { location: '/' } }));
+          return finish(new Response(authScreen(authKind, { next: url.searchParams.get('next'), error: url.searchParams.get('error') }),
+            { headers: { 'content-type': 'text/html; charset=utf-8' } }));
         }
 
         return finish(errorPage(404));

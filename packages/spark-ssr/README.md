@@ -142,6 +142,13 @@ answers 303, `status="401"` sets the code, default 403. An `is_admin` (or
 `role`) column on the auth table rides into the session, so
 `guard="session.is_admin"` works — and admins read scoped tables unscoped.
 
+**You rarely write the 404, though.** A `[param]` page whose single-row lookup
+comes back empty **404s automatically** — the `<template else status="404">`
+above is only for a custom message. And every error status renders a **styled
+default page** with no file to write; drop a `pages/404.html` (or `500.html`,
+any `<status>.html`) to override it. With `auth` configured, a bare
+`guard="session"` defaults to redirecting to `/login`.
+
 ## Forms without JavaScript
 
 The auto-CRUD endpoints answer a browser like a browser:
@@ -290,12 +297,23 @@ scope; the return value becomes the JSON response).
 - **Auth** — built-in email/password sessions (`POST /api/users?auth` logs in,
   passwords hash on insert), or a plugin (`auth.plugin` in spark.json) for
   OAuth/magic-link flows — the plugin answers "who is this person?", the
-  framework still does sessions and cookies.
+  framework still does sessions and cookies. Configuring `auth` also gives you
+  working **`/login`, `/signup` and `/logout` pages** with zero UI written —
+  drop a `pages/login.html` (etc.) to override them.
+- **Relations** — `<template each="c in post.comments">` declares a `comments`
+  table with a `post_id` foreign key and joins it onto the post. Nested data,
+  no SQL join in the template.
+- **Flash messages** — `flash="Saved"` on a form sets a one-shot message that
+  survives the redirect; render it with `{flash}` or the default `<spark-flash>`
+  toast. `{session}` and `{path}` are ambient on every page too.
+- **List UI** — `<spark-pager for="posts"/>` and `<spark-search/>` are drop-in,
+  no-JS `?page`/`?sort`/`?q` controls over the list conventions below.
 - **Middleware** — `middleware.html` runs on every request (`req`, `res`,
   `rateLimit`, `state` in scope; return `{ status, body }` to short-circuit).
 - **Uploads** — multipart bodies stream to `uploads/`; `:file.url` binds the
   stored URL into your INSERT.
-- **Error pages** — `404.html` / `500.html` (any `<status>.html`) at the
+- **Error pages** — a styled default for every status out of the box; override
+  with `pages/404.html` / `500.html` (any `<status>.html`), or one at the
   project root.
 - **Static assets** — `public/` plus co-located page assets, served as-is.
   Project internals (spark.json, package.json, `*.db`, seeds, dotfiles) are
