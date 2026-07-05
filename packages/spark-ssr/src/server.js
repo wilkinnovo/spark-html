@@ -1067,9 +1067,16 @@ export async function serve(options = {}) {
     }
   }
 
+  // Hydrate any interactive page with data sources — table, SQL, URL, glob or
+  // module. Sources that read the database (table/SQL/query) still need `db`;
+  // file globs, URLs and modules hydrate without one. A page's own <script> no
+  // longer opts out: it becomes the client component's script (ambient helpers
+  // injected, missing handlers synthesized), so authored pages hydrate too.
+  const DB_SOURCE = new Set(['table', 'query', 'sql']);
   function shouldHydrate(pd) {
-    return pd.analysis.interactive && !pd.analysis.hasScript
-      && pd.blocks.some((b) => b.table) && !!db;
+    if (!pd.analysis.interactive || pd.plan.length === 0) return false;
+    const needsDb = pd.plan.some((p) => p.source && DB_SOURCE.has(p.source.kind));
+    return !needsDb || !!db;
   }
 
   // Open Graph completeness (Tier 3): og:title / og:description derive from
@@ -1185,7 +1192,10 @@ export async function serve(options = {}) {
     // layout reads {session} for the signed-in user and {flash} (or the
     // <spark-flash> toast) for the one-shot message from the last redirect.
     const scope = { path: req.path, flash: readFlash(req.headers.cookie, secret), ...req.query, ...req.params, session: req.session };
-    if (pd.code) Object.assign(scope, await runPageScript(pd.code, req));
+    // A page's <script> runs on the server (the escape hatch) UNLESS the page
+    // hydrates — then it's the client component's script (handlers, not data),
+    // so it must not run here. Its data still comes from the <spark-ssr> blocks.
+    if (pd.code && !shouldHydrate(pd)) Object.assign(scope, await runPageScript(pd.code, req));
     for (const p of pd.plan) {
       if (scope[p.var] !== undefined) continue; // the page <script> won
       scope[p.var] = await resolveSource(p, req);
@@ -1792,27 +1802,41 @@ code{color:#fdba74}em{color:#a8a29e}</style></head><body>
           const page = pages.find((p) => p.key === key);
           if (!page) return finish(errorPage(404));
           const pd = pageData(page, cache, pagesDir);
-          const tableBlock = pd.blocks.find((b) => b.table) || {};
-          const table = tableBlock.table || null;
-          const cols = table ? await db.columns(table) : [];
+          const tables = [...new Set(pd.blocks.filter((b) => b.table).map((b) => b.table))];
+          const colsByTable = {};
+          if (db) for (const t of tables) colsByTable[t] = await db.columns(t);
+          const autoBlock = pd.blocks.find((b) => b.table && b.auto !== undefined);
           const html = clientComponent({
-            html: pd.html, analysis: pd.analysis, plan: pd.plan, table, cols, key,
-            live: !!(table && liveTables.has(table)),
+            html: pd.html, analysis: pd.analysis, plan: pd.plan, key,
+            tables, colsByTable,
+            liveTables: tables.filter((t) => liveTables.has(t)),
+            authorScript: pd.code, auto: autoBlock ? autoBlock.auto : undefined,
           });
           return finish(new Response(html, { headers: { 'content-type': 'text/html', 'cache-control': 'no-cache' } }));
         }
 
+        // Per-request data: the .js module seeds the hydration component's
+        // initial state; the .json mirror is what refresh() refetches. Both
+        // re-run every declared source (table, SQL, URL, glob, module).
         if (pathname.startsWith('/__spark/data/')) {
-          const key = pathname.slice('/__spark/data/'.length).replace(/\.js$/, '');
+          const json = pathname.endsWith('.json');
+          const key = pathname.slice('/__spark/data/'.length).replace(/\.(js|json)$/, '');
           const page = pages.find((p) => p.key === key);
           if (!page) return finish(errorPage(404));
           const pd = pageData(page, cache, pagesDir);
           const req = wrapReq(request, url, {}, session, srv);
           const data = {};
           for (const p of pd.plan) data[p.var] = await resolveSource(p, req);
-          return finish(new Response(initModule(data), {
-            headers: { 'content-type': 'text/javascript', 'cache-control': 'no-store' },
-          }));
+          // {session} the hydration component may read ({path} it derives from
+          // location — the init module's own path is the data URL, not the page).
+          if (pd.analysis.needs.has('session')) data.session = req.session;
+          return finish(json
+            ? new Response(JSON.stringify(data), {
+                headers: { 'content-type': 'application/json', 'cache-control': 'no-store' },
+              })
+            : new Response(initModule(data), {
+                headers: { 'content-type': 'text/javascript', 'cache-control': 'no-store' },
+              }));
         }
 
         if (pathname.startsWith('/uploads/')) {

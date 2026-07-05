@@ -34,7 +34,7 @@ disabled.
 | Per-page `<title>`/`<meta>` | literal tags at the top of each page, `{expr}`-interpolated |
 | SEO | og:title/og:description derive from the head; `/sitemap.xml` enumerates `/blog/:slug` from its query; `/robots.txt` honors the admin page's `noindex` |
 | Server → component props | `index.html` passes each whole `post` row into `post-card.html` |
-| Client components | `post-editor`, `todo-list` — their `<script>` runs in the browser |
+| Ambient CRUD helpers | `/admin`'s page `<script>` gets `api_create/api_update/api_delete` + `refresh()` — no `fetch()` boilerplate, the tables are inferred |
 | Auth | `spark.json` `"auth"` → sessions, `POST /api/users?auth` login, hashed passwords |
 | Auth-scoped CRUD | `posts` and `todos` carry `user_id` → their APIs are session-scoped (401 anonymous) |
 | Draft privacy | the `[slug]` query: `published = 1 OR :session.id IS NOT NULL` — authors preview drafts |
@@ -52,10 +52,18 @@ disabled.
 
 - `pages/_layout.html` wraps every page in the folder; `<slot>` is the page.
   Its `<spark-ssr>` vars are in scope everywhere it wraps.
-- A **page**'s plain `<script>` runs on the **server** (it's the escape
-  hatch); `<script type="module">`/`src` scripts ship to the browser.
+- A **page**'s plain `<script>` runs on the **server** (the escape hatch) —
+  unless the page is interactive with data (handlers/binds + a `<spark-ssr>`
+  source). Then it's the **client** component's script: the framework injects
+  `api_create/api_update/api_delete` + `refresh()`, seeds your state from the
+  data, synthesizes any handler you leave out, and appends your code. See
+  `/admin` — the whole posts+todos UI is a handful of handlers.
+  `<script type="module">`/`src` scripts always ship to the browser as-is.
 - A **component**'s `<script>` runs in the **browser**. Components are
   otherwise pure UI: they render the props they're given.
+- **Any data source hydrates** — a table, a `SELECT`, a URL, a markdown glob,
+  a JS module. Interactivity isn't gated on a database (the no-DB blog
+  template filters markdown posts live on the client).
 - `<spark-ssr>` declares data. `var = SELECT …` names page data;
   `table="…"` gives you scoped REST CRUD (+ `seed`, `live`, `limit`,
   `search`); `guard="…"` protects the page.

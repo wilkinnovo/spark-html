@@ -304,10 +304,14 @@ and guards. Author your own files in `public/` to override any of it.
 
 ## Client scripts and the family
 
-A page's plain `<script>` runs on the **server** (the escape hatch).
-`<script type="module">` and `<script src>` are **client** scripts — they lift
-into `<head>` after an auto-generated importmap, so bare imports of the Spark
-family just work, no build:
+A page's plain `<script>` runs on the **server** (the escape hatch) — *unless*
+the page is interactive (has handlers or `bind:`s) and declares a data source.
+Then it becomes the page's **client component** script: the four ambient
+helpers below are in scope, your state is seeded from the page's data, any
+handler the template references but you didn't write is synthesized, and your
+code is appended. `<script type="module">` and `<script src>` are always
+**client** scripts — they lift into `<head>` after an auto-generated importmap,
+so bare imports of the Spark family just work, no build:
 
 ```js
 // public/app.js
@@ -321,6 +325,49 @@ no-flash init snippet is inlined in every head automatically; depend on
 **spark-html-image** and `spark-ssr build` runs its webp/srcset pass over
 `dist/` — and uploads get a webp variant at write time (`:file.url` points
 at it; `:file.original` keeps the source file).
+
+## Page scripts — ambient helpers, less boilerplate
+
+An interactive page (handlers or `bind:`s) that declares data hydrates, and its
+`<script>` becomes the client component. Four helpers are always in scope — no
+imports, no `fetch()` plumbing:
+
+| Helper | Does |
+|---|---|
+| `api_create(body)` | POST to the page's table, returns the row |
+| `api_update(id, body)` | PATCH a row by id |
+| `api_delete(id)` | DELETE a row by id |
+| `refresh()` | Re-run **every** source (table, SQL, URL, glob, module) and reassign the page's vars |
+
+Your state is seeded from the page's data (don't re-declare it), and every
+handler the template references is **synthesized if you don't write it** — so an
+admin page can be just its custom bits:
+
+```html
+<input bind:value="title"><button onclick={create}>Save</button>
+<template each="p in posts">
+  <button onclick={toggle(p)}>{p.published ? 'Unpublish' : 'Publish'}</button>
+  <button onclick={remove(p)}>Delete</button>   <!-- synthesized -->
+</template>
+<script>
+  async function create() {
+    const slug = title.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+    await api_create({ slug, title });
+    title = ''; refresh();
+  }
+  async function toggle(p) { await api_update(p.id, { published: p.published ? 0 : 1 }); refresh(); }
+</script>
+<spark-ssr table="posts" />
+```
+
+`<spark-ssr auto="create,remove">` narrows which handlers are synthesized;
+`auto="none"` keeps only the helpers. Several tables on one page? Pass the table
+explicitly: `api_create('posts', {…})`, `api_update('todos', id, {…})`. Want
+none of it — write your own `fetch()` and don't set `table=`; that's the
+classic escape hatch, untouched.
+
+Hydration is **source-agnostic**: a markdown glob, a JS module (any ORM), a URL
+mashup — all hydrate and `refresh()` the same way, no database required.
 
 ## Custom endpoints — api/
 
@@ -363,8 +410,10 @@ scope; the return value becomes the JSON response).
 - **Static assets** — `public/` plus co-located page assets, served as-is.
   Project internals (spark.json, package.json, `*.db`, seeds, dotfiles) are
   never served.
-- **Hydration** — interactive pages ship fully-rendered HTML plus a generated
-  client component; `mount()` takes over with the same spark-html runtime.
+- **Hydration** — interactive pages (any data source) ship fully-rendered HTML
+  plus a generated client component; `mount()` takes over with the same
+  spark-html runtime, and your page `<script>` rides along with the ambient
+  helpers above.
 - **Auth-table hygiene** — the auth table's auto CRUD never returns password
   hashes, and PATCH/DELETE are own-account only. Configuring `auth` registers
   the table (login/signup endpoints) without any page declaring it; disable

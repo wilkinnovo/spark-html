@@ -1,8 +1,17 @@
 <!-- /admin — one guard line protects the whole page: signed out → 303 to
-     /login. The table blocks give the components their scoped REST APIs
-     (posts + todos carry user_id → session-scoped, 401 for anyone else);
-     the seed="…" files define AND fill the tables on first run — there is
-     no setup.js — and `live` keeps every open todos tab in sync. -->
+     /login. The table blocks give this page their scoped REST APIs (posts +
+     todos carry user_id → session-scoped, 401 for anyone else); the seed="…"
+     files define AND fill the tables on first run (no setup.js), and `live`
+     keeps every open todos tab in sync.
+
+     The interactive bits live in this ONE page <script> — no fetch()
+     boilerplate. Because the page declares tables, four helpers are ambient:
+       api_create(table, body) / api_update(table, id, body) /
+       api_delete(table, id) / refresh()
+     `refresh()` re-runs every source (posts + todos) and reassigns them.
+     The <script> becomes the client component on hydration — spark-ssr
+     synthesizes any handler you leave out; here we write only the ones with
+     custom logic (the slug, the toggles). -->
 <title>Manage · {author.name}</title>
 <meta name="robots" content="noindex">
 
@@ -16,10 +25,84 @@
       <button class="ghost">Sign out</button>
     </form>
   </header>
-  <div import="/components/post-editor"></div>
-  <div import="/components/todo-list"></div>
+
+  <section class="panel">
+    <h2>Posts</h2>
+    <template each="p in posts" key="p.id">
+      <div class="row">
+        <span class="grow">
+          <strong>{p.title}</strong>
+          <span :class="p.published ? 'pill live' : 'pill draft'">{p.published ? 'live' : 'draft'}</span>
+        </span>
+        <a href="/blog/{p.slug}">view</a>
+        <button onclick={togglePost(p)}>{p.published ? 'Unpublish' : 'Publish'}</button>
+        <button class="danger" onclick={removePost(p)}>Delete</button>
+      </div>
+    </template>
+    <template if="posts.length === 0">
+      <p class="empty">No posts yet — write one below.</p>
+    </template>
+
+    <h3>New post</h3>
+    <input bind:value="title" placeholder="Title">
+    <input bind:value="excerpt" placeholder="One-line excerpt">
+    <textarea bind:value="body" rows="6" placeholder="Write…"></textarea>
+    <button onclick={createPost} :disabled="!title">Save draft</button>
+  </section>
+
+  <section class="panel">
+    <h2>Private todos</h2>
+    <div class="row">
+      <input class="grow" bind:value="draft" placeholder="Something to do">
+      <button onclick={addTodo} :disabled="!draft">Add</button>
+    </div>
+    <template each="t in todos" key="t.id">
+      <label class="row">
+        <input type="checkbox" bind:checked="t.done" onchange={toggleTodo(t)}>
+        <span :class="t.done ? 'grow done' : 'grow'">{t.title}</span>
+        <button class="danger" onclick={removeTodo(t)}>✕</button>
+      </label>
+    </template>
+  </section>
 </main>
 
+<script>
+  // Posts — the only custom logic is deriving the slug from the title.
+  async function createPost() {
+    const slug = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+    await api_create('posts', { slug, title, excerpt, body });
+    title = ''; excerpt = ''; body = '';
+    refresh();
+  }
+  async function togglePost(p) {
+    await api_update('posts', p.id, { published: p.published ? 0 : 1 });
+    refresh();
+  }
+  async function removePost(p) {
+    await api_delete('posts', p.id);
+    refresh();
+  }
+
+  // Todos — `live` on the block means every write pings /__spark/live and
+  // refresh() runs in every open tab; the toggle just PATCHes in place.
+  async function addTodo() {
+    await api_create('todos', { title: draft });
+    draft = '';
+    refresh();
+  }
+  async function toggleTodo(t) {
+    await api_update('todos', t.id, { done: t.done ? 1 : 0 });
+  }
+  async function removeTodo(t) {
+    await api_delete('todos', t.id);
+    refresh();
+  }
+</script>
+
+<!-- A table block is BOTH a scoped REST API and the page's own data: because
+     the template reads {posts} and {todos}, these two lists are resolved
+     server-side (session-scoped by their user_id column) and hydrate as client
+     state — no separate SELECT, no /api fetch on first paint. -->
 <spark-ssr table="users" seed="./seed/users.json" />
 <spark-ssr table="posts" seed="./seed/posts.json" />
 <spark-ssr table="todos" seed="./seed/todos.json" live />

@@ -1,6 +1,11 @@
 <!-- The homepage. `posts = ./content/*.md` is a GLOB source: every markdown
      file under content/ becomes a row — front matter → columns, filename →
-     slug, body → .body. No database, no table, no query. -->
+     slug, body → .body. No database, no table, no query.
+
+     It's also INTERACTIVE with zero DB: the search box binds {q}, and because
+     the page has a data source, spark-ssr hydrates it — the list filters live
+     on the client. No fetch, no API, no <script>. (Need to reload from disk?
+     `refresh()` is ambient here too.) -->
 <title>Spark Notes — a markdown blog</title>
 <meta name="description" content="A database-free blog powered by spark-ssr and markdown files.">
 
@@ -14,8 +19,11 @@
 </header>
 
 <main>
+  <input class="search" bind:value="q" placeholder="Filter posts…" aria-label="Filter posts">
   <template each="post in posts">
-    <div import="/components/post-card" post="{post}"></div>
+    <template if="!q || (post.title + ' ' + post.excerpt).toLowerCase().includes(q.toLowerCase())">
+      <div import="/components/post-card" post="{post}"></div>
+    </template>
   </template>
   <template if="posts.length === 0">
     <p class="empty">No posts yet — drop a <code>.md</code> file in <code>content/</code>.</p>

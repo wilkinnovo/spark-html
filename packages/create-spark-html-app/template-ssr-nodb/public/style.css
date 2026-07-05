@@ -152,6 +152,7 @@ input, textarea {
   padding: 0.5rem 0.7rem;
 }
 input:focus, textarea:focus { outline: none; border-color: var(--spark); }
+.search { width: 100%; margin: 0 0 1.5rem; }
 .login { max-width: 380px; margin: 3rem auto; display: grid; gap: 0.75rem; }
 .login label { display: grid; gap: 0.25rem; font-size: 0.9rem; color: var(--muted); }
 .panel input, .panel textarea { width: 100%; margin: 0.25rem 0; }

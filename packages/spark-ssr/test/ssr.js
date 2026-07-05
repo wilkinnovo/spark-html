@@ -288,11 +288,62 @@ await test('init data module: /__spark/data/index.js exports the rows', async ()
   assert.ok(js.includes('Buy milk'));
 });
 
-await test('hydration e2e: the real runtime mounts the generated component and add() inserts', async () => {
-  const pageHtml = await (await fetch(`${T}/`)).text();
+await test('ambient helpers (§1): a page <script> gets api_* + refresh, auto-fills missing handlers', async () => {
+  // The author writes ONLY toggle(); the framework injects api_create/update/
+  // delete + refresh, and synthesizes add (insert) and remove (delete) — the
+  // handlers the template references but the script left undefined.
+  writeFileSync(join(todoRoot, 'manage.html'), `<input bind:value="draft" placeholder="New">
+<button onclick={add}>Add</button>
+<template each="t in todos">
+  <input type="checkbox" bind:checked="t.done" onchange={toggle(t)}>
+  <span>{t.title}</span>
+  <button onclick={remove}>x</button>
+</template>
+<script>
+  async function toggle(t) {
+    await api_update(t.id, { done: t.done ? 1 : 0 });
+    refresh();
+  }
+</script>
+<spark-ssr table="todos" />
+`);
+  const page = await (await fetch(`${T}/manage`)).text();
+  assert.ok(/import="\/__spark\/page\/manage"[^>]*\bname="manage"/.test(page), 'scripted page hydrates');
+  assert.ok(page.includes('Buy milk'), 'SSR still renders the rows');
+
+  const comp = await (await fetch(`${T}/__spark/page/manage.html`)).text();
+  assert.ok(comp.includes('async function api_create') && comp.includes('async function api_update')
+    && comp.includes('async function api_delete'), 'ambient CRUD helpers injected');
+  assert.ok(comp.includes('async function refresh()'), 'ambient refresh injected');
+  assert.ok(comp.includes('const __table = "todos"'), 'single table inferred');
+  assert.ok(/async function add\(\)/.test(comp), 'insert handler synthesized');
+  assert.ok(comp.includes('body.title = draft'), 'bind mapped to the primary column');
+  assert.ok(/async function remove\(row\)/.test(comp), 'delete handler synthesized');
+  assert.equal((comp.match(/function toggle\b/g) || []).length, 1, 'author toggle kept, not regenerated');
+  assert.ok(comp.includes('api_update(t.id'), 'author toggle body preserved');
+});
+
+await test('auto="none" (§1): suppresses synthesized handlers, keeps ambient helpers', async () => {
+  writeFileSync(join(todoRoot, 'manual.html'), `<button onclick={add}>Add</button>
+<template each="t in todos"><button onclick={remove}>x</button></template>
+<script>
+  async function add() { await api_create({ title: 'x' }); refresh(); }
+  async function remove(t) { await api_delete(t.id); refresh(); }
+</script>
+<spark-ssr table="todos" auto="none" />
+`);
+  const comp = await (await fetch(`${T}/__spark/page/manual.html`)).text();
+  assert.ok(comp.includes('async function api_create'), 'ambient helpers still present');
+  assert.equal((comp.match(/function add\b/g) || []).length, 1, 'no synthesized add — author owns it');
+  assert.equal((comp.match(/function remove\b/g) || []).length, 1, 'no synthesized remove — author owns it');
+});
+
+// Boot the real spark-html runtime against a hydrating page and return the
+// mounted component's scope — the shared harness for the e2e mount tests.
+async function mountHydratedPage(base, path) {
+  const pageHtml = await (await fetch(`${base}${path}`)).text();
   const { window, document } = parseHTML(pageHtml);
   try { if (document.readyState === 'loading') document.readyState = 'complete'; } catch { /* fine */ }
-
   let rafQueue = [];
   const pending = new Set();
   const track = (p) => { pending.add(p); p.finally(() => pending.delete(p)); return p; };
@@ -304,16 +355,16 @@ await test('hydration e2e: the real runtime mounts the generated component and a
     __SPARK_PRERENDER__: true,
     __SPARK_AWAITS__: awaits,
     __SPARK_IMPORT__: async (spec) => {
-      const text = await (await realFetch(T + spec)).text();
+      const text = await (await realFetch(base + spec)).text();
       return import('data:text/javascript;base64,' + Buffer.from(text).toString('base64'));
     },
-    fetch: (p, init) => track(realFetch(String(p).startsWith('/') ? T + p : p, init)),
+    fetch: (p, init) => track(realFetch(String(p).startsWith('/') ? base + p : p, init)),
   };
   const prev = {};
   for (const [k, v] of Object.entries(globals)) { prev[k] = globalThis[k]; globalThis[k] = v; }
-  try {
-    const spark = await import(import.meta.resolve('spark-html') + '?ssr=' + Math.random().toString(36).slice(2));
-    await spark.mount(document.body);
+  const spark = await import(import.meta.resolve('spark-html') + '?ssr=' + Math.random().toString(36).slice(2));
+  await spark.mount(document.body);
+  const settle = async () => {
     for (let i = 0; i < 20; i++) {
       const q = rafQueue; rafQueue = [];
       for (const fn of q) fn();
@@ -321,19 +372,58 @@ await test('hydration e2e: the real runtime mounts the generated component and a
       if (awaits.length) await Promise.allSettled(awaits.splice(0));
       await new Promise((r) => setTimeout(r, 5));
     }
-    assert.ok(document.body.innerHTML.includes('Buy milk'), 'component rendered with init data');
-    assert.equal((document.body.innerHTML.match(/placeholder="New task"/g) || []).length, 1,
+  };
+  await settle();
+  const host = [...document.querySelectorAll('[name]')].find((h) => h.__sparkScope);
+  const restore = () => { for (const [k, v] of Object.entries(prev)) { if (v === undefined) delete globalThis[k]; else globalThis[k] = v; } };
+  return { document, host, scope: host && host.__sparkScope, settle, realFetch, restore };
+}
+
+await test('hydration e2e: the real runtime mounts the generated component and add() inserts', async () => {
+  const m = await mountHydratedPage(T, '/');
+  try {
+    assert.ok(m.document.body.innerHTML.includes('Buy milk'), 'component rendered with init data');
+    assert.equal((m.document.body.innerHTML.match(/placeholder="New task"/g) || []).length, 1,
       'exactly one live copy after hydration (no slot-projected duplicate)');
-    const host = [...document.querySelectorAll('[name]')].find((h) => h.__sparkScope);
-    assert.ok(host, 'component booted');
-    const scope = host.__sparkScope;
-    scope.draft = 'From hydration';
-    await scope.add();
-    const rows = await (await realFetch(`${T}/api/todos`)).json();
+    assert.ok(m.host, 'component booted');
+    m.scope.draft = 'From hydration';
+    await m.scope.add();
+    const rows = await (await m.realFetch(`${T}/api/todos`)).json();
     assert.ok(rows.some((r) => r.title === 'From hydration'), 'add() POSTed through the generated handler');
-    assert.equal(scope.todos.length, rows.length, '__refresh reassigned the list');
+    assert.equal(m.scope.todos.length, rows.length, 'refresh reassigned the list');
   } finally {
-    for (const [k, v] of Object.entries(prev)) { if (v === undefined) delete globalThis[k]; else globalThis[k] = v; }
+    m.restore();
+  }
+});
+
+await test('hydration e2e (§1): author <script> + ambient helpers mount and run', async () => {
+  // /manage writes only toggle(); add (insert) and remove (delete) are
+  // synthesized. Mounting proves the folded author script executes and the
+  // ambient api_* + refresh() are wired into the same reactive scope.
+  const m = await mountHydratedPage(T, '/manage');
+  try {
+    assert.ok(m.host, 'scripted page component booted');
+    assert.ok(m.document.body.innerHTML.includes('Buy milk'), 'SSR rows hydrated');
+    // synthesized insert, through the ambient api_create → POST /api/todos
+    m.scope.draft = 'via ambient';
+    await m.scope.add();
+    await m.settle();
+    let rows = await (await m.realFetch(`${T}/api/todos`)).json();
+    const added = rows.find((r) => r.title === 'via ambient');
+    assert.ok(added, 'synthesized add() inserted through api_create');
+    // author toggle(), through the ambient api_update → PATCH (the row's
+    // bind:checked has already flipped done to 1; toggle persists it)
+    await m.scope.toggle({ id: added.id, done: 1 });
+    await m.settle();
+    rows = await (await m.realFetch(`${T}/api/todos`)).json();
+    assert.equal(rows.find((r) => r.id === added.id).done, 1, 'author toggle() PATCHed via api_update');
+    // synthesized delete, through the ambient api_delete → DELETE
+    await m.scope.remove({ id: added.id });
+    await m.settle();
+    rows = await (await m.realFetch(`${T}/api/todos`)).json();
+    assert.ok(!rows.some((r) => r.id === added.id), 'synthesized remove() deleted via api_delete');
+  } finally {
+    m.restore();
   }
 });
 
@@ -1270,7 +1360,7 @@ await test('form validation (§6): 422 as JSON, re-render with {errors.title} as
 await test('live (§9): a write pings /__spark/live; the hydration client subscribes', async () => {
   const comp = await (await fetch(`${F}/__spark/page/index.html`)).text();
   assert.ok(comp.includes("new EventSource('/__spark/live')"), 'generated component subscribes');
-  assert.ok(comp.includes('__refresh'), 'and refetches on a ping');
+  assert.ok(/onmessage[\s\S]*refresh\(\)/.test(comp), 'and refetches on a ping');
 
   const res = await fetch(`${F}/__spark/live`);
   assert.equal(res.headers.get('content-type'), 'text/event-stream');
@@ -1355,6 +1445,36 @@ await test('url source (§8): server-side fetch, JSON in page scope', async () =
 </spark-ssr>`);
   const html = await (await fetch(`${SR}/remote`)).text();
   assert.ok(html.includes('id="pi">314<'), 'fetched, parsed, rendered');
+});
+
+await test('hydration (§2): an interactive non-table page (glob) hydrates + JSON mirror', async () => {
+  // A markdown blog with a client-side search — no table, no db writes. §2
+  // lifts the table gate: the glob source becomes client state and refresh()
+  // refetches through the JSON mirror.
+  writeFileSync(join(sourcesRoot, 'pages', 'notes.html'), `<input bind:value="q" placeholder="Filter">
+<template each="doc in docs">
+  <template if="!q || doc.title.toLowerCase().includes(q.toLowerCase())">
+    <p class="hit">{doc.title}</p>
+  </template>
+</template>
+<spark-ssr>
+  docs = ./content/posts/*.md
+</spark-ssr>`);
+  const page = await (await fetch(`${SR}/notes`)).text();
+  assert.ok(/import="\/__spark\/page\/notes"[^>]*\bname="notes"/.test(page), 'non-table page hydrates');
+  assert.ok(page.includes('Alpha') && page.includes('Beta'), 'SSR renders the glob rows');
+
+  const comp = await (await fetch(`${SR}/__spark/page/notes.html`)).text();
+  assert.ok(comp.includes("import __init from '/__spark/data/notes.js'"), 'init module import');
+  assert.ok(comp.includes('let docs = __init.docs'), 'glob source is client state');
+  assert.ok(comp.includes('async function refresh()'), 'refresh() present without a table');
+  assert.ok(!comp.includes('api_create'), 'no CRUD helpers without a table');
+
+  const mirror = await fetch(`${SR}/__spark/data/notes.json`);
+  assert.equal(mirror.headers.get('content-type'), 'application/json');
+  assert.equal(mirror.headers.get('cache-control'), 'no-store');
+  const data = await mirror.json();
+  assert.deepEqual(data.docs.map((d) => d.title), ['Alpha', 'Beta'], 'JSON mirror re-runs the glob');
 });
 
 await sources.stop(true);
