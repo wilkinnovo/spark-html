@@ -248,6 +248,54 @@ await test('build: the same file referenced twice maps both tags to one bundle',
   assert.ok(/^\/assets\/other-[\w-]+\.js$/.test(refs[2]), 'the other entry keeps its own bundle');
 });
 
+await test("build: a companion package's own nested spark-html copy is deduped to the app's own", async () => {
+  // Reproduces lockfile drift: `bun install` can leave a companion package
+  // with its OWN nested node_modules/spark-html (its sub-dependency range
+  // resolved/pinned to a DIFFERENT version at some earlier install, still
+  // satisfying its own `^0.27.0` — no warning at install time) instead of
+  // sharing the app's top-level copy. Each copy is a SEPARATE module with
+  // its own top-level state (the real bug: `stores = new Map()` per copy —
+  // theme()/ws() populate one copy's Map, but a component's ambient
+  // useStore() — injected by whichever copy actually booted it — reads a
+  // DIFFERENT, empty one: "store not created" for every companion package,
+  // production-only, since dev mode's import map already coincidentally
+  // routes every bare specifier through one canonical URL).
+  const r = mkdtempSync(join(tmpdir(), 'spark-bun-dedupe-'));
+  mkdirSync(join(r, 'node_modules', 'spark-html'), { recursive: true });
+  writeFileSync(join(r, 'node_modules', 'spark-html', 'package.json'),
+    JSON.stringify({ name: 'spark-html', version: '0.27.99', main: 'index.js', type: 'module' }));
+  writeFileSync(join(r, 'node_modules', 'spark-html', 'index.js'),
+    "export const MARK = 'TOP_LEVEL_COPY';\n");
+
+  mkdirSync(join(r, 'node_modules', 'my-companion', 'node_modules', 'spark-html'), { recursive: true });
+  writeFileSync(join(r, 'node_modules', 'my-companion', 'package.json'),
+    JSON.stringify({ name: 'my-companion', version: '1.0.0', main: 'index.js', type: 'module' }));
+  writeFileSync(join(r, 'node_modules', 'my-companion', 'index.js'),
+    "export { MARK as companionMark } from 'spark-html';\n");
+  writeFileSync(join(r, 'node_modules', 'my-companion', 'node_modules', 'spark-html', 'package.json'),
+    JSON.stringify({ name: 'spark-html', version: '0.27.5', main: 'index.js', type: 'module' }));
+  writeFileSync(join(r, 'node_modules', 'my-companion', 'node_modules', 'spark-html', 'index.js'),
+    "export const MARK = 'NESTED_DUPLICATE_COPY';\n");
+
+  writeFileSync(join(r, 'index.html'),
+    '<!doctype html><html><head></head><body>' +
+    '<script type="module" src="/src/main.js"></script></body></html>');
+  mkdirSync(join(r, 'src'));
+  writeFileSync(join(r, 'src', 'main.js'),
+    "import { MARK } from 'spark-html';\nimport { companionMark } from 'my-companion';\nconsole.log(MARK, companionMark);\n");
+  writeFileSync(join(r, 'package.json'), JSON.stringify({
+    name: 'x', type: 'module', dependencies: { 'spark-html': '*', 'my-companion': '*' },
+  }));
+
+  await build({ root: r, quiet: true });
+  const assetsDir = join(r, 'dist', 'assets');
+  const jsFile = readdirSync(assetsDir).find((f) => f.endsWith('.js'));
+  const bundled = readFileSync(join(assetsDir, jsFile), 'utf8');
+  assert.ok(bundled.includes('TOP_LEVEL_COPY'), 'the app-level spark-html copy reaches the bundle');
+  assert.ok(!bundled.includes('NESTED_DUPLICATE_COPY'),
+    "the companion package's own nested copy must NOT be separately bundled — both must share one module instance");
+});
+
 // ── preview ─────────────────────────────────────────────────────────────
 writeFileSync(join(buildRoot, 'dist', 'about.html'), '<h1>about</h1>');
 writeFileSync(join(buildRoot, 'dist', '404.html'), '<h1>nope</h1>');

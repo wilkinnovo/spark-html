@@ -216,6 +216,48 @@ function moduleEntry(pkg, projectRoot) {
   return info;
 }
 
+// A companion package's OWN `import … from 'spark-html'` resolves via Bun's
+// normal node_modules algorithm — ITS OWN nearest node_modules/spark-html,
+// which CAN be a genuinely different installed copy than the app's own
+// (lockfile drift: a companion package's sub-dependency on "spark-html" got
+// pinned to an older 0.27.x at some earlier `bun install`, while the app's
+// own top-level install is newer — both satisfy a `^0.27.0` range, so
+// nothing warns at install time, but each copy is a SEPARATE module with
+// its OWN top-level `stores` Map: theme()/ws() creates a store in THEIR
+// copy, but a component's ambient useStore() — injected by whichever
+// spark-html copy actually booted it — never sees it. Symptom: a
+// `useStore("theme")` / `useStore("prices")` "store not created" warning
+// for every companion package, in production only.
+//
+// Dev mode never hits this: buildImportMap() below already maps EVERY bare
+// specifier to ONE canonical URL (resolved once, from the PROJECT root)
+// regardless of which file imports it, so the browser only ever loads one
+// file — accidental, but effective, deduplication. This plugin gives
+// Bun.build the same guarantee for the production bundle: `spark-html`,
+// wherever it's imported from, always resolves to the app's own top-level
+// copy. Falls back to Bun's own default resolution (today's behavior,
+// nested duplicates and all) if the app has no top-level `spark-html` of
+// its own to canonicalize onto — never a regression, only a fix when it
+// can confirm there's one true copy to point everyone at.
+function dedupeSparkHtmlPlugin(projectRoot) {
+  let canonical; // undefined = not yet resolved; null = resolution failed
+  return {
+    name: 'spark-html-single-instance',
+    setup(build) {
+      build.onResolve({ filter: /^spark-html$/ }, () => {
+        if (canonical === undefined) {
+          try {
+            canonical = Bun.resolveSync('spark-html', projectRoot);
+          } catch {
+            canonical = null;
+          }
+        }
+        return canonical ? { path: canonical } : null;
+      });
+    },
+  };
+}
+
 // Import map for the app's bare specifiers: every dependency in package.json
 // maps to /@modules/<name>/<entry-file>. The trailing entry filename matters —
 // a package's own relative imports (e.g. spark-html-theme's `./init.js`) resolve
@@ -476,6 +518,7 @@ export async function build(overrides = {}) {
         publicPath: `${base}assets/`,
         define: { 'import.meta.env': envLiteral(config, false) },
         naming: { entry: '[name]-[hash].[ext]', chunk: '[name]-[hash].[ext]', asset: '[name]-[hash].[ext]' },
+        plugins: [dedupeSparkHtmlPlugin(projectRoot)],
       });
       if (!result.success) {
         const msgs = (result.logs || []).map((l) => l.message || String(l)).join('\n');

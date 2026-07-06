@@ -1,6 +1,6 @@
 {
   "name": "spark-html-bun",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "description": "Dev server, build, and preview for spark-html apps — built entirely on Bun. Scoped component HMR over a plain WebSocket, import-map dev serving (no bundling in dev), Bun.build for the app shell, and an explicit post-build pipeline (prerender, image, font, manifest, offline, sri). Zero dependencies.",
   "homepage": "https://wilkinnovo.github.io/spark-html",
   "type": "module",
