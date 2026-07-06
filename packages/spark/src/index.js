@@ -981,11 +981,29 @@ function withCapture(node, fn, a, b) {
 // blocks so the whole block can be skipped in dirty mode when none of the
 // keys it depends on — the array/condition expr AND every per-row binding —
 // changed. Arguments pass through so anchor call sites allocate no closure.
+//
+// Deliberately ACCUMULATES rather than resetting each run (no `.clear()`):
+// a block's own content can contain NESTED each/if/await anchors that are
+// independently gated by this SAME dirty-mode mechanism — so a pass where
+// THIS block runs (because ITS OWN deps matched) but a nested anchor inside
+// it gets SKIPPED (because the nested anchor's deps didn't match) means the
+// nested anchor's dependencies are never actually read this pass. Resetting
+// the set on every run would then DROP those dependencies from the parent's
+// recorded set — e.g. an outer `<template if="cond">` wrapping an
+// `each="v in results"`: a pass triggered by `cond` alone (the each skipped,
+// its own deps not touched) would erase `results` from the outer if's own
+// recorded deps, so a LATER pass where only `results` changes incorrectly
+// skips the outer if entirely — the inner each never gets a chance to
+// re-walk despite the very array it iterates having changed. Accumulating
+// means a dependency, once seen, is never forgotten — deps sets only grow,
+// never falsely shrink. The cost is purely extra (safe) re-evaluations after
+// a large structural change stops touching some field a row used to read —
+// same "at worst redundant work, never stale" tradeoff already used
+// elsewhere in this file.
 function withSink(node, fn, a, b) {
   const prev = captureSink;
   let set = node.__sparkReadKeys;
   if (set == null) set = new Set();
-  else set.clear();
   captureSink = set;
   try {
     return fn(a, b);

@@ -285,6 +285,64 @@ await test('changing the array reconciles (new row appears)', async () => {
   assert.equal(rows[2].textContent, 'c');
 });
 
+// ── regression: an each-loop wrapped in a <template if> stops reconciling
+// after an UNRELATED sibling change, even though the array it loops over
+// keeps changing ──
+// `withSink()` records, on an each/if/await anchor's own `__sparkReadKeys`,
+// every key read anywhere in its content — including nested each/if/await,
+// so the WHOLE block can be gated in one piece. It used to `.clear()` that
+// set before every re-run. A pass triggered by an UNRELATED key (here:
+// `searching`, which the OUTER `<template if>` depends on) still re-runs
+// the outer if (its own deps matched) — but the INNER each is independently
+// gated too, and its deps (just `items`) don't match `searching`, so it's
+// SKIPPED this pass. Skipped means its array expression is never read —
+// which means the outer if's freshly-`.clear()`'d sink never sees `items`
+// this time, and overwrites its own recorded deps to just `searching`
+// (whatever WAS actually touched) — permanently forgetting that its
+// content also depends on `items`. The NEXT time only `items` changes, the
+// outer if's (now wrong) deps don't include it, so the whole block —
+// outer if AND the inner each inside it — is skipped, and the loop never
+// reflects the new array again, for the rest of the component's life.
+component('nestedloopgate', `
+<template if="!hideAll && unrelated >= 0">
+  <template each="v in items" key="v.id">
+    <p class="row2">{v.name}</p>
+  </template>
+</template>
+<button class="bump-unrelated" onclick="{bumpUnrelated}">bump</button>
+<button class="grow-items" onclick="{growItems}">grow</button>
+<script>
+  let items = [{ id: 1, name: 'a' }, { id: 2, name: 'b' }];
+  let hideAll = false;
+  let unrelated = 0;
+  function bumpUnrelated() { unrelated++; }
+  function growItems() { items = [...items, { id: items.length + 1, name: String.fromCharCode(97 + items.length) }]; }
+</script>
+`);
+parseHTML('<div import="nestedloopgate"></div>', body);
+await mount();
+await tick();
+
+await test('an each wrapped in <template if> keeps reconciling after an unrelated sibling change', async () => {
+  const c = body.querySelector('[name="nestedloopgate"]');
+  // Trigger a pass gated on a DIFFERENT key than the loop's own array — the
+  // outer if's own deps match (it reads nothing else here, but in the app
+  // this found it in, the outer if ALSO read the unrelated key directly),
+  // while the inner each's deps (`items`) don't, so it's skipped THIS pass.
+  fire(c.querySelector('.bump-unrelated'), 'click');
+  await tick();
+  assert.equal(c.querySelectorAll('.row2').length, 2, 'sanity: still 2 rows after the unrelated bump');
+
+  // NOW change only the array the loop depends on — this used to silently
+  // no-op forever after the unrelated bump above corrupted the outer if's
+  // recorded deps.
+  fire(c.querySelector('.grow-items'), 'click');
+  await tick();
+  const rows = c.querySelectorAll('.row2');
+  assert.equal(rows.length, 3, 'the loop must still reconcile after an unrelated sibling change');
+  assert.equal(rows[2].textContent, 'c');
+});
+
 // ── a nested helper's OWN local variable must stay a true local ──
 // Regression: analyzeScript()'s let/const/var-stripping (which exposes a
 // component's TOP-LEVEL state as reactive scope keys) used to run as a
