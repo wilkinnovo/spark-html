@@ -1270,6 +1270,14 @@ async function makeLayoutApp() {
 <spark-ssr>
   post = SELECT * FROM posts WHERE slug = :slug AND published = 1 LIMIT 1
 </spark-ssr>`);
+  // An interactive (hydrating) page under the SAME root layout — regression
+  // coverage for the layout's `<div import="nav" who="{author.name}">`: that
+  // prop must evaluate on the CLIENT too, not just in the SSR string, once
+  // the page becomes a client component (see hydration e2e test below).
+  writeFileSync(join(root, 'pages', 'tasks.html'), `<input bind:value="draft" placeholder="New">
+<button onclick={add}>Add</button>
+<template each="todo in todos"><li class="t">{todo.title}</li></template>
+<spark-ssr table="todos" />`);
   return root;
 }
 
@@ -1290,6 +1298,26 @@ await test('layouts (§2): the folder wraps its pages; layout vars are in page s
   assert.ok(head.includes('<title>Home · Ada</title>'), 'page title wins the conflict');
   assert.ok(!head.includes('<title>Site</title>'), "layout title lost — the page's wins");
   assert.ok(head.includes('href="/style.css"'), "layout's stylesheet lifted");
+});
+
+await test('layouts (§2): a hydrating page still evaluates the layout\'s own import props', async () => {
+  // Regression: `pages/_layout.html`'s <div import="/components/nav"
+  // who="{author.name}"> reads the LAYOUT's own <spark-ssr> data. On a
+  // static page that's baked server-side and never touched again. On an
+  // INTERACTIVE page (this one), the whole layout+page markup becomes one
+  // client component and the browser's mount() re-resolves that top-level
+  // import — which used to render the literal string "{author.name}"
+  // instead of "Ada" (spark-html core bug: resolveImports() resolves the
+  // whole tree before any bootComponent() runs, so there was no scope yet
+  // to read `author` from).
+  const m = await mountHydratedPage(L, '/tasks');
+  try {
+    assert.ok(m.host, 'the interactive page mounted as a client component');
+    assert.equal(m.document.querySelector('#nav').textContent, 'Ada',
+      'layout nav prop evaluated, not left as literal "{author.name}"');
+  } finally {
+    m.restore();
+  }
 });
 
 await test('layouts (§2): nested folders nest their layouts', async () => {

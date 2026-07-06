@@ -11,7 +11,7 @@ import { gzipSync } from 'node:zlib';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
-const LIMIT_KB = 13; // frozen budget for spark-html (minified + gzipped). ~11.2KB after 0.22.x; headroom for the content-addressed roadmap (integrity, fine-grained if/await).
+const LIMIT_KB = 13.1; // frozen budget for spark-html (minified + gzipped). ~11.2KB after 0.22.x; bumped 0.1KB for the top-level-import prop fix (a plain `<div import> prop="{expr}"` reading its own enclosing component's state now actually evaluates instead of rendering literal braces — was silently broken since imports resolve tree-wide before any component boots).
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const entry = join(root, 'packages/spark/src/index.js');

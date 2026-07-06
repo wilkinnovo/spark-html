@@ -440,6 +440,26 @@ function projectSlots(host, slotted, parentHost) {
   }
 }
 
+// Placeholder attributes → props (except import/class/id/data-spark-*,
+// which are never props; class/id are set directly on `host`). With no
+// `scope` (a top-level placeholder, not cloned out of an each/if block), a
+// `{expr}` prop can't be evaluated yet — that would need THIS placeholder's
+// OWN enclosing component's state, and that component hasn't booted yet
+// (resolveImports() resolves the whole tree before any bootComponent() runs).
+// `__sparkPend` remembers the node so bootComponent() can retry it once the
+// closest named ancestor's scope exists (see there).
+function buildProps(node, scope, host) {
+  const props = {};
+  for (const attr of node.attributes) {
+    if (attr.name === 'import' || attr.name === 'name' || attr.name.startsWith('data-spark')) continue;
+    const val = scope && attr.value.includes('{') ? interpolate(attr.value, scope) : attr.value;
+    if (attr.name === 'class' || attr.name === 'id') { host.setAttribute(attr.name, val); continue; }
+    props[attr.name] = coerce(val);
+  }
+  if (!scope) host.__sparkPend = node;
+  return props;
+}
+
 // ─── Import resolution ─────────────────────────────────────────────────
 // Resolve ONE [import] placeholder into a booted-ready component host and
 // swap it into the DOM. Returns the host (or null on failure).
@@ -500,22 +520,7 @@ async function resolveImportNode(node, scope = null) {
     // not-yet-injected styles never flash. reveal() clears this. (Hydration
     // hosts are booted before insertion, so they need no cloak.)
     if (!hydrate) host.setAttribute('data-spark-cloak', '');
-    // Placeholder attributes become PROPS (except import/class/id and the
-    // runtime's own name/data-spark-* markers, which are never props).
-    const props = {};
-    for (const attr of node.attributes) {
-      if (attr.name === 'import' || attr.name === 'name' || attr.name.startsWith('data-spark')) continue;
-      const val =
-        scope && attr.value.includes('{')
-          ? interpolate(attr.value, scope)
-          : attr.value;
-      if (attr.name === 'class' || attr.name === 'id') {
-        host.setAttribute(attr.name, val);
-        continue;
-      }
-      props[attr.name] = coerce(val);
-    }
-    host.__sparkProps = props;
+    host.__sparkProps = buildProps(node, scope, host);
     host.__sparkHadSlots = slotted.length > 0; // lets dev HMR skip slotted hosts (full-reload instead)
     host.innerHTML = markup; // markup contains no <script>/<style> now
 
@@ -2661,6 +2666,23 @@ function bootComponent(el) {
   } catch (e) {
     reportError(e, { phase: 'boot', component: tag });
     reveal(el); // don't strand a failed component cloaked/invisible
+  }
+
+  // Retry props that read the ENCLOSING component's own state (buildProps'
+  // `__sparkPend`) — that ancestor is guaranteed booted by now
+  // (querySelectorAll + forEach visits it first, in document order). Its
+  // scope may still be filling in, though (an async `import` in its own
+  // script) — wait for that, then re-patch: `el`'s own first patch above
+  // may already have run against the not-yet-resolved value.
+  if (el.__sparkPend) {
+    const a = closestComponent(el);
+    const retry = () => {
+      if (!a || !a.__sparkScope) return;
+      Object.assign(el.__sparkScope, buildProps(el.__sparkPend, a.__sparkScope, el));
+      patch(el, el.__sparkScope);
+    };
+    if (a && a.__sparkScriptReady) a.__sparkScriptReady.then(retry, retry);
+    else retry();
   }
 
   const finishBoot = () => requestAnimationFrame(() => {

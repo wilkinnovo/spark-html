@@ -79,7 +79,19 @@ component('commented', `
   let msg = 'intact';
 </script>`);
 
-parseHTML('<div import="cardpage"></div><div import="deeptest"></div><div import="trailingcomment"></div><div import="purecard" label="From props"></div><div import="commented"></div>', body);
+// ── regression: a TOP-LEVEL (non-loop) import prop reading its OWN
+// enclosing component's state must evaluate, not render literal braces.
+// resolveImports() resolves the whole tree before any bootComponent() runs,
+// so at the moment this prop is first read there's no scope yet to read
+// `author` from — the fix retries once the parent (here: `navhost`) boots.
+component('navchild', `<a class="brand">{blog}</a>`);
+component('navhost', `
+<div import="navchild" blog="{author.name}"></div>
+<script>
+  let author = { name: 'Ada' };
+</script>`);
+
+parseHTML('<div import="cardpage"></div><div import="deeptest"></div><div import="trailingcomment"></div><div import="purecard" label="From props"></div><div import="commented"></div><div import="navhost"></div>', body);
 await mount();
 await tick();
 
@@ -138,6 +150,10 @@ await test('a comment mentioning <script> never swallows markup', () => {
   // integrity is assertable here — spark-ssr's suite covers survival)
   const host = body.querySelector('[name="commented"]');
   assert.equal(host.querySelector('.cm').textContent, 'intact', 'script extracted, markup kept');
+});
+await test('a top-level import prop reading its own component\'s state evaluates', () => {
+  const el = body.querySelector('[name="navhost"] [name="navchild"] .brand');
+  assert.equal(el.textContent, 'Ada', 'must not render the literal "{author.name}"');
 });
 
 console.log(`\n${pass} passed, ${fail} failed`);
