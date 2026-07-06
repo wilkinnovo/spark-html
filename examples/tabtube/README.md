@@ -1,20 +1,24 @@
 # TabTube
 
 A YouTube search-and-watch app built the spark way — `create-spark-html-app ssr`, **no
-database**. Search results come from [yt-search](https://www.npmjs.com/package/yt-search)
-(no API key needed); autocomplete comes from
-[youtube-suggest](https://www.npmjs.com/package/youtube-suggest) — both as plain `<spark-ssr>`
-MODULE sources (`lib/search.js`, `lib/suggestion.js`), no custom `api/*.html` endpoints.
+database**. Search and autocomplete come from [youtubei.js](https://www.npmjs.com/package/youtubei.js)
+(wraps YouTube's own InnerTube API, no API key) as plain `<spark-ssr>` MODULE sources
+(`lib/search.js`, `lib/suggestion.js`), no custom `api/*.html` endpoints.
 
 - **Search** the left sidebar; results render server-side for a shareable `/?q=...` URL, and
   re-search client-side (no reload, live as you type) via spark-ssr's own ambient `refresh()`.
+- **Infinite scroll** — scrolling near the bottom of the results asks for another combined page
+  (a real `IntersectionObserver`, no polling).
 - **Autocomplete** as you type, debounced — `refresh()` re-fetches `suggestions` alongside
   `results` in the same call.
-- **Tabs** — clicking a result opens it in a browser-style tab (hence the name); switch
-  or close tabs without losing your search. (`components/tab-strip.html`)
+- **Tabs** — clicking a result opens it in a browser-style tab (hence the name); switching tabs
+  pauses the outgoing video and resumes the incoming one from wherever IT left off — a single
+  custom-chrome YouTube player (IFrame Player API, `controls: 0` + our own play/pause/seek/
+  mute/fullscreen bar) that survives tab switches instead of one iframe per tab.
+  (`components/tab-strip.html`, `components/video-player.html`)
 - **My Lists** — save/unsave videos, persisted across reloads via `spark-html-persist`.
-- **Filters** — All / Today / This week / This month, computed client-side from
-  yt-search's relative "3 days ago"-style timestamps.
+- **Filters** — All / Today / This week / This month, computed client-side from relative
+  "3 days ago"-style timestamps.
 
 ## Structure
 
@@ -40,5 +44,7 @@ bun install
 bun run dev
 ```
 
-See `bugs.md` and `bugs2.md` for everything found (and fixed, framework-side) while building
-this.
+See `bugs.md`, `bugs2.md`, and `bugs3.md` for everything found (and fixed, framework-side)
+while building this — including a critical, general `spark-html` reactivity bug (`bugs3.md`
+#1: an each-loop nested in a `<template if>` could permanently stop reconciling after an
+unrelated sibling change) found and fixed while adding infinite scroll.

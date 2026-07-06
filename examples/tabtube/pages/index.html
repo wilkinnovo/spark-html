@@ -57,6 +57,15 @@
           </template>
           <template if="searching"><p class="empty">Searching…</p></template>
           <template if="!searching && results.length === 0"><p class="empty">Search for videos above.</p></template>
+          <!-- Always mounted (not a <template if>) so the SAME node is
+               observed for the whole component's life — an if= branch is
+               torn down and recreated every time `searching` flips, which
+               would leave the IntersectionObserver watching a removed node.
+               display:none (from :hidden, while searching/empty) makes it
+               report as non-intersecting on its own, so it naturally can't
+               trigger loadMore() while there's nothing more to load. -->
+          <div class="scroll-sentinel" :hidden="searching || results.length === 0"></div>
+          <template if="loadingMore"><p class="empty">Loading more…</p></template>
         </div>
       </template>
 
@@ -85,12 +94,33 @@
   const tabtube = useStore('tabtube');
   const savedList = useStore('tabtube-saved');
   let searching = false;
+  let loadingMore = false;
+  let page = 1;
 
   tabtube.suggestions = suggestions;
+
+  // Infinite scroll: observe the sentinel at the end of the results list
+  // (relative to .results-list's OWN scroll, not the page's — it's the
+  // thing with overflow-y:auto) and ask for another combined page once it's
+  // within 200px of view. Wired once on mount; the sentinel node itself
+  // never gets torn down/recreated (see the template comment), so a single
+  // observe() call here covers the component's whole life.
+  onMount(() => {
+    const root = document.querySelector('.results-list');
+    const sentinel = document.querySelector('.scroll-sentinel');
+    if (!root || !sentinel) return;
+    const io = new IntersectionObserver(
+      (entries) => { if (entries[0].isIntersecting) loadMore(); },
+      { root, rootMargin: '200px' },
+    );
+    io.observe(sentinel);
+  });
 
   async function doSearch(query) {
     const url = new URL(location);
     if (query) url.searchParams.set('q', query); else url.searchParams.delete('q');
+    page = 1;
+    url.searchParams.delete('page');
     history.replaceState({}, '', url);
     searching = true;
     try {
@@ -98,6 +128,23 @@
       tabtube.suggestions = suggestions;
     } finally {
       searching = false;
+    }
+  }
+
+  // yt-search's own `pages` option returns pages 1..N COMBINED (see
+  // lib/search.js) — so "load more" is really "ask for one more page and
+  // let the bigger combined array replace `results`", not a true append.
+  async function loadMore() {
+    if (searching || loadingMore || results.length === 0) return;
+    loadingMore = true;
+    try {
+      page += 1;
+      const url = new URL(location);
+      url.searchParams.set('page', page);
+      history.replaceState({}, '', url);
+      await refresh();
+    } finally {
+      loadingMore = false;
     }
   }
 

@@ -1,18 +1,32 @@
-<template if="!activeTab">
-  <div class="empty-player">
-    <p>Select a video from the search results to start watching.</p>
+<!-- A custom-chrome player: the YouTube IFrame Player API drives a single,
+     persistent player instance (playerVars.controls=0 hides YouTube's own
+     UI), and #yt-target/.click-catcher/.custom-controls stay PERMANENTLY
+     mounted (:hidden, never <template if>) instead of being torn down and
+     recreated on every tab switch — a <template if> branch only survives
+     across a TRUTHY-to-different-TRUTHY change (activeTab flips to a
+     different tab, never toggling true/false), so this is what keeps the
+     SAME player instance alive across switches without ever destroying it,
+     which is what makes "switch tabs, previous pauses, current resumes
+     where it left off" possible with ONE iframe instead of one per tab. -->
+<div class="player-wrap">
+  <div id="yt-target" class="yt-target"></div>
+  <div class="click-catcher" onclick={togglePlay} :hidden="!activeTab"></div>
+  <template if="!activeTab">
+    <div class="player-overlay">
+      <p>Select a video from the search results to start watching.</p>
+    </div>
+  </template>
+  <div class="custom-controls" :hidden="!activeTab">
+    <button type="button" class="ctl-btn" onclick={togglePlay} aria-label="Play/pause">{playing ? '⏸' : '▶'}</button>
+    <span class="ctl-time">{formatTime(currentTime)} / {formatTime(duration)}</span>
+    <div class="ctl-seek" onclick="{seekClick(event)}">
+      <div class="ctl-seek-fill" :style="'width:' + progressPct + '%'"></div>
+    </div>
+    <button type="button" class="ctl-btn" onclick={toggleMute} aria-label="Mute/unmute">{muted ? '🔇' : '🔊'}</button>
+    <button type="button" class="ctl-btn" onclick={toggleFullscreen} aria-label="Fullscreen">⛶</button>
   </div>
-</template>
+</div>
 <template if="activeTab">
-  <div class="player-wrap">
-    <iframe
-      class="player"
-      src="https://www.youtube.com/embed/{activeTab.videoId}?autoplay=1"
-      title="{activeTab.title}"
-      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-      allowfullscreen
-    ></iframe>
-  </div>
   <div class="video-info">
     <h1>{activeTab.title}</h1>
     <div class="channel-row">
@@ -30,6 +44,141 @@
   const savedList = useStore('tabtube-saved');
 
   $: activeTab = tabtube.tabs.find((t) => t.videoId === tabtube.activeId) || null;
+
+  let player = null;
+  let currentVideoId = null;
+  let switching = false;
+  let playing = false;
+  let muted = false;
+  let currentTime = 0;
+  let duration = 0;
+  let progressTimer = null;
+
+  $: progressPct = duration ? (currentTime / duration) * 100 : 0;
+
+  // The IFrame Player API script is shared/global (YouTube's own contract:
+  // one script tag, one `onYouTubeIframeAPIReady`) — guard so a second
+  // mount of this component (there's only ever one on this page, but this
+  // matches the pattern the API itself expects) doesn't inject it twice.
+  function loadYouTubeAPI() {
+    if (typeof YT !== 'undefined' && YT.Player) return Promise.resolve();
+    if (window.__ytApiPromise) return window.__ytApiPromise;
+    window.__ytApiPromise = new Promise((resolve) => {
+      const prev = window.onYouTubeIframeAPIReady;
+      window.onYouTubeIframeAPIReady = () => {
+        if (prev) prev();
+        resolve();
+      };
+      const tag = document.createElement('script');
+      tag.src = 'https://www.youtube.com/iframe_api';
+      document.head.appendChild(tag);
+    });
+    return window.__ytApiPromise;
+  }
+
+  // The FIRST video is given directly to the constructor (`videoId`) rather
+  // than created blank + loadVideoById()'d — a blank-then-load sequence was
+  // observed to leave the widget stuck showing YouTube's OWN default chrome
+  // (native scrubber, center play button, "Watch on YouTube") instead of
+  // respecting playerVars.controls=0 at all, even though the SAME
+  // playerVars reach a normally-constructed player just fine.
+  function ensurePlayer(videoId, startSeconds) {
+    if (player) return Promise.resolve(player);
+    return loadYouTubeAPI().then(() => new Promise((resolve) => {
+      player = new YT.Player('yt-target', {
+        height: '100%',
+        width: '100%',
+        videoId,
+        playerVars: { autoplay: 1, controls: 0, rel: 0, modestbranding: 1, playsinline: 1, iv_load_policy: 3, start: Math.floor(startSeconds || 0) },
+        events: {
+          onReady: () => resolve(player),
+          onStateChange: onPlayerStateChange,
+        },
+      });
+    }));
+  }
+
+  function onPlayerStateChange(e) {
+    playing = e.data === YT.PlayerState.PLAYING;
+    if (playing) startProgressTimer(); else stopProgressTimer();
+  }
+
+  // The API has no continuous timeupdate event — poll while playing.
+  function startProgressTimer() {
+    stopProgressTimer();
+    progressTimer = setInterval(() => {
+      if (!player || !player.getCurrentTime) return;
+      currentTime = player.getCurrentTime();
+      duration = player.getDuration();
+    }, 250);
+  }
+
+  function stopProgressTimer() {
+    if (progressTimer) clearInterval(progressTimer);
+    progressTimer = null;
+  }
+
+  // Browser-tab-like continuity: switching saves the OUTGOING video's
+  // playhead onto ITS OWN tab object (tabtube.tabs is a deep-reactive store
+  // array, so this mutation persists across further switches), pauses it,
+  // then loads the incoming tab's video starting from wherever IT left off.
+  $: {
+    if (activeTab && activeTab.videoId !== currentVideoId && !switching) {
+      switching = true;
+      const outgoingId = currentVideoId;
+      const incoming = activeTab;
+      const wasAlreadyCreated = !!player;
+      ensurePlayer(incoming.videoId, incoming.savedTime).then((p) => {
+        if (outgoingId && outgoingId !== incoming.videoId) {
+          const outgoing = tabtube.tabs.find((t) => t.videoId === outgoingId);
+          if (outgoing) outgoing.savedTime = p.getCurrentTime ? p.getCurrentTime() : 0;
+        }
+        // ensurePlayer() only uses videoId/savedTime for a BRAND NEW player
+        // (baked into the constructor) — an EXISTING player needs the
+        // switch driven explicitly via loadVideoById().
+        if (wasAlreadyCreated) {
+          p.loadVideoById({ videoId: incoming.videoId, startSeconds: incoming.savedTime || 0 });
+        }
+        currentTime = incoming.savedTime || 0;
+        currentVideoId = incoming.videoId;
+        switching = false;
+      });
+    } else if (!activeTab && player) {
+      player.pauseVideo();
+      currentVideoId = null;
+    }
+  }
+
+  function togglePlay() {
+    if (!player) return;
+    if (playing) player.pauseVideo(); else player.playVideo();
+  }
+
+  function toggleMute() {
+    if (!player) return;
+    if (muted) { player.unMute(); muted = false; } else { player.mute(); muted = true; }
+  }
+
+  function seekClick(event) {
+    if (!player || !duration) return;
+    const rect = event.currentTarget.getBoundingClientRect();
+    const pct = Math.min(1, Math.max(0, (event.clientX - rect.left) / rect.width));
+    player.seekTo(pct * duration, true);
+    currentTime = pct * duration;
+  }
+
+  function toggleFullscreen() {
+    const el = document.querySelector('.player-wrap');
+    if (document.fullscreenElement) document.exitFullscreen();
+    else el.requestFullscreen();
+  }
+
+  function formatTime(s) {
+    s = Math.floor(s || 0);
+    const m = Math.floor(s / 60);
+    const sec = s % 60;
+    return m + ':' + String(sec).padStart(2, '0');
+  }
 
   function isSaved(v) {
     return savedList.items.some((x) => x.videoId === v.videoId);
