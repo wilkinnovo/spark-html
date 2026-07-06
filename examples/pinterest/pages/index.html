@@ -1,0 +1,34 @@
+<!-- Home feed — a masonry grid over every pin, newest first, filtered by
+     ?q= from the nav's search box. No <script>, no bind:, no handlers: a
+     pure function of (path, query), so it's a response-cache candidate
+     (spark-ssr §6) in production — served at in-memory-string speed. -->
+<title>{q ? 'Search: ' + q : 'Pinspire'} — ideas worth saving</title>
+<meta name="description" content="A place to collect and share the photos you love.">
+
+<div class="wrap">
+  <div class="masonry">
+    <template each="pin in pins" key="pin.id">
+      <a class="pin-card" href="/pin/{pin.id}">
+        <img src="{pin.image}" alt="{pin.title}" loading="lazy">
+        <div class="pin-overlay"></div>
+        <div class="pin-meta">
+          <p class="pin-title">{pin.title}</p>
+          <p class="pin-by"><img src="{pin.owner_avatar}" alt=""> {pin.owner_name}</p>
+        </div>
+      </a>
+    </template>
+  </div>
+  <template if="pins.length === 0 && q">
+    <p class="empty">Nothing matches "{q}". <a href="/">Clear search</a></p>
+  </template>
+  <template if="pins.length === 0 && !q">
+    <p class="empty">No pins yet. <a href="/create">Create the first one</a>.</p>
+  </template>
+</div>
+
+<spark-ssr>
+  pins = SELECT p.*, u.name AS owner_name, u.username AS owner_username, u.avatar AS owner_avatar
+    FROM pins p JOIN users u ON u.id = p.user_id
+    WHERE (:q IS NULL OR p.title LIKE '%' || :q || '%' OR p.description LIKE '%' || :q || '%')
+    ORDER BY p.created_at DESC
+</spark-ssr>

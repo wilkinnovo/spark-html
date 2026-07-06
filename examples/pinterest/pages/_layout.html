@@ -1,0 +1,27 @@
+<!-- The layout: every page in pages/ renders inside it — <slot> is the page.
+     `me` looks up the signed-in user's own profile row so nav can show
+     their avatar without every page needing its own query. Passed to nav
+     as plain strings (never the whole row) — see components/nav.html for
+     why that split exists. -->
+<link rel="stylesheet" href="/style.css">
+<script type="module" src="/app.js"></script>
+
+<!-- Prop names are plain lowercase, no hyphens: HTML lowercases attribute
+     names on parse, and a hyphen isn't valid inside a bare JS identifier —
+     `logged-in` in the child's {expr} would parse as `logged - in`. -->
+<div import="/components/nav"
+  loggedin="{session ? 'yes' : 'no'}"
+  mename="{me ? me.name : ''}"
+  meusername="{me ? me.username : ''}"
+  meavatar="{me ? me.avatar : '/img/avatar-default.svg'}"
+></div>
+
+<slot></slot>
+
+<spark-flash></spark-flash>
+
+<spark-ssr>
+  me = SELECT id, name, username, avatar FROM users WHERE id = :session.id LIMIT 1
+</spark-ssr>
+<spark-ssr table="users" seed="./seed/users.json" />
+<spark-ssr job="createDefaultBoard" on="insert:users" />

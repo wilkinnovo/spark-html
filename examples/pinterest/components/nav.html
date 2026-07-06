@@ -1,0 +1,42 @@
+<!-- Kept as a SEPARATE component (rather than inlined in _layout.html) on
+     purpose: spark-ssr's auto-404 for [param] pages disables itself if the
+     page's merged markup contains any "else"/"else-if" ANYWHERE (including
+     the layout) — keeping the logged-in/out branch inside its own imported
+     file means it never shows up in the page+layout text that check scans.
+     Props are plain strings only (never a whole row): `loggedin` is an
+     explicit "yes"/"no", not an empty-string-is-truthy footgun (see
+     bugs.md #5 — an EMPTY-STRING prop value, not just a missing one, is
+     coerced to boolean `true` by the client runtime on a non-hydrating
+     page's kept import host). `q` is intentionally NOT a prop for that
+     same reason — it's read from location.search client-side instead. -->
+<nav class="nav">
+  <a class="brand" href="/"><span class="mark">📌</span> Pinspire</a>
+  <form class="search" action="/" method="get">
+    <input type="search" name="q" placeholder="Search pins" value="{q}">
+  </form>
+  <span class="spacer"></span>
+  <span class="links">
+    <template if="loggedin === 'yes'">
+      <a class="btn primary sm" href="/create">+ Create</a>
+      <a class="avatar-link" href="/u/{meusername}" title="{mename}">
+        <img src="{meavatar}" alt="{mename}">
+      </a>
+      <form action="/api/logout" method="post" redirect="/"><button class="btn ghost sm">Log out</button></form>
+    </template>
+    <template if="loggedin !== 'yes'">
+      <a class="btn ghost sm" href="/login">Log in</a>
+      <a class="btn primary sm" href="/signup">Sign up</a>
+    </template>
+    <span import="/components/theme-toggle"></span>
+  </span>
+</nav>
+
+<script>
+  export let loggedin = 'no';
+  export let mename = '';
+  export let meusername = '';
+  export let meavatar = '/img/avatar-default.svg';
+  // Read directly from the browser rather than passed as a prop — see the
+  // comment above this file for why.
+  let q = typeof location !== 'undefined' ? (new URLSearchParams(location.search).get('q') || '') : '';
+</script>

@@ -1,0 +1,21 @@
+<!-- A board is just another auto-CRUD table — no custom endpoint. -->
+<title>Create a board · Pinspire</title>
+<meta name="robots" content="noindex">
+
+<spark-ssr guard="session" redirect="/login?next=/boards/new" />
+
+<div class="narrow">
+  <form class="panel" action="/api/boards" method="post" redirect="/create" flash="Board created!">
+    <h1>Create a board</h1>
+    <template if="errors"><p class="error">Give the board a name.</p></template>
+    <label class="field">Name
+      <input name="name" required maxlength="60" placeholder="e.g. Weekend Getaways">
+    </label>
+    <label class="field">Description
+      <textarea name="description" rows="2" maxlength="200" placeholder="What's it about? (optional)"></textarea>
+    </label>
+    <button class="btn primary block">Create board</button>
+  </form>
+</div>
+
+<spark-ssr table="boards" seed="./seed/boards.json" />

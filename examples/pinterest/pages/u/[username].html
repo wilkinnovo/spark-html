@@ -1,0 +1,95 @@
+<!-- /u/:username — a missing profile 404s automatically (spark-ssr §3). Tabs
+     are local state (no page reload); follow is optimistic client state
+     updated after the custom /api/follow toggle resolves. -->
+<title>{profileUser ? profileUser.name : 'Profile'} · Pinspire</title>
+<meta name="description" content="{profileUser ? profileUser.bio : ''}">
+
+<div class="wrap">
+  <div class="profile-head">
+    <img src="{profileUser.avatar}" alt="{profileUser.name}">
+    <h1>{profileUser.name}</h1>
+    <p class="handle">@{profileUser.username}</p>
+    <template if="profileUser.bio"><p class="bio">{profileUser.bio}</p></template>
+    <div class="stat-row">
+      <span><strong>{profilePins.length}</strong> pins</span>
+      <span><strong>{followerCount.n}</strong> followers</span>
+      <span><strong>{followingCount.n}</strong> following</span>
+    </div>
+    <template if="session && session.id !== profileUser.id">
+      <button type="button" class="btn" :class="amFollowing ? 'on' : ''" onclick={toggleFollow}>
+        {amFollowing ? 'Following' : 'Follow'}
+      </button>
+    </template>
+  </div>
+
+  <div class="tabs">
+    <span class="tab" :class="activeTab === 'pins' ? 'on' : ''" onclick="{activeTab = 'pins'}">Created</span>
+    <span class="tab" :class="activeTab === 'boards' ? 'on' : ''" onclick="{activeTab = 'boards'}">Boards</span>
+  </div>
+
+  <template if="activeTab === 'pins'">
+    <div class="masonry">
+      <template each="pin in profilePins" key="pin.id">
+        <a class="pin-card" href="/pin/{pin.id}">
+          <img src="{pin.image}" alt="{pin.title}" loading="lazy">
+          <div class="pin-overlay"></div>
+          <div class="pin-meta"><p class="pin-title">{pin.title}</p></div>
+        </a>
+      </template>
+    </div>
+    <template if="profilePins.length === 0"><p class="empty">No pins yet.</p></template>
+  </template>
+
+  <template if="activeTab === 'boards'">
+    <div class="board-grid">
+      <template each="b in profileBoards" key="b.id">
+        <a class="board-card" href="/board/{b.id}">
+          <div class="board-grid-cover">
+            <template if="b.cover_image"><img class="lone" src="{b.cover_image}" alt=""></template>
+            <template if="!b.cover_image"><span class="lone"></span></template>
+          </div>
+          <div class="board-meta">
+            <p class="board-name">{b.name}</p>
+            <p class="board-count">{b.pin_count} pin{b.pin_count === 1 ? '' : 's'}</p>
+          </div>
+        </a>
+      </template>
+    </div>
+    <template if="profileBoards.length === 0"><p class="empty">No boards yet.</p></template>
+  </template>
+</div>
+
+<script>
+  let activeTab = 'pins';
+
+  // amFollowing is a named <spark-ssr> source, but a source only becomes a
+  // real reactive var (seeded from __init, refreshable) when the TEMPLATE
+  // references it — a reference from this script alone doesn't count (the
+  // template/script analyses run separately). It's used directly above, so
+  // refresh() re-running it after the toggle is enough; no local mirror.
+  async function toggleFollow() {
+    await fetch('/api/follow', {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ user_id: profileUser.id }),
+    });
+    await refresh();
+  }
+</script>
+
+<spark-ssr auto="none">
+  profileUser = SELECT * FROM users WHERE username = :username LIMIT 1
+  profilePins = SELECT p.*, u.name AS owner_name, u.username AS owner_username, u.avatar AS owner_avatar
+    FROM pins p JOIN users u ON u.id = p.user_id
+    WHERE u.username = :username ORDER BY p.created_at DESC
+  profileBoards = SELECT b.*,
+      (SELECT COUNT(*) FROM pins WHERE board_id = b.id) AS pin_count,
+      (SELECT image FROM pins WHERE board_id = b.id ORDER BY created_at DESC LIMIT 1) AS cover_image
+    FROM boards b
+    WHERE b.user_id = (SELECT id FROM users WHERE username = :username)
+    ORDER BY b.created_at DESC
+  followerCount = SELECT COUNT(*) AS n FROM follows WHERE followed_id = (SELECT id FROM users WHERE username = :username)
+  followingCount = SELECT COUNT(*) AS n FROM follows WHERE follower_id = (SELECT id FROM users WHERE username = :username)
+  amFollowing = SELECT id FROM follows
+    WHERE follower_id = :session.id AND followed_id = (SELECT id FROM users WHERE username = :username) LIMIT 1
+</spark-ssr>
+<spark-ssr table="follows" seed="./seed/follows.json" />

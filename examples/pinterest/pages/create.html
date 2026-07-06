@@ -1,0 +1,44 @@
+<!-- New pin. A plain <input type="file"> inside a multipart form is all
+     upload needs — spark-ssr streams it to uploads/ and hands the auto-CRUD
+     write the file's URL like any other field, no custom endpoint required.
+     Board choice is a real column (board_id): every account always has at
+     least one board (jobs/createDefaultBoard.js), so this select is never
+     empty. -->
+<title>Create a pin · Pinspire</title>
+<meta name="robots" content="noindex">
+
+<spark-ssr guard="session" redirect="/login?next=/create" />
+
+<div class="narrow">
+  <form class="panel" action="/api/pins" method="post" enctype="multipart/form-data" redirect="/" flash="Pin created!">
+    <h1>Create a pin</h1>
+    <template if="errors">
+      <p class="error">Please add a title and a photo.</p>
+    </template>
+
+    <label class="upload-drop">
+      <span class="icon">🖼️</span><br>
+      Click to choose a photo
+      <input type="file" name="image" accept="image/*" required>
+    </label>
+
+    <label class="field">Title
+      <input name="title" required maxlength="100" placeholder="Give it a title">
+    </label>
+    <label class="field">Description
+      <textarea name="description" rows="3" maxlength="500" placeholder="Tell people about it (optional)"></textarea>
+    </label>
+    <label class="field">Board
+      <select name="board_id" required>
+        <template each="b in myBoards"><option value="{b.id}">{b.name}</option></template>
+      </select>
+    </label>
+    <button class="btn primary block">Publish</button>
+    <p class="hint"><a href="/boards/new">+ Create a new board first</a></p>
+  </form>
+</div>
+
+<spark-ssr table="pins" seed="./seed/pins.json" />
+<spark-ssr>
+  myBoards = SELECT * FROM boards WHERE user_id = :session.id ORDER BY created_at DESC
+</spark-ssr>

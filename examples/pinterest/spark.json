@@ -1,0 +1,4 @@
+{
+  "db": "sqlite://./dev.db",
+  "auth": { "table": "users", "identity": "email" }
+}

@@ -1,0 +1,30 @@
+<!-- A plain insert into the auth table (no ?auth = signup, not login) — the
+     password hashes automatically because `users` is the auth table. These
+     extra fields (name, username, bio) are inferred as real TEXT columns
+     from this form alone, same mechanism as the constraint-attribute
+     validation (§6 in the spark-ssr README). -->
+<title>Sign up · Pinspire</title>
+<meta name="robots" content="noindex">
+
+<div class="narrow">
+  <form class="panel" action="/api/users" method="post" redirect="/login" flash="Account created — sign in below.">
+    <h1>Join Pinspire</h1>
+    <template if="errors">
+      <p class="error">Could not create that account — the email or username may already be taken.</p>
+    </template>
+    <label class="field">Name
+      <input name="name" value="{values ? values.name : ''}" required maxlength="60">
+    </label>
+    <label class="field">Username
+      <input name="username" value="{values ? values.username : ''}" required maxlength="24" pattern="[a-z0-9_]+" title="lowercase letters, numbers, underscore">
+    </label>
+    <label class="field">Email
+      <input type="email" name="email" value="{values ? values.email : ''}" autocomplete="username" required>
+    </label>
+    <label class="field">Password
+      <input type="password" name="password" autocomplete="new-password" required minlength="6">
+    </label>
+    <button class="btn primary block">Create account</button>
+    <p class="hint">Already have an account? <a href="/login">Log in</a></p>
+  </form>
+</div>

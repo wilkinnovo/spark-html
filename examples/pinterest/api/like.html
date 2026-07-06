@@ -1,0 +1,19 @@
+<!-- POST /api/like — toggles a like. Auto-CRUD maps a handler to exactly
+     one of insert/update/delete; a toggle needs to check-then-branch, so
+     this drops to the <script> escape hatch (req, res, db in scope; the
+     return value becomes the JSON response). -->
+<script>
+  if (req.method !== 'POST') return { status: 405, body: 'Method not allowed' };
+  if (!req.session) return { status: 401, body: 'Log in to like pins' };
+  const { fields } = await req.body();
+  const pinId = Number(fields.pin_id);
+  if (!pinId) return { status: 400, body: 'Missing pin_id' };
+  const existing = await db.query('SELECT id FROM likes WHERE user_id = ? AND pin_id = ?', [req.session.id, pinId]);
+  if (existing.length) {
+    await db.query('DELETE FROM likes WHERE id = ?', [existing[0].id]);
+  } else {
+    await db.query('INSERT INTO likes (user_id, pin_id) VALUES (?, ?)', [req.session.id, pinId]);
+  }
+  const count = await db.query('SELECT COUNT(*) AS n FROM likes WHERE pin_id = ?', [pinId]);
+  return { liked: !existing.length, count: count[0].n };
+</script>

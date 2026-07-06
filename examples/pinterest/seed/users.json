@@ -1,0 +1,34 @@
+[
+  {
+    "email": "ada@pinspire.dev",
+    "password": "password123",
+    "name": "Ada Lin",
+    "username": "ada",
+    "bio": "Trail runner. Slow mornings. Always looking up.",
+    "avatar": "/img/avatar-ada.svg"
+  },
+  {
+    "email": "nova@pinspire.dev",
+    "password": "password123",
+    "name": "Nova Reyes",
+    "username": "nova",
+    "bio": "Ocean-adjacent. Minimalist by accident.",
+    "avatar": "/img/avatar-nova.svg"
+  },
+  {
+    "email": "kai@pinspire.dev",
+    "password": "password123",
+    "name": "Kai Osei",
+    "username": "kai",
+    "bio": "Long exposures and longer walks at night.",
+    "avatar": "/img/avatar-kai.svg"
+  },
+  {
+    "email": "mira@pinspire.dev",
+    "password": "password123",
+    "name": "Mira Chen",
+    "username": "mira",
+    "bio": "Soft light, warm colors, gentle everything.",
+    "avatar": "/img/avatar-mira.svg"
+  }
+]

@@ -1,0 +1,65 @@
+<!-- /board/:id — pins placed here at creation (pins.board_id) plus pins
+     re-saved here from elsewhere (saves.board_id), merged with UNION so a
+     board reads as one list regardless of how a pin got there. -->
+<title>{boardInfo ? boardInfo.name : 'Board'} · Pinspire</title>
+<meta name="description" content="{boardInfo ? boardInfo.description : ''}">
+
+<div class="wrap">
+  <div class="board-head">
+    <div>
+      <h1>{boardInfo.name}</h1>
+      <template if="boardInfo.description"><p>{boardInfo.description}</p></template>
+      <a class="owner" href="/u/{boardInfo.owner_username}">
+        <img src="{boardInfo.owner_avatar}" alt="">
+        <span>{boardInfo.owner_name}</span>
+      </a>
+    </div>
+    <template if="session && session.id === boardInfo.user_id">
+      <template if="!confirmingDelete">
+        <button type="button" class="btn ghost sm" onclick="{confirmingDelete = true}">Delete board</button>
+      </template>
+      <template if="confirmingDelete">
+        <span class="pill">Delete this board and its pin placements?</span>
+        <button type="button" class="btn primary sm" onclick={removeBoard}>Yes, delete</button>
+        <button type="button" class="btn ghost sm" onclick="{confirmingDelete = false}">Cancel</button>
+      </template>
+    </template>
+  </div>
+
+  <div class="board-grid">
+    <template each="pin in boardPins" key="pin.id">
+      <a class="pin-card" href="/pin/{pin.id}">
+        <img src="{pin.image}" alt="{pin.title}" loading="lazy">
+        <div class="pin-overlay"></div>
+        <div class="pin-meta">
+          <p class="pin-title">{pin.title}</p>
+        </div>
+      </a>
+    </template>
+  </div>
+  <template if="boardPins.length === 0"><p class="empty">No pins in this board yet.</p></template>
+</div>
+
+<script>
+  let confirmingDelete = false;
+  async function removeBoard() {
+    await api_delete(boardInfo.id);
+    location.href = '/u/' + boardInfo.owner_username;
+  }
+</script>
+
+<spark-ssr auto="none">
+  boardInfo = SELECT b.*, u.name AS owner_name, u.username AS owner_username, u.avatar AS owner_avatar
+    FROM boards b JOIN users u ON u.id = b.user_id
+    WHERE b.id = :id LIMIT 1
+  boardPins = SELECT * FROM (
+      SELECT p.*, u.name AS owner_name, u.username AS owner_username, u.avatar AS owner_avatar
+      FROM pins p JOIN users u ON u.id = p.user_id
+      WHERE p.board_id = :id
+      UNION
+      SELECT p.*, u.name AS owner_name, u.username AS owner_username, u.avatar AS owner_avatar
+      FROM pins p JOIN users u ON u.id = p.user_id JOIN saves s ON s.pin_id = p.id
+      WHERE s.board_id = :id
+    ) ORDER BY created_at DESC
+</spark-ssr>
+<spark-ssr table="boards" />

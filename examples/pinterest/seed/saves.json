@@ -1,0 +1,6 @@
+[
+  { "user_id": 2, "pin_id": 1, "board_id": 3 },
+  { "user_id": 3, "pin_id": 1, "board_id": 6 },
+  { "user_id": 1, "pin_id": 9, "board_id": 2 },
+  { "user_id": 4, "pin_id": 7, "board_id": 8 }
+]

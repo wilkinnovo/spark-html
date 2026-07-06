@@ -1,0 +1,8 @@
+[
+  { "user_id": 2, "pin_id": 1, "body": "This is stunning — where is this trail?" },
+  { "user_id": 3, "pin_id": 1, "body": "Adding to my hiking list immediately." },
+  { "user_id": 1, "pin_id": 2, "body": "Needed this today, thank you." },
+  { "user_id": 4, "pin_id": 3, "body": "That color though." },
+  { "user_id": 2, "pin_id": 7, "body": "How long was the exposure?" },
+  { "user_id": 1, "pin_id": 9, "body": "The reef must have been incredible in person." }
+]

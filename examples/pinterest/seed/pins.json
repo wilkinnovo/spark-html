@@ -1,0 +1,14 @@
+[
+  { "user_id": 1, "board_id": 1, "title": "Sunset Ridge Hike", "description": "Caught the last light on the ridge trail.", "image": "/img/seed/photo1.svg" },
+  { "user_id": 2, "board_id": 4, "title": "Ocean Calm", "description": "Fifteen minutes of nothing but waves.", "image": "/img/seed/photo2.svg" },
+  { "user_id": 4, "board_id": 7, "title": "Golden Hour Field", "description": "The wheat turns to fire right before dusk.", "image": "/img/seed/photo3.svg" },
+  { "user_id": 1, "board_id": 2, "title": "Lavender Corner", "description": "My reading nook, finally finished.", "image": "/img/seed/photo4.svg" },
+  { "user_id": 3, "board_id": 6, "title": "Mint Breeze", "description": "A palette I keep coming back to.", "image": "/img/seed/photo5.svg" },
+  { "user_id": 4, "board_id": 8, "title": "Coral Bloom", "description": "Soft color, soft morning.", "image": "/img/seed/photo6.svg" },
+  { "user_id": 3, "board_id": 5, "title": "Night Sky Over the Bay", "description": "Thirty second exposure, tripod, patience.", "image": "/img/seed/photo7.svg" },
+  { "user_id": 2, "board_id": 3, "title": "Berry Punch Studio", "description": "A workspace that doesn't take itself too seriously.", "image": "/img/seed/photo8.svg" },
+  { "user_id": 2, "board_id": 4, "title": "Emerald Deep", "description": "Somewhere past the reef line.", "image": "/img/seed/photo9.svg" },
+  { "user_id": 1, "board_id": 1, "title": "Soft Cream Mornings", "description": "Coffee, quiet, and good light.", "image": "/img/seed/photo10.svg" },
+  { "user_id": 4, "board_id": 7, "title": "Orchid Dream", "description": "Found this growing wild on the trail.", "image": "/img/seed/photo11.svg" },
+  { "user_id": 3, "board_id": 6, "title": "Amber Glow Sunset", "description": "Same spot, different night, still stunning.", "image": "/img/seed/photo12.svg" }
+]

@@ -1,0 +1,159 @@
+<!-- /pin/:id — a missing pin 404s automatically (spark-ssr §3: a [param]
+     page whose single-row lookup comes back empty). Like/save/comment are
+     hand-written handlers (auto="none" — nothing left for the framework to
+     synthesize); refresh() re-runs every named source above after each
+     custom fetch(), the same source-agnostic helper table pages get. -->
+<title>{pin ? pin.title : 'Pin'} · Pinspire</title>
+<meta name="description" content="{pin ? pin.description : ''}">
+
+<div class="wrap">
+  <div class="pin-detail">
+    <div class="photo"><img src="{pin.image}" alt="{pin.title}"></div>
+    <div class="info">
+      <div class="actions-row">
+        <button type="button" class="btn sm" :class="liked ? 'on' : ''" onclick={toggleLike}>
+          {liked ? '♥' : '♡'} {likeCount.n}
+        </button>
+        <span class="save-menu">
+          <button type="button" class="btn primary sm" onclick={openSaveMenu}>
+            {savedAnywhere.yes ? 'Saved ✓' : 'Save'}
+          </button>
+          <template if="showSaveMenu">
+            <div class="panel">
+              <template each="b in myBoards" key="b.id">
+                <button type="button" class="board-row" onclick={saveToBoard(b.id)}>
+                  <span>{b.name}</span>
+                  <template if="b.already_saved"><span>✓</span></template>
+                </button>
+              </template>
+              <template if="myBoards.length === 0"><p class="desc">No boards yet.</p></template>
+              <div class="new-board">
+                <input placeholder="New board name" bind:value="newBoardName">
+                <button type="button" class="btn sm" onclick={createBoardAndSave}>Create</button>
+              </div>
+            </div>
+          </template>
+        </span>
+      </div>
+
+      <h1>{pin.title}</h1>
+      <template if="pin.description"><p class="desc">{pin.description}</p></template>
+
+      <a class="owner-row" href="/u/{pin.owner_username}">
+        <img src="{pin.owner_avatar}" alt="">
+        <span class="who">
+          <span class="name">{pin.owner_name}</span>
+          <span class="handle">@{pin.owner_username}</span>
+        </span>
+      </a>
+
+      <template if="session && session.id === pin.user_id">
+        <template if="!confirmingDelete">
+          <button type="button" class="btn ghost sm" onclick="{confirmingDelete = true}">Delete pin</button>
+        </template>
+        <template if="confirmingDelete">
+          <span class="pill">Delete this pin?</span>
+          <button type="button" class="btn primary sm" onclick={removePin}>Yes, delete</button>
+          <button type="button" class="btn ghost sm" onclick="{confirmingDelete = false}">Cancel</button>
+        </template>
+      </template>
+
+      <div class="comments">
+        <template each="c in pinComments" key="c.id">
+          <div class="comment">
+            <img src="{c.author_avatar}" alt="">
+            <div class="bubble">
+              <p class="name">{c.author_name}</p>
+              <p class="body">{c.body}</p>
+            </div>
+          </div>
+        </template>
+        <template if="pinComments.length === 0"><p class="desc">No comments yet — say something nice.</p></template>
+
+        <template if="session">
+          <div class="comment-form">
+            <textarea bind:value="commentText" placeholder="Add a comment" rows="1"></textarea>
+            <button type="button" class="btn primary sm" onclick={addComment}>Post</button>
+          </div>
+        </template>
+        <template if="!session">
+          <p class="desc"><a href="/login?next=/pin/{pin.id}">Log in</a> to like, save, or comment.</p>
+        </template>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  let showSaveMenu = false;
+  let newBoardName = '';
+  let commentText = '';
+  let confirmingDelete = false;
+
+  async function toggleLike() {
+    if (!session) { location.href = '/login?next=/pin/' + pin.id; return; }
+    await fetch('/api/like', {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ pin_id: pin.id }),
+    });
+    await refresh();
+  }
+
+  function openSaveMenu() {
+    if (!session) { location.href = '/login?next=/pin/' + pin.id; return; }
+    showSaveMenu = !showSaveMenu;
+  }
+
+  async function saveToBoard(boardId) {
+    await fetch('/api/save', {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ pin_id: pin.id, board_id: boardId }),
+    });
+    showSaveMenu = false;
+    await refresh();
+  }
+
+  async function createBoardAndSave() {
+    if (!newBoardName.trim()) return;
+    await fetch('/api/save', {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ pin_id: pin.id, new_board: newBoardName }),
+    });
+    newBoardName = '';
+    showSaveMenu = false;
+    await refresh();
+  }
+
+  async function addComment() {
+    if (!commentText.trim()) return;
+    await api_create('comments', { pin_id: pin.id, body: commentText });
+    commentText = '';
+    await refresh();
+  }
+
+  async function removePin() {
+    const owner = pin.owner_username;
+    await api_delete('pins', pin.id);
+    location.href = '/u/' + owner;
+  }
+</script>
+
+<spark-ssr auto="none">
+  pin = SELECT p.*, u.name AS owner_name, u.username AS owner_username, u.avatar AS owner_avatar
+    FROM pins p JOIN users u ON u.id = p.user_id
+    WHERE p.id = :id LIMIT 1
+  likeCount = SELECT COUNT(*) AS n FROM likes WHERE pin_id = :id
+  liked = SELECT id FROM likes WHERE pin_id = :id AND user_id = :session.id LIMIT 1
+  savedAnywhere = SELECT EXISTS(SELECT 1 FROM saves WHERE pin_id = :id AND user_id = :session.id) AS yes
+  myBoards = SELECT b.*, EXISTS(
+      SELECT 1 FROM saves s WHERE s.board_id = b.id AND s.pin_id = :id AND s.user_id = :session.id
+    ) AS already_saved
+    FROM boards b WHERE b.user_id = :session.id ORDER BY b.created_at DESC
+  pinComments = SELECT c.*, u.name AS author_name, u.username AS author_username, u.avatar AS author_avatar
+    FROM comments c JOIN users u ON u.id = c.user_id
+    WHERE c.pin_id = :id ORDER BY c.created_at ASC
+</spark-ssr>
+<spark-ssr table="pins" />
+<spark-ssr table="comments" seed="./seed/comments.json" />
+<spark-ssr table="likes" seed="./seed/likes.json" />
+<spark-ssr table="saves" seed="./seed/saves.json" />

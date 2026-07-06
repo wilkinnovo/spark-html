@@ -1,0 +1,10 @@
+[
+  { "user_id": 1, "name": "Travel Diaries", "description": "Places I want to remember" },
+  { "user_id": 1, "name": "Cozy Home Ideas", "description": "Interiors that feel like a hug" },
+  { "user_id": 2, "name": "Minimalist Design", "description": "Less but better" },
+  { "user_id": 2, "name": "Ocean Vibes", "description": "Blue, everything" },
+  { "user_id": 3, "name": "Night Photography", "description": "Long exposures and city lights" },
+  { "user_id": 3, "name": "Color Palettes", "description": "Combinations worth stealing" },
+  { "user_id": 4, "name": "Golden Hour", "description": "Warm light, soft shadows" },
+  { "user_id": 4, "name": "Soft Aesthetics", "description": "Gentle textures, pastel tones" }
+]

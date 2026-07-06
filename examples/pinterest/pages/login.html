@@ -1,0 +1,22 @@
+<!-- Sign in with a plain form — no JavaScript required. Success 303s to
+     ?next (or /); a wrong password re-renders this page with {errors}. -->
+<title>Log in · Pinspire</title>
+<meta name="robots" content="noindex">
+
+<div class="narrow">
+  <form class="panel" action="/api/users?auth" method="post" redirect="{next ?? '/'}">
+    <h1>Welcome back</h1>
+    <template if="errors">
+      <p class="error">Wrong email or password.</p>
+    </template>
+    <label class="field">Email
+      <input type="email" name="email" autocomplete="username" required autofocus>
+    </label>
+    <label class="field">Password
+      <input type="password" name="password" autocomplete="current-password" required>
+    </label>
+    <button class="btn primary block">Log in</button>
+    <p class="hint">New here? <a href="/signup">Create an account</a></p>
+    <p class="hint">Try <strong>ada@pinspire.dev</strong> / <strong>password123</strong></p>
+  </form>
+</div>

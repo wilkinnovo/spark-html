@@ -1,0 +1,29 @@
+<!-- POST /api/save — save a pin to one of my boards, or a brand-new one
+     created on the fly. Two operations in one request (create board, then
+     save), so this is a hand-written endpoint rather than table auto-CRUD. -->
+<script>
+  if (req.method !== 'POST') return { status: 405, body: 'Method not allowed' };
+  if (!req.session) return { status: 401, body: 'Log in to save pins' };
+  const { fields } = await req.body();
+  const pinId = Number(fields.pin_id);
+  if (!pinId) return { status: 400, body: 'Missing pin_id' };
+
+  let boardId = fields.board_id ? Number(fields.board_id) : null;
+  if (!boardId && fields.new_board && String(fields.new_board).trim()) {
+    const created = await db.query(
+      'INSERT INTO boards (user_id, name) VALUES (?, ?) RETURNING *',
+      [req.session.id, String(fields.new_board).trim()],
+    );
+    boardId = created[0].id;
+  }
+  if (!boardId) return { status: 400, body: 'No board specified' };
+
+  const existing = await db.query(
+    'SELECT id FROM saves WHERE user_id = ? AND pin_id = ? AND board_id = ?',
+    [req.session.id, pinId, boardId],
+  );
+  if (!existing.length) {
+    await db.query('INSERT INTO saves (user_id, pin_id, board_id) VALUES (?, ?, ?)', [req.session.id, pinId, boardId]);
+  }
+  return { ok: true, board_id: boardId };
+</script>

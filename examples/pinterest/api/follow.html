@@ -1,0 +1,19 @@
+<!-- POST /api/follow — toggles a follow relationship. -->
+<script>
+  if (req.method !== 'POST') return { status: 405, body: 'Method not allowed' };
+  if (!req.session) return { status: 401, body: 'Log in to follow people' };
+  const { fields } = await req.body();
+  const targetId = Number(fields.user_id);
+  if (!targetId) return { status: 400, body: 'Missing user_id' };
+  if (targetId === req.session.id) return { status: 400, body: 'Cannot follow yourself' };
+  const existing = await db.query(
+    'SELECT id FROM follows WHERE follower_id = ? AND followed_id = ?',
+    [req.session.id, targetId],
+  );
+  if (existing.length) {
+    await db.query('DELETE FROM follows WHERE id = ?', [existing[0].id]);
+  } else {
+    await db.query('INSERT INTO follows (follower_id, followed_id) VALUES (?, ?)', [req.session.id, targetId]);
+  }
+  return { following: !existing.length };
+</script>
