@@ -388,3 +388,61 @@ content survives, and the `</script>` tag itself isn't consumed. Verified
 failing without the fix (`git stash` the two source files, rerun — fails
 with "the rest of the script survives, not eaten as fake block 'inner'")
 and passing with it.
+
+## 9. A regression in bug #6's own fix — over-broad `__sparkPend` marking patched components before their own async imports resolved
+
+**Where:** `packages/spark/src/index.js`'s `buildProps()`/`bootComponent()`
+— introduced by the fix for bug #6 earlier in this same round, caught by
+running `create-spark-html-app`'s **prerender** template (a completely
+separate package, `spark-prerender` — not `spark-ssr`) and seeing a batch
+of `[spark] Error evaluating {…}` / `Error in :attr=` warnings on build.
+
+**What happened:** the bug #6 fix needed `bootComponent()` to retry a
+top-level import's props once its enclosing component's scope existed,
+flagged via `host.__sparkPend = node`. To keep the gzip budget from
+growing further, that flag got set **unconditionally** whenever an import
+had no `scope` (i.e., for nearly every top-level import in an app, since
+only each/if-cloned ones carry one) — "harmless," the reasoning went,
+since re-deriving unchanged literal props is a no-op. It wasn't harmless:
+setting it made `bootComponent()`'s retry logic run for that component
+too, including an unconditional `patch(el, el.__sparkScope)` call. For a
+component with **no pending cross-component prop at all** but **its own
+async script** (a dynamic `import` — exactly the prerender showcase's
+demo components), that retry's sync branch fired the patch immediately,
+before the component's own import had resolved — evaluating `{capitalize
+(mood)}`, `{todos.length}`, `:disabled="!draft.trim()"` etc. against a
+scope still missing the imported function / not-yet-initialized state.
+Rendered as empty with a warning per the runtime's error containment, not
+a crash, but a build full of them.
+
+A **second, narrower** version of the same mechanism survived the first
+patch: a component that legitimately *does* have a pending
+cross-component prop (so the retry is real) but *also* has its own async
+script could still get patched before ITS OWN import resolved — the retry
+only waited on the ANCESTOR's `__sparkScriptReady`, not the component's
+own.
+
+**Fix:** `buildProps()` only sets `__sparkPend` when some attribute
+actually has an unevaluated `{…}` needing the ancestor's scope (tracked
+with one boolean during the existing attribute loop — no new work, just a
+narrower condition). And the retry itself now waits on **both**
+`__sparkScriptReady`s — the ancestor's and the component's own — before
+re-patching.
+
+**Regression coverage:** `packages/spark/test/jsimport.js`, "a pending
+cross-component prop retry waits for the CHILD's own async import too" —
+a real parent/child pair where the child has both a `{parentState}` prop
+and its own `import { capitalize } from './format.js'`. Verified failing
+(`parent-state prop still made it across` — the prop is left as the
+literal `'{hello}'` string) with just the ancestor-only wait, passing with
+both. Also re-verified the ORIGINAL reported symptom directly: built
+`create-spark-html-app`'s prerender template against the fixed package —
+zero warnings, versus a full page of them before.
+
+**Lesson:** a "harmless no-op" justification for widening a conditional
+to save a few bytes needs the same scrutiny as any other correctness
+change — the actual cost here wasn't the re-evaluation, it was firing an
+extra `patch()` at a time the code hadn't previously needed to reason
+about. Also: this shipped in a released patch version
+(`spark-html@0.27.10`) before being caught, which is why the very next
+patch (`0.27.11`) exists.

@@ -217,6 +217,34 @@ await test('props (export let) override defaults and feed imported fns', () => {
   assert.equal(body.querySelector('[name="props1"] .sum').textContent, '42');
 });
 
+// ─── a top-level import prop reading the parent's state + own async import ──
+// Regression: a top-level (non-loop) import whose prop reads its PARENT's
+// own state can't be evaluated until the parent boots (resolveImports()
+// resolves the whole tree before any bootComponent() runs) — bootComponent()
+// retries it once the parent's scope exists. That retry used to fire (and
+// patch the child) as soon as the PARENT was ready, regardless of whether
+// the CHILD itself had its own pending async import — patching it against
+// an incomplete scope, mid-import.
+component('pendchild', `
+  <p class="word">{capitalize(word)}</p>
+  <p class="greet">{greeting}</p>
+  <script>
+    import { capitalize } from './format.js';
+    export let greeting = '';
+    let word = 'hi';
+  </script>
+`);
+component('pendparent', `
+  <div import="pendchild" greeting="{hello}"></div>
+  <script>let hello = 'Yo';</script>
+`);
+parseHTML('<div import="pendparent"></div>', body);
+await mount(body, { quiet: true });
+await test('a pending cross-component prop retry waits for the CHILD\'s own async import too', () => {
+  assert.equal(body.querySelector('[name="pendchild"] .word').textContent, 'Hi', 'own async import resolved, not mid-flight');
+  assert.equal(body.querySelector('[name="pendchild"] .greet').textContent, 'Yo', 'parent-state prop still made it across');
+});
+
 // ─── async ──────────────────────────────────────────────────────────────
 console.log('\nasync');
 component('async1', `

@@ -447,16 +447,24 @@ function projectSlots(host, slotted, parentHost) {
 // OWN enclosing component's state, and that component hasn't booted yet
 // (resolveImports() resolves the whole tree before any bootComponent() runs).
 // `__sparkPend` remembers the node so bootComponent() can retry it once the
-// closest named ancestor's scope exists (see there).
+// closest named ancestor's scope exists (see there) — but ONLY when some
+// attribute actually has a `{…}` left unevaluated. Setting it unconditionally
+// made bootComponent's retry (and its extra patch()) run for EVERY top-level
+// import, including ones with no such prop at all — patching a component
+// before its OWN async script (a dynamic import) had resolved, evaluating
+// its template against an incomplete scope.
 function buildProps(node, scope, host) {
   const props = {};
+  let pending = false;
   for (const attr of node.attributes) {
     if (attr.name === 'import' || attr.name === 'name' || attr.name.startsWith('data-spark')) continue;
-    const val = scope && attr.value.includes('{') ? interpolate(attr.value, scope) : attr.value;
+    const brace = attr.value.includes('{');
+    if (brace && !scope) pending = true;
+    const val = scope && brace ? interpolate(attr.value, scope) : attr.value;
     if (attr.name === 'class' || attr.name === 'id') { host.setAttribute(attr.name, val); continue; }
     props[attr.name] = coerce(val);
   }
-  if (!scope) host.__sparkPend = node;
+  if (pending) host.__sparkPend = node;
   return props;
 }
 
@@ -2685,7 +2693,10 @@ function bootComponent(el) {
   // (querySelectorAll + forEach visits it first, in document order). Its
   // scope may still be filling in, though (an async `import` in its own
   // script) — wait for that, then re-patch: `el`'s own first patch above
-  // may already have run against the not-yet-resolved value.
+  // may already have run against the not-yet-resolved value. Also wait for
+  // `el`'s OWN scriptReady (if it has one) before that re-patch — otherwise
+  // the retry can fire (and patch `el`) before `el`'s own async imports
+  // have resolved, evaluating its template against an incomplete scope.
   if (el.__sparkPend) {
     const a = closestComponent(el);
     const retry = () => {
@@ -2693,7 +2704,8 @@ function bootComponent(el) {
       Object.assign(el.__sparkScope, buildProps(el.__sparkPend, a.__sparkScope, el));
       patch(el, el.__sparkScope);
     };
-    if (a && a.__sparkScriptReady) a.__sparkScriptReady.then(retry, retry);
+    const waits = [a && a.__sparkScriptReady, el.__sparkScriptReady].filter(Boolean);
+    if (waits.length) Promise.all(waits).then(retry, retry);
     else retry();
   }
 

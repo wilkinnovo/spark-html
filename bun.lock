@@ -58,7 +58,7 @@
     },
     "packages/spark": {
       "name": "spark-html",
-      "version": "0.27.9",
+      "version": "0.27.10",
     },
     "packages/spark-html-bun": {
       "name": "spark-html-bun",
@@ -95,7 +95,7 @@
     },
     "packages/spark-html-language-server": {
       "name": "spark-html-language-server",
-      "version": "0.2.0",
+      "version": "0.2.1",
       "bin": "bin/cli.js",
     },
     "packages/spark-html-manifest": {
@@ -157,7 +157,7 @@
     },
     "packages/spark-prerender": {
       "name": "spark-prerender",
-      "version": "0.7.3",
+      "version": "0.7.4",
       "bin": {
         "spark-prerender": "bin/cli.js",
       },
@@ -168,7 +168,7 @@
     },
     "packages/spark-ssr": {
       "name": "spark-ssr",
-      "version": "0.7.0",
+      "version": "0.7.1",
       "bin": {
         "spark-ssr": "./bin/cli.js",
       },
