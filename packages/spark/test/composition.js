@@ -85,13 +85,21 @@ component('commented', `
 // so at the moment this prop is first read there's no scope yet to read
 // `author` from — the fix retries once the parent (here: `navhost`) boots.
 component('navchild', `<a class="brand">{blog}</a>`);
+
+// ── regression: a server-baked '∅' prop (spark-ssr/spark-prerender's
+// escape for a real empty STRING) must coerce to '', not boolean true.
+// coerce() alone can't tell a bare attribute (<div import x>, HTML's
+// "present with no value" convention == true) from one explicitly set to
+// '' (a value a {expr} legitimately evaluated to) — both attributes read
+// back identically as ''. The escape breaks that tie.
+component('emptypropcard', `<p class="epc">{typeof label}:{JSON.stringify(label)}</p>`);
 component('navhost', `
 <div import="navchild" blog="{author.name}"></div>
 <script>
   let author = { name: 'Ada' };
 </script>`);
 
-parseHTML('<div import="cardpage"></div><div import="deeptest"></div><div import="trailingcomment"></div><div import="purecard" label="From props"></div><div import="commented"></div><div import="navhost"></div>', body);
+parseHTML('<div import="cardpage"></div><div import="deeptest"></div><div import="trailingcomment"></div><div import="purecard" label="From props"></div><div import="commented"></div><div import="navhost"></div><div import="emptypropcard" label="∅"></div>', body);
 await mount();
 await tick();
 
@@ -144,6 +152,10 @@ await test('script ending in a // comment still parses and renders', () => {
 await test('a script-less component renders its props (props ARE its scope)', () => {
   const el = body.querySelector('[name="purecard"] .pc');
   assert.equal(el.textContent, 'From props');
+});
+await test('a "∅"-escaped prop coerces to an empty string, not boolean true', () => {
+  const el = body.querySelector('[name="emptypropcard"] .epc');
+  assert.equal(el.textContent, 'string:""', 'a real empty string, not the bare-attribute true');
 });
 await test('a comment mentioning <script> never swallows markup', () => {
   // (the dom-shim drops comment nodes at parse time, so only the markup

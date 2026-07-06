@@ -12,6 +12,13 @@ Language server (LSP) for [Spark](https://github.com/wilkinnovo/spark-html) sing
   - `<div import="…">` pointing at a component file that doesn't exist
   - `each` without `key=` (hint — keyed reconciliation is opt-in)
   - malformed `each` expressions
+  - an unquoted `on*={…}` handler whose expression contains whitespace
+    (`onclick={x = y}`, `onclick={f(a, b)}`) — HTML ends an unquoted
+    attribute value at the first space, silently breaking the markup
+  - a `<div import>` prop name with a hyphen or an uppercase letter
+    (`me-name`, `meName`) — it can't reach the child's `{expr}` as written
+    (HTML lowercases attribute names on parse; a hyphen isn't valid inside
+    a bare identifier)
 - **Go-to-definition** — jump from `<div import="components/card">` to
   `card.html`, and from any `{symbol}` to its `let` / `function` / `$:` /
   `export let` declaration.

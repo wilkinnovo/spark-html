@@ -93,6 +93,56 @@ await test('dataPlan: lone member-need binds the lone endpoint (blog case)', () 
   assert.equal(plan[0].shape, 'row');
 });
 
+await test('dataPlan: {x.length}/{x.some(...)} don\'t mistake a list source for a single row', () => {
+  // Regression: a plain-array/method read on a named source used to be
+  // conflated with real per-row field access ({post.title}) because both
+  // look identical to the "{x.y}" root-finder — savedIds.length/.some(...)
+  // made shapeOf() treat savedIds as a single row (rows[0] ?? null),
+  // silently handing the template `null` instead of the real array.
+  const a = analyze(`
+    <p>{savedIds.length}</p>
+    <template each="b in boards"><p>{savedIds.some(s => s.id === b.id) ? '✓' : ''}</p></template>
+  `);
+  const plan = dataPlan(a, [
+    { table: null, bindings: [{ var: 'savedIds', kind: 'sql', sql: 'SELECT id FROM saves WHERE pin_id = :id' }], routes: [] },
+  ]);
+  const byVar = Object.fromEntries(plan.map((p) => [p.var, p]));
+  assert.equal(byVar.savedIds.shape, 'list', '.length/.some(...) must not imply single-row shape');
+
+  // A REAL per-row field read still resolves to 'row' as before.
+  const b = analyze('<p>{post.title}</p>');
+  const planB = dataPlan(b, [{ table: null, bindings: [{ var: 'post', kind: 'sql', sql: 'SELECT * FROM posts WHERE id = :id' }], routes: [] }]);
+  assert.equal(planB[0].shape, 'row', 'real member access ({post.title}) is unaffected');
+});
+
+await test('dataPlan: a source referenced only from the page\'s own <script> still becomes real', () => {
+  // Regression: dataPlan only walked analysis.needs (template-derived), so
+  // a named source used ONLY in the script (`let following = !!amFollowing;`,
+  // never `{amFollowing}` in the template) was silently dropped — the
+  // generated client script never seeded it, and the author's own
+  // reference threw a ReferenceError that killed the WHOLE script, not
+  // just that one line.
+  const a = analyze('<p>{profileUser.name}</p>'); // template never mentions amFollowing
+  const authorScript = "let following = !!amFollowing;\nasync function toggleFollow() { following = !following; }";
+  const plan = dataPlan(a, [
+    { table: null, bindings: [{ var: 'profileUser', kind: 'sql', sql: 'SELECT * FROM users WHERE id = :id LIMIT 1' }], routes: [] },
+    { table: null, bindings: [{ var: 'amFollowing', kind: 'sql', sql: 'SELECT id FROM follows WHERE follower_id = :session.id LIMIT 1' }], routes: [] },
+  ], authorScript);
+  const byVar = Object.fromEntries(plan.map((p) => [p.var, p]));
+  assert.ok(byVar.amFollowing, 'a script-only reference still makes the source real');
+  assert.equal(byVar.amFollowing.shape, 'row');
+  assert.ok(byVar.profileUser, 'template-referenced sources are unaffected');
+
+  // Without a script mentioning it, an unused source stays out of the plan
+  // (declaring a source doesn't force it in — it must be reachable from
+  // somewhere, template or script).
+  const planNoScript = dataPlan(a, [
+    { table: null, bindings: [{ var: 'profileUser', kind: 'sql', sql: 'SELECT * FROM users WHERE id = :id LIMIT 1' }], routes: [] },
+    { table: null, bindings: [{ var: 'amFollowing', kind: 'sql', sql: 'SELECT id FROM follows WHERE follower_id = :session.id LIMIT 1' }], routes: [] },
+  ]);
+  assert.ok(!planNoScript.some((p) => p.var === 'amFollowing'), 'an unreferenced source is not force-included');
+});
+
 await test('singleShaped: aggregates and LIMIT 1, not grouped or plain', () => {
   assert.ok(singleShaped('SELECT COUNT(*) AS n FROM t'));
   assert.ok(singleShaped('SELECT * FROM t WHERE id = :id LIMIT 1'));
@@ -807,6 +857,48 @@ await test('comments mentioning <spark-ssr>/<script>/<title> never break extract
   assert.ok(html.includes('mention <script>'), 'component comment survives verbatim');
 });
 
+await test('extractBlocks: a <script>\'s own JS comment mentioning "<spark-ssr>" does not start a fake block', () => {
+  // Regression, the mirror image of the test above: extractBlocks only
+  // masked HTML comments before scanning for <spark-ssr>, not <script>
+  // content — a JS comment (or string) inside a REAL <script> mentioning
+  // the literal text "<spark-ssr>" opened a fake block that ate everything
+  // up to the next actual </spark-ssr>, corrupting (or here, truncating)
+  // the author's own script and swallowing the real data block into a
+  // garbled "inner" — its query line still parsed by accident (parseBody
+  // matches "name = source" wherever it lands), which is exactly why this
+  // was hard to notice from the data alone: masking it at the HTTP/data
+  // layer, only the markup itself shows the damage.
+  const { blocks, html } = extractBlocks(`<h1 id="sc">{item.title}</h1>
+<script>
+  // reads data declared in <spark-ssr> below — must not be mistaken for a
+  // real block opening
+  let real = 1;
+</script>
+<spark-ssr>
+  item = SELECT * FROM posts WHERE slug = 'hello' LIMIT 1
+</spark-ssr>`);
+  assert.equal(blocks.length, 1, 'exactly one real block, not a fake one opened mid-comment');
+  assert.equal(blocks[0].bindings[0]?.var, 'item', 'the real binding still parsed');
+  assert.ok(html.includes('let real = 1;'), 'the rest of the script survives, not eaten as fake block "inner"');
+  assert.ok(html.includes('</script>'), 'the script tag itself is still closed, not consumed by the fake match');
+});
+
+await test('a kept host serializes a real empty-string prop as "∅", not a bare attribute', async () => {
+  // Regression: a non-hydrating page's top-level import keeps its host
+  // (import + name + evaluated props) for the client to re-resolve. The
+  // props get baked into plain attributes via serializeProp() — a prop
+  // that evaluates to a real empty string used to serialize as `label=""`,
+  // indistinguishable from a bare `<div import label>` (HTML's own "present
+  // with no value" convention), so the client's coerce() read it back as
+  // boolean `true` instead of ''.
+  writeFileSync(join(siteRoot, 'components', 'labelcard.html'), '<p class="lc">{typeof label}:{JSON.stringify(label)}</p>');
+  writeFileSync(join(siteRoot, 'pages', 'labeldemo.html'), `<h1>Demo</h1>\n<div import="/components/labelcard" label="{''}"></div>\n`);
+  const html = await (await fetch(`${S}/labeldemo`)).text();
+  assert.ok(html.includes('string:""'), 'the SSR-rendered content itself is correct regardless');
+  const hostTag = (html.match(/<div[^>]*import="\/components\/labelcard"[^>]*>/) || [''])[0];
+  assert.ok(hostTag.includes('label="∅"'), 'kept host escapes the real empty string as ∅, not a bare label=""');
+});
+
 await test('imported component with its own <script> comes alive (counter)', async () => {
   writeFileSync(join(siteRoot, 'components', 'counter.html'),
     '<h2 class="c">Count: {count}</h2>\n<button onclick={inc}>+1</button>\n<script>\nlet count = 0;\nfunction inc() { count++; }\n</script>');
@@ -1278,6 +1370,17 @@ async function makeLayoutApp() {
 <button onclick={add}>Add</button>
 <template each="todo in todos"><li class="t">{todo.title}</li></template>
 <spark-ssr table="todos" />`);
+  // A HYDRATING [param] page whose own named data depends on :id — the
+  // regression case for the route-param-lost-on-hydrate bug: :id is a path
+  // segment, never in the query string, so it can't ride along the way
+  // ?q/?sort/?page do. `note` (a bind:) is enough to make the page
+  // interactive without needing a handler.
+  mkdirSync(join(root, 'pages', 'widget'), { recursive: true });
+  writeFileSync(join(root, 'pages', 'widget', '[id].html'), `<h1 id="wt">{widget.name}</h1>
+<input bind:value="note">
+<spark-ssr>
+  widget = SELECT * FROM widgets WHERE id = :id LIMIT 1
+</spark-ssr>`);
   return root;
 }
 
@@ -1288,6 +1391,8 @@ await lay.db.query('CREATE TABLE authors (id INTEGER PRIMARY KEY, name TEXT)');
 await lay.db.query("INSERT INTO authors (name) VALUES ('Ada')");
 await lay.db.query('CREATE TABLE posts (id INTEGER PRIMARY KEY AUTOINCREMENT, slug TEXT, title TEXT, published INTEGER DEFAULT 0)');
 await lay.db.query("INSERT INTO posts (slug, title, published) VALUES ('one', 'Post One', 1), ('draft', 'Drafty', 0)");
+await lay.db.query('CREATE TABLE widgets (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT)');
+await lay.db.query("INSERT INTO widgets (name) VALUES ('First'), ('Second'), ('Third')");
 
 await test('layouts (§2): the folder wraps its pages; layout vars are in page scope', async () => {
   const html = await (await fetch(`${L}/`)).text();
@@ -1317,6 +1422,26 @@ await test('layouts (§2): a hydrating page still evaluates the layout\'s own im
       'layout nav prop evaluated, not left as literal "{author.name}"');
   } finally {
     m.restore();
+  }
+});
+
+await test('hydration (§2): a [param] page keeps its :id on the client, not just SSR', async () => {
+  // Regression: a [param] route's :id is a PATH segment, never in the query
+  // string — so unlike ?q/?sort/?page it can't ride along via
+  // location.search. Every instance of /widget/[id] shares the exact same
+  // /__spark/page/widget/[id] and /__spark/data/widget/[id] URLs, so
+  // without the server forwarding req.params along as a query string (see
+  // shell()'s routeParamsQS), the client-side hydration fetch has no way to
+  // know which row this instance is for — :id silently resolved to null,
+  // and the second/third widget's page would hydrate showing the FIRST
+  // widget's data (or blank), never its own.
+  for (const [id, name] of [[1, 'First'], [2, 'Second'], [3, 'Third']]) {
+    const m = await mountHydratedPage(L, `/widget/${id}`);
+    try {
+      assert.equal(m.document.querySelector('#wt').textContent, name, `/widget/${id} hydrates as "${name}", not another row`);
+    } finally {
+      m.restore();
+    }
   }
 });
 
@@ -1411,6 +1536,31 @@ await test('auto-404 (§3): a [param] page with an empty single-row lookup 404s 
     const gone = await fetch(`http://localhost:${s.port}/item/999`);
     assert.equal(gone.status, 404, 'a missing row is an automatic 404');
     assert.ok((await gone.text()).includes('Page not found'), 'the default 404 renders');
+  } finally { await s.stop?.(); }
+});
+
+await test('auto-404 (§3): a LAYOUT\'s own if/else does not opt every [param] page under it out', async () => {
+  // Regression: the else/else-if scan used to run against the merged
+  // layout+page text (pd.html) — a shared layout's own conditional (nav's
+  // logged-in/out branch, say) shared that "else" with every page it
+  // wraps, silently disabling auto-404 site-wide even for pages that never
+  // wrote an if/else of their own.
+  const root = mkdtempSync(join(tmpdir(), 'spark-ssr-auto404-layout-'));
+  writeFileSync(join(root, 'spark.json'), JSON.stringify({ db: 'sqlite::memory:' }));
+  mkdirSync(join(root, 'pages', 'item'), { recursive: true });
+  writeFileSync(join(root, 'pages', '_layout.html'),
+    '<template if="1"><nav>chrome</nav></template><template else><nav>other</nav></template>\n<slot></slot>');
+  // No <template else> in the PAGE itself — just the layout has one.
+  writeFileSync(join(root, 'pages', 'item', '[id].html'),
+    '<h1 id="t">{item.title}</h1>\n<spark-ssr>\n  item = SELECT * FROM posts WHERE id = :id LIMIT 1\n</spark-ssr>');
+  const s = await serve({ root, port: 0, quiet: true });
+  await s.db.query('CREATE TABLE posts (id INTEGER PRIMARY KEY, title TEXT)');
+  await s.db.query("INSERT INTO posts (id, title) VALUES (1, 'Real')");
+  try {
+    const ok = await fetch(`http://localhost:${s.port}/item/1`);
+    assert.equal(ok.status, 200, 'an existing row still renders through the layout');
+    const gone = await fetch(`http://localhost:${s.port}/item/999`);
+    assert.equal(gone.status, 404, 'a missing row still auto-404s despite the layout\'s own else');
   } finally { await s.stop?.(); }
 });
 

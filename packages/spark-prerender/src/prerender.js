@@ -147,11 +147,15 @@ function injectMetadata(document, metaMap) {
 // blanking. Nested hosts are left alone: they're rebuilt when their parent
 // re-resolves. Disable with `hydratable: false` for pure-static output.
 // Serialize a coerced prop value back to an attribute string that round-trips
-// through the runtime's coerce(): '' = true, JSON for objects/arrays, etc.
+// through the runtime's coerce(): '' = true, JSON for objects/arrays, etc. A
+// real empty STRING gets the '∅' escape, not '' — once serialized, '' is
+// indistinguishable from a bare attribute (coerce() reads either as `true`,
+// not an empty string).
 function serializeProp(v) {
   if (v === true) return '';
   if (v === false) return 'false';
   if (v === null) return 'null';
+  if (v === '') return '∅';
   if (typeof v === 'string') return v;
   if (typeof v === 'number') return String(v);
   return JSON.stringify(v);

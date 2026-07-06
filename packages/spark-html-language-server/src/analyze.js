@@ -448,18 +448,56 @@ function analyzeTemplate(text, tpl) {
 
   // <div import="path" …> placeholders.
   const impRe = /<[a-zA-Z][\w-]*\b[^>]*\bimport\s*=\s*"([^"]*)"/g;
+  const badPropNames = []; // { name, start, end } — see the loop below
   while ((m = impRe.exec(tpl)) !== null) {
     const valueStart = m.index + m[0].length - m[1].length - 1;
+    const tagEnd = tpl.indexOf('>', m.index);
     importTags.push({
       path: m[1],
       valueStart,
       valueEnd: valueStart + m[1].length,
       tagStart: m.index,
-      tagEnd: tpl.indexOf('>', m.index),
+      tagEnd,
     });
+    // A prop name reaches the child's scope EXACTLY as written here — a
+    // hyphen isn't valid inside a bare identifier (`logged-in` parses as
+    // `logged - in`), and HTML lowercases attribute names on parse, so
+    // authored camelCase (`meName`) never arrives as typed either way.
+    // data-*/aria-* are excluded: those are conventionally raw host
+    // attributes, never meant to be read back as a prop.
+    const tagText = tpl.slice(m.index, tagEnd === -1 ? tpl.length : tagEnd);
+    const attrRe = /([a-zA-Z_$][\w$-]*)\s*=\s*"[^"]*"/g;
+    let am;
+    while ((am = attrRe.exec(tagText)) !== null) {
+      const attrName = am[1];
+      if (attrName === 'import' || attrName === 'class' || attrName === 'id' || attrName === 'name') continue;
+      if (attrName.startsWith('data-') || attrName.startsWith('aria-')) continue;
+      if (/[-A-Z]/.test(attrName)) {
+        const start = m.index + am.index;
+        badPropNames.push({ name: attrName, start, end: start + attrName.length });
+      }
+    }
   }
 
-  return { refs, eachBlocks, awaitBlocks, importTags };
+  // `on*={expr}` NOT wrapped in quotes: HTML ends an unquoted attribute
+  // value at the first whitespace, full stop — not just at a literal `=`.
+  // `onclick={doThing(a, b)}` breaks exactly like `onclick={x = y}` does
+  // (confirmed against linkedom, the parser spark-ssr renders with): the
+  // value is cut at the space, and the dangling remainder gets serialized
+  // back as garbage attributes. A quoted `on*="{…}"` is unaffected — HTML
+  // attribute values in quotes can contain anything but the quote itself.
+  const unquotedHandlers = [];
+  const handlerOpenRe = /\bon[a-zA-Z]+\s*=\s*(\{)/g;
+  while ((m = handlerOpenRe.exec(tpl)) !== null) {
+    const openIdx = m.index + m[0].length - 1;
+    const closeIdx = matchingBrace(tpl, openIdx);
+    if (closeIdx === -1) continue;
+    if (/\s/.test(tpl.slice(openIdx + 1, closeIdx))) {
+      unquotedHandlers.push({ start: m.index, end: closeIdx + 1 });
+    }
+  }
+
+  return { refs, eachBlocks, awaitBlocks, importTags, badPropNames, unquotedHandlers };
 }
 
 // ── entry point ────────────────────────────────────────────────────────────
@@ -505,6 +543,35 @@ export function analyze(text) {
         code: 'undefined-binding',
       });
     }
+  }
+
+  // Import prop names that can't round-trip: a hyphen or an uppercase
+  // letter never reaches the child's scope as written (see badPropNames).
+  for (const p of t.badPropNames) {
+    const safe = p.name.toLowerCase().replace(/-/g, '');
+    const why = p.name.includes('-')
+      ? `a hyphen isn't valid inside a bare identifier — {${p.name}} in the child would parse as a subtraction, not a lookup`
+      : 'HTML lowercases attribute names on parse, so the child never sees this casing';
+    diagnostics.push({
+      start: p.start,
+      end: p.end,
+      severity: 2,
+      message: `'${p.name}' won't reach the child as written — ${why}. Use an all-lowercase, no-hyphen name (e.g. "${safe}") and match it exactly in the child's {expr}.`,
+      code: 'unstable-prop-name',
+    });
+  }
+
+  // Unquoted on*={expr} containing whitespace: HTML ends an unquoted
+  // attribute value at the first space, breaking this into garbage
+  // attributes (see unquotedHandlers).
+  for (const h of t.unquotedHandlers) {
+    diagnostics.push({
+      start: h.start,
+      end: h.end,
+      severity: 1,
+      message: 'Unquoted on*={…} handler contains whitespace — an unquoted HTML attribute value ends at the first space, splitting this into broken markup. Wrap it in quotes: on...="{…}".',
+      code: 'unquoted-handler-whitespace',
+    });
   }
 
   // each without key= — index-matched patching; keyed is opt-in, so a hint.

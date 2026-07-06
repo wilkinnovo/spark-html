@@ -191,12 +191,17 @@ function pageData(page, cache, pagesDir) {
   const code = parsed.map((p) => p.code).filter(Boolean).join('\n');
   const analysis = mergeAnalyses(parsed.map((p) => p.analysis));
   analysis.hasScript = !!code;
-  const plan = dataPlan(analysis, blocks);
+  const plan = dataPlan(analysis, blocks, code);
   const forms = parsed.flatMap((p) => p.forms);
   const head = mergeHeads(parsed.map((p) => p.head));
   const scripts = mergeScripts(parsed.map((p) => p.scripts));
 
-  const data = { files: stamps, blocks, html: body, head, scripts, code, analysis, plan, forms };
+  // Kept separate from the merged `html`: auto-404 (§3) must only look at
+  // what the PAGE itself wrote, not a shared layout's own if/else — a
+  // layout's conditional (nav's logged-in/out branch, say) sharing an
+  // `else` with the page's merged text used to opt every [param] page on
+  // the whole site out of auto-404, not just pages that actually wrote one.
+  const data = { files: stamps, blocks, html: body, ownBody: pageP.body, head, scripts, code, analysis, plan, forms };
   cache.set(page.file, data);
   return data;
 }
@@ -1129,7 +1134,7 @@ export async function serve(options = {}) {
   // suffix around the body.
   const SHELL_MARK = '\u0000SPARK_BODY\u0000';
 
-  function shell(page, body, { hydrate, mount, headExtra = '', scripts = '' }) {
+  function shell(page, body, { hydrate, mount, headExtra = '', scripts = '', routeParamsQS = '' }) {
     const title = page.key === 'index' ? 'Spark' : page.key.split('/').pop().replace(/\[|\]/g, '');
     const cssRel = page.key + '.css';
     const hasCss = existsSync(join(pagesDir, cssRel));
@@ -1169,8 +1174,9 @@ export async function serve(options = {}) {
     // `name` missing would make the runtime treat the rendered HTML as SLOT
     // content and project it next to the fresh render — duplicated live UI.
     const compName = page.key.replace(/.*\//, '');
+    const pageImportPath = `/__spark/page/${page.key}${routeParamsQS ? '?' + routeParamsQS : ''}`;
     const host = hydrate
-      ? `<div import="/__spark/page/${page.key}" name="${compName}" data-spark-ssr>${body}</div>`
+      ? `<div import="${pageImportPath}" name="${compName}" data-spark-ssr>${body}</div>`
       : `<div data-spark-ssr>${body}</div>`;
     const reload = live ? RELOAD_CLIENT + '\n' : '';
     return `<!doctype html>\n<html>\n<head>\n${head}</head>\n<body>\n${host}\n${reload}</body>\n</html>\n`;
@@ -1347,10 +1353,13 @@ export async function serve(options = {}) {
     // Auto-404 (§3): a dynamic [param] page that looks up one row and finds
     // nothing IS a 404 — no need to hand-write <template else status="404">.
     // Only fires when the page reads that row as an object ({post.title}); an
-    // explicit if/else branch in the page opts out (it renders its own answer),
-    // and form re-renders (extra.status) are left alone.
+    // explicit if/else branch in the PAGE ITSELF opts out (it renders its own
+    // answer) — scanning pd.ownBody rather than the merged pd.html, so a
+    // shared layout's own if/else (a nav's logged-in/out branch, say) can't
+    // opt every page under it out of this. Form re-renders (extra.status)
+    // are left alone regardless.
     if (!extra && page.segs.some((s) => s.startsWith('['))
-      && !/<template\b[^>]*\b(?:else|else-if)\b/i.test(pd.html)) {
+      && !/<template\b[^>]*\b(?:else|else-if)\b/i.test(pd.ownBody)) {
       for (const p of pd.plan) {
         if (p.shape === 'row' && pd.analysis.memberRoots.has(p.var) && scope[p.var] == null) {
           return errorPage(404);
@@ -1366,7 +1375,17 @@ export async function serve(options = {}) {
     const rctx = { loadComponent, keepImports: !hydrate, dev: live };
     let headExtra = pd.head ? renderHead(pd.head, (e) => evalExpr(e, scope)) : '';
     if (headExtra) headExtra = withOgTags(headExtra);
-    const shellOpts = { hydrate, mount: hydrate || hasComponents, headExtra, scripts: pd.scripts };
+    // A [param] route's :id/:slug never appears in the URL's query string —
+    // it's a path segment, matched into req.params by matchPage(). But the
+    // client's hydration fetches (the generated `import __init from
+    // '/__spark/data/<key>.js'` and its refresh()) are keyed by the page's
+    // TEMPLATE path ("pin/[id]"), the same URL for every instance of the
+    // route — so without forwarding req.params along as a query string, the
+    // client-side data fetch can never know WHICH row this instance is for
+    // (:id resolves to null, not "3"). Baked onto the host import path here;
+    // threaded through by the /__spark/page/ and /__spark/data/ handlers.
+    const routeParamsQS = new URLSearchParams(req.params).toString();
+    const shellOpts = { hydrate, mount: hydrate || hasComponents, headExtra, scripts: pd.scripts, routeParamsQS };
     const headers = { 'content-type': 'text/html; charset=utf-8' };
     // A shown flash is consumed — clear the cookie so it appears exactly once.
     if (scope.flash) headers['set-cookie'] = FLASH_COOKIE('', true);
@@ -1948,11 +1967,17 @@ code{color:#fdba74}em{color:#a8a29e}</style></head><body>
           const colsByTable = {};
           if (db) for (const t of tables) colsByTable[t] = await columnsOf(t);
           const autoBlock = pd.blocks.find((b) => b.table && b.auto !== undefined);
+          // The host div's import path carries the route's :id/:slug forward
+          // as a query string (see shell()) — every instance of this [param]
+          // route shares the same /__spark/page/<key> URL, so without it the
+          // generated component would have no way to know which row it's for.
+          const routeParamsQS = url.search.slice(1);
           const html = clientComponent({
             html: pd.html, analysis: pd.analysis, plan: pd.plan, key,
             tables, colsByTable,
             liveTables: tables.filter((t) => liveTables.has(t)),
             authorScript: pd.code, auto: autoBlock ? autoBlock.auto : undefined,
+            routeParamsQS,
           });
           return finish(new Response(html, { headers: { 'content-type': 'text/html', 'cache-control': 'no-cache' } }));
         }

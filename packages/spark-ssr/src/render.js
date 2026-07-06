@@ -15,7 +15,7 @@
  * attribute normalization, same template quirks).
  */
 import { parseHTML } from 'linkedom';
-import { maskComments } from './parse.js';
+import { maskComments, maskScripts } from './parse.js';
 
 const FN_CACHE = new Map();
 function compile(expr) {
@@ -340,10 +340,19 @@ function componentProgram(source) {
   let comp = COMPONENTS.get(source);
   if (!comp) {
     let script = '';
-    const { masked, restore } = maskComments(source);
-    const clean = restore(masked
-      .replace(/<spark-ssr\b[^>]*?\/>|<spark-ssr\b[^>]*>[\s\S]*?<\/spark-ssr>/gi, '')
-      .replace(/<script\b[^>]*>([\s\S]*?)<\/script>/gi, (m, body) => { script += body + '\n'; return ''; }));
+    // Scripts are masked too, alongside comments — a JS comment or string
+    // mentioning the literal text "<spark-ssr>" would otherwise be read as
+    // a real block, silently eating everything up to the next </spark-ssr>
+    // the regex finds (see parse.js's maskScripts). Scripts come back right
+    // after (the <script>-extraction pass below needs to see them for
+    // real) but comments stay masked through BOTH passes, same as before
+    // this fix — a comment mentioning "<script>" in prose must not confuse
+    // the extraction pass either. Comments are restored only in `clean`.
+    const { masked: maskedC, restore: restoreC } = maskComments(source);
+    const { masked, restore: restoreS } = maskScripts(maskedC);
+    const withoutSpark = restoreS(masked.replace(/<spark-ssr\b[^>]*?\/>|<spark-ssr\b[^>]*>[\s\S]*?<\/spark-ssr>/gi, ''));
+    const withoutScript = withoutSpark.replace(/<script\b[^>]*>([\s\S]*?)<\/script>/gi, (m, body) => { script += body + '\n'; return ''; });
+    const clean = restoreC(withoutScript);
     comp = { ops: programFor(clean), literals: scriptLiterals(script) };
     COMPONENTS.set(source, comp);
   }
@@ -500,11 +509,15 @@ function defaultAwaitError(failed, ctx) {
 
 // Round-trip an evaluated prop back to an attribute string the runtime's
 // coerce() understands ('' = true, JSON for objects, …) — same contract as
-// spark-prerender's serializeProp.
+// spark-prerender's serializeProp. A real empty STRING gets the '∅' escape,
+// not '' — once serialized, '' is indistinguishable from a bare attribute
+// (<div import x> also reads x as ''), and coerce() treats a bare attribute
+// as boolean true, not an empty string.
 function serializeProp(v) {
   if (v === true) return '';
   if (v === false) return 'false';
   if (v === null || v === undefined) return 'null';
+  if (v === '') return '∅';
   if (typeof v === 'string') return v;
   if (typeof v === 'number') return String(v);
   return JSON.stringify(v);

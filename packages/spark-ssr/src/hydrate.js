@@ -48,7 +48,7 @@ export function primaryColumn(cols) {
  *  - loop handlers get their row argument.
  *  - the synthesized <script> is appended.
  */
-export function clientComponent({ html, analysis, plan, tables, colsByTable, key, liveTables, authorScript, auto }) {
+export function clientComponent({ html, analysis, plan, tables, colsByTable, key, liveTables, authorScript, auto, routeParamsQS }) {
   const { document } = parseHTML('<!doctype html><html><body>' + html + '</body></html>');
 
   const kids = templateKids;
@@ -104,7 +104,7 @@ export function clientComponent({ html, analysis, plan, tables, colsByTable, key
   })(document.body, null);
 
   return document.body.innerHTML + '\n<script>\n'
-    + clientScript({ analysis, plan, tables, colsByTable, key, liveTables, authorScript, auto }) + '</script>\n';
+    + clientScript({ analysis, plan, tables, colsByTable, key, liveTables, authorScript, auto, routeParamsQS }) + '</script>\n';
 }
 
 // Top-level names the author's <script> already defines — a synthesized
@@ -137,12 +137,17 @@ function stripDeclarations(code, names) {
 // Every generated local/param is `__`-prefixed: the rewriter turns any bare
 // assignment to a top-level state name into a reactive write, so a helper
 // local named `body`/`q`/`row` would clobber the page's own {body}/{q} state.
-export function clientScript({ analysis, plan, tables = [], colsByTable = {}, key, liveTables = [], authorScript = '', auto }) {
+export function clientScript({ analysis, plan, tables = [], colsByTable = {}, key, liveTables = [], authorScript = '', auto, routeParamsQS = '' }) {
   const L = [];
   const provided = new Set();               // names the framework declares
   const defined = definedNames(authorScript); // names the author declares
 
-  L.push(`import __init from '/__spark/data/${key}.js';`);
+  // A [param] route's :id/:slug is a PATH segment — it's never in the query
+  // string, so unlike ?q/?sort/?page it can't ride along via location.search
+  // (every instance of this route shares the same /__spark/data/<key> URL).
+  // The server resolves it once per request and bakes it on here; see
+  // shell()'s routeParamsQS in server.js.
+  L.push(`import __init from '/__spark/data/${key}.js${routeParamsQS ? '?' + routeParamsQS : ''}';`);
   for (const p of plan) { L.push(`let ${p.var} = __init.${p.var};`); provided.add(p.var); }
   for (const b of analysis.topBinds) {
     if (defined.has(b.v)) continue; // author owns this state var
@@ -169,8 +174,9 @@ export function clientScript({ analysis, plan, tables = [], colsByTable = {}, ke
   // string so ?q / ?sort / ?page-driven sources refetch in context.
   if (plan.length && !defined.has('refresh')) {
     L.push(`async function refresh() {`);
-    L.push(`  const __qs = typeof location !== 'undefined' ? location.search : '';`);
-    L.push(`  const __r = await fetch('/__spark/data/${key}.json' + __qs);`);
+    L.push(`  const __ls = typeof location !== 'undefined' ? location.search.slice(1) : '';`);
+    L.push(`  const __qs = [${JSON.stringify(routeParamsQS)}, __ls].filter(Boolean).join('&');`);
+    L.push(`  const __r = await fetch('/__spark/data/${key}.json' + (__qs ? '?' + __qs : ''));`);
     L.push(`  const __d = await __r.json();`);
     for (const p of plan) L.push(`  ${p.var} = __d.${p.var};`);
     L.push(`}`);

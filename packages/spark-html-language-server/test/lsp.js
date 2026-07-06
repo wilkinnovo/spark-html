@@ -154,6 +154,33 @@ await test('dynamic :attrs, bind:, if/else-if refs are checked; strings/comments
   assert.deepEqual(un.map((d) => d.message.match(/'(\w+)'/)[1]), ['ghost']);
 });
 
+await test('unstable-prop-name: hyphenated/uppercase import props flagged; lowercase and data-*/aria-* are not', () => {
+  const a = analyze(`<div import="/components/nav"
+  me-name="{a}"
+  meUsername="{a}"
+  mename="{a}"
+  data-foo="{a}"
+  aria-label="ok"
+></div>
+<script>let a = 1;</script>`);
+  const bad = byCode(a, 'unstable-prop-name');
+  assert.deepEqual(bad.map((d) => d.message.match(/^'([^']+)'/)[1]).sort(), ['me-name', 'meUsername']);
+});
+
+await test('unquoted-handler-whitespace: whitespace inside an unquoted on*={…} is flagged; quoted or space-free is not', () => {
+  const a = analyze(`<button onclick={doThing(a, b)}>x</button>
+<button onclick={doThing(a,b)}>y</button>
+<button onclick="{doThing(a, b)}">z</button>
+<button onclick={remove}>w</button>
+<script>
+  function doThing() {}
+  function remove() {}
+  let a = 1, b = 2;
+</script>`);
+  const bad = byCode(a, 'unquoted-handler-whitespace');
+  assert.equal(bad.length, 1, 'only the unquoted handler WITH internal whitespace is flagged');
+});
+
 await test('directive docs cover the core + package directives', () => {
   for (const w of ['each', 'if', 'else-if', 'await', 'then', 'catch', 'key',
     'bind:value', 'bind:group', 'route', 'transition', 'transition:fade',

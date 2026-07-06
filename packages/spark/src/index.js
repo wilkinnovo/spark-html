@@ -471,7 +471,13 @@ function buildProps(node, scope, host) {
 async function resolveImportNode(node, scope = null) {
   let path = node.getAttribute('import');
   if (scope && path.includes('{')) path = interpolate(path, scope);
-  if (!path.endsWith('.html')) path += '.html';
+  // A query string (e.g. a server-baked "?id=3") must survive the
+  // extension check — appending blindly would turn "path?id=3" into the
+  // nonsensical "path?id=3.html" (the ".html" lands in the query VALUE,
+  // not the path).
+  const qi = path.indexOf('?');
+  const base = qi === -1 ? path : path.slice(0, qi);
+  path = (base.endsWith('.html') ? base : base + '.html') + (qi === -1 ? '' : path.slice(qi));
   try {
     const res = await _origFetchComponent(path);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -603,8 +609,14 @@ function hydrateBlockImports(nodes, scope) {
   }
 }
 
-// Coerce attribute strings into sensible JS values for props.
+// Coerce attribute strings into sensible JS values for props. '∅' is a
+// dedicated escape for a prop a server-side renderer (spark-ssr, spark-
+// prerender) evaluated to a real, legitimate empty STRING — plain '' is
+// reserved for a bare HTML attribute (<input disabled> === true), and once
+// serialized to an attribute the two are indistinguishable without it (a
+// server-baked q="" and an authored <div import q> parse identically).
 function coerce(v) {
+  if (v === '∅') return '';
   if (v === '' || v === 'true') return true; // bare attribute → boolean true
   if (v === 'false') return false;
   if (v === 'null') return null;
