@@ -453,6 +453,24 @@ function projectSlots(host, slotted, parentHost) {
 // import, including ones with no such prop at all — patching a component
 // before its OWN async script (a dynamic import) had resolved, evaluating
 // its template against an incomplete scope.
+// A prop attribute whose ENTIRE value is one `{expr}` — no surrounding
+// literal text, e.g. `items="{results}"` — evaluates to that expression's
+// REAL value. `interpolate()` (used for mixed literal+expr templates like
+// `class="on-{name}"`, where stringifying is exactly what's wanted) always
+// concatenates through `String(v)`: for an array of objects that produces
+// the useless "[object Object],[object Object],…" (each element's own
+// toString, joined by Array.prototype.toString's commas), and for a
+// function, its own source text — both silently destroying the prop's real
+// type, which then fails `coerce()`'s `JSON.parse` and is passed to the
+// component as garbage. Passing an array/object/function as an import prop
+// is an entirely ordinary thing to want (a child component rendering a
+// parent's data, or a callback prop), so this must preserve the value.
+function evalPropValue(template, scope) {
+  const segs = parseTemplate(template);
+  if (segs.length === 1 && typeof segs[0] === 'object') return runExpr(segs[0].fn, segs[0].code, scope);
+  return interpolate(template, scope);
+}
+
 function buildProps(node, scope, host) {
   const props = {};
   let pending = false;
@@ -460,9 +478,17 @@ function buildProps(node, scope, host) {
     if (attr.name === 'import' || attr.name === 'name' || attr.name.startsWith('data-spark')) continue;
     const brace = attr.value.includes('{');
     if (brace && !scope) pending = true;
-    const val = scope && brace ? interpolate(attr.value, scope) : attr.value;
-    if (attr.name === 'class' || attr.name === 'id') { host.setAttribute(attr.name, val); continue; }
-    props[attr.name] = coerce(val);
+    if (attr.name === 'class' || attr.name === 'id') {
+      host.setAttribute(attr.name, scope && brace ? interpolate(attr.value, scope) : attr.value);
+      continue;
+    }
+    const val = scope && brace ? evalPropValue(attr.value, scope) : attr.value;
+    // Only a genuine STRING needs coerce()'s "true"/"false"/number/JSON
+    // parsing (that's for plain HTML attribute text, e.g. a literal
+    // `count="3"` or an interpolated `class`-style mixed template) — a
+    // whole-value expression that already evaluated to a real array,
+    // object, function, number, or boolean is passed through as-is.
+    props[attr.name] = typeof val === 'string' ? coerce(val) : val;
   }
   if (pending) host.__sparkPend = node;
   return props;

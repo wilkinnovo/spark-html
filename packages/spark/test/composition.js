@@ -99,7 +99,29 @@ component('navhost', `
   let author = { name: 'Ada' };
 </script>`);
 
-parseHTML('<div import="cardpage"></div><div import="deeptest"></div><div import="trailingcomment"></div><div import="purecard" label="From props"></div><div import="commented"></div><div import="navhost"></div><div import="emptypropcard" label="∅"></div>', body);
+// ── regression: a whole-value `{expr}` import prop (no surrounding literal
+// text) must preserve its REAL evaluated type. `items="{rows}"` used to
+// always round-trip through interpolate()'s String(v) + coerce()'s
+// JSON.parse — for an array of OBJECTS that produces the useless
+// "[object Object],[object Object],…" (each element's own toString, joined
+// by Array.prototype.toString's commas), and for a function, its own
+// source text. A mixed literal+expr template (`class="on-{name}"`) still
+// goes through the string path, unaffected.
+component('listchild', `
+<p class="count">{typeof rows}:{Array.isArray(rows)}:{rows.length}</p>
+<p class="cbtype">{typeof onpick}</p>
+<button class="fire" onclick="{onpick(rows[0])}">fire</button>
+`);
+component('listhost', `
+<div import="listchild" rows="{items}" onpick="{handlePick}"></div>
+<p class="picked">{picked}</p>
+<script>
+  let items = [{ n: 1 }, { n: 2 }];
+  let picked = '';
+  function handlePick(row) { picked = 'n=' + row.n; }
+</script>`);
+
+parseHTML('<div import="cardpage"></div><div import="deeptest"></div><div import="trailingcomment"></div><div import="purecard" label="From props"></div><div import="commented"></div><div import="navhost"></div><div import="emptypropcard" label="∅"></div><div import="listhost"></div>', body);
 await mount();
 await tick();
 
@@ -166,6 +188,17 @@ await test('a comment mentioning <script> never swallows markup', () => {
 await test('a top-level import prop reading its own component\'s state evaluates', () => {
   const el = body.querySelector('[name="navhost"] [name="navchild"] .brand');
   assert.equal(el.textContent, 'Ada', 'must not render the literal "{author.name}"');
+});
+await test('a whole-value {expr} prop passes a real array, not its stringified toString()', () => {
+  const el = body.querySelector('[name="listhost"] [name="listchild"] .count');
+  assert.equal(el.textContent, 'object:true:2', 'rows must stay a real array, not "[object Object],[object Object]"');
+});
+await test('a whole-value {expr} prop passes a real function, not its source text', async () => {
+  const host = body.querySelector('[name="listhost"] [name="listchild"]');
+  assert.equal(host.querySelector('.cbtype').textContent, 'function', 'onpick must stay callable, not a string of its own source');
+  fire(host.querySelector('.fire'), 'click');
+  await tick();
+  assert.equal(body.querySelector('[name="listhost"] .picked').textContent, 'n=1', 'the real callback ran against the real row');
 });
 
 console.log(`\n${pass} passed, ${fail} failed`);
