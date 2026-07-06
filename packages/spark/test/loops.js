@@ -89,12 +89,43 @@ component('leaky', `
 </script>
 `);
 
+// ── an each-loop's rows nested inside an if-block, torn down by the if ──
+// Regression: <template each> tracks its rendered rows on ITSELF
+// (__sparkEachBlocks) as SIBLING nodes, not children — a <template>
+// anchor is invisible either way. An enclosing <template if> that goes
+// false used to call leaveNode() on just the each-anchor it directly
+// rendered, removing that (already-invisible) tag but leaving every row
+// the each-loop had inserted as siblings behind, orphaned: still in the
+// DOM, and any child component in those rows never got its onDestroy/
+// store-unsubscribe cleanup run either.
+let rowCleanupRan = 0;
+globalThis.__sparkRowCleanup = () => rowCleanupRan++;
+component('togglerow', `
+  <p class="row">{x}</p>
+  <script>
+    export let x;
+    onMount(() => () => { __sparkRowCleanup(); });
+  </script>
+`);
+component('iftoggle', `
+  <button class="flip" onclick="{flip}">{show ? 'on' : 'off'}</button>
+  <template if="show">
+    <template each="x in items"><div class="rowhost" import="togglerow" x="{x}"></div></template>
+  </template>
+  <script>
+    let show = true;
+    let items = ['a', 'b'];
+    function flip() { show = !show; }
+  </script>
+`);
+
 parseHTML(
   '<div import="looplist"></div>' +
   '<div import="keyedlist"></div>' +
   '<div import="batchtest"></div>' +
   '<div import="editrows"></div>' +
-  '<div id="host"><div import="leaky"></div></div>',
+  '<div id="host"><div import="leaky"></div></div>' +
+  '<div import="iftoggle"></div>',
   body,
 );
 await mount();
@@ -179,6 +210,16 @@ await test('unmount runs onMount cleanup and unsubscribes from store', async () 
   store('leaktest', {}).v = 999;
   await tick();
   assert.ok(true);
+});
+
+await test('an if-block going false tears down its nested each-loop\'s rows, not just the each anchor', async () => {
+  assert.equal(body.querySelectorAll('[name="iftoggle"] .row').length, 2, 'both rows rendered while show is true');
+  rowCleanupRan = 0;
+  fire(body.querySelector('[name="iftoggle"] .flip'), 'click');
+  await tick();
+  assert.equal(body.querySelector('[name="iftoggle"] .flip').textContent, 'off', 'show flipped');
+  assert.equal(body.querySelectorAll('[name="iftoggle"] .row').length, 0, 'rows removed from the DOM, not orphaned as dangling siblings');
+  assert.equal(rowCleanupRan, 2, 'each row\'s child component ran its own onDestroy, not just the each anchor tag being removed');
 });
 
 console.log('\nFOUC cloak');

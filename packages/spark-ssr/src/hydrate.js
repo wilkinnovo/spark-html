@@ -23,6 +23,7 @@
  */
 import { parseHTML } from 'linkedom';
 import { templateKids } from './render.js';
+import { definedNames } from './parse.js';
 
 // Structural roles from the analysis (names are the author's own).
 export function handlerRoles(analysis) {
@@ -107,16 +108,6 @@ export function clientComponent({ html, analysis, plan, tables, colsByTable, key
     + clientScript({ analysis, plan, tables, colsByTable, key, liveTables, authorScript, auto, routeParamsQS }) + '</script>\n';
 }
 
-// Top-level names the author's <script> already defines — a synthesized
-// handler/helper of the same name is skipped so the author's version wins.
-export function definedNames(code) {
-  const names = new Set();
-  const s = String(code || '');
-  for (const m of s.matchAll(/^\s*(?:async\s+)?function\s+([a-zA-Z_$][\w$]*)/gm)) names.add(m[1]);
-  for (const m of s.matchAll(/^\s*(?:let|const|var)\s+([a-zA-Z_$][\w$]*)/gm)) names.add(m[1]);
-  return names;
-}
-
 // Strip the author's own `let/const/var name = …;` for names the framework
 // declares (the plan vars and top-level binds) so there's no double-declare —
 // the framework's version is seeded from real data / the reactive default.
@@ -149,9 +140,22 @@ export function clientScript({ analysis, plan, tables = [], colsByTable = {}, ke
   // shell()'s routeParamsQS in server.js.
   L.push(`import __init from '/__spark/data/${key}.js${routeParamsQS ? '?' + routeParamsQS : ''}';`);
   for (const p of plan) { L.push(`let ${p.var} = __init.${p.var};`); provided.add(p.var); }
+  // Seeded from the CURRENT query string on the client, not a hardcoded
+  // empty default — this script is static and shared across every instance
+  // of this route (one /__spark/page/<key>), so it can't bake a per-request
+  // value in server-side. Without this, a bookmarked/shared `?q=...` URL
+  // rendered its filtered view correctly at SSR, then hydration silently
+  // reset the bound var to '' the moment JS took over (reproduced even in
+  // create-spark-html-app's own ssr-nodb template: /?q=spark loses its
+  // filter as soon as the page hydrates).
+  if (analysis.topBinds.some((b) => !defined.has(b.v))) {
+    L.push(`const __qs = typeof location !== 'undefined' ? new URLSearchParams(location.search) : null;`);
+  }
   for (const b of analysis.topBinds) {
     if (defined.has(b.v)) continue; // author owns this state var
-    L.push(`let ${b.v} = ${b.kind === 'checked' ? 'false' : "''"};`);
+    const fallback = b.kind === 'checked' ? 'false' : "''";
+    const read = b.kind === 'checked' ? `__qs.get('${b.v}') === 'true'` : `__qs.get('${b.v}')`;
+    L.push(`let ${b.v} = __qs && __qs.has('${b.v}') ? ${read} : ${fallback};`);
     provided.add(b.v);
   }
   // Ambient scope the layout relies on ({path} for nav highlighting,

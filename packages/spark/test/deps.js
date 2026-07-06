@@ -285,5 +285,54 @@ await test('changing the array reconciles (new row appears)', async () => {
   assert.equal(rows[2].textContent, 'c');
 });
 
+// ── a nested helper's OWN local variable must stay a true local ──
+// Regression: analyzeScript()'s let/const/var-stripping (which exposes a
+// component's TOP-LEVEL state as reactive scope keys) used to run as a
+// flat, brace-depth-blind regex over the whole script — it ALSO stripped a
+// declaration inside a nested helper FUNCTION's body, turning that true
+// local into an implicit write to the reactive scope proxy. A helper that
+// both reads and writes such a "local" in one call (an entirely ordinary
+// pattern: compute an intermediate value, use it) picks up a dependency on
+// it via that same read — and since evaluating the expression ALSO writes
+// it, every evaluation re-triggers itself: a genuine infinite patch loop
+// (a real hang), not just a stale value. Guarded with a timeout so a
+// regression fails this test instead of hanging the whole suite.
+component('nestedlocal', `
+  <button class="setweek" onclick="{setFilter('week')}">week</button>
+  <template each="v in items" key="v.id">
+    <p class="row" :hidden="!matchesFilter(v, activeFilter)">{v.name}</p>
+  </template>
+  <script>
+    let items = [{ id: 1, name: 'a', ago: '2 days ago' }, { id: 2, name: 'b', ago: '3 years ago' }];
+    let activeFilter = 'all';
+    function agoDays(ago) {
+      const m = String(ago || '').match(/(\\d+)\\s*(day|year)/);
+      if (!m) return Infinity;
+      const n = Number(m[1]);
+      const unit = m[2];
+      const perDay = { day: 1, year: 365 };
+      return n * perDay[unit];
+    }
+    function matchesFilter(v, filter) {
+      if (filter === 'all') return true;
+      return agoDays(v.ago) <= 7;
+    }
+    function setFilter(f) { activeFilter = f; }
+  </script>
+`);
+parseHTML('<div import="nestedlocal"></div>', body);
+await mount(body, { quiet: true });
+await test('a helper function\'s own local var (read + written in one call) does not infinite-loop the patch cycle', async () => {
+  const c = body.querySelector('[name="nestedlocal"]');
+  fire(c.querySelector('.setweek'), 'click');
+  await Promise.race([
+    tick(),
+    new Promise((_, reject) => setTimeout(() => reject(new Error('timed out — infinite patch loop')), 2000)),
+  ]);
+  const rows = [...c.querySelectorAll('.row')];
+  assert.equal(rows.find((r) => r.textContent === 'a').hasAttribute('hidden'), false, 'within a week — stays visible');
+  assert.equal(rows.find((r) => r.textContent === 'b').hasAttribute('hidden'), true, 'years old — hidden by the filter');
+});
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

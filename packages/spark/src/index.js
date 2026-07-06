@@ -1015,6 +1015,52 @@ function skipString(src, i) {
   return i;
 }
 
+// The {/} nesting depth at every position in `src` (strings/comments
+// skipped so braces inside them don't miscount). Lets the declaration
+// rewrites below apply ONLY at the script's own top level: a `let`/`const`/
+// `function` inside a nested block (a helper function's body, an if/for
+// block) must stay a true local — rewriting it into a bare assignment turns
+// it into an implicit write to the reactive scope proxy. If that "local" is
+// both read and written by a single expression evaluation (an entirely
+// ordinary pattern — a helper computing an intermediate value it uses), the
+// expression's own dependency tracking picks up a dependency on it, and
+// since evaluating the expression ALSO writes it, every evaluation
+// re-triggers itself: a genuine infinite patch loop, not just a stale read.
+function braceDepths(src) {
+  const depths = new Int32Array(src.length + 1);
+  let depth = 0;
+  let i = 0;
+  while (i < src.length) {
+    const c = src[i];
+    if (c === '"' || c === "'" || c === '`') {
+      const j = skipString(src, i);
+      for (let k = i; k < j && k < src.length; k++) depths[k] = depth;
+      i = j;
+      continue;
+    }
+    if (c === '/' && src[i + 1] === '/') {
+      const s = i;
+      while (i < src.length && src[i] !== '\n') i++;
+      for (let k = s; k < i; k++) depths[k] = depth;
+      continue;
+    }
+    if (c === '/' && src[i + 1] === '*') {
+      const s = i;
+      i += 2;
+      while (i < src.length && !(src[i - 1] === '*' && src[i] === '/')) i++;
+      i++;
+      for (let k = s; k < i && k < src.length; k++) depths[k] = depth;
+      continue;
+    }
+    depths[i] = depth;
+    if (c === '{') depth++;
+    else if (c === '}') depth--;
+    i++;
+  }
+  depths[src.length] = depth;
+  return depths;
+}
+
 // Names declared by `let/const/var`, INCLUDING comma chains
 // (`let a = '', b = '', c`). The old code seeded only the first name, so the
 // rest leaked to the global scope (and weren't reactive). Destructuring
@@ -1309,19 +1355,29 @@ function analyzeScript(rawCode) {
     for (const [, local] of imp.named) seedNames.push(local);
   }
 
-  // Rewrite declarations to bare assignments so they hit the proxy.
+  // Rewrite declarations to bare assignments so they hit the proxy — but
+  // ONLY at depth 0 (the script's own top level). A nested function
+  // declaration (inside another function's body) is a true local; rewriting
+  // IT too would leak its name into the reactive scope the same way a
+  // nested let/const would (see braceDepths above).
+  let depths = braceDepths(code);
   let rewritten = code.replace(
     /(^|[\n;{}])(\s*)(async\s+)?function\s+([a-zA-Z_$][\w$]*)\s*\(/g,
-    (_, before, space, async_ = '', name) =>
-      `${before}${space}${name} = ${async_}function ${name}(`,
+    (m, before, space, async_ = '', name, offset) =>
+      depths[offset + before.length] === 0
+        ? `${before}${space}${name} = ${async_}function ${name}(`
+        : m,
   );
   // Strip the `let`/`const`/`var` KEYWORD from declarations that start with an
   // identifier (single or comma-chained), turning `let a = 1, b = 2` into
   // `a = 1, b = 2` so every name hits the proxy. Destructuring (`let {…}` /
-  // `let [@…]`) is left intact — it stays block-local, as documented.
+  // `let [@…]`) is left intact — it stays block-local, as documented. Depth
+  // 0 only — a nested declaration must stay a true local too (see above).
+  depths = braceDepths(rewritten);
   rewritten = rewritten.replace(
     /(^|[\n;{}])(\s*)(?:let|const|var)\s+(?=[a-zA-Z_$])/g,
-    (_, before, space) => `${before}${space}`,
+    (m, before, space, offset) =>
+      depths[offset + before.length] === 0 ? `${before}${space}` : m,
   );
   // Hoist the import replays above the rest of the script, in source order —
   // ESM semantics: imports evaluate first, wherever they were written.
@@ -1926,9 +1982,32 @@ function lifecycle(hooks = {}) {
 function enterNode(n) {
   if (enterHook && n && n.nodeType === 1) enterHook(n);
 }
+// A <template each>/<template if>/<template await> anchor is (visually)
+// empty — everything it "rendered" lives in tracked SIBLING nodes it
+// inserted itself (__sparkEachBlocks' rows, __sparkIfRendered,
+// __sparkAwaitRendered). Removing just the anchor, as every caller of
+// leaveNode used to do, orphans those siblings: their own onDestroy/store
+// subscriptions never fire and their DOM nodes never leave. Recursive
+// because any of those siblings can itself be a nested each/if/await
+// anchor (a <template each> whose rows each contain a <template if>, say).
+function teardownManaged(n) {
+  if (n.__sparkEachBlocks) {
+    for (const b of n.__sparkEachBlocks) for (const c of b.nodes) leaveNode(c);
+    n.__sparkEachBlocks = [];
+  }
+  if (n.__sparkIfRendered) {
+    for (const c of n.__sparkIfRendered) leaveNode(c);
+    n.__sparkIfRendered = [];
+  }
+  if (n.__sparkAwaitRendered) {
+    for (const c of n.__sparkAwaitRendered) leaveNode(c);
+    n.__sparkAwaitRendered = [];
+  }
+}
 // Run component cleanups now (the node is leaving and goes inert), then let the
 // leave hook animate before it actually detaches; no hook ⇒ remove immediately.
 function leaveNode(n) {
+  teardownManaged(n);
   destroyComponent(n);
   const remove = () => n.remove();
   if (leaveHook && n.nodeType === 1) leaveHook(n, remove);
@@ -2092,10 +2171,7 @@ function parseAwait(el) {
 // state, walking it with the right scope (await-bound for then/catch).
 function applyAwaitState(el, scope) {
   if (el.__sparkAwaitRendered) {
-    for (const n of el.__sparkAwaitRendered) {
-      destroyComponent(n);
-      n.remove();
-    }
+    for (const n of el.__sparkAwaitRendered) leaveNode(n);
   }
   el.__sparkAwaitRendered = [];
   const state = el.__sparkAwaitState;

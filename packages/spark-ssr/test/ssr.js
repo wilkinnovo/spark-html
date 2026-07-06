@@ -321,7 +321,7 @@ await test('client component: await unwrapped, row handlers get their row, scrip
   assert.ok(html.includes('{patch(todo)}'), 'update handler carries the row');
   assert.ok(html.includes("import __init from '/__spark/data/index.js'"), 'init data via module');
   assert.ok(html.includes('let todos = __init.todos'), 'list state');
-  assert.ok(html.includes("let draft = ''"), 'local state');
+  assert.ok(html.includes("__qs.has('draft')") && html.includes("__qs.get('draft')"), 'local state seeded from the live query string, with an empty fallback');
   assert.ok(/async function add\(\)/.test(html), 'insert handler');
   assert.ok(html.includes('__body.title = draft'), 'bind mapped to the text column');
   assert.ok(html.includes("method: 'PATCH'") && html.includes("method: 'DELETE'"), 'update+delete verbs');
@@ -420,8 +420,15 @@ async function mountHydratedPage(base, path) {
   const track = (p) => { pending.add(p); p.finally(() => pending.delete(p)); return p; };
   const awaits = [];
   const realFetch = globalThis.fetch; // the override must not call itself
+  const url = new URL(path, base);
   const globals = {
     window, document, Node: window.Node,
+    // A bare `location` (not window.location — the generated client script
+    // references it directly, matching what a real browser gives it) so
+    // client-seeded ambients that read location.pathname/.search (path, and
+    // any bind:value="name" matching a live ?name= query param) resolve
+    // against the actual mounted URL instead of silently no-op'ing.
+    location: { pathname: url.pathname, search: url.search, href: url.href },
     requestAnimationFrame: (fn) => rafQueue.push(fn),
     __SPARK_PRERENDER__: true,
     __SPARK_AWAITS__: awaits,
@@ -1442,6 +1449,90 @@ await test('hydration (§2): a [param] page keeps its :id on the client, not jus
     } finally {
       m.restore();
     }
+  }
+});
+
+await test('hydration (§2): a bind:value="q" local var is seeded from a LIVE ?q=, not reset to \'\'', async () => {
+  // Regression: unlike a [param]'s :id, ?q IS in the query string — but the
+  // generated client script is static and shared by every visit to this
+  // route (one /__spark/page/<key>), so it can't bake a per-request value in
+  // server-side either. It used to just hardcode `let q = '';` for any
+  // bind:value target the author didn't declare themselves — a bookmarked
+  // or shared `/?q=...` URL rendered its filtered view correctly at SSR,
+  // then hydration silently reset the search box (and the list) back to
+  // unfiltered the moment JS took over. Reproduced even in
+  // create-spark-html-app's own ssr-nodb template (/?q=... loses its filter
+  // on hydration).
+  const root = mkdtempSync(join(tmpdir(), 'spark-ssr-qbind-'));
+  writeFileSync(join(root, 'spark.json'), '{}');
+  mkdirSync(join(root, 'pages'), { recursive: true });
+  writeFileSync(join(root, 'pages', 'index.html'),
+    '<input class="q" bind:value="q">\n' +
+    '<template each="item in items">\n' +
+    '  <template if="!q || item.toLowerCase().includes(q.toLowerCase())"><p class="item">{item}</p></template>\n' +
+    '</template>\n' +
+    '<spark-ssr>\n  items = ./items.js\n</spark-ssr>');
+  writeFileSync(join(root, 'items.js'), "export default () => ['Alpha', 'Beta', 'Gamma'];");
+  const s = await serve({ root, port: 0, quiet: true });
+  const base = `http://localhost:${s.port}`;
+  try {
+    const ssrHtml = await (await fetch(`${base}/?q=al`)).text();
+    assert.ok(ssrHtml.includes('Alpha') && !ssrHtml.includes('Beta'), 'SSR itself filters correctly (sanity check)');
+
+    const m = await mountHydratedPage(base, '/?q=al');
+    try {
+      assert.equal(m.scope.q, 'al', 'q seeded from the live ?q=, not reset to \'\'');
+      const items = [...m.document.querySelectorAll('.item')].map((n) => n.textContent);
+      assert.deepEqual(items, ['Alpha'], 'the filtered view survives hydration, not reset to the full list');
+    } finally {
+      m.restore();
+    }
+  } finally {
+    await s.stop?.();
+  }
+});
+
+await test('hydration (§2): a MODULE source reading req.query gets the live ?q= on its OWN initial fetch, not just refresh()', async () => {
+  // Regression: routeParamsQS (baked onto the host import path, threaded
+  // through /__spark/page/ and /__spark/data/) used to carry req.params
+  // ONLY — a [param]'s :id. A source that reads req.query directly (a
+  // module/URL source, not a table's own ?q=/?sort=/?page= auto-CRUD
+  // convention) rendered correctly at SSR (this request's real query
+  // string) but the client's OWN initial `import __init from
+  // '/__spark/data/<key>.js'` carried none of it, so the very first paint
+  // after hydration silently reset to whatever req.query.q gives an EMPTY
+  // string (here: everything, since the source treats a missing q as "no
+  // filter"). A later refresh() already reads location.search live and
+  // gets this right — only the initial boot was wrong.
+  const root = mkdtempSync(join(tmpdir(), 'spark-ssr-queryreq-'));
+  writeFileSync(join(root, 'spark.json'), '{}');
+  mkdirSync(join(root, 'pages'), { recursive: true });
+  writeFileSync(join(root, 'pages', 'index.html'),
+    // A page with no handler/bind at all never qualifies for hydration in
+    // the first place (see shouldHydrate) and would just keep showing its
+    // SSR output forever — this unused bind forces the client component
+    // path so the test actually exercises the client's OWN __init fetch.
+    '<input bind:value="unused">\n' +
+    '<template each="item in items"><p class="item">{item}</p></template>\n' +
+    '<spark-ssr>\n  items = ./items.js\n</spark-ssr>');
+  writeFileSync(join(root, 'items.js'),
+    "export default (req) => {\n" +
+    "  const all = ['Alpha', 'Beta', 'Gamma'];\n" +
+    "  const q = String(req.query.q || '').toLowerCase();\n" +
+    "  return q ? all.filter((s) => s.toLowerCase().includes(q)) : all;\n" +
+    "};");
+  const s = await serve({ root, port: 0, quiet: true });
+  const base = `http://localhost:${s.port}`;
+  try {
+    const m = await mountHydratedPage(base, '/?q=al');
+    try {
+      const items = [...m.document.querySelectorAll('.item')].map((n) => n.textContent);
+      assert.deepEqual(items, ['Alpha'], 'the client\'s own initial data fetch used the live ?q=, not an empty one');
+    } finally {
+      m.restore();
+    }
+  } finally {
+    await s.stop?.();
   }
 });
 

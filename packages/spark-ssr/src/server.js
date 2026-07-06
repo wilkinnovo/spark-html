@@ -1384,7 +1384,15 @@ export async function serve(options = {}) {
     // client-side data fetch can never know WHICH row this instance is for
     // (:id resolves to null, not "3"). Baked onto the host import path here;
     // threaded through by the /__spark/page/ and /__spark/data/ handlers.
-    const routeParamsQS = new URLSearchParams(req.params).toString();
+    //
+    // req.query rides along too, for the same reason: a data source that
+    // reads req.query itself (a module/URL source, or a named SQL binding
+    // using a bare :q-less scalar) renders correctly at SSR (this request's
+    // real query string) but the client's own __init fetch otherwise carries
+    // NONE of it — ?q=... silently became "" the moment hydration's initial
+    // boot (not a later refresh(), which already reads location.search live)
+    // re-ran the same sources.
+    const routeParamsQS = new URLSearchParams({ ...req.query, ...req.params }).toString();
     const shellOpts = { hydrate, mount: hydrate || hasComponents, headExtra, scripts: pd.scripts, routeParamsQS };
     const headers = { 'content-type': 'text/html; charset=utf-8' };
     // A shown flash is consumed — clear the cookie so it appears exactly once.
