@@ -1,0 +1,30 @@
+<template each="t in tabtube.tabs" key="t.videoId">
+  <div class="tab" :class="t.videoId === tabtube.activeId ? 'active' : ''" role="tab" onclick={switchTab(t.videoId)}>
+    <img class="tab-thumb" src="{t.thumbnail}" alt="">
+    <span class="tab-title">{t.title}</span>
+    <button type="button" class="tab-close" onclick="{closeTab(t.videoId, event)}" aria-label="Close tab">✕</button>
+  </div>
+</template>
+<template if="tabtube.tabs.length === 0">
+  <p class="tabstrip-empty">Search and pick a video to open your first tab</p>
+</template>
+
+<script>
+  const tabtube = useStore('tabtube');
+
+  function switchTab(id) {
+    tabtube.activeId = id;
+  }
+
+  function closeTab(id, event) {
+    event.stopPropagation();
+    const tabs = tabtube.tabs;
+    const i = tabs.findIndex((t) => t.videoId === id);
+    if (i === -1) return;
+    tabtube.tabs = tabs.filter((t) => t.videoId !== id);
+    if (tabtube.activeId === id) {
+      const next = tabtube.tabs[i] || tabtube.tabs[i - 1];
+      tabtube.activeId = next ? next.videoId : null;
+    }
+  }
+</script>

@@ -1,0 +1,46 @@
+<template if="!activeTab">
+  <div class="empty-player">
+    <p>Select a video from the search results to start watching.</p>
+  </div>
+</template>
+<template if="activeTab">
+  <div class="player-wrap">
+    <iframe
+      class="player"
+      src="https://www.youtube.com/embed/{activeTab.videoId}?autoplay=1"
+      title="{activeTab.title}"
+      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+      allowfullscreen
+    ></iframe>
+  </div>
+  <div class="video-info">
+    <h1>{activeTab.title}</h1>
+    <div class="channel-row">
+      <span class="channel-name">{activeTab.author.name}</span>
+      <span class="stats">{activeTab.viewsFormatted} views · {activeTab.ago}</span>
+      <button type="button" class="btn sm" onclick="{toggleSaved(activeTab, event)}">
+        {isSaved(activeTab) ? '★ Saved' : '☆ Save'}
+      </button>
+    </div>
+  </div>
+</template>
+
+<script>
+  const tabtube = useStore('tabtube');
+  const savedList = useStore('tabtube-saved');
+
+  $: activeTab = tabtube.tabs.find((t) => t.videoId === tabtube.activeId) || null;
+
+  function isSaved(v) {
+    return savedList.items.some((x) => x.videoId === v.videoId);
+  }
+
+  function toggleSaved(v, event) {
+    if (event) event.stopPropagation();
+    if (isSaved(v)) {
+      savedList.items = savedList.items.filter((x) => x.videoId !== v.videoId);
+    } else {
+      savedList.items = [...savedList.items, v];
+    }
+  }
+</script>

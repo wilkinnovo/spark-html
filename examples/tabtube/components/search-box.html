@@ -1,0 +1,67 @@
+<div class="search-box">
+  <div class="search-row">
+    <div class="input-wrap">
+      <input
+        type="search"
+        class="search-input"
+        bind:value="query"
+        oninput={onQueryInput}
+        onkeydown={onSearchKeydown}
+        onfocus="{showSuggestions = tabtube.suggestions.length > 0}"
+        placeholder="Search"
+        aria-label="Search YouTube"
+      >
+      <template if="query"><button type="button" class="clear-btn" onclick={clearQuery}>✕</button></template>
+      <template if="showSuggestions && tabtube?.suggestions?.length > 0">
+        <ul class="suggest-list">
+          <template each="s in tabtube?.suggestions" key="s">
+            <li onclick={selectSuggestion(s)}>{s}</li>
+          </template>
+        </ul>
+      </template>
+    </div>
+    <button type="button" class="btn primary" onclick={submitSearch} :disabled="!query.trim()">Search</button>
+  </div>
+</div>
+
+<script>
+  // Seeded from the live ?q= on hydration (a component prop default isn't a
+  // topBind, so it only ever resolves client-side — blank at SSR, correct
+  // the instant JS boots).
+  export let query = typeof location !== 'undefined' ? new URLSearchParams(location.search).get('q') || '' : '';
+  export let onsearch;
+
+  const tabtube = useStore('tabtube');
+  let showSuggestions = false;
+  let debounce;
+
+  // Live as you type: debounced so every keystroke doesn't hit yt-search AND
+  // the suggest endpoint — one refresh() call re-fetches both `results` and
+  // `suggestions` together (see pages/index.html's doSearch).
+  function onQueryInput() {
+    showSuggestions = true;
+    if (debounce) clearTimeout(debounce);
+    debounce = setTimeout(() => onsearch(query), 250);
+  }
+
+  function onSearchKeydown(e) {
+    if (e.key === 'Enter') submitSearch();
+    if (e.key === 'Escape') showSuggestions = false;
+  }
+
+  function submitSearch() {
+    if (debounce) clearTimeout(debounce);
+    showSuggestions = false;
+    if (query.trim()) onsearch(query);
+  }
+
+  function selectSuggestion(s) {
+    query = s;
+    submitSearch();
+  }
+
+  function clearQuery() {
+    query = '';
+    onsearch('');
+  }
+</script>

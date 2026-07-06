@@ -371,6 +371,5 @@ dynamic import from an api/*.html script resolves against the wrong base).
 **App-level mistakes** (mine, not the framework's): #9 (persist() vs useStore()), #10
 (unquoted handler whitespace — a repeat of an already-known lesson).
 
-None of the above have been committed. The framework fixes live in the same
-workspace-local `packages/spark` and `packages/spark-ssr` this app depends on, so this
-app itself already reflects all of them.
+Released as `spark-html` 0.27.12 / `spark-ssr` 0.7.2. See `bugs2.md` for round 2 (found while
+refactoring this app toward real component composition).

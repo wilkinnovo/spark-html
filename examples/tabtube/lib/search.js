@@ -1,8 +1,8 @@
-// A MODULE source (`results = ./lib/search.js` in pages/index.html) AND the
-// implementation behind api/search.html — one place for the yt-search call
-// and the shape the template expects, so the SSR-rendered initial results
-// (?q= on first load, works with JS disabled) and the client's own re-search
-// (via fetch, no reload) never drift apart.
+// A MODULE source (`results = ./lib/search.js` in pages/index.html) — the
+// ONLY place the yt-search call lives. The client's own re-search (typing,
+// selecting a suggestion) goes through spark-ssr's ambient `refresh()`,
+// which re-runs this exact function server-side against the live query
+// string — no separate api/*.html endpoint duplicating this logic.
 import yts from 'yt-search';
 
 export default async function search(req) {

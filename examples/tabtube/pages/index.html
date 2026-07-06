@@ -1,83 +1,49 @@
-<!-- TabTube — a YouTube search/watch app with zero database. Search results
-     come from a MODULE source (lib/search.js, wraps yt-search) for the
-     initial SSR paint of a shareable `/?q=...` URL; the client's own re-
-     searches and live autocomplete go through api/search.html and
-     api/suggest.html instead (a full source-refresh would be too slow to
-     feel like "typing"). Everything else — open tabs, the active video,
-     saved "My Lists" — is local/persisted state, no server round-trip. -->
-<title>{q ? q + ' — ' : ''}TabTube</title>
+<!-- TabTube — a YouTube search/watch app with zero database. Two MODULE
+     sources feed `results` (lib/search.js) and `suggestions`
+     (lib/suggestion.js); the client's re-search and live autocomplete both
+     go through spark-ssr's own ambient `refresh()` — no custom api/*.html
+     endpoints.
+
+     The results list, filters, and "My Lists" toggle are inlined here
+     rather than split into their own component: they need `results` to be
+     the page's REAL `<spark-ssr>` plan var, both because it must render for
+     real at SSR (a shareable `/?q=...` URL, no JS required) and because an
+     import node's props are evaluated ONCE at mount and never revisited —
+     a component reading `results` as a prop would never see a later
+     refresh(). See bugs2.md. Tabs, the player, and the search box HAVE
+     neither constraint (their state is either store-driven, reactive
+     across components already, or genuinely local), so those ARE separate
+     components: components/tab-strip.html, components/video-player.html,
+     components/search-box.html. -->
+<title>TabTube</title>
 <meta name="description" content="Search YouTube and watch, tab by tab — no database, no API key.">
 
 <div class="app">
   <header class="topbar">
     <div class="brand"><span class="logo">▶</span> TabTube</div>
-    <div class="tabstrip" role="tablist">
-      <template each="t in tabs" key="t.videoId">
-        <div class="tab" :class="t.videoId === activeTabId ? 'active' : ''" role="tab" onclick={switchTab(t.videoId)}>
-          <img class="tab-thumb" src="{t.thumbnail}" alt="">
-          <span class="tab-title">{t.title}</span>
-          <button type="button" class="tab-close" onclick="{closeTab(t.videoId, event)}" aria-label="Close tab">✕</button>
-        </div>
-      </template>
-      <template if="tabs.length === 0">
-        <p class="tabstrip-empty">Search and pick a video to open your first tab</p>
-      </template>
-    </div>
-    <span import="/components/theme-toggle"></span>
+    <div import="/components/tab-strip" class="tabstrip" role="tablist"></div>
+    <div import="/components/theme-toggle"></div>
   </header>
 
   <div class="body">
     <aside class="sidebar">
-      <div class="search-box">
-        <input
-          type="search"
-          class="search-input"
-          bind:value="q"
-          oninput={onQueryInput}
-          onkeydown={onSearchKeydown}
-          onfocus="{showSuggestions = suggestions.length > 0}"
-          placeholder="Search"
-          aria-label="Search YouTube"
-        >
-        <template if="q"><button type="button" class="clear-btn" onclick={clearQuery}>✕</button></template>
-        <template if="showSuggestions && suggestions.length > 0">
-          <ul class="suggest-list">
-            <template each="s in suggestions" key="s">
-              <li onclick={selectSuggestion(s)}>{s}</li>
-            </template>
-          </ul>
-        </template>
-      </div>
+      <div import="/components/search-box" onsearch="{doSearch}"></div>
 
       <div class="actions-row">
-        <button type="button" class="btn primary" onclick={doSearch} :disabled="!q.trim()">Search</button>
-        <button type="button" class="btn" :class="showMyLists ? 'on' : ''" onclick={toggleMyLists}>My Lists</button>
+        <button type="button" class="btn" :class="tabtube.showMyLists ? 'on' : ''" onclick={toggleMyLists}>My Lists</button>
       </div>
 
-      <div class="filters" role="tablist">
-        <button type="button" :class="activeFilter === 'all' ? 'on' : ''" onclick={setFilter('all')}>All</button>
-        <button type="button" :class="activeFilter === 'today' ? 'on' : ''" onclick={setFilter('today')}>Today</button>
-        <button type="button" :class="activeFilter === 'week' ? 'on' : ''" onclick={setFilter('week')}>This week</button>
-        <button type="button" :class="activeFilter === 'month' ? 'on' : ''" onclick={setFilter('month')}>This month</button>
-      </div>
+      <template if="!tabtube?.showMyLists">
+        <div class="filters" role="tablist">
+          <button type="button" :class="tabtube.activeFilter === 'all' ? 'on' : ''" onclick={setFilter('all')}>All</button>
+          <button type="button" :class="tabtube.activeFilter === 'today' ? 'on' : ''" onclick={setFilter('today')}>Today</button>
+          <button type="button" :class="tabtube.activeFilter === 'week' ? 'on' : ''" onclick={setFilter('week')}>This week</button>
+          <button type="button" :class="tabtube.activeFilter === 'month' ? 'on' : ''" onclick={setFilter('month')}>This month</button>
+        </div>
 
-      <div class="results-list">
-        <!-- each="v in results" (not a `$: filteredResults` derivation) — the
-             SERVER'S render pass evaluates the template straight against its
-             data-source scope; it never runs the page's OWN <script> at all
-             (not a plain `let` initializer, not a $: derivation, not even a
-             plain function declared there). A `<template if="matchesFilter
-             (…)">` around each row therefore THREW during SSR (matchesFilter
-             undefined) and — unlike a failed :attr, which leaves the
-             attribute alone — a throwing/falsy `if=` on a <template> omits
-             the whole element, hiding every row before hydration ever runs.
-             `:hidden="!matchesFilter(…)"` fails the OPPOSITE way (leaves
-             `hidden` unset on error → visible), which happens to match the
-             desired pre-hydration default anyway (no filter applied yet).
-             See bugs.md. -->
-        <template if="!showMyLists">
+        <div class="results-list">
           <template each="v in results" key="v.videoId">
-            <div class="result-card" :class="v.videoId === activeTabId ? 'active' : ''" :hidden="!matchesFilter(v, activeFilter)" onclick={openVideo(v)}>
+            <div class="result-card" :class="v.videoId === tabtube.activeId ? 'active' : ''" :hidden="!matchesFilter(v, tabtube.activeFilter)" onclick={openVideo(v)}>
               <img class="result-thumb" src="{v.thumbnail}" alt="" loading="lazy">
               <div class="result-meta">
                 <p class="result-title">{v.title}</p>
@@ -90,14 +56,14 @@
             </div>
           </template>
           <template if="searching"><p class="empty">Searching…</p></template>
-          <template if="!searching && results.length === 0 && q"><p class="empty">No results for "{q}".</p></template>
-          <template if="!searching && results.length === 0 && !q"><p class="empty">Search for something to get started.</p></template>
-          <template if="!searching && results.length > 0 && !results.some(v => matchesFilter(v, activeFilter))"><p class="empty">Nothing in that time range.</p></template>
-        </template>
+          <template if="!searching && results.length === 0"><p class="empty">Search for videos above.</p></template>
+        </div>
+      </template>
 
-        <template if="showMyLists">
+      <template if="tabtube?.showMyLists">
+        <div class="results-list">
           <template each="v in savedList.items" key="v.videoId">
-            <div class="result-card" :class="v.videoId === activeTabId ? 'active' : ''" onclick={openVideo(v)}>
+            <div class="result-card" :class="v.videoId === tabtube.activeId ? 'active' : ''" onclick={openVideo(v)}>
               <img class="result-thumb" src="{v.thumbnail}" alt="" loading="lazy">
               <div class="result-meta">
                 <p class="result-title">{v.title}</p>
@@ -108,134 +74,36 @@
             </div>
           </template>
           <template if="savedList.items.length === 0"><p class="empty">Nothing saved yet — click ☆ on a result.</p></template>
-        </template>
-      </div>
+        </div>
+      </template>
     </aside>
-
-    <main class="player-pane">
-      <template if="activeTab">
-        <div class="player-wrap">
-          <iframe
-            class="player"
-            src="https://www.youtube.com/embed/{activeTab.videoId}?autoplay=1"
-            title="{activeTab.title}"
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-            allowfullscreen
-          ></iframe>
-        </div>
-        <div class="video-info">
-          <h1>{activeTab.title}</h1>
-          <div class="channel-row">
-            <span class="channel-name">{activeTab.author.name}</span>
-            <span class="stats">{activeTab.viewsFormatted} views · {activeTab.ago}</span>
-            <button type="button" class="btn sm" onclick="{toggleSaved(activeTab, event)}">
-              {isSaved(activeTab) ? '★ Saved' : '☆ Save'}
-            </button>
-          </div>
-        </div>
-      </template>
-      <template if="!activeTab">
-        <div class="empty-player">
-          <p>Select a video from the search results to start watching.</p>
-        </div>
-      </template>
-    </main>
+    <div import="/components/video-player" class="player-pane"></div>
   </div>
 </div>
 
 <script>
-  import { persist } from 'spark-html-persist';
-
-  // "My Lists" — saved videos survive a reload; open tabs deliberately don't
-  // (a fresh load starts clean, same as opening a browser).
-  //
-  // persist() creates/hydrates the store from localStorage and returns its
-  // proxy — but that returned proxy is NOT itself subscribed to THIS
-  // component's re-render cycle (see bugs.md). Only useStore(name) wires up
-  // the subscription that makes a later mutation actually schedule a patch.
-  // Using persist()'s own return value directly "worked" in the sense that
-  // reads/writes never threw and localStorage updated correctly — the store
-  // WAS reactive, just not to this component: {isSaved(v)} inside the
-  // each-loop stayed frozen at its very first render forever, while a
-  // logically unrelated state change (e.g. toggling My Lists) that happened
-  // to trigger ITS OWN full re-render would incidentally show the correct
-  // data underneath.
-  persist('tabtube-saved', { items: [] });
+  const tabtube = useStore('tabtube');
   const savedList = useStore('tabtube-saved');
-
-  // `q` itself is NOT declared here — it's a bind:value target the
-  // framework seeds from the live ?q= query string on hydration (and from
-  // req.query.q server-side); declaring it ourselves would make the
-  // framework think we own it and skip that seeding. See bugs.md.
-  let suggestions = [];
-  let showSuggestions = false;
   let searching = false;
-  let activeFilter = 'all';
-  let tabs = [];
-  let activeTabId = null;
-  let showMyLists = false;
 
-  $: activeTab = tabs.find((t) => t.videoId === activeTabId) || null;
+  tabtube.suggestions = suggestions;
 
-  let suggestDebounce = null;
-  function onQueryInput() {
-    showSuggestions = true;
-    if (suggestDebounce) clearTimeout(suggestDebounce);
-    const term = q;
-    suggestDebounce = setTimeout(async () => {
-      if (!term.trim()) { suggestions = []; return; }
-      const r = await fetch('/api/suggest?q=' + encodeURIComponent(term));
-      suggestions = await r.json();
-    }, 250);
-  }
-
-  function onSearchKeydown(e) {
-    if (e.key === 'Enter') doSearch();
-    if (e.key === 'Escape') showSuggestions = false;
-  }
-
-  function selectSuggestion(s) {
-    q = s;
-    showSuggestions = false;
-    doSearch();
-  }
-
-  function clearQuery() {
-    q = '';
-    suggestions = [];
-    showSuggestions = false;
-  }
-
-  async function doSearch() {
-    showSuggestions = false;
-    if (!q.trim()) return;
+  async function doSearch(query) {
+    const url = new URL(location);
+    if (query) url.searchParams.set('q', query); else url.searchParams.delete('q');
+    history.replaceState({}, '', url);
     searching = true;
     try {
-      const r = await fetch('/api/search?q=' + encodeURIComponent(q));
-      results = await r.json();
+      await refresh();
+      tabtube.suggestions = suggestions;
     } finally {
       searching = false;
     }
   }
 
   function openVideo(v) {
-    if (!tabs.some((t) => t.videoId === v.videoId)) tabs = [...tabs, v];
-    activeTabId = v.videoId;
-  }
-
-  function closeTab(id, event) {
-    event.stopPropagation();
-    const i = tabs.findIndex((t) => t.videoId === id);
-    if (i === -1) return;
-    tabs = tabs.filter((t) => t.videoId !== id);
-    if (activeTabId === id) {
-      const next = tabs[i] || tabs[i - 1];
-      activeTabId = next ? next.videoId : null;
-    }
-  }
-
-  function switchTab(id) {
-    activeTabId = id;
+    if (!tabtube.tabs.some((t) => t.videoId === v.videoId)) tabtube.tabs = [...tabtube.tabs, v];
+    tabtube.activeId = v.videoId;
   }
 
   function isSaved(v) {
@@ -252,11 +120,11 @@
   }
 
   function toggleMyLists() {
-    showMyLists = !showMyLists;
+    tabtube.showMyLists = !tabtube.showMyLists;
   }
 
   function setFilter(f) {
-    activeFilter = f;
+    tabtube.activeFilter = f;
   }
 
   // yt-search only gives a relative string ("3 days ago"), not a real date —
@@ -282,4 +150,5 @@
 
 <spark-ssr>
   results = ./lib/search.js
+  suggestions = ./lib/suggestion.js
 </spark-ssr>

@@ -136,7 +136,8 @@ body {
   overflow: hidden;
 }
 
-.search-box { position: relative; }
+.search-row { display: flex; gap: 0.4rem; }
+.input-wrap { position: relative; flex: 1; min-width: 0; }
 .search-input {
   width: 100%;
   padding: 0.5rem 2rem 0.5rem 0.75rem;
@@ -220,6 +221,12 @@ body {
 }
 .result-card:hover { background: var(--active-bg); }
 .result-card.active { background: var(--active-bg); border-left-color: var(--accent); }
+/* An explicit `display` on the SAME element beats the browser's own
+   `[hidden] { display: none }` default (author-origin rules always win over
+   user-agent ones, matching specificity or not) — so `:hidden="…"` sets the
+   real HTML attribute, but .result-card{display:flex} silently no-ops it
+   without this override. See bugs2.md. */
+.result-card[hidden] { display: none; }
 .result-thumb { width: 84px; height: 60px; object-fit: cover; border-radius: 6px; flex-shrink: 0; background: var(--border); }
 .result-meta { min-width: 0; flex: 1; }
 .result-title {
