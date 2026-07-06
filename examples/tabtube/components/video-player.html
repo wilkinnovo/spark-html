@@ -16,6 +16,22 @@
       <p>Select a video from the search results to start watching.</p>
     </div>
   </template>
+  <!-- Always mounted (:hidden, not <template if>) so a quick tab switch
+       never tears down/recreates it mid-shimmer — same reasoning as
+       #yt-target/.click-catcher/.custom-controls above. -->
+  <div class="player-skeleton skel-block" :hidden="!switching"></div>
+  <template if="activeTab">
+    <div class="video-info-overlay">
+      <h1>{activeTab.title}</h1>
+      <div class="channel-row">
+        <span class="channel-name">{activeTab.author.name}</span>
+        <span class="stats">{activeTab.viewsFormatted} views · {activeTab.ago}</span>
+        <button type="button" class="btn sm" onclick="{toggleSaved(activeTab, event)}">
+          {isSaved(activeTab) ? '★ Saved' : '☆ Save'}
+        </button>
+      </div>
+    </div>
+  </template>
   <div class="custom-controls" :hidden="!activeTab">
     <button type="button" class="ctl-btn" onclick={togglePlay} aria-label="Play/pause">{playing ? '⏸' : '▶'}</button>
     <span class="ctl-time">{formatTime(currentTime)} / {formatTime(duration)}</span>
@@ -26,24 +42,30 @@
     <button type="button" class="ctl-btn" onclick={toggleFullscreen} aria-label="Fullscreen">⛶</button>
   </div>
 </div>
-<template if="activeTab">
-  <div class="video-info">
-    <h1>{activeTab.title}</h1>
-    <div class="channel-row">
-      <span class="channel-name">{activeTab.author.name}</span>
-      <span class="stats">{activeTab.viewsFormatted} views · {activeTab.ago}</span>
-      <button type="button" class="btn sm" onclick="{toggleSaved(activeTab, event)}">
-        {isSaved(activeTab) ? '★ Saved' : '☆ Save'}
-      </button>
-    </div>
-  </div>
-</template>
 
 <script>
   const tabtube = useStore('tabtube');
   const savedList = useStore('tabtube-saved');
 
   $: activeTab = tabtube.tabs.find((t) => t.videoId === tabtube.activeId) || null;
+
+  // Keeps `?v=<videoId>` in the address bar in sync with whichever tab is
+  // active — switching tabs, opening a video from the results list, or a
+  // tab closing and reassigning activeId all just change tabtube.activeId,
+  // and activeTab (above) already reacts to every one of those, so this is
+  // the single place that needs to touch the URL at all. replaceState (not
+  // pushState) — a tab switch isn't a "new page", so it shouldn't add a
+  // back-button entry. This is also what makes the link shareable in the
+  // first place: pages/index.html's onMount reads `?v=` back out (via the
+  // `sharedVideo` MODULE source) to open the same video for a fresh visitor.
+  $: {
+    if (typeof location !== 'undefined') {
+      const url = new URL(location);
+      if (activeTab) url.searchParams.set('v', activeTab.videoId);
+      else url.searchParams.delete('v');
+      history.replaceState({}, '', url);
+    }
+  }
 
   let player = null;
   let currentVideoId = null;

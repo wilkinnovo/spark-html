@@ -12,15 +12,7 @@
 // only page 1's videos, in ~1/5th the expected time, with no error at all).
 // youtubei.js's `search.getContinuation()` genuinely walks forward with NO
 // overlap between pages (verified: 5 combined pages = 98/98 unique videos).
-import { Innertube, UniversalCache, Log } from 'youtubei.js';
-
-// The library's own info/warning-level logging (occasional "unable to parse
-// a text run" notices for edge-case formatting) is noisy on stderr and not
-// actionable here — errors still surface (caught below, degrade to "no
-// results" like the old yt-search path did).
-Log.setLevel(Log.Level.ERROR);
-
-const innertube = await Innertube.create({ cache: new UniversalCache(true) });
+import { getInnertube } from './innertube.js';
 
 // Each request walks fresh from page 1 — there's no per-user session to
 // stash a continuation token in across requests, and re-walking is cheap
@@ -34,6 +26,7 @@ export default async function search(req) {
   if (!q) return [];
   const pages = Math.min(Math.max(Number(req.query.page) || 1, 1), MAX_PAGES);
   try {
+    const innertube = await getInnertube();
     let page = await innertube.search(q);
     const seen = new Map();
     for (const v of page.results.filter(isVideo)) seen.set(v.video_id, v);

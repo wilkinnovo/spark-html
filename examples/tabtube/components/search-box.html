@@ -12,16 +12,19 @@
         aria-label="Search YouTube"
       >
       <template if="query"><button type="button" class="clear-btn" onclick={clearQuery}>✕</button></template>
-      <template if="showSuggestions && tabtube?.suggestions?.length > 0">
-        <ul class="suggest-list">
-          <template each="s in tabtube?.suggestions" key="s">
-            <li onclick={selectSuggestion(s)}>{s}</li>
-          </template>
-        </ul>
-      </template>
     </div>
     <button type="button" class="btn primary" onclick={submitSearch} :disabled="!query.trim()">Search</button>
   </div>
+  <!-- A sibling of .search-row (not nested in .input-wrap) so it's
+       positioned off the whole search-box — spanning the input AND the
+       Search button — not just the input's own width. -->
+  <template if="showSuggestions && tabtube?.suggestions?.length > 0">
+    <ul class="suggest-list">
+      <template each="s in tabtube?.suggestions" key="s">
+        <li onclick={selectSuggestion(s)}>{s}</li>
+      </template>
+    </ul>
+  </template>
 </div>
 
 <script>

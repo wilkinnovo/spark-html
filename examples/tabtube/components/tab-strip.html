@@ -12,6 +12,93 @@
 <script>
   const tabtube = useStore('tabtube');
 
+  // Keep the active tab in view — whether it was switched to here, or its
+  // videoId became active some OTHER way (picking an already-open video
+  // from the results list or My Lists both just set tabtube.activeId, the
+  // same store field this reacts to). rAF so it runs after the :class
+  // binding above has actually applied "active" to the new tab's element.
+  $: {
+    if (tabtube.activeId) {
+      requestAnimationFrame(() => {
+        document.querySelector('.tab.active')?.scrollIntoView({ behavior: 'smooth', inline: 'nearest', block: 'nearest' });
+      });
+    }
+  }
+
+  // No visible scrollbar on the tab strip (see style.css) — grab-and-drag
+  // is the only way to scroll it with a mouse (trackpad/touch already
+  // scroll it natively via overflow-x, untouched here).
+  //
+  // LAZY capture: pointerdown itself does NOT call preventDefault() or
+  // setPointerCapture() — both are deferred until an actual pointermove
+  // crosses the drag threshold. Calling preventDefault() on pointerdown
+  // unconditionally seemed like the obvious fix for the browser's native
+  // image-drag/text-selection fighting the scrollLeft assignment below,
+  // but per the Pointer Events spec, preventDefault() on pointerdown
+  // suppresses the corresponding compatibility mouse events AND THE CLICK
+  // EVENT TOO — so EVERY plain tap on a tab (not just a real drag) silently
+  // stopped switching tabs, since the click that should have reached the
+  // tab's own onclick never fired at all. Deferring both calls to the
+  // first pointermove that actually exceeds the threshold means a plain
+  // click never touches either API, and its click event fires completely
+  // normally — only a genuine drag ever invokes them.
+  onMount(() => {
+    let moved = false;
+
+    document.addEventListener('pointerdown', (e) => {
+      if (e.pointerType !== 'mouse') return; // touch/pen already scroll natively
+      // A <button> (the close ✕) has its own click-activation behavior that
+      // setPointerCapture can interfere with regardless — the strip
+      // capturing the pointer can retarget the eventual click AWAY from
+      // the button entirely. Bail out before any of this for real
+      // interactive elements — let them handle their own clicks completely
+      // natively, drag or not.
+      if (e.target.closest('button, a, input')) return;
+      const strip = e.target.closest('.tabstrip');
+      if (!strip) return;
+      const startX = e.clientX;
+      const startScroll = strip.scrollLeft;
+      let dragging = false;
+
+      const onMove = (ev) => {
+        const dx = ev.clientX - startX;
+        if (!dragging) {
+          if (Math.abs(dx) <= 3) return; // still just a click, so far
+          dragging = true;
+          moved = true;
+          strip.classList.add('dragging');
+          strip.setPointerCapture(ev.pointerId);
+        }
+        // Only NOW (a confirmed drag) suppress the browser's own native
+        // image-drag/text-selection — never on the original pointerdown.
+        ev.preventDefault();
+        strip.scrollLeft = startScroll - dx;
+      };
+      const onUp = (ev) => {
+        if (dragging) {
+          strip.classList.remove('dragging');
+          if (strip.hasPointerCapture(ev.pointerId)) strip.releasePointerCapture(ev.pointerId);
+        }
+        document.removeEventListener('pointermove', onMove);
+        document.removeEventListener('pointerup', onUp);
+        document.removeEventListener('pointercancel', onUp);
+        // The native click a real drag ends with fires SYNCHRONOUSLY, right
+        // after this — the setTimeout(0) still lets the capture-phase click
+        // handler below see `moved` for THAT one, then unconditionally
+        // clears it, so a drag that ends somewhere no click follows can't
+        // leave `moved` stuck true, silently swallowing some LATER,
+        // unrelated click.
+        setTimeout(() => { moved = false; }, 0);
+      };
+      document.addEventListener('pointermove', onMove);
+      document.addEventListener('pointerup', onUp);
+      document.addEventListener('pointercancel', onUp);
+    });
+    document.addEventListener('click', (e) => {
+      if (moved) { e.stopPropagation(); e.preventDefault(); }
+    }, true);
+  });
+
   function switchTab(id) {
     tabtube.activeId = id;
   }

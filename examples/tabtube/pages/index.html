@@ -1,8 +1,9 @@
-<!-- TabTube — a YouTube search/watch app with zero database. Two MODULE
-     sources feed `results` (lib/search.js) and `suggestions`
-     (lib/suggestion.js); the client's re-search and live autocomplete both
-     go through spark-ssr's own ambient `refresh()` — no custom api/*.html
-     endpoints.
+<!-- TabTube — a YouTube search/watch app with zero database. Three MODULE
+     sources feed `results` (lib/search.js), `suggestions`
+     (lib/suggestion.js), and `sharedVideo` (lib/video.js, resolving a
+     `?v=<videoId>` shared link — see the onMount below); the client's
+     re-search and live autocomplete both go through spark-ssr's own
+     ambient `refresh()` — no custom api/*.html endpoints.
 
      The results list, filters, and "My Lists" toggle are inlined here
      rather than split into their own component: they need `results` to be
@@ -43,7 +44,17 @@
 
         <div class="results-list">
           <template each="v in results" key="v.videoId">
-            <div class="result-card" :class="v.videoId === tabtube.activeId ? 'active' : ''" :hidden="!matchesFilter(v, tabtube.activeFilter)" onclick={openVideo(v)}>
+            <!-- Hidden (not removed from `results`) while a NEW search is
+                 in flight — see the skeleton block right below: a fresh
+                 search should read as "the list is loading", not "the OLD
+                 query's results, plus a loading row". `results` itself only
+                 gets replaced once refresh() resolves (see doSearch()), so
+                 without this the stale list and the skeleton rows would
+                 show at the same time. Load more (loadingMore) is the
+                 opposite — the existing list stays, skeleton rows just
+                 append after it — so it's deliberately not in this
+                 condition. -->
+            <div class="result-card" :class="v.videoId === tabtube.activeId ? 'active' : ''" :hidden="searching || !matchesFilter(v, tabtube.activeFilter)" onclick={openVideo(v)}>
               <img class="result-thumb" src="{v.thumbnail}" alt="" loading="lazy">
               <div class="result-meta">
                 <p class="result-title">{v.title}</p>
@@ -55,7 +66,18 @@
               </button>
             </div>
           </template>
-          <template if="searching"><p class="empty">Searching…</p></template>
+          <template if="searching">
+            <template each="n in searchSkeletonRows" key="n">
+              <div class="result-card skeleton">
+                <div class="result-thumb skel-block"></div>
+                <div class="result-meta">
+                  <div class="skel-line skel-title"></div>
+                  <div class="skel-line skel-channel"></div>
+                  <div class="skel-line skel-stats"></div>
+                </div>
+              </div>
+            </template>
+          </template>
           <template if="!searching && results.length === 0"><p class="empty">Search for videos above.</p></template>
           <!-- Always mounted (not a <template if>) so the SAME node is
                observed for the whole component's life — an if= branch is
@@ -65,7 +87,18 @@
                report as non-intersecting on its own, so it naturally can't
                trigger loadMore() while there's nothing more to load. -->
           <div class="scroll-sentinel" :hidden="searching || results.length === 0"></div>
-          <template if="loadingMore"><p class="empty">Loading more…</p></template>
+          <template if="loadingMore">
+            <template each="n in moreSkeletonRows" key="n">
+              <div class="result-card skeleton">
+                <div class="result-thumb skel-block"></div>
+                <div class="result-meta">
+                  <div class="skel-line skel-title"></div>
+                  <div class="skel-line skel-channel"></div>
+                  <div class="skel-line skel-stats"></div>
+                </div>
+              </div>
+            </template>
+          </template>
         </div>
       </template>
 
@@ -96,8 +129,23 @@
   let searching = false;
   let loadingMore = false;
   let page = 1;
+  // Placeholder rows for the shimmering skeleton cards — each= just needs
+  // distinct keys, the numbers themselves are never shown.
+  let searchSkeletonRows = [1, 2, 3, 4, 5, 6];
+  let moreSkeletonRows = [1, 2, 3];
 
   tabtube.suggestions = suggestions;
+
+  // A shared `/?v=<videoId>` link (see video-player.html's URL-sync
+  // reactive block, which is what PRODUCES these links) — open it as its
+  // own tab so a fresh visitor lands watching it, not just staring at an
+  // empty player. Only client-side: SSR never runs a page's own <script>
+  // (see bugs.md), so this can't run twice server-side, and a real reload
+  // of the SAME link re-adds it fine (openVideo is itself a no-op for an
+  // already-open tab).
+  onMount(() => {
+    if (sharedVideo) openVideo(sharedVideo);
+  });
 
   // Infinite scroll: observe the sentinel at the end of the results list
   // (relative to .results-list's OWN scroll, not the page's — it's the
@@ -198,4 +246,5 @@
 <spark-ssr>
   results = ./lib/search.js
   suggestions = ./lib/suggestion.js
+  sharedVideo = ./lib/video.js
 </spark-ssr>
