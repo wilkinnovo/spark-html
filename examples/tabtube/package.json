@@ -1,0 +1,19 @@
+{
+  "name": "spark-example-tabtube",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "bun spark-ssr",
+    "start": "bun spark-ssr start",
+    "build": "bun spark-ssr build"
+  },
+  "dependencies": {
+    "spark-html": "*",
+    "spark-ssr": "*",
+    "spark-html-theme": "*",
+    "spark-html-persist": "*",
+    "yt-search": "^2.13.1",
+    "youtube-suggest": "^1.2.0"
+  }
+}

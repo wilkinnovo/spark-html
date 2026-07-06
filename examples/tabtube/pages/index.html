@@ -1,0 +1,285 @@
+<!-- TabTube — a YouTube search/watch app with zero database. Search results
+     come from a MODULE source (lib/search.js, wraps yt-search) for the
+     initial SSR paint of a shareable `/?q=...` URL; the client's own re-
+     searches and live autocomplete go through api/search.html and
+     api/suggest.html instead (a full source-refresh would be too slow to
+     feel like "typing"). Everything else — open tabs, the active video,
+     saved "My Lists" — is local/persisted state, no server round-trip. -->
+<title>{q ? q + ' — ' : ''}TabTube</title>
+<meta name="description" content="Search YouTube and watch, tab by tab — no database, no API key.">
+
+<div class="app">
+  <header class="topbar">
+    <div class="brand"><span class="logo">▶</span> TabTube</div>
+    <div class="tabstrip" role="tablist">
+      <template each="t in tabs" key="t.videoId">
+        <div class="tab" :class="t.videoId === activeTabId ? 'active' : ''" role="tab" onclick={switchTab(t.videoId)}>
+          <img class="tab-thumb" src="{t.thumbnail}" alt="">
+          <span class="tab-title">{t.title}</span>
+          <button type="button" class="tab-close" onclick="{closeTab(t.videoId, event)}" aria-label="Close tab">✕</button>
+        </div>
+      </template>
+      <template if="tabs.length === 0">
+        <p class="tabstrip-empty">Search and pick a video to open your first tab</p>
+      </template>
+    </div>
+    <span import="/components/theme-toggle"></span>
+  </header>
+
+  <div class="body">
+    <aside class="sidebar">
+      <div class="search-box">
+        <input
+          type="search"
+          class="search-input"
+          bind:value="q"
+          oninput={onQueryInput}
+          onkeydown={onSearchKeydown}
+          onfocus="{showSuggestions = suggestions.length > 0}"
+          placeholder="Search"
+          aria-label="Search YouTube"
+        >
+        <template if="q"><button type="button" class="clear-btn" onclick={clearQuery}>✕</button></template>
+        <template if="showSuggestions && suggestions.length > 0">
+          <ul class="suggest-list">
+            <template each="s in suggestions" key="s">
+              <li onclick={selectSuggestion(s)}>{s}</li>
+            </template>
+          </ul>
+        </template>
+      </div>
+
+      <div class="actions-row">
+        <button type="button" class="btn primary" onclick={doSearch} :disabled="!q.trim()">Search</button>
+        <button type="button" class="btn" :class="showMyLists ? 'on' : ''" onclick={toggleMyLists}>My Lists</button>
+      </div>
+
+      <div class="filters" role="tablist">
+        <button type="button" :class="activeFilter === 'all' ? 'on' : ''" onclick={setFilter('all')}>All</button>
+        <button type="button" :class="activeFilter === 'today' ? 'on' : ''" onclick={setFilter('today')}>Today</button>
+        <button type="button" :class="activeFilter === 'week' ? 'on' : ''" onclick={setFilter('week')}>This week</button>
+        <button type="button" :class="activeFilter === 'month' ? 'on' : ''" onclick={setFilter('month')}>This month</button>
+      </div>
+
+      <div class="results-list">
+        <!-- each="v in results" (not a `$: filteredResults` derivation) — the
+             SERVER'S render pass evaluates the template straight against its
+             data-source scope; it never runs the page's OWN <script> at all
+             (not a plain `let` initializer, not a $: derivation, not even a
+             plain function declared there). A `<template if="matchesFilter
+             (…)">` around each row therefore THREW during SSR (matchesFilter
+             undefined) and — unlike a failed :attr, which leaves the
+             attribute alone — a throwing/falsy `if=` on a <template> omits
+             the whole element, hiding every row before hydration ever runs.
+             `:hidden="!matchesFilter(…)"` fails the OPPOSITE way (leaves
+             `hidden` unset on error → visible), which happens to match the
+             desired pre-hydration default anyway (no filter applied yet).
+             See bugs.md. -->
+        <template if="!showMyLists">
+          <template each="v in results" key="v.videoId">
+            <div class="result-card" :class="v.videoId === activeTabId ? 'active' : ''" :hidden="!matchesFilter(v, activeFilter)" onclick={openVideo(v)}>
+              <img class="result-thumb" src="{v.thumbnail}" alt="" loading="lazy">
+              <div class="result-meta">
+                <p class="result-title">{v.title}</p>
+                <p class="result-channel">{v.author.name}</p>
+                <p class="result-stats">{v.viewsFormatted} views · {v.ago}</p>
+              </div>
+              <button type="button" class="save-btn" onclick="{toggleSaved(v, event)}" aria-label="Save to My Lists">
+                {isSaved(v) ? '★' : '☆'}
+              </button>
+            </div>
+          </template>
+          <template if="searching"><p class="empty">Searching…</p></template>
+          <template if="!searching && results.length === 0 && q"><p class="empty">No results for "{q}".</p></template>
+          <template if="!searching && results.length === 0 && !q"><p class="empty">Search for something to get started.</p></template>
+          <template if="!searching && results.length > 0 && !results.some(v => matchesFilter(v, activeFilter))"><p class="empty">Nothing in that time range.</p></template>
+        </template>
+
+        <template if="showMyLists">
+          <template each="v in savedList.items" key="v.videoId">
+            <div class="result-card" :class="v.videoId === activeTabId ? 'active' : ''" onclick={openVideo(v)}>
+              <img class="result-thumb" src="{v.thumbnail}" alt="" loading="lazy">
+              <div class="result-meta">
+                <p class="result-title">{v.title}</p>
+                <p class="result-channel">{v.author.name}</p>
+                <p class="result-stats">{v.viewsFormatted} views · {v.ago}</p>
+              </div>
+              <button type="button" class="save-btn" onclick="{toggleSaved(v, event)}" aria-label="Remove from My Lists">★</button>
+            </div>
+          </template>
+          <template if="savedList.items.length === 0"><p class="empty">Nothing saved yet — click ☆ on a result.</p></template>
+        </template>
+      </div>
+    </aside>
+
+    <main class="player-pane">
+      <template if="activeTab">
+        <div class="player-wrap">
+          <iframe
+            class="player"
+            src="https://www.youtube.com/embed/{activeTab.videoId}?autoplay=1"
+            title="{activeTab.title}"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            allowfullscreen
+          ></iframe>
+        </div>
+        <div class="video-info">
+          <h1>{activeTab.title}</h1>
+          <div class="channel-row">
+            <span class="channel-name">{activeTab.author.name}</span>
+            <span class="stats">{activeTab.viewsFormatted} views · {activeTab.ago}</span>
+            <button type="button" class="btn sm" onclick="{toggleSaved(activeTab, event)}">
+              {isSaved(activeTab) ? '★ Saved' : '☆ Save'}
+            </button>
+          </div>
+        </div>
+      </template>
+      <template if="!activeTab">
+        <div class="empty-player">
+          <p>Select a video from the search results to start watching.</p>
+        </div>
+      </template>
+    </main>
+  </div>
+</div>
+
+<script>
+  import { persist } from 'spark-html-persist';
+
+  // "My Lists" — saved videos survive a reload; open tabs deliberately don't
+  // (a fresh load starts clean, same as opening a browser).
+  //
+  // persist() creates/hydrates the store from localStorage and returns its
+  // proxy — but that returned proxy is NOT itself subscribed to THIS
+  // component's re-render cycle (see bugs.md). Only useStore(name) wires up
+  // the subscription that makes a later mutation actually schedule a patch.
+  // Using persist()'s own return value directly "worked" in the sense that
+  // reads/writes never threw and localStorage updated correctly — the store
+  // WAS reactive, just not to this component: {isSaved(v)} inside the
+  // each-loop stayed frozen at its very first render forever, while a
+  // logically unrelated state change (e.g. toggling My Lists) that happened
+  // to trigger ITS OWN full re-render would incidentally show the correct
+  // data underneath.
+  persist('tabtube-saved', { items: [] });
+  const savedList = useStore('tabtube-saved');
+
+  // `q` itself is NOT declared here — it's a bind:value target the
+  // framework seeds from the live ?q= query string on hydration (and from
+  // req.query.q server-side); declaring it ourselves would make the
+  // framework think we own it and skip that seeding. See bugs.md.
+  let suggestions = [];
+  let showSuggestions = false;
+  let searching = false;
+  let activeFilter = 'all';
+  let tabs = [];
+  let activeTabId = null;
+  let showMyLists = false;
+
+  $: activeTab = tabs.find((t) => t.videoId === activeTabId) || null;
+
+  let suggestDebounce = null;
+  function onQueryInput() {
+    showSuggestions = true;
+    if (suggestDebounce) clearTimeout(suggestDebounce);
+    const term = q;
+    suggestDebounce = setTimeout(async () => {
+      if (!term.trim()) { suggestions = []; return; }
+      const r = await fetch('/api/suggest?q=' + encodeURIComponent(term));
+      suggestions = await r.json();
+    }, 250);
+  }
+
+  function onSearchKeydown(e) {
+    if (e.key === 'Enter') doSearch();
+    if (e.key === 'Escape') showSuggestions = false;
+  }
+
+  function selectSuggestion(s) {
+    q = s;
+    showSuggestions = false;
+    doSearch();
+  }
+
+  function clearQuery() {
+    q = '';
+    suggestions = [];
+    showSuggestions = false;
+  }
+
+  async function doSearch() {
+    showSuggestions = false;
+    if (!q.trim()) return;
+    searching = true;
+    try {
+      const r = await fetch('/api/search?q=' + encodeURIComponent(q));
+      results = await r.json();
+    } finally {
+      searching = false;
+    }
+  }
+
+  function openVideo(v) {
+    if (!tabs.some((t) => t.videoId === v.videoId)) tabs = [...tabs, v];
+    activeTabId = v.videoId;
+  }
+
+  function closeTab(id, event) {
+    event.stopPropagation();
+    const i = tabs.findIndex((t) => t.videoId === id);
+    if (i === -1) return;
+    tabs = tabs.filter((t) => t.videoId !== id);
+    if (activeTabId === id) {
+      const next = tabs[i] || tabs[i - 1];
+      activeTabId = next ? next.videoId : null;
+    }
+  }
+
+  function switchTab(id) {
+    activeTabId = id;
+  }
+
+  function isSaved(v) {
+    return savedList.items.some((x) => x.videoId === v.videoId);
+  }
+
+  function toggleSaved(v, event) {
+    if (event) event.stopPropagation();
+    if (isSaved(v)) {
+      savedList.items = savedList.items.filter((x) => x.videoId !== v.videoId);
+    } else {
+      savedList.items = [...savedList.items, v];
+    }
+  }
+
+  function toggleMyLists() {
+    showMyLists = !showMyLists;
+  }
+
+  function setFilter(f) {
+    activeFilter = f;
+  }
+
+  // yt-search only gives a relative string ("3 days ago"), not a real date —
+  // approximate days-ago from it for the time-range filter pills.
+  function agoDays(ago) {
+    const m = String(ago || '').match(/(\d+)\s*(second|minute|hour|day|week|month|year)/i);
+    if (!m) return Infinity;
+    const n = Number(m[1]);
+    const unit = m[2].toLowerCase();
+    const perDay = { second: 1 / 86400, minute: 1 / 1440, hour: 1 / 24, day: 1, week: 7, month: 30, year: 365 };
+    return n * (perDay[unit] ?? Infinity);
+  }
+
+  function matchesFilter(v, filter) {
+    if (filter === 'all') return true;
+    const days = agoDays(v.ago);
+    if (filter === 'today') return days < 1;
+    if (filter === 'week') return days <= 7;
+    if (filter === 'month') return days <= 31;
+    return true;
+  }
+</script>
+
+<spark-ssr>
+  results = ./lib/search.js
+</spark-ssr>

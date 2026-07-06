@@ -1,0 +1,9 @@
+<!-- TabTube is effectively a single page (the whole app lives in
+     pages/index.html — search, tabs, and the player are all one interactive
+     surface), so the layout is just the shared boilerplate. No nav: the top
+     bar with the open-video tabs IS the page's own interactive state, not
+     layout chrome. -->
+<link rel="stylesheet" href="/style.css">
+<script type="module" src="/app.js"></script>
+
+<slot></slot>
