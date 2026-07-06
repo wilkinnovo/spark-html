@@ -25,6 +25,26 @@ Language server (LSP) for [Spark](https://github.com/wilkinnovo/spark-html) sing
     `{…}` and `<script>`
 - **Hover docs** for every directive and declaration.
 
+## spark-ssr
+
+Any file with a `<spark-ssr>` tag is treated as an SSR page — the analyzer
+picks up spark-ssr's inferred backend so it doesn't false-flag things the
+runtime supplies for you:
+
+- **Inferred page data** — `<spark-ssr table="todos" live />` and named
+  `<spark-ssr>` blocks (`posts = SELECT …`, `GET /api/x → posts = …`, URL/glob/
+  module sources) declare page vars, including the table/singular fuzzy match
+  spark-ssr itself uses (`table="posts"` also satisfies `{post.title}`).
+- **Ambient identifiers** — `session`, `path`, `flash`, `errors`, `values`,
+  and the client-side helpers `api_create`, `api_update`, `api_delete`,
+  `refresh` are always in scope, with hover docs and autocomplete.
+- **Synthesized handlers** — an undeclared `onclick={remove}`-style handler
+  is assumed auto-synthesized by spark-ssr, not flagged as undefined (a
+  plain spark-html component without `<spark-ssr>` still flags it).
+- **Directive docs** for `table`, `live`, `seed`, `limit`, `search`, `cache`,
+  `guard`, `redirect`, `status`, `flash`, `job`, `every`, `on`, `auto`, and
+  the `<spark-pager>`/`<spark-search>`/`<spark-flash>` elements.
+
 ## Install
 
 ```bash

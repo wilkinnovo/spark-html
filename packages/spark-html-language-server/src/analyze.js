@@ -8,6 +8,11 @@
  *
  * All positions are absolute character offsets into the original text; the
  * server converts them to LSP line/character positions.
+ *
+ * spark-ssr aware: a file with a <spark-ssr> tag has its inferred page data
+ * and ambient identifiers (session, path, flash, api_create, …) added to
+ * scope, and undeclared handlers referenced from the template are assumed
+ * synthesized rather than flagged (see analyzeSSR below).
  */
 
 // Identifiers never flagged as "undefined" — JS/browser globals plus the
@@ -35,6 +40,55 @@ export const KNOWN_GLOBALS = new Set([
 ]);
 
 const IDENT = /[A-Za-z_$][\w$]*/g;
+
+// ── spark-ssr awareness ─────────────────────────────────────────────────────
+// spark-ssr (packages/spark-ssr) turns a page's <spark-ssr> block into inferred
+// data, and synthesizes handlers/ambient helpers for interactive pages. Any
+// file containing a <spark-ssr> tag is treated as an SSR page: its named data
+// becomes a declared template binding, its ambient identifiers are never
+// flagged as undefined, and undeclared `on*={handler}` refs are assumed to be
+// auto-synthesized (see spark-ssr's README, "Page scripts — ambient helpers").
+export const SSR_AMBIENT_GLOBALS = new Set([
+  // ambient on every page (template) — request/response context
+  'session', 'path', 'flash', 'errors', 'values',
+  // ambient helpers synthesized into an interactive page's client script
+  'api_create', 'api_update', 'api_delete', 'refresh',
+]);
+
+// Same table/singular fuzzy-match spark-ssr's dataPlan() uses (parse.js) —
+// `table="posts"` also satisfies a template that reads the single row as
+// `{post.title}` on a `[slug].html` page.
+const singular = (s) => (s.endsWith('ies') ? s.slice(0, -3) + 'y' : s.endsWith('s') ? s.slice(0, -1) : s);
+
+// Named data a <spark-ssr> block/tag declares:
+//   <spark-ssr table="todos" live />          → `todos` (+ singular `todo`)
+//   <spark-ssr> posts = SELECT … </spark-ssr> → `posts` (+ singular `post`)
+//   <spark-ssr> GET /api/x → posts = … </spark-ssr>  → same, named-endpoint form
+// A bare `METHOD path → SELECT …` (no `name =`) answers the endpoint directly
+// and declares no page var.
+function analyzeSSR(text) {
+  const vars = new Set();
+  let isSSRPage = false;
+  const add = (name) => { vars.add(name); vars.add(singular(name)); };
+  const tagRe = /<spark-ssr\b([^>]*?)(\/)?>/gi;
+  let m;
+  while ((m = tagRe.exec(text)) !== null) {
+    isSSRPage = true;
+    const tableM = m[1].match(/\btable\s*=\s*"([^"]*)"/);
+    if (tableM) add(tableM[1]);
+    if (m[2]) continue; // self-closing — no block body
+    const bodyStart = m.index + m[0].length;
+    const closeIdx = text.slice(bodyStart).search(/<\/spark-ssr\s*>/i);
+    const body = closeIdx === -1 ? text.slice(bodyStart) : text.slice(bodyStart, bodyStart + closeIdx);
+    for (const line of body.split('\n')) {
+      const l = line.trim();
+      if (!l) continue;
+      const lm = l.match(/^(?:[A-Z]+\s+(?:\S+\s+)?(?:→|->)\s*)?([A-Za-z_$][\w$]*)\s*=\s*.+$/);
+      if (lm) add(lm[1]);
+    }
+  }
+  return { isSSRPage, vars };
+}
 
 // ── masking helpers ────────────────────────────────────────────────────────
 // Replace comments and string/template-literal contents with spaces so regex
@@ -364,7 +418,10 @@ function analyzeTemplate(text, tpl) {
     if (tpl[i] !== '{' || tpl[i - 1] === '\\' || tpl[i - 1] === '$') continue;
     const close = matchingBrace(tpl, i);
     if (close === -1) continue;
-    refs.push(...exprRefs(tpl.slice(i + 1, close), i + 1));
+    // `onclick={add}` etc — spark-ssr synthesizes any undeclared handler an
+    // interactive page references (see analyzeSSR's caller).
+    const inHandler = /on[a-zA-Z]+\s*=\s*"?$/.test(tpl.slice(Math.max(0, i - 40), i));
+    refs.push(...exprRefs(tpl.slice(i + 1, close), i + 1).map((r) => ({ ...r, inHandler })));
     i = close;
   }
 
@@ -412,10 +469,13 @@ export function analyze(text) {
   const tpl = templateMask(text, script);
   const s = analyzeScript(text, script);
   const t = analyzeTemplate(text, tpl);
+  const ssr = analyzeSSR(text);
   const diagnostics = [...s.diagnostics];
 
   const declared = (name, offset) => {
     if (s.declarations.has(name)) return true;
+    if (ssr.vars.has(name)) return true;
+    if (ssr.isSSRPage && SSR_AMBIENT_GLOBALS.has(name)) return true;
     for (const b of t.eachBlocks) {
       if (!b.content || offset < b.content.start || offset >= b.content.end) continue;
       if (name === b.itemVar || name === b.indexVar) return true;
@@ -435,6 +495,7 @@ export function analyze(text) {
 
   // Undefined template bindings.
   for (const ref of t.refs) {
+    if (ssr.isSSRPage && ref.inHandler) continue; // spark-ssr synthesizes it
     if (!declared(ref.name, ref.offset)) {
       diagnostics.push({
         start: ref.offset,
@@ -493,5 +554,7 @@ export function analyze(text) {
     eachBlocks: t.eachBlocks,
     importTags: t.importTags,
     diagnostics,
+    isSSRPage: ssr.isSSRPage,
+    ssrVars: ssr.vars,
   };
 }

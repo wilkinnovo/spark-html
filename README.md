@@ -207,7 +207,7 @@ Spark trades completeness for simplicity — these are deliberate edges, not roa
 | ----------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
 | [`create-spark-html-app`](packages/create-spark-html-app/README.md)           | Scaffold a spark-html app — `bunx create-spark-html-app@latest`.                                       |
 | [`prettier-plugin-spark`](packages/prettier-plugin-spark/README.md)           | Prettier plugin — formats the `<script>`/`<style>` blocks, leaves markup byte-for-byte.                |
-| [`spark-html-language-server`](packages/spark-html-language-server/README.md) | LSP for components — diagnostics, go-to-definition, prop autocomplete, hover docs for every directive. |
+| [`spark-html-language-server`](packages/spark-html-language-server/README.md) | LSP for components (spark-ssr aware) — diagnostics, go-to-definition, prop autocomplete, hover docs for every directive. |
 
 ## This repo
 

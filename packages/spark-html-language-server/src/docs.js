@@ -121,6 +121,115 @@ export const DIRECTIVES = [
     detail: 'dynamic attribute — :attr="expr"',
     doc: 'Any attribute prefixed with `:` is re-evaluated on every state change: `<button :disabled="count >= 10">`, `<div :class="active ? \'on\' : \'off\'">`, `<p :hidden="!open">`. Boolean results toggle the attribute; other values are set as strings.',
   },
+  // ── spark-ssr — full-stack SSR: the template infers the backend ──────────
+  {
+    label: 'spark-ssr',
+    match: /^spark-ssr$/,
+    detail: 'spark-ssr — page data / config element',
+    doc: 'Declares this page\'s data and backend config; stripped from rendered output. Self-closing (`<spark-ssr table="todos" live />`) or a block of named sources: `<spark-ssr>\n  posts = SELECT * FROM posts\n</spark-ssr>`. Sources can be SQL, a URL, a file glob, or a JS module — same block, more worlds.',
+  },
+  {
+    label: 'table',
+    match: /^table$/,
+    detail: 'spark-ssr — <spark-ssr table="name" />',
+    doc: 'Backs this page with a table, inferred entirely from the template: `<spark-ssr table="todos" live />`. Columns come from `{todo.title}` interpolations, `bind:checked`, `type="number"` inputs, etc. `bun spark-ssr db push` applies the inferred schema; auto CRUD (`POST/PATCH/DELETE /api/<table>`) is wired from the handlers the template references.',
+  },
+  {
+    label: 'live',
+    match: /^live$/,
+    detail: 'spark-ssr — realtime refresh across tabs',
+    doc: 'Every write through the server pings `/__spark/live` (SSE) with the table name; every hydrated tab refetches through its own session, scoping intact. No socket code, no pub/sub.',
+  },
+  {
+    label: 'seed',
+    match: /^seed$/,
+    detail: 'spark-ssr — seed data for a table',
+    doc: 'Seed rows applied once, idempotently, only into an empty table: `<spark-ssr table="todos" seed="./seed/todos.json" live />`. Also sharpens inferred column types; auth-table passwords hash on the way in.',
+  },
+  {
+    label: 'limit',
+    match: /^limit$/,
+    detail: 'spark-ssr — page size for a table list',
+    doc: 'Rows per page for a table-backed list: `<spark-ssr table="recipes" limit="20" search="title,ingredients" />`. `?page=2` walks pages; `{recipes.total}` / `{recipes.pages}` become available.',
+  },
+  {
+    label: 'search',
+    match: /^search$/,
+    detail: 'spark-ssr — ?q= full-text columns',
+    doc: 'Columns searched by `?q=…` (`LIKE`) on a table-backed list: `search="title,ingredients"`.',
+  },
+  {
+    label: 'cache',
+    match: /^cache$/,
+    detail: 'spark-ssr — per-source TTL (seconds)',
+    doc: 'Caches this source for N seconds: `cache="60"`. Invalidated automatically when a table it reads from changes — a bounded LRU indexed by table, not a blunt timer.',
+  },
+  {
+    label: 'guard',
+    match: /^guard$/,
+    detail: 'spark-ssr — access-control expression',
+    doc: 'When this expression is falsy, the request is denied: `<spark-ssr guard="session" redirect="/login" />`. Default response is 403 (override with `status=`); with `auth` configured, a bare `guard="session"` defaults to redirecting to `/login`. `guard="session.is_admin"` reads scoped tables unscoped.',
+  },
+  {
+    label: 'redirect',
+    match: /^redirect$/,
+    detail: 'spark-ssr — 303 target',
+    doc: 'On `<spark-ssr guard>`: where a failed guard sends the browser. On a `<form>`: where a successful post 303s to (default: the referrer) — `<form action="/api/posts" method="post" redirect="/admin">`.',
+  },
+  {
+    label: 'status',
+    match: /^status$/,
+    detail: 'spark-ssr — response status for a branch',
+    doc: 'Sets the response status when this branch renders: `<template else status="404"><h1>Not found</h1></template>` — crawlers stop indexing a 200-that-means-404. Also valid on `<spark-ssr guard>` (e.g. `status="401"`).',
+  },
+  {
+    label: 'flash',
+    match: /^flash$/,
+    detail: 'spark-ssr — one-shot message on redirect',
+    doc: 'Sets a flash message that survives the post/redirect: `<form … flash="Saved">`. Read it with the ambient `{flash}` or the default `<spark-flash>` toast.',
+  },
+  {
+    label: 'job',
+    match: /^job$/,
+    detail: 'spark-ssr — background job',
+    doc: 'Runs `jobs/<name>.js` (default export `(req, db) => …`): `<spark-ssr job="digest" every="1d" />` (scheduled) or `<spark-ssr job="onOrder" on="insert:orders" />` (after a matching write, row on `req.row`).',
+  },
+  {
+    label: 'every',
+    match: /^every$/,
+    detail: 'spark-ssr — job schedule',
+    doc: 'Schedule for a `job=`: `every="1d"` (`ms`/`s`/`m`/`h`/`d` units).',
+  },
+  {
+    label: 'on',
+    match: /^on$/,
+    detail: 'spark-ssr — job write trigger',
+    doc: 'Fires a `job=` after a matching write: `on="insert:orders"` (or `update:`/`delete:`/`*:`), with the affected row on `req.row`.',
+  },
+  {
+    label: 'auto',
+    match: /^auto$/,
+    detail: 'spark-ssr — narrow synthesized handlers',
+    doc: 'Limits which handlers get synthesized for a table-backed interactive page: `<spark-ssr auto="create,remove">`. `auto="none"` keeps only the ambient helpers (`api_create`, …) and synthesizes nothing.',
+  },
+  {
+    label: 'spark-pager',
+    match: /^spark-pager$/,
+    detail: 'spark-ssr — no-JS pagination control',
+    doc: 'A drop-in `?page=` control over a table-backed list: `<spark-pager for="posts"/>`.',
+  },
+  {
+    label: 'spark-search',
+    match: /^spark-search$/,
+    detail: 'spark-ssr — no-JS search control',
+    doc: 'A drop-in `?q=` search box over a table-backed list\'s `search=` columns: `<spark-search for="posts"/>`.',
+  },
+  {
+    label: 'spark-flash',
+    match: /^spark-flash$/,
+    detail: 'spark-ssr — default flash-message toast',
+    doc: 'Renders the current ambient `{flash}` message as a styled toast, if one is set. Drop it anywhere in a layout or page — empty (and inert) when there\'s no message.',
+  },
 ];
 
 // Script-side builtins (hover inside <script>).
@@ -129,6 +238,21 @@ export const SCRIPT_BUILTINS = {
   onMount: 'Run a callback after the component is mounted and painted: `onMount(() => { …; return () => cleanup(); })`. The returned function runs when the component is destroyed.',
   props: 'The raw props object passed from the import placeholder\'s attributes. Prefer `export let name = default` for individual declared props.',
   '$:': 'Reactive statement: `$: doubled = count * 2` re-runs whenever any variable it reads changes, before the DOM patch. The assigned variable is implicitly declared.',
+};
+
+// spark-ssr ambient identifiers (hover inside <script> or a template's
+// {…}) — only surfaced for files with a <spark-ssr> tag (see analyze.js's
+// SSR_AMBIENT_GLOBALS, which drives which of these are never "undefined").
+export const SSR_BUILTINS = {
+  session: 'The logged-in user\'s session (or `null`), ambient on every page — set once `auth` is configured in spark.json.',
+  path: 'The current request path, ambient on every page.',
+  flash: 'The one-shot message set by a form\'s `flash="…"`, ambient on every page for one render.',
+  errors: 'Per-field validation errors after a failed form post: `{errors.title}`. Comes from the form\'s constraint attributes (`required`, `maxlength`, …) re-validated server-side.',
+  values: 'The submitted field values after a failed form post, for re-filling inputs: `{values.title}`.',
+  api_create: 'POST to the page\'s table: `await api_create({ title })` → the created row. Pass the table name first when a page declares more than one: `api_create(\'posts\', {…})`.',
+  api_update: 'PATCH a row by id: `await api_update(id, { done: true })` (or `api_update(\'posts\', id, {…})` with multiple tables).',
+  api_delete: 'DELETE a row by id: `await api_delete(id)` (or `api_delete(\'posts\', id)` with multiple tables).',
+  refresh: 'Re-runs every source on the page (table, SQL, URL, glob, module) and reassigns its vars: `await refresh()`.',
 };
 
 export function directiveDoc(word) {

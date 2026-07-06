@@ -10,13 +10,18 @@
  * from the target's `export let`, template directives, script symbols),
  * hover (directive + builtin docs, declaration info), and go-to-definition
  * (component imports → file, identifiers → their declaration).
+ *
+ * spark-ssr pages (any file with a <spark-ssr> tag) get extra completion and
+ * hover coverage for inferred page data and ambient helpers (session, path,
+ * flash, api_create, …) — see analyze.js's analyzeSSR and docs.js's
+ * SSR_BUILTINS.
  */
 
 import { existsSync, readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { analyze } from './analyze.js';
-import { directiveDoc, directiveCompletions, SCRIPT_BUILTINS } from './docs.js';
+import { directiveDoc, directiveCompletions, SCRIPT_BUILTINS, SSR_BUILTINS } from './docs.js';
 
 // ── position mapping ───────────────────────────────────────────────────────
 
@@ -184,7 +189,9 @@ export class SparkLanguageServer {
 
     const symbolItems = () => {
       const items = [];
+      const seen = new Set();
       for (const [name, d] of analysis.declarations) {
+        seen.add(name);
         items.push({
           label: name,
           kind: d.kind === 'function' ? 3 : d.kind === 'prop' ? 5 : 6,
@@ -192,8 +199,21 @@ export class SparkLanguageServer {
         });
       }
       for (const [name, doc_] of Object.entries(SCRIPT_BUILTINS)) {
-        if (name === '$:') continue;
+        if (name === '$:' || seen.has(name)) continue;
+        seen.add(name);
         items.push({ label: name, kind: 3, detail: 'spark builtin', documentation: doc_ });
+      }
+      if (analysis.isSSRPage) {
+        for (const name of analysis.ssrVars) {
+          if (seen.has(name)) continue;
+          seen.add(name);
+          items.push({ label: name, kind: 6, detail: 'spark-ssr page data' });
+        }
+        for (const [name, doc_] of Object.entries(SSR_BUILTINS)) {
+          if (seen.has(name)) continue;
+          seen.add(name);
+          items.push({ label: name, kind: name.startsWith('api_') || name === 'refresh' ? 3 : 6, detail: 'spark-ssr ambient', documentation: doc_ });
+        }
       }
       return items;
     };
@@ -273,6 +293,12 @@ export class SparkLanguageServer {
         import: `imported binding \`${bare}\``,
       }[decl.kind];
       return md(label);
+    }
+    if (analysis.isSSRPage && bare) {
+      if (SSR_BUILTINS[bare]) return md(`**\`${bare}\`** — ${SSR_BUILTINS[bare]}`);
+      if (analysis.ssrVars.has(bare)) {
+        return md(`**\`${bare}\`** — spark-ssr page data, inferred from this page's \`<spark-ssr>\`.`);
+      }
     }
     return null;
   }

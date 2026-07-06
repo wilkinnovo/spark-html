@@ -25,13 +25,20 @@ export interface Analysis {
   declarations: Map<string, Declaration>;
   props: { name: string; offset: number }[];
   imports: { spec: string; locals: { name: string; offset: number }[] }[];
-  templateRefs: { name: string; offset: number }[];
+  templateRefs: { name: string; offset: number; inHandler?: boolean }[];
   importTags: { path: string; valueStart: number; valueEnd: number; tagStart: number; tagEnd: number }[];
   diagnostics: Diagnostic[];
+  /** True when the file has a `<spark-ssr>` tag — an SSR page (see spark-ssr). */
+  isSSRPage: boolean;
+  /** Page data spark-ssr infers from `table=` / named `<spark-ssr>` blocks (plus the singular form). */
+  ssrVars: Set<string>;
 }
 
 /** Analyze a component source string (offsets are into that string). */
 export function analyze(text: string): Analysis;
+
+/** Ambient identifiers spark-ssr injects into an SSR page's scope (session, api_create, …). */
+export const SSR_AMBIENT_GLOBALS: Set<string>;
 
 /** The LSP server core — transport-agnostic; feed it decoded JSON-RPC messages. */
 export class SparkLanguageServer {

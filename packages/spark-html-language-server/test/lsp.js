@@ -157,9 +157,61 @@ await test('dynamic :attrs, bind:, if/else-if refs are checked; strings/comments
 await test('directive docs cover the core + package directives', () => {
   for (const w of ['each', 'if', 'else-if', 'await', 'then', 'catch', 'key',
     'bind:value', 'bind:group', 'route', 'transition', 'transition:fade',
-    ':hidden', 'spark-ignore', 'import']) {
+    ':hidden', 'spark-ignore', 'import',
+    'spark-ssr', 'table', 'live', 'seed', 'limit', 'search', 'cache', 'guard',
+    'redirect', 'status', 'flash', 'job', 'every', 'auto',
+    'spark-pager', 'spark-search', 'spark-flash']) {
     assert.ok(directiveDoc(w), `doc for ${w}`);
   }
+});
+
+// ── spark-ssr awareness ─────────────────────────────────────────────────────
+
+await test('spark-ssr: table= declares the page var (and its singular)', () => {
+  const a = analyze(`<template each="todo in todos"><li>{todo.title}</li></template>
+<spark-ssr table="todos" live />`);
+  assert.equal(byCode(a, 'undefined-binding').length, 0);
+  assert.ok(a.isSSRPage);
+  assert.ok(a.ssrVars.has('todos') && a.ssrVars.has('todo'));
+});
+
+await test('spark-ssr: named-data block declares vars, incl. the METHOD → name = form', () => {
+  const a = analyze(`<h1>{post.title}</h1><p>{author.name}</p>
+<spark-ssr>
+  GET /api/posts → posts = SELECT * FROM posts WHERE published = 1
+  author = SELECT id, name, bio FROM users LIMIT 1
+</spark-ssr>`);
+  assert.equal(byCode(a, 'undefined-binding').length, 0, 'post/author both resolved (post via singular(posts))');
+});
+
+await test('spark-ssr: URL/glob/module sources also declare their var name', () => {
+  const a = analyze(`<p>{repo.name} {weather.temp}</p>
+<template each="p in posts"><p>{p.body}</p></template>
+<spark-ssr>
+  repo    = https://api.github.com/repos/wilkinnovo/spark-html
+  posts   = ./content/posts/*.md
+  weather = ./lib/weather.js
+</spark-ssr>`);
+  assert.equal(byCode(a, 'undefined-binding').length, 0);
+});
+
+await test('spark-ssr: ambient globals (session/path/flash/errors/values) never flagged', () => {
+  const a = analyze(`<p>{session} {path} {flash} {errors.title} {values.title}</p>
+<spark-ssr table="posts" />`);
+  assert.equal(byCode(a, 'undefined-binding').length, 0);
+});
+
+await test('spark-ssr: undeclared handler refs are assumed synthesized; non-SSR pages still flag them', () => {
+  const ssr = analyze(`<button onclick={remove}>x</button>\n<spark-ssr table="todos" />`);
+  assert.equal(byCode(ssr, 'undefined-binding').length, 0);
+  const core = analyze(`<button onclick={remove}>x</button>`);
+  assert.equal(byCode(core, 'undefined-binding').length, 1);
+});
+
+await test('spark-ssr: hover on ambient helpers and page data', () => {
+  const src = `<p>{posts.length} {session}</p>\n<spark-ssr table="posts" />`;
+  const a = analyze(src);
+  assert.ok(a.ssrVars.has('posts'));
 });
 
 await test('position mapping round-trips', () => {
@@ -270,6 +322,25 @@ await test('server: hover documents directives and declarations', () => {
   assert.match(hoverAt('bind:value').contents.value, /Two-way binding/);
   assert.match(hoverAt('each=').contents.value, /Repeat/);
   assert.match(hoverAt('draft = ').contents.value, /component state/);
+});
+
+await test('server: spark-ssr hover + completion surface ambient helpers and page data', () => {
+  const { request, notify } = makeServer();
+  request('initialize', {});
+  const src = `<p>{posts.length}</p>\n<button onclick={create}>Add</button>\n<spark-ssr table="posts" />`;
+  notify('textDocument/didOpen', { textDocument: { uri: 'file:///ssr.html', text: src } });
+  const hoverAt = (needle, delta = 1) => request('textDocument/hover', {
+    textDocument: { uri: 'file:///ssr.html' },
+    position: offsetToPosition(src, src.indexOf(needle) + delta),
+  });
+  assert.match(hoverAt('table=').contents.value, /Backs this page with a table/);
+  assert.match(hoverAt('posts.length').contents.value, /spark-ssr page data/);
+
+  const pos = offsetToPosition(src, src.indexOf('{posts') + 1);
+  const result = request('textDocument/completion', { textDocument: { uri: 'file:///ssr.html' }, position: pos });
+  const labels = result.items.map((i) => i.label);
+  assert.ok(labels.includes('posts'), 'ssr page var offered');
+  assert.ok(labels.includes('api_create') && labels.includes('refresh'), `ssr ambients offered in ${labels}`);
 });
 
 await test('server: didChange re-publishes; didClose clears; unknown requests answered', () => {
