@@ -855,9 +855,9 @@
     "semantic_hash": "f1874e644097106dd81c10eb62b714eb"
   },
   "README.md": {
-    "mtime": 1783155049.1537974,
-    "ast_hash": "098c26e0539542dc17cd6ea6ec80fcb2",
-    "semantic_hash": "098c26e0539542dc17cd6ea6ec80fcb2"
+    "mtime": 1783304948.7706711,
+    "ast_hash": "3077a0853876c71dd2f7d1d14c5ffd58",
+    "semantic_hash": "3077a0853876c71dd2f7d1d14c5ffd58"
   },
   "examples/basic/components/app.html": {
     "mtime": 1782948680.238207,
@@ -1555,9 +1555,9 @@
     "semantic_hash": "95cca61c62a738551c711b599449ed66"
   },
   "website/public/banner.svg": {
-    "mtime": 1783125515.0502076,
-    "ast_hash": "7defe6d07573f2dbde771138e5fde06d",
-    "semantic_hash": "7defe6d07573f2dbde771138e5fde06d"
+    "mtime": 1783271600.0189493,
+    "ast_hash": "a406ec5cb2838093b58d7db4915bef1f",
+    "semantic_hash": "a406ec5cb2838093b58d7db4915bef1f"
   },
   "packages/create-spark-html-app/template-prerender/public/lib/format.js": {
     "mtime": 1782951105.1086864,
@@ -1783,5 +1783,200 @@
     "mtime": 1783269958.2117636,
     "ast_hash": "b023a7f11af30881f05b46eda2ee7b7d",
     "semantic_hash": "b023a7f11af30881f05b46eda2ee7b7d"
+  },
+  "examples/pinterest/api/follow.html": {
+    "mtime": 1783310496.5190122,
+    "ast_hash": "34fc97243337e1caaa15dce99459e483",
+    "semantic_hash": "34fc97243337e1caaa15dce99459e483"
+  },
+  "examples/pinterest/api/like.html": {
+    "mtime": 1783310479.052848,
+    "ast_hash": "5e0bfb6eea7bc89d7a313969e451d1d3",
+    "semantic_hash": "5e0bfb6eea7bc89d7a313969e451d1d3"
+  },
+  "examples/pinterest/api/save.html": {
+    "mtime": 1783310487.2865365,
+    "ast_hash": "63c94c74365d561efef69456402b03e8",
+    "semantic_hash": "63c94c74365d561efef69456402b03e8"
+  },
+  "examples/pinterest/components/nav.html": {
+    "mtime": 1783311246.430164,
+    "ast_hash": "67f336f1d84de90222a6fb368c3daee7",
+    "semantic_hash": "67f336f1d84de90222a6fb368c3daee7"
+  },
+  "examples/pinterest/components/theme-toggle.html": {
+    "mtime": 1783310049.0108042,
+    "ast_hash": "06e71895653a35b45be03a9fab2ce17c",
+    "semantic_hash": "06e71895653a35b45be03a9fab2ce17c"
+  },
+  "examples/pinterest/pages/_layout.html": {
+    "mtime": 1783311261.2193093,
+    "ast_hash": "caf341e70edb33be532c5f4505555cf3",
+    "semantic_hash": "caf341e70edb33be532c5f4505555cf3"
+  },
+  "examples/pinterest/pages/board/[id].html": {
+    "mtime": 1783310819.0700452,
+    "ast_hash": "76ca4bb8cd3d003dbb2378c3da6a14de",
+    "semantic_hash": "76ca4bb8cd3d003dbb2378c3da6a14de"
+  },
+  "examples/pinterest/pages/boards/new.html": {
+    "mtime": 1783310193.071159,
+    "ast_hash": "4b5dfbc90c4a2b9f9db23898c603f6e5",
+    "semantic_hash": "4b5dfbc90c4a2b9f9db23898c603f6e5"
+  },
+  "examples/pinterest/pages/create.html": {
+    "mtime": 1783310177.2240098,
+    "ast_hash": "fe3a5bf52c52d6b1cdf6b09008464f25",
+    "semantic_hash": "fe3a5bf52c52d6b1cdf6b09008464f25"
+  },
+  "examples/pinterest/pages/index.html": {
+    "mtime": 1783310221.7494285,
+    "ast_hash": "8a668d0433ff043d8d36edc50348d1a8",
+    "semantic_hash": "8a668d0433ff043d8d36edc50348d1a8"
+  },
+  "examples/pinterest/pages/login.html": {
+    "mtime": 1783310144.9407063,
+    "ast_hash": "e2bcf8430bf8e86177a0b6a8a9f49578",
+    "semantic_hash": "e2bcf8430bf8e86177a0b6a8a9f49578"
+  },
+  "examples/pinterest/pages/pin/[id].html": {
+    "mtime": 1783310819.0711753,
+    "ast_hash": "0d19c798a436ab5f4ed5922e01ad0aeb",
+    "semantic_hash": "0d19c798a436ab5f4ed5922e01ad0aeb"
+  },
+  "examples/pinterest/pages/signup.html": {
+    "mtime": 1783310161.1538587,
+    "ast_hash": "946a0f8053d6994e7dd52f09e1711b6d",
+    "semantic_hash": "946a0f8053d6994e7dd52f09e1711b6d"
+  },
+  "examples/pinterest/pages/u/[username].html": {
+    "mtime": 1783312320.6696916,
+    "ast_hash": "8dddedcd2b23bef2be367e2262bd4107",
+    "semantic_hash": "8dddedcd2b23bef2be367e2262bd4107"
+  },
+  "examples/tabtube/components/search-box.html": {
+    "mtime": 1783357885.7918377,
+    "ast_hash": "cfbd5c4c0cff3267ad9dd64eec614e07",
+    "semantic_hash": "cfbd5c4c0cff3267ad9dd64eec614e07"
+  },
+  "examples/tabtube/components/tab-strip.html": {
+    "mtime": 1783362009.6886506,
+    "ast_hash": "15bd83a00d52057589c08062f1f9c4f3",
+    "semantic_hash": "15bd83a00d52057589c08062f1f9c4f3"
+  },
+  "examples/tabtube/components/theme-toggle.html": {
+    "mtime": 1783324296.0168846,
+    "ast_hash": "1a73397033a09957270455c3af11bfb0",
+    "semantic_hash": "1a73397033a09957270455c3af11bfb0"
+  },
+  "examples/tabtube/components/video-player.html": {
+    "mtime": 1783362494.0340066,
+    "ast_hash": "6552e230eb927202ded5299b0ecafc3f",
+    "semantic_hash": "6552e230eb927202ded5299b0ecafc3f"
+  },
+  "examples/tabtube/pages/_layout.html": {
+    "mtime": 1783324324.1451554,
+    "ast_hash": "7ee436180488b6e0674e0002d5f5bdd1",
+    "semantic_hash": "7ee436180488b6e0674e0002d5f5bdd1"
+  },
+  "examples/tabtube/pages/index.html": {
+    "mtime": 1783362481.5918434,
+    "ast_hash": "708de096c85431bf12ff8fd47546da11",
+    "semantic_hash": "708de096c85431bf12ff8fd47546da11"
+  },
+  "examples/pinterest/public/img/avatar-ada.svg": {
+    "mtime": 1783309648.8808482,
+    "ast_hash": "07509cdaaf74c967b0c36d92f6e0dae4",
+    "semantic_hash": "07509cdaaf74c967b0c36d92f6e0dae4"
+  },
+  "examples/pinterest/public/img/avatar-default.svg": {
+    "mtime": 1783309648.881035,
+    "ast_hash": "f9babeca5b7b6d189127325f1471530e",
+    "semantic_hash": "f9babeca5b7b6d189127325f1471530e"
+  },
+  "examples/pinterest/public/img/avatar-kai.svg": {
+    "mtime": 1783309648.8809814,
+    "ast_hash": "633a6d66a99e111b55b8b26a1bdf4119",
+    "semantic_hash": "633a6d66a99e111b55b8b26a1bdf4119"
+  },
+  "examples/pinterest/public/img/avatar-mira.svg": {
+    "mtime": 1783309648.8810089,
+    "ast_hash": "c98bd44bc687ce4859141f01175f7a41",
+    "semantic_hash": "c98bd44bc687ce4859141f01175f7a41"
+  },
+  "examples/pinterest/public/img/avatar-nova.svg": {
+    "mtime": 1783309648.8809319,
+    "ast_hash": "d7580103cb7906d9b230d62e9d5732c8",
+    "semantic_hash": "d7580103cb7906d9b230d62e9d5732c8"
+  },
+  "examples/pinterest/public/img/seed/photo1.svg": {
+    "mtime": 1783309640.2431486,
+    "ast_hash": "67e41994662a88ffbf0de6ca9b3fa7d6",
+    "semantic_hash": "67e41994662a88ffbf0de6ca9b3fa7d6"
+  },
+  "examples/pinterest/public/img/seed/photo10.svg": {
+    "mtime": 1783309640.243427,
+    "ast_hash": "38e2b568a292c3c25cebb7249cac0a07",
+    "semantic_hash": "38e2b568a292c3c25cebb7249cac0a07"
+  },
+  "examples/pinterest/public/img/seed/photo11.svg": {
+    "mtime": 1783309640.243455,
+    "ast_hash": "f727e08e538af94fe052c60e3ac07b4e",
+    "semantic_hash": "f727e08e538af94fe052c60e3ac07b4e"
+  },
+  "examples/pinterest/public/img/seed/photo12.svg": {
+    "mtime": 1783309640.2434819,
+    "ast_hash": "01e16d9e1710f38f3f6d20ed62b6fdfd",
+    "semantic_hash": "01e16d9e1710f38f3f6d20ed62b6fdfd"
+  },
+  "examples/pinterest/public/img/seed/photo2.svg": {
+    "mtime": 1783309640.2431886,
+    "ast_hash": "4992e1541492bb10b212c11188a9577e",
+    "semantic_hash": "4992e1541492bb10b212c11188a9577e"
+  },
+  "examples/pinterest/public/img/seed/photo3.svg": {
+    "mtime": 1783309640.2432227,
+    "ast_hash": "451c63590bfe5922b71f4de43cec2a4e",
+    "semantic_hash": "451c63590bfe5922b71f4de43cec2a4e"
+  },
+  "examples/pinterest/public/img/seed/photo4.svg": {
+    "mtime": 1783309640.2432535,
+    "ast_hash": "b4864271e193a56fe43bc6cb43676d54",
+    "semantic_hash": "b4864271e193a56fe43bc6cb43676d54"
+  },
+  "examples/pinterest/public/img/seed/photo5.svg": {
+    "mtime": 1783309640.2432866,
+    "ast_hash": "35a11d7b51903eddf49b6417c352fe90",
+    "semantic_hash": "35a11d7b51903eddf49b6417c352fe90"
+  },
+  "examples/pinterest/public/img/seed/photo6.svg": {
+    "mtime": 1783309640.2433136,
+    "ast_hash": "9d5f9e2d4562d7f0f54c6c32070d1388",
+    "semantic_hash": "9d5f9e2d4562d7f0f54c6c32070d1388"
+  },
+  "examples/pinterest/public/img/seed/photo7.svg": {
+    "mtime": 1783309640.2433405,
+    "ast_hash": "b5ef910e8702a73b36ada1cec4fbd186",
+    "semantic_hash": "b5ef910e8702a73b36ada1cec4fbd186"
+  },
+  "examples/pinterest/public/img/seed/photo8.svg": {
+    "mtime": 1783309640.243367,
+    "ast_hash": "2366c2bad785450668f40e36b87c2aef",
+    "semantic_hash": "2366c2bad785450668f40e36b87c2aef"
+  },
+  "examples/pinterest/public/img/seed/photo9.svg": {
+    "mtime": 1783309640.2433958,
+    "ast_hash": "3925dae16c0b246846809bfde8e395d5",
+    "semantic_hash": "3925dae16c0b246846809bfde8e395d5"
+  },
+  "examples/pinterest/uploads/f7552eff-7684-436b-b5cc-e2da62f333c6.png": {
+    "mtime": 1783314141.6436903,
+    "ast_hash": "0301ef703e26e67c7ce09043916f4c61",
+    "semantic_hash": "0301ef703e26e67c7ce09043916f4c61"
+  },
+  "examples/pinterest/uploads/f7552eff-7684-436b-b5cc-e2da62f333c6.webp": {
+    "mtime": 1783314141.701691,
+    "ast_hash": "bb4235ca74c83e7baa99e73404765879",
+    "semantic_hash": "bb4235ca74c83e7baa99e73404765879"
   }
 }
