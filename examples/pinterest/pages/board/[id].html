@@ -61,5 +61,6 @@
       FROM pins p JOIN users u ON u.id = p.user_id JOIN saves s ON s.pin_id = p.id
       WHERE s.board_id = :id
     ) ORDER BY created_at DESC
+  confirmingDelete = ./lib/ssr/false.js
 </spark-ssr>
 <spark-ssr table="boards" />

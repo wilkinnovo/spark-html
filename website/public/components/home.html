@@ -29,7 +29,7 @@
 &lt;/div&gt;</pre>
         <div class="live">
           <p class="live-label">● live — fetched from a CDN, no bundler</p>
-          <div import="https://cdn.jsdelivr.net/gh/wilkinnovo/spark-html@main/website/public/components/url-card.html"></div>
+          <div import="/components/url-card"></div>
         </div>
       </div>
       <!-- Tab 2: the classic single-file component -->
@@ -51,6 +51,7 @@
       </div>
     </div>
   </div>
+  <blockquote class="hero-quote">“Spark-html is what web frameworks could've been if we didn't spend 21 years bolting JS frameworks on top of HTML instead of just reading the HTML.” <cite>— Anon9</cite></blockquote>
 </section>
 
 <div class="chips">
@@ -244,5 +245,10 @@
   .card .nm { padding: 12px 2px 2px; font-size: 15px; font-weight: 600; }
   .card .ds { font-size: 12.5px; color: var(--muted); }
 
+  .hero-quote { margin: 24px 0 0; font-size: 13.5px; line-height: 1.6; color: var(--muted-dim); font-style: italic; border-left: 2px solid var(--spark-ink); padding-left: 16px; max-width: 60ch; }
+  .hero-quote cite { font-style: normal; color: var(--muted); }
+  @media (min-width: 861px) {
+    .hero-quote { grid-column: 2; justify-self: end; text-align: right; border-left: none; border-right: 2px solid var(--spark-ink); padding-left: 0; padding-right: 16px; }
+  }
   @media (max-width: 860px) { .hero { grid-template-columns: 1fr; padding: 48px 0 40px; } }
 </style>

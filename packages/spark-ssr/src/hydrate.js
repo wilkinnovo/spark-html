@@ -132,6 +132,23 @@ export function clientScript({ analysis, plan, tables = [], colsByTable = {}, ke
   const L = [];
   const provided = new Set();               // names the framework declares
   const defined = definedNames(authorScript); // names the author declares
+  // Names the author defines as `function name(…)` — these are their own
+  // client-side implementation (SSR uses the plan's MODULE source instead).
+  // Skip them in plan-driven declarations and refresh so the author's function
+  // is never overwritten by a JSON-serialized undefined (functions can't
+  // round-trip through JSON).
+  const authorFunctions = new Set();
+  const funcRe = /(?:^|[\n;{}])\s*(?:async\s+)?function\s+([a-zA-Z_$][\w$]*)/g;
+  let fm;
+  while ((fm = funcRe.exec(authorScript)) !== null) authorFunctions.add(fm[1]);
+  // Names the author creates as stores via `useStore('name')`. These shouldn't
+  // be plan-driven client declarations — the store IS the client state, and the
+  // plan value (from a MODULE source) is only for SSR rendering. Skip them so
+  // the `useStore` call survives stripDeclarations and the store is created.
+  const storeBacked = new Set();
+  const storeRe = /^\s*(?:let|const|var)\s+([a-zA-Z_$][\w$]*)\s*=\s*useStore\s*\(\s*['"]([^'"]+)['"]\s*\)/gm;
+  let sm;
+  while ((sm = storeRe.exec(authorScript)) !== null) storeBacked.add(sm[1]);
 
   // A [param] route's :id/:slug is a PATH segment — it's never in the query
   // string, so unlike ?q/?sort/?page it can't ride along via location.search
@@ -139,7 +156,12 @@ export function clientScript({ analysis, plan, tables = [], colsByTable = {}, ke
   // The server resolves it once per request and bakes it on here; see
   // shell()'s routeParamsQS in server.js.
   L.push(`import __init from '/__spark/data/${key}.js${routeParamsQS ? '?' + routeParamsQS : ''}';`);
-  for (const p of plan) { L.push(`let ${p.var} = __init.${p.var};`); provided.add(p.var); }
+  for (const p of plan) {
+    if (authorFunctions.has(p.var)) continue; // author's fn is the client impl
+    if (storeBacked.has(p.var)) continue;     // store IS the client state
+    L.push(`let ${p.var} = __init.${p.var};`);
+    provided.add(p.var);
+  }
   // Seeded from the CURRENT query string on the client, not a hardcoded
   // empty default — this script is static and shared across every instance
   // of this route (one /__spark/page/<key>), so it can't bake a per-request
@@ -182,7 +204,11 @@ export function clientScript({ analysis, plan, tables = [], colsByTable = {}, ke
     L.push(`  const __qs = [${JSON.stringify(routeParamsQS)}, __ls].filter(Boolean).join('&');`);
     L.push(`  const __r = await fetch('/__spark/data/${key}.json' + (__qs ? '?' + __qs : ''));`);
     L.push(`  const __d = await __r.json();`);
-    for (const p of plan) L.push(`  ${p.var} = __d.${p.var};`);
+    for (const p of plan) {
+      if (authorFunctions.has(p.var)) continue; // author's fn is the client impl
+      if (storeBacked.has(p.var)) continue;     // store IS the client state
+      L.push(`  ${p.var} = __d.${p.var};`);
+    }
     L.push(`}`);
   }
 

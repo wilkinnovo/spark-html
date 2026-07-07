@@ -91,5 +91,6 @@
   followingCount = SELECT COUNT(*) AS n FROM follows WHERE follower_id = (SELECT id FROM users WHERE username = :username)
   amFollowing = SELECT id FROM follows
     WHERE follower_id = :session.id AND followed_id = (SELECT id FROM users WHERE username = :username) LIMIT 1
+  activeTab = ./lib/ssr/active-tab.js
 </spark-ssr>
 <spark-ssr table="follows" seed="./seed/follows.json" />

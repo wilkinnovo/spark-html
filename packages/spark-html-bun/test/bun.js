@@ -4,8 +4,9 @@
  * invokes it through scripts/test-bun.mjs, which skips when bun is absent.
  */
 import { strict as assert } from 'node:assert';
-import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, existsSync, readdirSync, rmSync, renameSync } from 'node:fs';
-import { join } from 'node:path';
+import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, existsSync, readdirSync, rmSync, renameSync, symlinkSync } from 'node:fs';
+import { join, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { tmpdir } from 'node:os';
 
 import { dev, build, preview, loadConfig } from '../src/index.js';
@@ -33,6 +34,16 @@ function makeProject() {
   writeFileSync(join(root, 'package.json'), JSON.stringify({
     name: 'x', type: 'module', dependencies: { 'spark-html': '*' },
   }));
+  // Symlink spark-html into the temp project so Bun can resolve it from
+  // the import map builder. When the test runs from within the monorepo,
+  // Bun.resolveSync('spark-html', <test-dir>) finds the repo's copy.
+  try {
+    const testDir = dirname(fileURLToPath(import.meta.url));
+    const src = Bun.resolveSync('spark-html', testDir);
+    const nm = join(root, 'node_modules');
+    mkdirSync(nm);
+    symlinkSync(src, join(nm, 'spark-html'));
+  } catch { /* non-monorepo — skip, tests may fail but won't throw setup errors */ }
   return root;
 }
 

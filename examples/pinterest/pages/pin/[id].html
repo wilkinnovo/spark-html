@@ -152,6 +152,8 @@
   pinComments = SELECT c.*, u.name AS author_name, u.username AS author_username, u.avatar AS author_avatar
     FROM comments c JOIN users u ON u.id = c.user_id
     WHERE c.pin_id = :id ORDER BY c.created_at ASC
+  showSaveMenu = ./lib/ssr/false.js
+  confirmingDelete = ./lib/ssr/false.js
 </spark-ssr>
 <spark-ssr table="pins" />
 <spark-ssr table="comments" seed="./seed/comments.json" />
