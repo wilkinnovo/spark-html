@@ -116,6 +116,32 @@ await test('dataPlan: {x.length}/{x.some(...)} don\'t mistake a list source for 
   assert.equal(planB[0].shape, 'row', 'real member access ({post.title}) is unaffected');
 });
 
+await test('dataPlan: ANY method call on a source is list-safe, not just allowlisted names', () => {
+  // Regression: the ARRAY_LIKE_MEMBERS allowlist is finite — a method not on
+  // it (.hasOwnProperty(), .toLocaleString(), ...) still flipped a genuine
+  // list source to 'row'. A member access followed by `(` is a CALL: rows
+  // are plain SQL objects with no methods of their own, so a call can never
+  // be a per-row field read and must never imply single-row shape.
+  const a = analyze('<p>{a.hasOwnProperty(0)}</p><p>{b.toLocaleString()}</p>');
+  const plan = dataPlan(a, [
+    { table: null, bindings: [{ var: 'a', kind: 'sql', sql: 'SELECT id FROM saves' }], routes: [] },
+    { table: null, bindings: [{ var: 'b', kind: 'sql', sql: 'SELECT id FROM saves LIMIT 5' }], routes: [] },
+  ]);
+  const byVar = Object.fromEntries(plan.map((p) => [p.var, p]));
+  assert.equal(byVar.a.shape, 'list', 'x.hasOwnProperty(...) must not imply single-row shape');
+  assert.equal(byVar.b.shape, 'list', 'LIMIT 5 is not single-shaped; x.toLocaleString() is a call');
+
+  // A field read that is NOT a call still marks the root as a row — and a
+  // chained call on a real field ({user.name.toUpperCase()}) keeps it one.
+  const b2 = analyze('<p>{user.name.toUpperCase()}</p>');
+  const planB = dataPlan(b2, [{ table: null, bindings: [{ var: 'user', kind: 'sql', sql: 'SELECT * FROM users WHERE id = :id' }], routes: [] }]);
+  assert.equal(planB[0].shape, 'row', 'a chained call on a field read is still member access');
+
+  // And a called member never becomes an inferred schema column.
+  assert.ok(!(a.memberFields.get('a') || new Set()).has('hasOwnProperty'),
+    'a method call must not register as a data field');
+});
+
 await test('dataPlan: a source referenced only from the page\'s own <script> still becomes real', () => {
   // Regression: dataPlan only walked analysis.needs (template-derived), so
   // a named source used ONLY in the script (`let following = !!amFollowing;`,
