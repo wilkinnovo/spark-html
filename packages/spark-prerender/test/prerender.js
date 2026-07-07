@@ -6,6 +6,7 @@
 import { strict as assert } from 'node:assert';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
+import { readdirSync } from 'node:fs';
 import { prerender } from '../src/prerender.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -200,6 +201,47 @@ await test('a component that both store()s and useStore()s the same store sees r
   assert.ok(storeHtml.includes('class="item">beta<'));
   assert.ok(storeHtml.includes('class="item">gamma<'));
   assert.ok(!storeHtml.includes('Items ()'), 'not the blank-store regression');
+});
+
+// The ENTRY document's own <script type="module"> — inline or external
+// src= — never executed at all; prerender called spark.mount() itself and
+// skipped whatever else the script did (store() setup, most commonly — the
+// standard `store(...); mount();` shape of a scaffolded src/main.js). Found
+// by the M4.6 audit, root-caused as a separate, harder issue than the
+// component-script case above; fixed by actually running the entry
+// script(s) for their side effects before mount() (idempotent, so it's
+// always safe to also call it explicitly afterward either way).
+//
+// This also exercises a second, more fundamental bug the fix's own testing
+// surfaced: the runtime-per-page "isolation" relied on a query-string
+// cache-bust (spark.js?prerender=<random>) — the standard Node trick — but
+// Bun resolves file: imports by path and ignores the query, so it silently
+// returned the SAME module (and `stores` Map) for every page. Both fixtures
+// below reuse the store name 'todos' with DIFFERENT data specifically so a
+// regression shows up as one page's items leaking into the next, not just
+// as "the store is empty." Fixed by copying the runtime to a genuinely
+// distinct temp file per page instead of a query string.
+const entryInlineHtml = await prerender(join(here, 'fixture', 'entry-store-inline.html'));
+const entryExternalHtml = await prerender(join(here, 'fixture', 'entry-store-external.html'));
+
+await test('an INLINE entry <script type="module"> that store()s before mount() actually runs', () => {
+  assert.ok(entryInlineHtml.includes('Items (2)'), 'entry script\'s store() reached the component');
+  assert.ok(entryInlineHtml.includes('class="item">inline-a<'));
+  assert.ok(entryInlineHtml.includes('class="item">inline-b<'));
+  assert.ok(!entryInlineHtml.includes('Items ()'), 'not the blank-store regression');
+});
+
+await test('an EXTERNAL entry <script type="module" src="…"> that store()s before mount() actually runs', () => {
+  assert.ok(entryExternalHtml.includes('Items (3)'), 'entry script\'s store() reached the component');
+  assert.ok(entryExternalHtml.includes('class="item">ext-a<'));
+  assert.ok(entryExternalHtml.includes('class="item">ext-b<'));
+  assert.ok(entryExternalHtml.includes('class="item">ext-c<'));
+  assert.ok(!entryExternalHtml.includes('Items ()'), 'not the blank-store regression');
+});
+
+await test('entry script execution leaves no temp file behind', () => {
+  const files = readdirSync(join(here, 'fixture'));
+  assert.ok(!files.some((f) => f.startsWith('.spark-prerender-entry-')), 'temp file was cleaned up');
 });
 
 console.log(`\n${pass} passed, ${fail} failed`);

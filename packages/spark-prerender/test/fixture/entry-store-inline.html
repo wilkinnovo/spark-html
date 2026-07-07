@@ -1,0 +1,15 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>entry store inline</title>
+  </head>
+  <body>
+    <div import="components/store-reader"></div>
+    <script type="module">
+      import { mount, store } from 'spark-html';
+      store('todos', { items: ['inline-a', 'inline-b'] });
+      mount();
+    </script>
+  </body>
+</html>

@@ -9,9 +9,10 @@
  * runtime expects, run the REAL `mount()`, let the component tree settle,
  * then serialize `document`. One renderer, one source of truth, zero drift.
  */
-import { readFile, access } from 'node:fs/promises';
+import { readFile, access, writeFile, unlink } from 'node:fs/promises';
 import { resolve, dirname, join } from 'node:path';
-import { pathToFileURL } from 'node:url';
+import { pathToFileURL, fileURLToPath } from 'node:url';
+import { tmpdir } from 'node:os';
 import { parseHTML } from 'linkedom';
 
 // A component request is a relative `*.html` (the runtime always appends
@@ -36,6 +37,57 @@ async function tryReadComponentFile(reqPath, roots) {
     }
   }
   return null;
+}
+
+// A REAL browser executes the entry document's own <script type="module">
+// tags (inline or src=) as part of loading the page — that's how
+// `store('todos', {...}); mount();` in a scaffolded src/main.js actually
+// runs. linkedom doesn't execute <script> tags at all, and prerender used to
+// go straight to calling spark.mount() itself, silently skipping whatever
+// else the entry script did first (any store()/setup code). Run it for
+// real, for its side effects — mount() is idempotent (bootComponent skips
+// already-booted elements), so it's always safe to also call it explicitly
+// afterward, whether or not the entry script called it itself.
+//
+// The one thing that needs care: the script's own `import … from
+// 'spark-html'` must resolve to the SAME cache-busted instance prerender
+// itself mounted with (see importModule's comment above) — a plain import
+// would get Node's normal, non-busted resolution and a second `stores` Map.
+// Rewritten source is written to a sibling temp file (not a data: URL) so
+// the script's own relative imports (`./helpers.js`) still resolve normally.
+const SPARK_HTML_IMPORT_RE = /(\bfrom\s*['"])spark-html(['"])|(\bimport\(\s*['"])spark-html(['"]\s*\))/g;
+
+async function runEntryScripts(document, entryAbs, cacheBustedSparkUrl, roots) {
+  for (const el of [...document.querySelectorAll('script[type="module"]')]) {
+    const src = el.getAttribute('src');
+    let code, baseDir;
+    if (src) {
+      if (/^[a-z][a-z0-9+.-]*:\/\//i.test(src)) continue; // remote — nothing to run at build time
+      const clean = src.split(/[?#]/)[0];
+      let file = null;
+      for (const root of roots) {
+        const candidate = clean.startsWith('/') ? join(root, clean.slice(1)) : join(dirname(entryAbs), clean);
+        try { await access(candidate); file = candidate; break; } catch { /* try the next root */ }
+      }
+      if (!file) { console.warn(`[spark-prerender] entry script src="${src}" not found — skipped`); continue; }
+      code = await readFile(file, 'utf8');
+      baseDir = dirname(file);
+    } else {
+      code = el.textContent || '';
+      baseDir = dirname(entryAbs);
+    }
+    const rewritten = code.replace(SPARK_HTML_IMPORT_RE, (m, f1, f2, i1, i2) =>
+      f1 ? `${f1}${cacheBustedSparkUrl}${f2}` : `${i1}${cacheBustedSparkUrl}${i2}`);
+    const tmp = join(baseDir, `.spark-prerender-entry-${Date.now()}-${Math.random().toString(36).slice(2)}.mjs`);
+    try {
+      await writeFile(tmp, rewritten, 'utf8');
+      await import(pathToFileURL(tmp).href);
+    } catch (e) {
+      console.warn(`[spark-prerender] entry script${src ? ` "${src}"` : ''} threw — ${e.message}. Falling back to mount()-only for this page.`);
+    } finally {
+      await unlink(tmp).catch(() => {});
+    }
+  }
 }
 
 // Run `fn` with `globalThis[k] = values[k]`, restoring the previous values
@@ -403,6 +455,7 @@ export async function prerender(entryPath, options = {}) {
   // runtime below; every call to importModule happens after that (component
   // scripts only run during/after mount()).
   let sparkModulePromise = null;
+  let runtimeCopy = null; // the per-page temp copy of the runtime — see below; cleaned up once this whole call is done
   const importModule = async (spec, importerPath) => {
     const clean = String(spec).split(/[?#]/)[0];
     if (clean === 'spark-html' && sparkModulePromise) return sparkModulePromise;
@@ -426,68 +479,96 @@ export async function prerender(entryPath, options = {}) {
   return withGlobals(
     { window, document, Node: window.Node, requestAnimationFrame, fetch, __SPARK_PRERENDER__: true, __SPARK_AWAITS__: awaits, __SPARK_IMPORT__: importModule, ...stubs },
     async () => {
-      // Import the runtime FRESH per page (cache-busted) so its module-load
-      // cloak + caches bind to THIS document, and pages stay isolated.
+      // Import the runtime FRESH per page so its module-load cloak + caches
+      // (and, crucially, its `stores` Map — store() state must never leak
+      // from one prerendered page into the next in the same batch build)
+      // bind to THIS document only. A query-string cache-bust
+      // (`spark.js?prerender=<random>`) is the standard Node trick for
+      // this, but Bun resolves file: URLs by path and ignores the query
+      // entirely — `import(url + '?a')` and `import(url + '?b')` come back
+      // as the literal same module instance, so every page after the first
+      // in a batch silently inherited the previous page's stores. Copy the
+      // runtime to a genuinely distinct temp file per page instead — a
+      // different path is the only cache key Bun actually respects.
       const url = import.meta.resolve('spark-html');
-      sparkModulePromise = import(url + '?prerender=' + Math.random().toString(36).slice(2));
+      const runtimeCode = await readFile(fileURLToPath(url), 'utf8');
+      runtimeCopy = join(tmpdir(), `spark-prerender-runtime-${Date.now()}-${Math.random().toString(36).slice(2)}.mjs`);
+      await writeFile(runtimeCopy, runtimeCode, 'utf8');
+      const cacheBustedUrl = pathToFileURL(runtimeCopy).href;
+      // NOT cleaned up here: an entry/component script may still need to
+      // import this same URL later in this call (importModule's bare
+      // 'spark-html' branch, and runEntryScripts' rewrite both point at
+      // it) — Bun's resolver needs the file to exist even for a specifier
+      // it's already cached, so deleting it as soon as THIS import settles
+      // breaks those later imports. Cleaned up once the whole call is done.
+      sparkModulePromise = import(cacheBustedUrl);
       const spark = await sparkModulePromise;
+      try {
+        // Run the entry document's own <script type="module"> for its side
+        // effects (store() setup, etc.) — see runEntryScripts' own comment.
+        await runEntryScripts(document, entryAbs, cacheBustedUrl, roots);
 
-      // ── Settle loop (design §5): the tree expands in waves — rAF reveals,
-      //    and imports inside each/if resolve asynchronously, fetching more
-      //    children, AND an import inside a template if/each boots in a `.then`
-      //    callback after its fetch. If we stop while one of those is still
-      //    queued, it would run after withGlobals tears the globals down
-      //    (document/requestAnimationFrame undefined). So drain microtasks
-      //    thoroughly and require TWO consecutive fully-idle passes before
-      //    declaring the tree quiet.
-      const settle = async () => {
-        let idle = 0;
-        for (let pass = 0; pass < maxPasses; pass++) {
-          const drained = drainRaf();
-          const hadPending = pending.size > 0;
-          if (hadPending) await Promise.all([...pending]);
-          // Drain <template await> promises: wait for the batch to settle so
-          // their :then/:catch content renders (settles may queue more rAF /
-          // fetches / awaits, which the next pass picks up).
-          const hadAwaits = awaits.length > 0;
-          if (hadAwaits) await Promise.allSettled(awaits.splice(0));
-          for (let t = 0; t < 4; t++) await microtaskTurn();
-          const quiet = drained === 0 && !hadPending && !hadAwaits
-            && pending.size === 0 && rafQueue.length === 0 && awaits.length === 0;
-          if (quiet) { if (++idle >= 2) break; } else { idle = 0; }
-        }
-      };
+        // ── Settle loop (design §5): the tree expands in waves — rAF reveals,
+        //    and imports inside each/if resolve asynchronously, fetching more
+        //    children, AND an import inside a template if/each boots in a `.then`
+        //    callback after its fetch. If we stop while one of those is still
+        //    queued, it would run after withGlobals tears the globals down
+        //    (document/requestAnimationFrame undefined). So drain microtasks
+        //    thoroughly and require TWO consecutive fully-idle passes before
+        //    declaring the tree quiet.
+        const settle = async () => {
+          let idle = 0;
+          for (let pass = 0; pass < maxPasses; pass++) {
+            const drained = drainRaf();
+            const hadPending = pending.size > 0;
+            if (hadPending) await Promise.all([...pending]);
+            // Drain <template await> promises: wait for the batch to settle so
+            // their :then/:catch content renders (settles may queue more rAF /
+            // fetches / awaits, which the next pass picks up).
+            const hadAwaits = awaits.length > 0;
+            if (hadAwaits) await Promise.allSettled(awaits.splice(0));
+            for (let t = 0; t < 4; t++) await microtaskTurn();
+            const quiet = drained === 0 && !hadPending && !hadAwaits
+              && pending.size === 0 && rafQueue.length === 0 && awaits.length === 0;
+            if (quiet) { if (++idle >= 2) break; } else { idle = 0; }
+          }
+        };
 
-      await spark.mount(document.body);
-      await settle();
-
-      // ── Phase 2: awaitable data hook. A component may declare an async
-      //    `load()` that fetches API data and assigns it to state. We call
-      //    every load() (data fetches go through the delegate above), await
-      //    them, then re-settle so the loaded content renders into the HTML.
-      //    Phase 1 is unchanged — components without load() never run extra
-      //    work, and load() is a plain function, not a special API.
-      const loaders = [];
-      for (const host of document.querySelectorAll('[name]')) {
-        const fn = host.__sparkScope && host.__sparkScope.load;
-        if (typeof fn === 'function') loaders.push(fn);
-      }
-      if (loaders.length) {
-        await Promise.all(
-          loaders.map(async (fn) => {
-            try { await fn(); } catch (e) { console.warn('[spark-prerender] load() threw:', e.message); }
-          }),
-        );
+        await spark.mount(document.body);
         await settle();
+
+        // ── Phase 2: awaitable data hook. A component may declare an async
+        //    `load()` that fetches API data and assigns it to state. We call
+        //    every load() (data fetches go through the delegate above), await
+        //    them, then re-settle so the loaded content renders into the HTML.
+        //    Phase 1 is unchanged — components without load() never run extra
+        //    work, and load() is a plain function, not a special API.
+        const loaders = [];
+        for (const host of document.querySelectorAll('[name]')) {
+          const fn = host.__sparkScope && host.__sparkScope.load;
+          if (typeof fn === 'function') loaders.push(fn);
+        }
+        if (loaders.length) {
+          await Promise.all(
+            loaders.map(async (fn) => {
+              try { await fn(); } catch (e) { console.warn('[spark-prerender] load() threw:', e.message); }
+            }),
+          );
+          await settle();
+        }
+
+        // Restore the parked <template route> blocks so the client router can
+        // clone them for SPA navigation to the other routes.
+        restoreTemplates();
+
+        injectMetadata(document, metaMap);
+        if (options.hydratable !== false) makeHydratable(document);
+        return serialize(document);
+      } finally {
+        // Only now — every import of this page's runtime (component/entry
+        // scripts included) has had its chance to resolve it.
+        if (runtimeCopy) await unlink(runtimeCopy).catch(() => {});
       }
-
-      // Restore the parked <template route> blocks so the client router can
-      // clone them for SPA navigation to the other routes.
-      restoreTemplates();
-
-      injectMetadata(document, metaMap);
-      if (options.hydratable !== false) makeHydratable(document);
-      return serialize(document);
     },
   );
 }

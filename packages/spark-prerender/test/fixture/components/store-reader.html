@@ -1,0 +1,9 @@
+<p class="count">Items ({todos.items.length})</p>
+<template each="t in todos.items"><span class="item">{t}</span></template>
+
+<script>
+  // Deliberately does NOT call store('todos', …) itself — the entry
+  // document's own script is expected to have done that already, exactly
+  // like a real store('todos', {…}); mount(); in src/main.js.
+  const todos = useStore('todos');
+</script>
