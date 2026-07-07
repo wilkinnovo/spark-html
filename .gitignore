@@ -10,6 +10,9 @@ test-results
 playwright-report
 .last-run.json
 
+# E2E template scaffolding (serve-template-for-e2e.mjs)
+/tmp-e2e-tpl-*
+
 # Bug tracking notes (internal, not for version control)
 packages/spark-html-router/bugs.md
 

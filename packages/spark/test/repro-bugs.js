@@ -1,0 +1,115 @@
+/**
+ * Regression tests for the 0.27.12-0.27.14 reactivity trilogy.
+ *
+ * Each bug is exercised by the fuzzer or caught by a dev-mode invariant;
+ * these tests confirm the scenario is handled correctly today. If a fix
+ * regresses, one of these tests (or the fuzzer) catches it.
+ */
+import './dom-shim.js';
+import { body, parseHTML } from './dom-shim.js';
+import { strict as assert } from 'node:assert';
+
+const { mount, component } = await import('../src/index.js');
+
+// --- 0.27.12 - Infinite reactive loop ---------------------------------
+// Root cause: analyzeScript rewrote let/const/var declarations INSIDE
+// nested function bodies (depth > 0), even when the local shared a name
+// with a scope variable. A $: block calling such a function would trigger
+// a scope write from INSIDE the function (the rewritten local), causing
+// the $: block to re-evaluate -> infinite patch loop (real hang).
+// Fixed by: braceDepths() - rewrites only at brace depth 0.
+async function test_bug_0_27_12() {
+  // The inner `let result = helper()` shares a name with the outer scope
+  // `result`. With the bug, it gets rewritten to `result = helper()`,
+  // writing to the reactive proxy from inside compute() -> re-triggers
+  // $: and creates an infinite loop.
+  var src = '<p class="r">{result}</p><script>' +
+    "let result = '';\n" +
+    "$: result = compute();\n" +
+    'function compute() {\n' +
+    "  let result = helper();\n" +
+    '  return result;\n' +
+    '}\n' +
+    "function helper() { return 'completed'; }\n" +
+    '</script>';
+
+  var timedOut = false;
+  var timer = setTimeout(function() { timedOut = true; }, 5000);
+
+  component('bug2712', src);
+  body.childNodes = [];
+  parseHTML('<div import="bug2712"></div>', body);
+  await mount();
+  clearTimeout(timer);
+
+  assert.ok(!timedOut, '0.27.12: must not hang (infinite loop without braceDepths)');
+  var el = body.querySelector('.r');
+  assert.equal(el.textContent, 'completed', '0.27.12: must produce correct value');
+  console.log('  0.27.12 -- no infinite loop, value correct');
+}
+
+// --- 0.27.13 - Prop stringification -----------------------------------
+// Root cause: <div import v="{expr}"> props went through the string
+// interpolation code path, so an object prop became "[object Object]".
+// Fixed by: evalPropValue evaluates whole-value {expr} directly.
+async function test_bug_0_27_13() {
+  component('inner2713', '<p class="pv">{typeof v}</p><script>let v = props.v;</script>');
+  component('bug2713', '<div import="inner2713" v="{obj}"></div><script>let obj = { a: 1, b: 2 };</script>');
+  body.childNodes = [];
+  parseHTML('<div import="bug2713"></div>', body);
+  await mount();
+  await new Promise(r => setTimeout(r, 10));
+  var pv = body.querySelector('.pv');
+  assert.equal(pv.textContent, 'object', '0.27.13: prop must be object, not stringified');
+  console.log('  0.27.13 -- object prop is not stringified');
+}
+
+// --- 0.27.14 - each-in-if permanently dead ----------------------------
+// Root cause: withSink CLEARED the outer directive's dep set before every
+// run instead of accumulating, so an unrelated sibling mutation could
+// corrupt an outer if's recorded deps and a nested each silently stopped
+// reconciling.
+// Fixed by: dep sets only grow within a run (invariant at index.js:1034).
+async function test_bug_0_27_14() {
+  component('bug2714', '<template if="show">' +
+    '<template each="x in items"><span class="ie">{x}</span></template>' +
+    '</template>' +
+    '<p class="ct">{count}</p>' +
+    '<script>' +
+    'let show = true;\n' +
+    "let items = ['a', 'b'];\n" +
+    'let count = 0;\n' +
+    '</script>');
+  body.childNodes = [];
+  parseHTML('<div import="bug2714"></div>', body);
+  await mount();
+  await new Promise(r => setTimeout(r, 10));
+  var scope = body.querySelector('[name="bug2714"]').__sparkScope;
+  assert.ok(scope, '0.27.14: component must boot');
+  scope.items = ['x', 'y', 'z'];
+  scope.count = 5;
+  await new Promise(r => setTimeout(r, 10));
+  var spans = body.querySelectorAll('.ie');
+  assert.equal(spans.length, 3, '0.27.14: each must reconcile after sibling mutation');
+  assert.equal(spans[0].textContent, 'x', '0.27.14: first item');
+  assert.equal(spans[1].textContent, 'y', '0.27.14: second item');
+  assert.equal(spans[2].textContent, 'z', '0.27.14: third item');
+  var ct = body.querySelector('.ct');
+  assert.equal(ct.textContent, '5', '0.27.14: sibling count must also update');
+  console.log('  0.27.14 -- nested each-in-if reconciles after sibling mutation');
+}
+
+// --- Run ---------------------------------------------------------------
+var passed = 0, failed = 0;
+var fns = [test_bug_0_27_12, test_bug_0_27_13, test_bug_0_27_14];
+for (var i = 0; i < fns.length; i++) {
+  try {
+    await fns[i]();
+    passed++;
+  } catch (e) {
+    failed++;
+    console.log('  X ' + fns[i].name + ': ' + e.message);
+  }
+}
+console.log('\n' + passed + ' passed, ' + failed + ' failed');
+process.exit(failed ? 1 : 0);

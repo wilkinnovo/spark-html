@@ -1,0 +1,30 @@
+name: bench
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  bench:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - name: Install dependencies
+        run: bun install
+      - name: Run spark-ssr benchmark
+        working-directory: packages/spark-ssr
+        run: bun test/bench.js | tee test/bench-output.txt
+      - name: Upload bench output
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: bench-results
+          path: packages/spark-ssr/test/bench-output.txt
+          retention-days: 30
+          if-no-files-found: ignore

@@ -9,6 +9,7 @@ on:
 jobs:
   e2e:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v7
 
@@ -22,7 +23,7 @@ jobs:
       - name: Install Playwright Chromium
         run: bunx playwright install --with-deps chromium
 
-      - name: Run e2e (build site + serve + drive in Chromium)
+      - name: Run e2e (site + 4 create-spark-html-app templates)
         run: bun run e2e
 
       - name: Upload report on failure

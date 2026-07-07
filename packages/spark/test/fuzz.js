@@ -18,7 +18,7 @@ import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const __dir = dirname(fileURLToPath(import.meta.url));
-const { mount, component, store } = await import('../src/index.js');
+const { mount, component, store, derived } = await import('../src/index.js');
 
 function mulberry32(a) {
   return () => {
@@ -204,6 +204,74 @@ templates.push({
     const childName = state.childName;
     component(childName, `<p class="pv">{v}</p>`);
     return { name, source: `<div import="${childName}" v="{x}"></div><p class="px">{x}</p><script>let x = ${state.x};</script>` };
+  },
+});
+
+// 9: Store-based reactivity
+templates.push({
+  gen(rng, id) {
+    const name = `fz${id}`;
+    const sn = `fzst${id}`;
+    const v = Math.floor(rng() * 100);
+    store(sn, { v });
+    return { name, source: `<p class="sv">{s.v}</p><script>let s = useStore('${sn}');</script>`, mutators: [
+      { desc: 'set store v', apply: () => { const nv = Math.floor(rng() * 100); store(sn).v = nv; return { v: nv }; } },
+    ], schema: { v, sn } };
+  },
+  rebuild(state) {
+    store(state.sn, { v: state.v });
+    return { name: state.sn, source: `<p class="sv">{s.v}</p><script>let s = useStore('${state.sn}');</script>` };
+  },
+});
+
+// 10: Derived store (computed from a source store)
+templates.push({
+  gen(rng, id) {
+    const name = `fz${id}`;
+    const src = `fzds${id}`;
+    const dst = `fzdd${id}`;
+    const n = Math.floor(rng() * 50);
+    store(src, { n });
+    derived(dst, [src], (s) => ({ d: s.n * 2 }));
+    return { name, source: `<p class="sd">{s.d}</p><script>let s = useStore('${dst}');</script>`, mutators: [
+      { desc: 'set source store n', apply: () => { const nv = Math.floor(rng() * 50); store(src).n = nv; return { n: nv }; } },
+    ], schema: { n, src, dst } };
+  },
+  rebuild(state) {
+    store(state.src, { n: state.n });
+    derived(state.dst, [state.src], (s) => ({ d: s.n * 2 }));
+    return { name: state.src, source: `<p class="sd">{s.d}</p><script>let s = useStore('${state.dst}');</script>` };
+  },
+});
+
+// 11: Deep object mutation (nested property, replaced at root)
+templates.push({
+  gen(rng, id) {
+    const name = `fz${id}`;
+    const a = Math.floor(rng() * 50);
+    const c = Math.floor(rng() * 50);
+    const obj = { a, nested: { c } };
+    return { name, source: `<p class="da">{obj.a}</p><p class="dc">{obj.nested.c}</p><script>let obj = ${JSON.stringify(obj)};</script>`, mutators: [
+      { desc: 'set obj.a', apply: (el) => { const nv = Math.floor(rng() * 50); const o = { ...el.__sparkScope?.obj, a: nv }; setScopeVar(el, 'obj', o); return { obj: o }; } },
+      { desc: 'set obj.nested.c (deep)', apply: (el) => { const nv = Math.floor(rng() * 50); const o = { ...el.__sparkScope?.obj, nested: { c: nv } }; setScopeVar(el, 'obj', o); return { obj: o }; } },
+    ], schema: { obj } };
+  },
+  rebuild(state) {
+    return { name: 'deep', source: `<p class="da">{obj.a}</p><p class="dc">{obj.nested.c}</p><script>let obj = ${JSON.stringify(state.obj)};</script>` };
+  },
+});
+
+// 12: Form binding (input value)
+templates.push({
+  gen(rng, id) {
+    const name = `fz${id}`;
+    const txt = pick(rng, ['hello', 'hi', '']);
+    return { name, source: `<input value="{txt}" class="fi" /><p class="ft">{txt}</p><script>let txt = ${JSON.stringify(txt)};</script>`, mutators: [
+      { desc: 'set txt', apply: (el) => { const nv = pick(rng, ['a', 'bc', 'xyz']); setScopeVar(el, 'txt', nv); return { txt: nv }; } },
+    ], schema: { txt } };
+  },
+  rebuild(state) {
+    return { name: 'form', source: `<input value="{txt}" class="fi" /><p class="ft">{txt}</p><script>let txt = ${JSON.stringify(state.txt)};</script>` };
   },
 });
 
