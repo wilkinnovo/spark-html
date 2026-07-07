@@ -323,11 +323,11 @@ function buildProps(node, scope, host) {
       if (!attr.value.includes('{')) continue;
       const segs = parseTemplate(attr.value);
       if (segs.length === 1 && typeof segs[0] === 'object') {
-        const prev = captureSet;
+        const prev = capture.set;
         const deps = new Set();
-        captureSet = deps;
+        capture.set = deps;
         try { segs[0].fn(scope); } catch (e) { /* eval error at mount — deps still capture whatever was read */ }
-        finally { captureSet = prev; }
+        finally { capture.set = prev; }
         if (deps.size) {
           (host.__sparkReactiveProps ||= []).push({ name: attr.name, fn: segs[0].fn, code: segs[0].code, deps });
         }
@@ -527,7 +527,7 @@ import {
 // mechanism rides on the proxies we already have:
 //
 //   • Reads: while a binding (text interpolation, :attr, attr interp, bind
-//     read, or a `$:` statement) is evaluated, `captureSet` is its dep set.
+//     read, or a `$:` statement) is evaluated, `capture.set` is its dep set.
 //     The component scope's `get` trap adds each key read to it — so after
 //     one evaluation we know exactly which top-level keys the binding needs.
 //     (Loop variables resolve in the loop proxy and never reach the scope
@@ -545,22 +545,31 @@ import {
 // two-way write (`bind:value="row.text"`). And a binding that read no
 // trackable key (e.g. `{Math.random()}`) is marked untracked and always
 // re-evaluates. The result is never stale; at worst it does redundant work.
-let captureSet = null;     // Set being filled with the keys a binding reads
-let captureSink = null;    // extra Set that ALSO receives every read (used to
-                           // collect an each-block's full dependency set)
-let gDirtyMode = false;    // is the current walk a targeted (dirty) pass?
-let gDirtyKeys = null;     // keys changed this flush (gating set, live)
-let gDirtyItems = null;    // raw loop-row objects deep-mutated this flush — lets
-                           // a `rows[i].x = y` re-walk only row i, not all rows
+// The capture/dirty state, collected in one object so it can be passed
+// across module boundaries without breaking ESM's "import bindings are
+// read-only from the importer" rule. The binding `capture` is const (never
+// reassigned); its PROPERTIES mutate freely, which IS legal across imports.
+// This is what lets directives.js and component.js read/write the same state
+// once they're split out — the `let` form would have blocked the split.
+// Exported inline (not on the public API line); the M4.1 freeze review
+// buckets shouldEval/withCapture/withSink/capture as internal-only helpers.
+//    set        — Set being filled with the keys a binding reads
+//    sink       — extra Set that ALSO receives every read (collects an
+//                  each-block's full dependency set)
+//    dirtyMode  — is the current walk a targeted (dirty) pass?
+//    dirtyKeys  — keys changed this flush (gating set, live)
+//    dirtyItems — raw loop-row objects deep-mutated this flush — lets a
+//                  `rows[i].x = y` re-walk only row i, not all rows
+export const capture = { set: null, sink: null, dirtyMode: false, dirtyKeys: null, dirtyItems: null };
 
 // A node should re-evaluate this pass if we're in full mode, it has no
 // recorded deps yet (first sight), it's untracked (deps === null), or one of
 // its deps changed.
-function shouldEval(node) {
-  if (!gDirtyMode) return true;
+export function shouldEval(node) {
+  if (!capture.dirtyMode) return true;
   const deps = node.__sparkReadKeys;
   if (deps === undefined || deps === null) return true;
-  return setsIntersect(deps, gDirtyKeys);
+  return setsIntersect(deps, capture.dirtyKeys);
 }
 
 // Run `fn(a, b)` (which evaluates a binding), recording every scope key it
@@ -568,16 +577,16 @@ function shouldEval(node) {
 // always re-evaluate (treated as untracked, never skipped). The dep Set is
 // reused across evaluations of the same node, and the arguments are passed
 // through, so the hot call sites allocate no closure and no Set per patch.
-function withCapture(node, fn, a, b) {
-  const prev = captureSet;
+export function withCapture(node, fn, a, b) {
+  const prev = capture.set;
   let set = node.__sparkReadKeys;
   if (set == null) set = new Set();
   else set.clear();
-  captureSet = set;
+  capture.set = set;
   try {
     return fn(a, b);
   } finally {
-    captureSet = prev;
+    capture.set = prev;
     node.__sparkReadKeys = set.size ? set : null;
   }
 }
@@ -606,16 +615,16 @@ function withCapture(node, fn, a, b) {
 // a large structural change stops touching some field a row used to read —
 // same "at worst redundant work, never stale" tradeoff already used
 // elsewhere in this file.
-function withSink(node, fn, a, b) {
-  const prev = captureSink;
+export function withSink(node, fn, a, b) {
+  const prev = capture.sink;
   let set = node.__sparkReadKeys;
   if (set == null) set = new Set();
   const beforeSize = set.size;
-  captureSink = set;
+  capture.sink = set;
   try {
     return fn(a, b);
   } finally {
-    captureSink = prev;
+    capture.sink = prev;
     // Invariant: dep sets must never shrink (the 0.27.14 lesson).
     // If this fires, something cleared or deleted from a withSink set.
     if (!isPrerender() && set.size < beforeSize) {
@@ -704,8 +713,8 @@ function makeScope(rawCode, componentEl, props = {}) {
       // Record this read for the binding currently being evaluated (Tier 2),
       // and for any enclosing each/if block collecting its full dep set.
       if (typeof key === 'string') {
-        if (captureSet !== null) captureSet.add(key);
-        if (captureSink !== null) captureSink.add(key);
+        if (capture.set !== null) capture.set.add(key);
+        if (capture.sink !== null) capture.sink.add(key);
       }
       const v = target[key];
       // A store proxy manages its own deep reactivity and notifies all
@@ -731,7 +740,7 @@ function makeScope(rawCode, componentEl, props = {}) {
         // A `$:` write during a flush: extend the live gating set so nodes
         // reading this key re-evaluate in the same pass. Don't reschedule —
         // the in-progress flush will patch once at the end.
-        if (gDirtyKeys) gDirtyKeys.add(key);
+        if (capture.dirtyKeys) capture.dirtyKeys.add(key);
         return true;
       }
       // Normal write (e.g. an event handler): record the key and coalesce
@@ -768,24 +777,24 @@ function makeScope(rawCode, componentEl, props = {}) {
     if (!ready || inReactive || reactiveEffects.length === 0) return;
     inReactive = true;
     try {
-      if (!gDirtyMode) {
+      if (!capture.dirtyMode) {
         // Full pass: run every `$:` statement, (re)recording its deps.
         for (const eff of reactiveEffects) withCapture(eff, runEffect, eff);
       } else {
         // Dirty pass: run only statements whose deps changed. A statement's
-        // write extends gDirtyKeys (via the set trap), which can make a later
-        // statement newly dirty — so iterate to a fixpoint. The pass cap is
-        // the statement count (a linear `$:` chain settles in that many
-        // passes); it also bounds any pathological cycle.
+        // write extends capture.dirtyKeys (via the set trap), which can make a
+        // later statement newly dirty — so iterate to a fixpoint. The pass
+        // cap is the statement count (a linear `$:` chain settles in that
+        // many passes); it also bounds any pathological cycle.
         let grew = true;
         let passes = 0;
         while (grew && passes++ <= reactiveEffects.length) {
           grew = false;
           for (const eff of reactiveEffects) {
             if (!shouldEval(eff)) continue;
-            const before = gDirtyKeys.size;
+            const before = capture.dirtyKeys.size;
             withCapture(eff, runEffect, eff);
-            if (gDirtyKeys.size > before) grew = true;
+            if (capture.dirtyKeys.size > before) grew = true;
           }
         }
         if (!isPrerender() && grew && passes > reactiveEffects.length) {
@@ -835,9 +844,9 @@ function makeScope(rawCode, componentEl, props = {}) {
     //     mutated rows — O(changed) instead of O(rows).
     //   • full pass       — anything else (mixed, store, Map/Set, scheduleFull,
     //     a non-loop deep mutation): re-walk everything. Never stale.
-    gDirtyMode = !wasFull && !!keys && !items;
-    gDirtyKeys = gDirtyMode ? keys : null;
-    gDirtyItems = (!wasFull && items && !keys) ? items : null;
+    capture.dirtyMode = !wasFull && !!keys && !items;
+    capture.dirtyKeys = capture.dirtyMode ? keys : null;
+    capture.dirtyItems = (!wasFull && items && !keys) ? items : null;
     try {
       runReactive();
       patch(componentEl, scope);
@@ -851,7 +860,7 @@ function makeScope(rawCode, componentEl, props = {}) {
           if (!rps) continue;
           if (!rps) continue;
           for (const rp of rps) {
-            if (!gDirtyMode || setsIntersect(rp.deps, gDirtyKeys)) {
+            if (!capture.dirtyMode || setsIntersect(rp.deps, capture.dirtyKeys)) {
               child.__sparkScope[rp.name] = runExpr(rp.fn, rp.code, scope);
             }
           }
@@ -860,9 +869,9 @@ function makeScope(rawCode, componentEl, props = {}) {
     } catch (e) {
       reportError(e, { phase: 'update', component: componentEl.getAttribute('name') });
     } finally {
-      gDirtyMode = false;
-      gDirtyKeys = null;
-      gDirtyItems = null;
+      capture.dirtyMode = false;
+      capture.dirtyKeys = null;
+      capture.dirtyItems = null;
     }
   }
   function schedule() {
@@ -1128,7 +1137,7 @@ function walkNode(node, scope, isRoot = false) {
   // loop. Deep mutations (todos.push) take the full-walk path, so they still
   // reconcile correctly.
   if (kind === 3) {
-    if (gDirtyMode && !shouldEval(node)) return;
+    if (capture.dirtyMode && !shouldEval(node)) return;
     withSink(node, patchEach, node, scope);
     return;
   }
@@ -1138,7 +1147,7 @@ function walkNode(node, scope, isRoot = false) {
   // nodes genuinely leave the DOM. May be followed by <template else-if>
   // / <template else> siblings — the whole chain is driven from this head.
   if (kind === 4) {
-    if (gDirtyMode && !shouldEval(node)) return;
+    if (capture.dirtyMode && !shouldEval(node)) return;
     withSink(node, patchIf, node, scope);
     return;
   }
@@ -1162,7 +1171,7 @@ function walkNode(node, scope, isRoot = false) {
   // value) or <template catch> (await = error). Like if/each, the anchor drives
   // dynamic structure and is gated by the keys it reads in dirty mode.
   if (kind === 6) {
-    if (gDirtyMode && !shouldEval(node)) return;
+    if (capture.dirtyMode && !shouldEval(node)) return;
     withSink(node, patchAwait, node, scope);
     return;
   }
@@ -1505,16 +1514,16 @@ function patchAwait(el, scope) {
   // Never in a full pass: that's where async settles re-render, and re-running
   // an inline expr (fetch(url)) there would mint a new promise every time.
   const reEval = firstTime
-    || (!el.__sparkAwaitOnce && gDirtyMode && setsIntersect(exprKeys, gDirtyKeys));
+    || (!el.__sparkAwaitOnce && capture.dirtyMode && setsIntersect(exprKeys, capture.dirtyKeys));
 
   if (reEval) {
     let set = el.__sparkAwaitExprKeys;
     set = set ? (set.clear(), set) : new Set();
-    const prev = captureSet;
-    captureSet = set; // record THIS expr's deps (also flows to the block sink)
+    const prev = capture.set;
+    capture.set = set; // record THIS expr's deps (also flows to the block sink)
     let result;
     try { result = runExpr(el.__sparkAwaitFn, el.__sparkAwaitExpr, scope); }
-    finally { captureSet = prev; }
+    finally { capture.set = prev; }
     el.__sparkAwaitExprKeys = set.size ? set : null;
 
     if (firstTime || result !== el.__sparkAwaitSource) {
@@ -1522,9 +1531,9 @@ function patchAwait(el, scope) {
       startAwait(el, result, scope);
       return;
     }
-  } else if (exprKeys && captureSink) {
+  } else if (exprKeys && capture.sink) {
     // Not re-evaluating this pass — still keep the block's gating deps.
-    for (const k of exprKeys) captureSink.add(k);
+    for (const k of exprKeys) capture.sink.add(k);
   }
 
   // State may have advanced asynchronously since the last walk → swap branch;
@@ -1711,10 +1720,10 @@ function patchEach(el, scope) {
       for (const n of block.nodes) {
         cursor = placeWithRendered(cursor, n);
       }
-      // Pure-row pass (gDirtyItems set): only re-walk a row whose item was
+      // Pure-row pass (capture.dirtyItems set): only re-walk a row whose item was
       // mutated this tick. Otherwise nothing it reads changed, so skip it —
       // this is what turns O(rows) into O(changed rows).
-      if (!gDirtyItems || gDirtyItems.has(rawItem)) {
+      if (!capture.dirtyItems || capture.dirtyItems.has(rawItem)) {
         for (const n of block.nodes) walkNode(n, block.scope, false);
       }
     } else {
@@ -2022,15 +2031,15 @@ function bootComponent(el) {
       const scope = new Proxy(raw, {
         get(target, key) {
           if (typeof key === 'string') {
-            if (captureSet !== null) captureSet.add(key);
-            if (captureSink !== null) captureSink.add(key);
+            if (capture.set !== null) capture.set.add(key);
+            if (capture.sink !== null) capture.sink.add(key);
           }
           return target[key];
         },
         set(target, key, value) {
           if (typeof key === 'symbol') { target[key] = value; return true; }
           target[key] = value;
-          if (gDirtyKeys) gDirtyKeys.add(key);
+          if (capture.dirtyKeys) capture.dirtyKeys.add(key);
           trigger();
           return true;
         },
