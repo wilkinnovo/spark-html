@@ -23,7 +23,8 @@ import { urlSource, globSource, moduleSource, makeSourceCache } from './sources.
 import { makeJobs } from './jobs.js';
 import { makeStatic } from './static.js';
 import { makeScreens, escapeHtml } from './screens.js';
-import { makeRequest } from './request.js';
+import { makeRequest, json } from './request.js';
+import { makeCrud } from './crud.js';
 import { inferSchema, diffSchema, pushSchema, seedTables } from './schema.js';
 // Head semantics live in one place for the whole family: spark-html-head owns
 // title/meta on the client (pushState updates); its /ssr module owns them
@@ -32,8 +33,6 @@ import { inferSchema, diffSchema, pushSchema, seedTables } from './schema.js';
 import { liftHead, renderHead } from 'spark-html-head/ssr';
 
 const AsyncFunction = (async () => {}).constructor;
-const json = (data, status = 200, headers = {}) =>
-  new Response(JSON.stringify(data), { status, headers: { 'content-type': 'application/json', ...headers } });
 const dig = (obj, path) => String(path).split('.').reduce((o, k) => (o == null ? o : o[k]), obj);
 
 // ── pages ──────────────────────────────────────────────────────────────
@@ -282,7 +281,7 @@ export async function serve(options = {}) {
     sweep(); // baseline — the first pass records, it doesn't reload anyone
     watchTimer = setInterval(() => {
       if (!sweep()) return;
-      columnsCache.clear(); // a file changed — a `db push` may have too (§10)
+      clearColumnsCache(); // a file changed — a `db push` may have too (§10)
       for (const c of sseClients) {
         try { c.enqueue(sseEnc.encode('data: reload\n\n')); } catch { sseClients.delete(c); }
       }
@@ -366,6 +365,8 @@ export async function serve(options = {}) {
   // mail() ambient sender, jobs/<name>.js on schedules and write hooks,
   // fireEvent as the single "a write went through table X" path.
   const { mail, initMail, registerJob, fireEvent, broadcastSql, jobTimers } = makeJobs(app);
+  app.fireEvent = fireEvent;
+  app.broadcastSql = broadcastSql;
 
   // Component + static + /@modules file serving (split to src/static.js).
   const { loadComponent, staticFile, moduleEntry } = makeStatic(app);
@@ -382,6 +383,15 @@ export async function serve(options = {}) {
   // fetch, CORS. makeAppFetch is the late-bound slot jobs read at call time.
   const { wrapReq, runSql, makeAppFetch, corsHeaders } = makeRequest(app);
   app.makeAppFetch = makeAppFetch;
+  app.runSql = runSql;
+
+  // Auto-CRUD + login + explicit query endpoints (split to src/crud.js):
+  // owns the API route table, per-table options/validators, the PRAGMA
+  // column cache, and queryDefs.
+  const {
+    apiRoutes, on, tableOpts, setValidators, columnsOf, clearColumnsCache,
+    tableRows, registerTable, registerQuery,
+  } = makeCrud(app);
 
   // ── the Spark family, wired in ──
   // Companion packages the app depends on get an importmap entry and are
@@ -422,184 +432,7 @@ export async function serve(options = {}) {
   // sibling, and :file.url points at it (original stays as :file.original).
   app.uploadWebp = familyDeps.includes('spark-html-image');
 
-  // ── auto-CRUD for <spark-ssr table="…"> ──
-  const apiRoutes = []; // { method, segs: ['api','todos',':id'], handler }
-  const on = (method, path, handler) =>
-    apiRoutes.push({ method, segs: path.split('/').filter(Boolean), handler });
-
-  // Block attributes per table (limit, search, live) and the form-derived
-  // validation rules (§6) — both refreshed with the pages.
-  const tableOpts = new Map();
-  let validators = new Map();
-
-  // db.columns runs a PRAGMA / information_schema query — cached per table
-  // (§10), cleared whenever the schema might have moved (ensureSchema, or any
-  // file change in dev, where a `db push --force` usually rides along).
-  const columnsCache = new Map(); // table → [{ name, type }]
-  async function columnsOf(table) {
-    let cols = columnsCache.get(table);
-    if (!cols) {
-      cols = await db.columns(table);
-      if (cols.length) columnsCache.set(table, cols);
-    }
-    return cols;
-  }
-
-  async function tableInfo(table) {
-    const cols = await columnsOf(table);
-    const names = cols.map((c) => c.name);
-    const scoped = !!config.auth && names.includes('user_id') && config.auth.table !== table;
-    return { cols, names, scoped };
-  }
-
-  // List conventions (§10): ?page → LIMIT/OFFSET (+ .total/.pages on the
-  // array), ?sort=col:dir validated against real columns, ?q across the
-  // block's search="…" columns. Admins read unscoped (Tier 3 roles).
-  async function tableRows(table, req, opts = {}) {
-    const { names, scoped } = await tableInfo(table);
-    const where = [];
-    const values = [];
-    if (scoped) {
-      if (!req.session) return [];
-      if (!isAdmin(req.session)) { where.push('user_id = ?'); values.push(req.session.id); }
-    }
-    if (opts.search && req.query.q) {
-      const cols = opts.search.filter((c) => names.includes(c));
-      if (cols.length) {
-        where.push('(' + cols.map((c) => `${c} LIKE ?`).join(' OR ') + ')');
-        for (const c of cols) { values.push('%' + req.query.q + '%'); void c; }
-      }
-    }
-    const whereSql = where.length ? ' WHERE ' + where.join(' AND ') : '';
-    let sql = `SELECT * FROM ${table}` + whereSql;
-    const sm = String(req.query.sort || '').match(/^(\w+)(?::(asc|desc))?$/i);
-    if (sm && names.includes(sm[1])) sql += ` ORDER BY ${sm[1]} ${(sm[2] || 'asc').toUpperCase()}`;
-    const paged = req.query.page !== undefined || opts.limit;
-    if (!paged) return db.query(sql, values);
-    const size = opts.limit || 20;
-    const pageN = Math.max(1, Number(req.query.page) || 1);
-    const totalRows = await db.query(`SELECT COUNT(*) AS n FROM ${table}` + whereSql, values);
-    const total = Number(totalRows[0]?.n ?? 0);
-    const rows = [...await db.query(sql + ` LIMIT ${size} OFFSET ${(pageN - 1) * size}`, values)];
-    rows.total = total;
-    rows.pages = Math.max(1, Math.ceil(total / size));
-    rows.page = pageN;
-    return rows;
-  }
-
-  function registerTable(table) {
-    const isAuthTable = config.auth && config.auth.table === table;
-
-    on('GET', `api/${table}`, async (req) => {
-      const { scoped } = await tableInfo(table);
-      if (scoped && !req.session) return json({ error: 'unauthorized' }, 401);
-      const rows = await tableRows(table, req, tableOpts.get(table) || {});
-      // Password hashes never leave the auth table, not even to a session.
-      if (isAuthTable) for (const r of rows) delete r.password;
-      return json(isAuthTable ? [...rows] : rows);
-    });
-
-    on('POST', `api/${table}`, async (req) => {
-      if (isAuthTable && 'auth' in req.query) return login(req);
-      const { names, scoped } = await tableInfo(table);
-      if (scoped && !req.session) return json({ error: 'unauthorized' }, 401);
-      const { fields } = await req.body();
-      // The markup's constraint attributes are the validation spec (§6).
-      const rules = validators.get(table);
-      if (rules) {
-        const errors = validateFields(rules, fields);
-        if (errors) return json({ errors }, 422);
-      }
-      const data = {};
-      for (const [k, v] of Object.entries(fields)) {
-        if (names.includes(k) && k !== 'id' && k !== 'user_id') data[k] = v;
-      }
-      // Passwords never land in the auth table as plaintext.
-      if (isAuthTable && typeof data.password === 'string') {
-        data.password = await Bun.password.hash(data.password);
-      }
-      if (scoped) data.user_id = req.session.id;
-      const keys = Object.keys(data);
-      if (!keys.length) return json({ error: 'empty body' }, 400);
-      const rows = await db.query(
-        `INSERT INTO ${table} (${keys.join(', ')}) VALUES (${keys.map(() => '?').join(', ')}) RETURNING *`,
-        keys.map((k) => data[k]),
-      );
-      fireEvent('insert', table, rows[0] ?? null);
-      const row = rows[0] ?? { ok: true };
-      if (isAuthTable && row.password) delete row.password;
-      return json(row, 201);
-    });
-
-    // Auth-table writes are own-account only: anyone could otherwise reset
-    // the author's password or delete their account through the auto CRUD.
-    const ownAccountOnly = (req) =>
-      isAuthTable && (!req.session || String(req.session.id) !== String(req.params.id));
-
-    on('PATCH', `api/${table}/:id`, async (req) => {
-      const { names, scoped } = await tableInfo(table);
-      if (scoped && !req.session) return json({ error: 'unauthorized' }, 401);
-      if (ownAccountOnly(req)) return json({ error: 'unauthorized' }, 401);
-      const { fields } = await req.body();
-      const rules = validators.get(table);
-      if (rules) {
-        const errors = validateFields(rules, fields, { partial: true });
-        if (errors) return json({ errors }, 422);
-      }
-      const data = {};
-      for (const [k, v] of Object.entries(fields)) {
-        if (names.includes(k) && k !== 'id' && k !== 'user_id') data[k] = v;
-      }
-      if (isAuthTable && typeof data.password === 'string') {
-        data.password = await Bun.password.hash(data.password);
-      }
-      const keys = Object.keys(data);
-      if (!keys.length) return json({ error: 'empty body' }, 400);
-      let sql = `UPDATE ${table} SET ${keys.map((k) => `${k} = ?`).join(', ')} WHERE id = ?`;
-      const values = [...keys.map((k) => data[k]), req.params.id];
-      if (scoped && !isAdmin(req.session)) { sql += ' AND user_id = ?'; values.push(req.session.id); }
-      const rows = await db.query(sql + ' RETURNING *', values);
-      fireEvent('update', table, rows[0] ?? null);
-      const row = rows[0];
-      if (isAuthTable && row) delete row.password;
-      return row ? json(row) : json({ error: 'not found' }, 404);
-    });
-
-    on('DELETE', `api/${table}/:id`, async (req) => {
-      const { scoped } = await tableInfo(table);
-      if (scoped && !req.session) return json({ error: 'unauthorized' }, 401);
-      if (ownAccountOnly(req)) return json({ error: 'unauthorized' }, 401);
-      let sql = `DELETE FROM ${table} WHERE id = ?`;
-      const values = [req.params.id];
-      if (scoped && !isAdmin(req.session)) { sql += ' AND user_id = ?'; values.push(req.session.id); }
-      const rows = await db.query(sql + ' RETURNING *', values);
-      fireEvent('delete', table, rows[0] ?? null);
-      return rows[0] ? json({ ok: true }) : json({ error: 'not found' }, 404);
-    });
-  }
-
-  // ── auth ──
-  async function login(req) {
-    const { auth } = config;
-    const identity = auth.identity || 'email';
-    const { fields } = await req.body();
-    const rows = await db.query(`SELECT * FROM ${auth.table} WHERE ${identity} = ?`, [fields[identity] ?? null]);
-    const user = rows[0];
-    const supplied = String(fields.password ?? '');
-    const stored = user ? String(user.password ?? '') : '';
-    const ok = user && (stored.startsWith('$')
-      ? await Bun.password.verify(supplied, stored).catch(() => false)
-      : stored !== '' && stored === supplied);
-    if (!ok) return json({ error: 'invalid credentials' }, 401);
-    const session = { id: user.id, [identity]: user[identity] };
-    // Roles ride in the session: is_admin / role columns, when they exist.
-    if ('is_admin' in user) session.is_admin = user.is_admin;
-    if ('role' in user) session.role = user.role;
-    const safe = { ...user };
-    delete safe.password;
-    return json(safe, 200, { 'set-cookie': SESSION_COOKIE(signSession(session, secret)) });
-  }
-
+  // ── auth plugin + logout wiring ──
   let authPlugin = null;
   if (config.auth && config.auth.plugin) {
     authPlugin = (await import(resolve(root, config.auth.plugin))).default;
@@ -614,31 +447,6 @@ export async function serve(options = {}) {
   }
   if (config.auth) {
     on('POST', 'api/logout', async () => json({ ok: true }, 200, { 'set-cookie': SESSION_COOKIE('', true) }));
-  }
-
-  // ── explicit <spark-ssr> query endpoints ──
-  // Defs are mutable so an edited page's SQL takes effect without a restart —
-  // the registered handler reads def.sql at call time.
-  const queryDefs = new Map();
-  function registerQuery(route) {
-    const key = route.method + ' ' + route.path;
-    const existing = queryDefs.get(key);
-    if (existing) { existing.sql = route.sql; existing.cache = route.cache || 0; return; }
-    const def = { sql: route.sql, cache: route.cache || 0 };
-    queryDefs.set(key, def);
-    const segs = route.path.split('/').filter(Boolean)
-      .map((s) => s.replace(/^\[(\w+)\]$/, ':$1'));
-    apiRoutes.push({
-      method: route.method,
-      segs,
-      handler: async (req) => {
-        const rows = await runSql(def.sql, req, route.method === 'GET' ? def.cache : 0);
-        if (route.method !== 'GET') broadcastSql(def.sql);
-        if (route.method === 'GET') return json(singleShaped(def.sql) ? rows[0] ?? null : [...rows]);
-        if (Array.isArray(rows) && rows.length) return json(rows.length === 1 ? rows[0] : [...rows]);
-        return json({ ok: true, changes: rows.changes ?? 0 });
-      },
-    });
   }
 
   // (Re)scan pages/ and register everything they declare. Runs per request —
@@ -688,7 +496,7 @@ export async function serve(options = {}) {
         nextValidators.set(form.table, rules);
       }
     }
-    validators = nextValidators;
+    setValidators(nextValidators);
   }
   // The template is the schema (§7): at startup (and whenever a new table
   // appears in dev) missing tables are created and seeds applied — a fresh
@@ -708,7 +516,7 @@ export async function serve(options = {}) {
     } catch (e) {
       if (!quiet) console.warn(`[spark-ssr] schema: ${e.message}`);
     }
-    columnsCache.clear(); // tables may have gained columns (§10)
+    clearColumnsCache(); // tables may have gained columns (§10)
     schemaDirty = false;
   }
   await initMail();
