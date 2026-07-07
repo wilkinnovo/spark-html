@@ -34,8 +34,8 @@ export function readSession(cookieHeader, secret) {
   } catch { return null; }
 }
 
-export const SESSION_COOKIE = (value, clear = false) =>
-  `spark_session=${clear ? '' : value}; Path=/; HttpOnly; SameSite=Lax${clear ? '; Max-Age=0' : ''}`;
+export const SESSION_COOKIE = (value, { clear = false, secure = false } = {}) =>
+  `spark_session=${clear ? '' : value}; Path=/; HttpOnly; SameSite=Lax${secure ? '; Secure' : ''}${clear ? '; Max-Age=0' : ''}`;
 
 // One-shot flash messages: a signed, read-once cookie. Set on a form's success
 // 303 (flash="…") and exposed as ambient {flash} on the very next page, then
@@ -58,8 +58,15 @@ export function readFlash(cookieHeader, secret) {
   } catch { return null; }
 }
 
-export const FLASH_COOKIE = (value, clear = false) =>
-  `spark_flash=${clear ? '' : value}; Path=/; SameSite=Lax${clear ? '; Max-Age=0' : ''}`;
+export const FLASH_COOKIE = (value, { clear = false, secure = false } = {}) =>
+  `spark_flash=${clear ? '' : value}; Path=/; SameSite=Lax${secure ? '; Secure' : ''}${clear ? '; Max-Age=0' : ''}`;
+
+// A cookie we issue must carry `Secure` whenever the request reached us over
+// HTTPS — directly (url is https) or through a TLS-terminating reverse proxy
+// that sets X-Forwarded-Proto: https (the one forwarded header we trust; see
+// SECURITY.md). Without it a session cookie would also ride a plaintext hop.
+export const isHttps = (proto, xfProto) =>
+  proto === 'https:' || String(xfProto || '').split(',')[0].trim() === 'https';
 
 // Roles in one column: an is_admin (or role) column on the auth table
 // unlocks guard="session.is_admin" and unscoped reads for admins.

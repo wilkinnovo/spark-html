@@ -10,6 +10,10 @@
 import { join, resolve, extname, dirname } from 'node:path';
 import { existsSync, readFileSync, statSync } from 'node:fs';
 
+// Top-level directories the static server must never descend into — they are
+// server-side code / data, not public assets. seed/ is data; the rest is code.
+const SERVER_DIRS = new Set(['node_modules', 'jobs', 'lib', 'api', 'dist', 'seed']);
+
 export function makeStatic(app) {
   const { root } = app;
 
@@ -41,9 +45,13 @@ export function makeStatic(app) {
     const ext = extname(rel);
     // The root fallback exists for co-located assets (pages/x.css, img/…) —
     // it must never serve project internals: config (may hold secrets),
-    // lockfiles, databases, dotfiles, seed data. public/ stays intentional.
+    // lockfiles, databases, dotfiles, seed data, or the server-only source
+    // trees (node_modules/, jobs/, lib/, api/, dist/) — those hold code and
+    // API keys and are reachable to the runtime, never to the browser. Only
+    // public/ (and co-located assets outside those dirs) is intentional.
+    const top = rel.split('/')[0];
     const internal = rel.startsWith('.') || rel.includes('/.')
-      || rel.startsWith('seed/')
+      || SERVER_DIRS.has(top)
       || ['spark.json', 'package.json', 'bun.lock', 'bun.lockb', 'package-lock.json'].includes(rel)
       || ['.db', '.sqlite', '.sqlite3'].includes(ext);
     if (!internal && ext && ext !== '.html') {

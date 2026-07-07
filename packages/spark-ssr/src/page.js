@@ -302,7 +302,7 @@ export function makePage(app) {
     const shellOpts = { hydrate, mount: hydrate || hasComponents, headExtra, scripts: pd.scripts, routeParamsQS };
     const headers = { 'content-type': 'text/html; charset=utf-8' };
     // A shown flash is consumed — clear the cookie so it appears exactly once.
-    if (scope.flash) headers['set-cookie'] = FLASH_COOKIE('', true);
+    if (scope.flash) headers['set-cookie'] = FLASH_COOKIE('', { clear: true, secure: req.secure });
 
     // Streaming (§7): with the precompiled renderer (§1) a big list page can
     // flush its shell + head immediately and stream rows as they render —

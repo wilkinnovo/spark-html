@@ -12,7 +12,7 @@ if (has.status !== 0) {
   process.exit(0);
 }
 
-for (const suite of ['packages/spark-html-bun/test/bun.js', 'packages/spark-ssr/test/ssr.js']) {
+for (const suite of ['packages/spark-html-bun/test/bun.js', 'packages/spark-ssr/test/ssr.js', 'packages/spark-ssr/test/security.js']) {
   const r = spawnSync('bun', [suite], { stdio: 'inherit' });
   if (r.status !== 0) process.exit(r.status ?? 1);
 }

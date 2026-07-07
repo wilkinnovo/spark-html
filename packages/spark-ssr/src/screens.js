@@ -13,6 +13,7 @@
 import { join, relative } from 'node:path';
 import { existsSync, readFileSync } from 'node:fs';
 import { rewriteParams } from './parse.js';
+import { localPath } from './request.js';
 import { globSource } from './sources.js';
 
 export const escapeHtml = (s) => String(s)
@@ -93,7 +94,7 @@ export function makeScreens(app) {
     const identity = (config.auth && config.auth.identity) || 'email';
     const table = config.auth && config.auth.table;
     const idType = /email/i.test(identity) ? 'email' : 'text';
-    const nextField = next && String(next).startsWith('/') ? escapeHtml(next) : '';
+    const nextField = localPath(next) ? escapeHtml(next) : '';
     const isSignup = kind === 'signup';
     const action = isSignup ? `/api/${table}` : `/api/${table}?auth`;
     const title = isSignup ? 'Create account' : 'Sign in';

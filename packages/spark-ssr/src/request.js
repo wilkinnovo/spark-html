@@ -11,11 +11,21 @@ import { join } from 'node:path';
 import { mkdirSync } from 'node:fs';
 import { randomUUID } from 'node:crypto';
 import { rewriteParams, sqlTables } from './parse.js';
+import { isHttps } from './session.js';
 
 const dig = (obj, path) => String(path).split('.').reduce((o, k) => (o == null ? o : o[k]), obj);
 
 export const json = (data, status = 200, headers = {}) =>
   new Response(JSON.stringify(data), { status, headers: { 'content-type': 'application/json', ...headers } });
+
+// A user-supplied redirect target is safe to send in a Location header only if
+// it stays on this origin: it must be an absolute path (`/…`) that is NOT
+// protocol-relative (`//host`, `/\host`) and carries no control characters
+// (which would let a `\r\n` inject a second header). Anything else → null, and
+// the caller falls back to a known-good local path. Closes the open-redirect
+// and header-injection paths through `_redirect` / `?next`.
+export const localPath = (p) =>
+  typeof p === 'string' && /^\/(?![/\\])/.test(p) && !/[\x00-\x1f]/.test(p) ? p : null;
 
 export function makeRequest(app) {
   const { config, db, uploadsDir, sourceCache, ctx } = app;
@@ -33,6 +43,9 @@ export function makeRequest(app) {
       query: Object.fromEntries(url.searchParams),
       headers,
       session,
+      // True when this request reached us over HTTPS (directly or via a
+      // trusted X-Forwarded-Proto proxy) — cookies we issue add `Secure`.
+      secure: isHttps(url.protocol, headers['x-forwarded-proto']),
       ip: server?.requestIP?.(request)?.address || headers['x-forwarded-for'] || '',
       json: () => request.json(),
       text: () => request.text(),

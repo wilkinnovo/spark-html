@@ -173,8 +173,27 @@ export function makeCrud(app) {
   }
 
   // ── auth ──
+  // We ship the login endpoint, so we ship its brute-force limiter: a naive
+  // in-memory sliding window per client IP (10 attempts / 60 s). Enough to
+  // blunt credential stuffing without a dependency; an app fronted by a real
+  // WAF/proxy limiter loses nothing. Keyed by req.ip (X-Forwarded-For aware).
+  const loginHits = new Map(); // ip → number[] (attempt timestamps in window)
+  const LOGIN_WINDOW_MS = 60_000;
+  const LOGIN_MAX = 10;
+  function loginRateLimited(ip) {
+    const now = Date.now();
+    const hits = (loginHits.get(ip) || []).filter((t) => now - t < LOGIN_WINDOW_MS);
+    hits.push(now);
+    loginHits.set(ip, hits);
+    if (loginHits.size > 5000) for (const [k, v] of loginHits) if (!v.some((t) => now - t < LOGIN_WINDOW_MS)) loginHits.delete(k);
+    return hits.length > LOGIN_MAX;
+  }
+
   async function login(req) {
     const { auth } = config;
+    if (loginRateLimited(req.ip || '')) {
+      return json({ error: 'too many attempts — try again in a minute' }, 429, { 'retry-after': '60' });
+    }
     const identity = auth.identity || 'email';
     const { fields } = await req.body();
     const rows = await db.query(`SELECT * FROM ${auth.table} WHERE ${identity} = ?`, [fields[identity] ?? null]);
@@ -191,7 +210,7 @@ export function makeCrud(app) {
     if ('role' in user) session.role = user.role;
     const safe = { ...user };
     delete safe.password;
-    return json(safe, 200, { 'set-cookie': SESSION_COOKIE(signSession(session, secret)) });
+    return json(safe, 200, { 'set-cookie': SESSION_COOKIE(signSession(session, secret), { secure: req.secure }) });
   }
 
   // ── explicit <spark-ssr> query endpoints ──

@@ -23,7 +23,7 @@ import { urlSource, globSource, moduleSource, makeSourceCache } from './sources.
 import { makeJobs } from './jobs.js';
 import { makeStatic } from './static.js';
 import { makeScreens, escapeHtml } from './screens.js';
-import { makeRequest, json } from './request.js';
+import { makeRequest, json, localPath } from './request.js';
 import { makeCrud } from './crud.js';
 import { makePage } from './page.js';
 import { makeRoutes } from './routes.js';
@@ -213,7 +213,7 @@ export async function projectSchema(root) {
 // functions of (cookie header, secret), no server state.
 import {
   signSession, readSession, SESSION_COOKIE,
-  signFlash, readFlash, FLASH_COOKIE, isAdmin,
+  signFlash, readFlash, FLASH_COOKIE, isAdmin, isHttps,
 } from './session.js';
 
 // ── serve ──────────────────────────────────────────────────────────────
@@ -221,6 +221,17 @@ export async function serve(options = {}) {
   const root = resolve(options.root || process.cwd());
   const config = { ...loadConfig(root), ...(options.config || {}) };
   const db = await connect(config.db, root);
+  // A production server (watch:false) with auth configured MUST carry an
+  // explicit secret — an ephemeral random key silently invalidates every
+  // session on restart and can't be shared across instances. Fail loud at
+  // startup rather than ship a subtly broken login. Dev keeps the random key.
+  if (options.watch === false && config.auth && !config.auth.secret) {
+    throw new Error(
+      '[spark-ssr] auth is configured but auth.secret is unset — a production '
+      + 'server needs a stable secret. Set it in spark.json, e.g. '
+      + '"auth": { …, "secret": "ENV.SESSION_SECRET" }.',
+    );
+  }
   const secret = (config.auth && config.auth.secret) || randomBytes(32).toString('hex');
   const cache = new Map();
   const pages = [];
@@ -444,11 +455,11 @@ export async function serve(options = {}) {
       const session = { id: user.id, email: user.email, name: user.name };
       if (user.is_admin !== undefined) session.is_admin = user.is_admin;
       if (user.role !== undefined) session.role = user.role;
-      return json(user, 200, { 'set-cookie': SESSION_COOKIE(signSession(session, secret)) });
+      return json(user, 200, { 'set-cookie': SESSION_COOKIE(signSession(session, secret), { secure: req.secure }) });
     });
   }
   if (config.auth) {
-    on('POST', 'api/logout', async () => json({ ok: true }, 200, { 'set-cookie': SESSION_COOKIE('', true) }));
+    on('POST', 'api/logout', async (req) => json({ ok: true }, 200, { 'set-cookie': SESSION_COOKIE('', { clear: true, secure: req.secure }) }));
   }
 
   // (Re)scan pages/ and register everything they declare. Runs per request —
@@ -535,6 +546,9 @@ export async function serve(options = {}) {
     // SSE channels idle between events (heartbeat every 25 s keeps them
     // alive); slow queries and big uploads get headroom too.
     idleTimeout: 60,
+    // Reject an over-large body at the socket (413) before it is buffered —
+    // the upload/DoS ceiling (config.maxBodyMb, default 10 MB).
+    maxRequestBodySize: Math.max(1024, config.maxBodyMb * 1024 * 1024),
     async fetch(request, srv) {
       const url = new URL(request.url);
       let pathname;
@@ -704,14 +718,14 @@ export async function serve(options = {}) {
             const referer = request.headers.get('referer');
             let back = '/';
             try { if (referer) { const r = new URL(referer); back = r.pathname + r.search; } } catch { /* keep / */ }
-            if (typeof fields._redirect === 'string' && fields._redirect.startsWith('/')) back = fields._redirect;
+            if (localPath(fields._redirect)) back = fields._redirect;
             if (res.status < 400) {
               const headers = new Headers({ location: back });
               const sc = res.headers.get('set-cookie');
               if (sc) headers.set('set-cookie', sc);
               // flash="…" on the form → a one-shot message on the next page.
               if (typeof fields._flash === 'string' && fields._flash) {
-                headers.append('set-cookie', FLASH_COOKIE(signFlash(fields._flash, secret)));
+                headers.append('set-cookie', FLASH_COOKIE(signFlash(fields._flash, secret), { secure: req.secure }));
               }
               return finish(new Response(null, { status: 303, headers }));
             }
@@ -761,9 +775,10 @@ export async function serve(options = {}) {
         // Built-in auth screens (only if auth is configured and no user page
         // claimed the route above). /logout clears the session and 303s home.
         if (config.auth && (pathname === '/logout')) {
+          const secure = isHttps(url.protocol, request.headers.get('x-forwarded-proto'));
           return finish(new Response(null, {
             status: 303,
-            headers: { location: '/', 'set-cookie': SESSION_COOKIE('', true) },
+            headers: { location: '/', 'set-cookie': SESSION_COOKIE('', { clear: true, secure }) },
           }));
         }
         const authKind = builtinAuthKind(pathname);

@@ -41,6 +41,10 @@ export function loadConfig(root) {
     auth: cfg.auth || null,
     cors: cfg.cors ?? false,
     uploads: cfg.uploads || 'uploads',
+    // Cap on any single request body (uploads + JSON), enforced at the socket
+    // by Bun before the body is buffered — an over-limit request gets 413 and
+    // never reaches a handler. Default 10 MB; `maxBodyMb` in spark.json tunes it.
+    maxBodyMb: typeof cfg.maxBodyMb === 'number' ? cfg.maxBodyMb : 10,
     // Declarative mail (Tier 3.8): a module path ("./lib/mail.js" — default
     // export (msg) => …), a { url, from, headers } webhook, or null for the
     // dev logger. Jobs and handlers call mail() the same way regardless.
