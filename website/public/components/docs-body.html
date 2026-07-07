@@ -289,6 +289,11 @@ query('user', () =&gt; fetch('/api/user').then((r) =&gt; r.json()));</pre>
       <tr><td><code>component(name, source)</code></td><td>Register a component from a source string instead of a file. <code>&lt;div import="name"&gt;</code> then resolves to it — useful for tests and inline components.</td></tr>
       <tr><td><code>parseSFC(source)</code></td><td>Split component source into <code>{ markup, script, style }</code>.</td></tr>
       <tr><td><code>evaluate(expr, scope)</code> / <code>interpolate(tpl, scope)</code></td><td>The low-level expression engine, exported for testing.</td></tr>
+      <tr><td><code>subscribe(name, fn)</code></td><td>Subscribe to a named store; <code>fn</code> runs on every change. Returns an unsubscribe function. The primitive companion packages build on.</td></tr>
+      <tr><td><code>scopeCss(css, tag)</code></td><td>Scope a stylesheet to a component tag the way the runtime does for a component's <code>&lt;style&gt;</code> — the transform, exposed for tooling.</td></tr>
+      <tr><td><code>lifecycle(hooks)</code></td><td>Register enter/leave hooks that fire as <code>if</code>/<code>each</code> add and remove nodes — the seam animation libraries (e.g. <code>spark-html-motion</code>) hook into.</td></tr>
+      <tr><td><code>inspectStores()</code></td><td>A live snapshot of every named store's state (<code>{ name: state }</code>) for tooling — what <code>spark-html-devtools</code> reads.</td></tr>
+      <tr><td><code>inspect</code> <span title="experimental — may change in a 1.x minor">⚠︎</span></td><td><strong>Experimental.</strong> <code>inspect.deps(node)</code> → a node's tracked dependency keys (<code>Set</code> or <code>null</code>); <code>inspect.scope(el)</code> → a component's reactive scope proxy. The supported window onto the <code>__spark*</code> internals every debugging session uses. Shape may change in a 1.x minor until it settles.</td></tr>
     </table>
     <p>Inside component scripts, the builtins <code>useStore(name)</code> and <code>props</code> (the raw props object) are always in scope.</p>
 
