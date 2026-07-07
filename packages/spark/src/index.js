@@ -1165,7 +1165,10 @@ function runElementPlan(el, scope) {
         );
         continue;
       }
-      if (typeof result === 'boolean' && op.staticClass === undefined) {
+      // null/undefined removes the attribute — `hidden="a.loading || a.error"`
+      // yields null when both are clear, and stringifying that to hidden=""
+      // would mean hidden=TRUE (an empty boolean attribute is present).
+      if ((typeof result === 'boolean' || result == null) && op.staticClass === undefined) {
         result ? el.setAttribute(op.realAttr, '') : el.removeAttribute(op.realAttr);
       } else {
         let str = String(result ?? '');
@@ -1288,6 +1291,17 @@ function component(name, source) {
 // imports in one mount wave) share ONE fetch — the entry is dropped as soon
 // as it settles, so dev edits (HMR re-mounts) always re-fetch fresh.
 const inflightComponents = new Map();
+// A relative import path ("components/x.html") must resolve against the APP
+// root, not the page's current URL — fetch()'s base is location.href, so on
+// any client-routed URL 2+ segments deep ("/dash/settings") it would wrongly
+// resolve under "/dash/". An authored <base href> wins (subdirectory
+// deployments); otherwise the origin root is the app root. Absolute paths,
+// full URLs, prerender, and non-browser harnesses pass through untouched.
+const componentURL = (path) => {
+  if (isPrerender() || typeof location === 'undefined' || /^(\/|[a-z]+:)/i.test(path)) return path;
+  const u = new URL(path, document.querySelector('base[href]') ? document.baseURI : location.origin + '/');
+  return u.pathname + u.search;
+};
 const _origFetchComponent = (path) => {
   const bare = path.replace(/\.html$/, '');
   if (registry.has(bare)) {
@@ -1298,7 +1312,7 @@ const _origFetchComponent = (path) => {
     // Read the body ONCE here — a shared real Response would throw
     // "body already read" on the second .text() call.
     p = (async () => {
-      const res = await fetch(path);
+      const res = await fetch(componentURL(path));
       if (!res.ok) return { ok: false, status: res.status };
       const text = await res.text();
       return { ok: true, status: res.status, text: async () => text };

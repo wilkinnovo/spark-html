@@ -194,5 +194,37 @@ await test('Set.delete re-renders', async () => {
   assert.equal(col().querySelector('.size').textContent, '1');
 });
 
+// ── :attr null/undefined → attribute removed, not attr="" ──────────────
+// Regression (bugs.md Open #5): `:hidden="q.loading || q.error"` evaluates
+// to null once both clear; stringifying null to hidden="" left the element
+// hidden FOREVER (an empty boolean attribute is present/true). null and
+// undefined must remove the attribute, like every falsy boolean does.
+console.log('\n:attr null semantics');
+component('nullattr', `
+<p class="c" :hidden="loading || error">content</p>
+<p class="t" :title="maybe">tip</p>
+<button class="done" onclick="{loading = false}">done</button>
+<script>
+  let loading = true;
+  let error = null;
+  let maybe = null;
+</script>
+`);
+body.childNodes = [];
+parseHTML('<div import="nullattr"></div>', body);
+await mount();
+await tick();
+await test(':hidden="a || b" un-hides when the result is null, not just false', async () => {
+  const el = body.querySelector('[name="nullattr"]');
+  assert.equal(el.querySelector('.c').hasAttribute('hidden'), true, 'hidden while loading');
+  fire(el.querySelector('.done'), 'click'); await tick();
+  assert.equal(el.querySelector('.c').hasAttribute('hidden'), false,
+    'null result must REMOVE the attribute (hidden="" means hidden)');
+});
+await test('a null :attr value removes the attribute instead of setting attr=""', () => {
+  const el = body.querySelector('[name="nullattr"]');
+  assert.equal(el.querySelector('.t').hasAttribute('title'), false);
+});
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);
