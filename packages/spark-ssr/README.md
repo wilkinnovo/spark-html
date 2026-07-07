@@ -62,7 +62,9 @@ from the environment at startup. `cors: true` allows all origins on `/api/*`;
 an array allows specific ones. `fonts` renders spark-html-font's head tags
 (preloads, `@font-face` with a size-adjusted no-shift fallback, a
 `--font-<slug>` var) into every page — same shapes as its build-pipeline step.
-`mail` wires the sender for jobs and handlers (see below).
+`mail` wires the sender for jobs and handlers (see below). `maxBodyMb` caps any
+request body (default 10) — an over-limit upload is rejected with `413` at the
+socket, before it buffers.
 
 **No spark.json at all?** `db` defaults to `sqlite://./dev.db`, so
 `bun spark-ssr` runs on a folder holding one `index.html` — zero config to
@@ -446,6 +448,28 @@ The request path allocates almost nothing:
 
 `test/bench.js` measures all of it (p50/p99 latency + RSS) — run it around
 any render-path change.
+
+## Security
+
+spark-ssr ships auth, sessions, SQL, uploads, and file serving — a security
+product with a framework attached. The audited posture lives in
+[`SECURITY.md`](SECURITY.md), and every item is pinned by a test in
+`test/security.js` that fails if the protection is removed:
+
+- **Sessions** — HMAC-signed, `HttpOnly; SameSite=Lax`, `timingSafeEqual`
+  verify; `Secure` added over HTTPS (trusted `X-Forwarded-Proto`). Production
+  refuses to start if `auth` is configured without `auth.secret`.
+- **No open redirect / header injection** — `_redirect` and `?next` must stay
+  on-origin (no `//host`, no CRLF).
+- **SQL** — all values parameterized; `?sort` is allowlisted against real
+  columns, never interpolated from input.
+- **Files** — no `..` traversal, and the static server never serves the
+  server-only trees (`node_modules/`, `jobs/`, `lib/`, `api/`, `dist/`).
+- **Uploads/DoS** — `maxBodyMb` cap (413 at the socket). **Login** —
+  per-IP rate limit (429).
+
+CSRF stance: `SameSite=Lax` (no token by default) — a documented decision, see
+`SECURITY.md`.
 
 ## Deploy
 

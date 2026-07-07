@@ -16,7 +16,7 @@ no build step — for people who love hand-writing their web apps.
 </style>
 ```
 
-**13 kB gzipped**.
+**~14.4 kB gzipped**.
 
 ---
 
@@ -262,6 +262,19 @@ component('hello', `
 `);
 ```
 
+For component-level tests, [`spark-html-test-utils`](https://www.npmjs.com/package/spark-html-test-utils) wraps this with a linkedom `mount(fixture)`, `inspect` helpers, and DOM-event firing.
+
+### Doctor
+
+```bash
+npx spark-html doctor
+```
+
+Scans the project for the framework's known footguns: duplicate `spark-html`
+installs (two runtimes → separate store registries → the "store not created"
+class of bug), companion version-range mismatches, and a stale service worker
+on a reused dev port. Zero config; exits non-zero when something needs a look.
+
 ---
 
 ## Companion packages
@@ -332,7 +345,7 @@ their web apps. Add only what you use.
 
 | Package | What it does |
 |---|---|
-| [`spark-html`](https://www.npmjs.com/package/spark-html) | The runtime — components, reactivity, stores, forms, scoped styles. 13 kB gzip, 0 deps. |
+| [`spark-html`](https://www.npmjs.com/package/spark-html) | The runtime — components, reactivity, stores, forms, scoped styles. ~14.4 kB gzip, 0 deps. |
 | [`spark-html-bun`](https://www.npmjs.com/package/spark-html-bun) | Dev server, bundler & preview on Bun — scoped HMR, no-build dev, post-build pipeline. |
 | [`spark-html-router`](https://www.npmjs.com/package/spark-html-router) | `<template route>` routing — nested routes/layouts, `route.query`, active links. |
 | [`spark-html-theme`](https://www.npmjs.com/package/spark-html-theme) | Dark/light/system theming in one line — persisted, no flash. |

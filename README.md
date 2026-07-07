@@ -34,7 +34,7 @@ byte-for-byte — reactive, scoped, untouched.
 ```
 
 No compiler generates code from your template. No virtual DOM allocates and diffs
-a tree per frame. The file you write is what runs — 13 kB gzipped, zero dependencies.
+a tree per frame. The file you write is what runs — ~14.4 kB gzipped, zero dependencies.
 
 ## Built for humans
 
@@ -43,7 +43,7 @@ of us still love hand-writing our web apps: reading every line we ship,
 understanding the whole stack, owning the craft. Spark is built for those
 people. It makes hand-crafting a web app as easy as it can be, and then stops:
 no compiler rewriting your source, no virtual DOM between you and the page, no
-scaffolding you didn't ask for. Twenty small packages, each one readable in a
+scaffolding you didn't ask for. Twenty-one small packages, each one readable in a
 sitting — add only what you use, and everything you write stays yours,
 byte-for-byte, in view-source forever.
 
@@ -75,7 +75,7 @@ mount();
 
 ```html
 <script type="importmap">
-  { "imports": { "spark-html": "https://esm.sh/spark-html@0.27" } }
+  { "imports": { "spark-html": "https://esm.sh/spark-html@0.30" } }
 </script>
 <div import="components/counter"></div>
 <script type="module">import { mount } from 'spark-html'; mount()</script>
@@ -91,7 +91,7 @@ just files at a URL, so you can even `import` one straight from a CDN. See
   template. The file you write is what runs.
 - **No virtual DOM** — patches mutate the DOM directly. No intermediate tree to
   allocate, diff, or discard per frame.
-- **13 kB gzipped, zero dependencies** — parses, mounts, and patches in a single
+- **~14.4 kB gzipped, zero dependencies** — parses, mounts, and patches in a single
   microtask.
 - **O(changed) dependency tracking** — each binding records which scope keys it
   reads. A write re-evaluates only the bindings that actually changed.
@@ -168,7 +168,7 @@ Spark trades completeness for simplicity — these are deliberate edges, not roa
 
 | Package                                  | What it does                                                                                                        |
 | ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
-| [`spark-html`](packages/spark/README.md) | The runtime — `mount()`, components, reactivity, `store`/`derived`, `bind:form`, scoped styles. 13 kB gzip, 0 deps. |
+| [`spark-html`](packages/spark/README.md) | The runtime — `mount()`, components, reactivity, `store`/`derived`, `bind:form`, scoped styles, plus `npx spark-html doctor`. ~14.4 kB gzip, 0 deps. |
 
 **UI &amp; UX siblings** (add only what you use)
 
@@ -194,7 +194,7 @@ Spark trades completeness for simplicity — these are deliberate edges, not roa
 | --------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | [`spark-html-bun`](packages/spark-html-bun/README.md)           | Dev server, bundler &amp; preview on Bun — `spark dev`/`build`/`preview`, scoped HMR, no-build dev, the post-build pipeline.                                                                                                               |
 | [`spark-prerender`](packages/spark-prerender/README.md)         | Build-time SEO prerender — real HTML per route (+ sitemap/robots), no SSR server, no app changes.                                                                                                                                          |
-| [`spark-ssr`](packages/spark-ssr/README.md)                     | Full-stack SSR on Bun — the template is the backend: inferred schema, REST/CRUD API, auth &amp; sessions, jobs/mail, source-agnostic hydration (`<spark-ssr>`). Precompiled render programs + a full-page response cache: fast by default. |
+| [`spark-ssr`](packages/spark-ssr/README.md)                     | Full-stack SSR on Bun — the template is the backend: inferred schema, REST/CRUD API, auth &amp; sessions, jobs/mail, source-agnostic hydration (`<spark-ssr>`). Precompiled render programs + a full-page response cache: fast by default. Security-audited ([`SECURITY.md`](packages/spark-ssr/SECURITY.md)). |
 | [`spark-html-image`](packages/spark-html-image/README.md)       | Build-time image optimization — `<img>` rewritten to webp/avif with responsive `srcset`, zero config.                                                                                                                                      |
 | [`spark-html-font`](packages/spark-html-font/README.md)         | Font loading optimizer — `@font-face` + preload + size-adjusted fallbacks, no FOUT, no layout shift.                                                                                                                                       |
 | [`spark-html-manifest`](packages/spark-html-manifest/README.md) | PWA manifest + icons + head tags (and optional service worker) from one config.                                                                                                                                                            |
@@ -208,12 +208,13 @@ Spark trades completeness for simplicity — these are deliberate edges, not roa
 | [`create-spark-html-app`](packages/create-spark-html-app/README.md)           | Scaffold a spark-html app — `bunx create-spark-html-app@latest`.                                       |
 | [`prettier-plugin-spark`](packages/prettier-plugin-spark/README.md)           | Prettier plugin — formats the `<script>`/`<style>` blocks, leaves markup byte-for-byte.                |
 | [`spark-html-language-server`](packages/spark-html-language-server/README.md) | LSP for components (spark-ssr aware) — diagnostics, go-to-definition, prop autocomplete, hover docs for every directive. |
+| [`spark-html-test-utils`](packages/spark-html-test-utils/README.md)           | Test helpers — `mount(fixture)` on linkedom, `inspect` the reactive scope, fire realistic DOM events. No browser. |
 
 ## This repo
 
 ```
-packages/        spark-html + its 19 sibling/tooling packages — 20 in all
-examples/        basic (Bun app) · jsimports · no-build (CDN, zero tooling)
+packages/        spark-html + its 20 sibling/tooling packages — 21 in all
+examples/        basic (Bun app) · jsimports · no-build (CDN) · pinterest &amp; tabtube (spark-ssr)
 editors/         Zed + VS Code extensions for .html component highlighting
 website/         the docs/playground/tutorials site — built with Spark itself
 ```

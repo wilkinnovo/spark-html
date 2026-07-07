@@ -92,7 +92,7 @@ sriPlugin({ algorithm: 'sha384' }); // 'sha256' | 'sha384' | 'sha512'
 
 ## Why not put this in the core?
 
-The spark-html runtime has a frozen 13 kB budget. Verification lives here
+The spark-html runtime has a frozen 15 kB budget. Verification lives here
 instead, as an opt-in wrapper around `fetch` — projects that don't use SRI
 pay zero bytes, and the core stays tiny.
 
@@ -104,7 +104,7 @@ their web apps. Add only what you use.
 
 | Package | What it does |
 |---|---|
-| [`spark-html`](https://www.npmjs.com/package/spark-html) | The runtime — components, reactivity, stores, forms, scoped styles. 13 kB gzip, 0 deps. |
+| [`spark-html`](https://www.npmjs.com/package/spark-html) | The runtime — components, reactivity, stores, forms, scoped styles. ~14.4 kB gzip, 0 deps. |
 | [`spark-html-bun`](https://www.npmjs.com/package/spark-html-bun) | Dev server, bundler & preview on Bun — scoped HMR, no-build dev, post-build pipeline. |
 | [`spark-html-router`](https://www.npmjs.com/package/spark-html-router) | `<template route>` routing — nested routes/layouts, `route.query`, active links. |
 | [`spark-html-theme`](https://www.npmjs.com/package/spark-html-theme) | Dark/light/system theming in one line — persisted, no flash. |
