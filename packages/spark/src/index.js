@@ -32,13 +32,13 @@ export function warnOnce(key, ...args) {
 
 // DOM nodeType literals — avoids depending on a global `Node` (smaller, and one
 // fewer thing the prerender env must define).
-const ELEMENT_NODE = 1, TEXT_NODE = 3;
+export const ELEMENT_NODE = 1, TEXT_NODE = 3;
 // True while spark-prerender drives (server DOM). `globalThis` is guaranteed in
 // every env Spark runs (it needs Proxy + import maps anyway), so no typeof guard.
 const isPrerender = () => globalThis.__SPARK_PRERENDER__;
 // During prerender, hand a promise to the settle loop (the channel
 // <template await> and async scripts share) so the serialized HTML waits.
-function pushPrerenderWait(p) {
+export function pushPrerenderWait(p) {
   if (isPrerender() && Array.isArray(globalThis.__SPARK_AWAITS__)) {
     globalThis.__SPARK_AWAITS__.push(p);
   }
@@ -221,7 +221,7 @@ function reveal(el) {
 }
 
 // Nearest enclosing component element (the one whose scope governs `node`).
-function closestComponent(node) {
+export function closestComponent(node) {
   let n = node.parentNode;
   while (n) {
     if (n.hasAttribute && n.hasAttribute('name')) return n;
@@ -459,7 +459,7 @@ async function resolveImports(root) {
 // `nodes` is the block's node list; we mutate it IN PLACE, replacing each
 // self-import placeholder with its booted host so the each-loop reconciler
 // tracks the host (not the discarded placeholder) on later patches.
-function hydrateBlockImports(nodes, scope) {
+export function hydrateBlockImports(nodes, scope) {
   for (let idx = 0; idx < nodes.length; idx++) {
     const node = nodes[idx];
     if (node.nodeType !== ELEMENT_NODE) continue;
@@ -1031,7 +1031,7 @@ function setupFormBinding(form, stateName, handlerAttr) {
 // Clone an anchor's content as its reusable template: a <template>'s content
 // fragment, or — for a non-template anchor — its children (which are then
 // cleared; the anchor renders clones as managed siblings).
-function cloneTemplateNodes(el) {
+export function cloneTemplateNodes(el) {
   if (el.tagName.toLowerCase() === 'template') {
     return [...el.content.childNodes].map((n) => n.cloneNode(true));
   }
@@ -1043,7 +1043,7 @@ function cloneTemplateNodes(el) {
 // Render a block: clone every template node, mark it managed (owned by its
 // anchor, not the parent walk), insert the clones in order after `cursor`,
 // and collect them into `out`. Shared by the each/if/await anchors.
-function insertClones(templateNodes, cursor, out) {
+export function insertClones(templateNodes, cursor, out) {
   for (const tpl of templateNodes) {
     const clone = tpl.cloneNode(true);
     clone.__sparkManaged = true;
@@ -1057,7 +1057,7 @@ function insertClones(templateNodes, cursor, out) {
 // Full first render of an if/each block: insert the clones, THEN walk them
 // (a nested if/else chain needs its followers present when its head first
 // runs), fire the enter hook, and resolve any [import] placeholders (async).
-function renderClones(templateNodes, cursor, out, scope) {
+export function renderClones(templateNodes, cursor, out, scope) {
   insertClones(templateNodes, cursor, out);
   for (const clone of out) {
     walkNode(clone, scope, false);
@@ -1099,7 +1099,7 @@ function kindOf(node) {
   return k;
 }
 
-function walkNode(node, scope, isRoot = false) {
+export function walkNode(node, scope, isRoot = false) {
   if (node.nodeType === TEXT_NODE) {
     patchText(node, scope);
     return;
@@ -1229,527 +1229,29 @@ function patchText(node, scope) {
   if (node.textContent !== next) node.textContent = next;
 }
 
-// ─── <template if="expr"> conditional blocks ──────────────────────────
-// ─── enter/leave lifecycle hooks ──────────────────────────────────────
-// Tiny seam for optional animation packages (spark-html-motion). When a
-// hook is registered, if/each blocks call enter() after inserting a node and
-// leave(node, remove) before removing one — the hook may defer `remove` until
-// an exit transition finishes. With no hook set this is a no-op: nodes are
-// inserted and removed synchronously, exactly as before. Core ships nothing
-// that animates; it just exposes the seam.
-let enterHook = null;
-let leaveHook = null;
-function lifecycle(hooks = {}) {
-  enterHook = typeof hooks.enter === 'function' ? hooks.enter : null;
-  leaveHook = typeof hooks.leave === 'function' ? hooks.leave : null;
-}
-function enterNode(n) {
-  if (enterHook && n && n.nodeType === 1) enterHook(n);
-}
-// A <template each>/<template if>/<template await> anchor is (visually)
-// empty — everything it "rendered" lives in tracked SIBLING nodes it
-// inserted itself (__sparkEachBlocks' rows, __sparkIfRendered,
-// __sparkAwaitRendered). Removing just the anchor, as every caller of
-// leaveNode used to do, orphans those siblings: their own onDestroy/store
-// subscriptions never fire and their DOM nodes never leave. Recursive
-// because any of those siblings can itself be a nested each/if/await
-// anchor (a <template each> whose rows each contain a <template if>, say).
-function teardownManaged(n) {
-  if (n.__sparkEachBlocks) {
-    for (const b of n.__sparkEachBlocks) for (const c of b.nodes) leaveNode(c);
-    n.__sparkEachBlocks = [];
-  }
-  if (n.__sparkIfRendered) {
-    for (const c of n.__sparkIfRendered) leaveNode(c);
-    n.__sparkIfRendered = [];
-  }
-  if (n.__sparkAwaitRendered) {
-    for (const c of n.__sparkAwaitRendered) leaveNode(c);
-    n.__sparkAwaitRendered = [];
-  }
-}
-// Run component cleanups now (the node is leaving and goes inert), then let the
-// leave hook animate before it actually detaches; no hook ⇒ remove immediately.
-function leaveNode(n) {
-  teardownManaged(n);
-  destroyComponent(n);
-  const remove = () => n.remove();
-  if (leaveHook && n.nodeType === 1) leaveHook(n, remove);
-  else remove();
-}
-
-// Parse one chain member's expr + content template. The head carries if=,
-// followers carry else-if= (an expr) or a bare else (expr stays null).
-function parseIfMember(el) {
-  if (el.__sparkIfParsed) return;
-  el.__sparkIfExpr = el.hasAttribute('if')
-    ? el.getAttribute('if').trim()
-    : el.hasAttribute('else-if')
-      ? el.getAttribute('else-if').trim()
-      : null; // bare else
-  // A bare else compiles as the constant `true` — the chain scan stops there.
-  el.__sparkIfFn = compileExpr(el.__sparkIfExpr === null ? 'true' : el.__sparkIfExpr);
-  el.__sparkIfTemplate = cloneTemplateNodes(el);
-  el.__sparkIfParsed = true;
-}
-
-// Collect the if / else-if / else chain headed at `el` (computed once, cached
-// on the head). Followers are the consecutive element siblings carrying
-// else-if / else, with only blank text or comments between; a bare else ends
-// the chain. Followers are marked managed so walkNode leaves them to this
-// head — they render nothing on their own.
-function ifChain(el) {
-  let chain = el.__sparkIfChain;
-  if (chain) return chain;
-  chain = [el];
-  let n = el.nextSibling;
-  while (n) {
-    if (n.nodeType === TEXT_NODE) {
-      if ((n.textContent || '').trim()) break; // real prose interrupts the chain
-      n = n.nextSibling;
-      continue;
-    }
-    if (n.nodeType !== ELEMENT_NODE) { n = n.nextSibling; continue; } // comments
-    if (n.hasAttribute('if') || !(n.hasAttribute('else-if') || n.hasAttribute('else'))) break;
-    n.__sparkIfManagedBy = el;
-    chain.push(n);
-    if (!n.hasAttribute('else-if')) break; // bare else — nothing may follow
-    n = n.nextSibling;
-  }
-  el.__sparkIfChain = chain;
-  return chain;
-}
-
-function patchIf(el, scope) {
-  if (!el.parentNode) return;
-  const chain = ifChain(el);
-
-  // Exactly one branch is active: the first truthy if / else-if, or the bare
-  // else when none was. Short-circuit like real if/else — branches after the
-  // active one aren't evaluated, and dependency capture naturally records
-  // only the exprs that actually ran this pass.
-  let active = -1;
-  for (let i = 0; i < chain.length; i++) {
-    const m = chain[i];
-    parseIfMember(m);
-    if (runExpr(m.__sparkIfFn, m.__sparkIfExpr, scope)) { active = i; break; }
-  }
-
-  for (let i = 0; i < chain.length; i++) {
-    const m = chain[i];
-    if (i > 0 && !m.parentNode) continue;
-    // Parse every member: for a plain-element branch this also CLEARS its
-    // children (they become the template), which must happen even for
-    // branches beyond the active one or their raw content stays visible.
-    parseIfMember(m);
-    const show = i === active;
-    const isShown = Boolean(m.__sparkIfRendered && m.__sparkIfRendered.length);
-
-    if (show && !isShown) {
-      m.__sparkIfRendered = [];
-      renderClones(m.__sparkIfTemplate, m, m.__sparkIfRendered, scope);
-    } else if (!show && isShown) {
-      m.__sparkIfRendered.forEach(leaveNode); // cleanups + (optional) exit anim
-      m.__sparkIfRendered = [];
-    } else if (show && isShown) {
-      // keep contents fresh
-      m.__sparkIfRendered.forEach((n) => {
-        if (n.parentNode) walkNode(n, scope, false);
-      });
-    }
-  }
-}
-
-// ─── <template await="promise"> async blocks ──────────────────────────
-// Declarative async, the Spark way: no compiler, reuse the same template +
-// scope-proxy + dependency-tracking machinery the each/if blocks ride on.
+// ─── Directives: if/each/await patchers (split to src/directives.js) ──
+// patchIf, patchEach, patchAwait + their helpers (lifecycle enter/leave
+// seam, anchor/block-end DOM helpers, loop-scope proxy, await state
+// machine). Called from the patch flush below via
+//   withSink(node, patchIf/patchEach/patchAwait, node, scope)
+// and re-imported here as a circular module (function declarations hoisted
+// in ESM's instantiate phase; only ever called post-load — safe).
 //
-//   <template await="expr">
-//     <p>Loading…</p>                       <!-- pending (default) -->
-//     <template then>  {await.value} </template>   <!-- await = resolved value -->
-//     <template catch> {await.message} </template> <!-- await = error -->
-//   </template>
+// Public surface: lifecycle (re-exported by the public API export line).
+// Internal-but-exported: patchIf, patchEach, patchAwait, enterNode (the
+// only directives symbol called from outside directives.js, by
+// buildElementPlan's clone-insert path). M4.1 freeze review buckets each.
 //
-// • await="expr"        re-evaluates when a scalar dependency changes (like $:),
-//                       cancels the prior promise, and shows pending again.
-// • await="once(expr)"  fires on mount only (never re-fires).
-// A non-thenable expr is treated as an already-resolved value (then branch).
-
-// The scope an await branch's content walks with: the identifier `await` (and
-// an optional `as` alias) bound to the settled value — the resolved value in
-// `then`, the error in `catch` — and the plain scope while pending. Exactly a
-// loop scope with both names bound to the same value, so reuse it.
-function awaitBranchScope(el, scope, state) {
-  if (state !== 'then' && state !== 'catch') return scope;
-  const v = state === 'then' ? el.__sparkAwaitValue : el.__sparkAwaitError;
-  return makeLoopScope({ v: 'await', iv: el.__sparkAwaitAs, item: v, i: v, scope });
-}
-
-function parseAwait(el) {
-  let expr = (el.getAttribute('await') || '').trim();
-  // once(expr): one-shot — evaluate on mount only. Greedy capture so inner
-  // parens (once(load())) round-trip.
-  const m = expr.match(/^once\(([\s\S]*)\)$/);
-  el.__sparkAwaitOnce = !!m;
-  el.__sparkAwaitExpr = (m ? m[1] : expr).trim();
-  el.__sparkAwaitFn = compileExpr(el.__sparkAwaitExpr);
-  el.__sparkAwaitAs = el.getAttribute('as') || null;
-
-  const isTplAnchor = el.tagName.toLowerCase() === 'template';
-  const content = [...(isTplAnchor ? el.content : el).childNodes];
-
-  const pending = [], thenNodes = [], catchNodes = [];
-  for (const n of content) {
-    const isTpl = n.nodeType === ELEMENT_NODE && n.tagName === 'TEMPLATE';
-    if (isTpl && n.hasAttribute('then')) thenNodes.push(...n.content.childNodes);
-    else if (isTpl && n.hasAttribute('catch')) catchNodes.push(...n.content.childNodes);
-    else pending.push(n);
-  }
-  const clone = (nodes) => nodes.map((n) => n.cloneNode(true));
-  el.__sparkPendingTpl = clone(pending);
-  el.__sparkThenTpl = clone(thenNodes);
-  el.__sparkCatchTpl = clone(catchNodes);
-  if (!isTplAnchor) el.innerHTML = '';
-  el.__sparkAwaitParsed = true;
-
-  // Hydration: drop any branch content a prerender baked as live siblings
-  // (tagged data-spark-await) so the client re-runs the promise and renders
-  // once — no duplicate. The crawler still got the resolved HTML.
-  if (!(isPrerender())) {
-    let probe = el.nextSibling;
-    while (probe && probe.nodeType !== ELEMENT_NODE) probe = probe.nextSibling;
-    if (probe && probe.hasAttribute && probe.hasAttribute('data-spark-await')) {
-      let n = el.nextSibling;
-      while (n) {
-        const next = n.nextSibling;
-        if (n.nodeType === ELEMENT_NODE && !(n.hasAttribute && n.hasAttribute('data-spark-await'))) break;
-        destroyComponent(n);
-        n.remove();
-        n = next;
-      }
-    }
-  }
-}
-
-// Tear down the current branch's DOM and render the branch for the current
-// state, walking it with the right scope (await-bound for then/catch).
-function applyAwaitState(el, scope) {
-  if (el.__sparkAwaitRendered) {
-    for (const n of el.__sparkAwaitRendered) leaveNode(n);
-  }
-  el.__sparkAwaitRendered = [];
-  const state = el.__sparkAwaitState;
-  const tpl = state === 'then' ? el.__sparkThenTpl
-    : state === 'catch' ? el.__sparkCatchTpl
-    : el.__sparkPendingTpl;
-  const branchScope = awaitBranchScope(el, scope, state);
-  insertClones(tpl, el, el.__sparkAwaitRendered);
-  // Tag baked branch nodes during prerender so a client mount can clear them
-  // (see parseAwait) and re-render without duplicating.
-  if (isPrerender() && state !== 'pending') {
-    for (const c of el.__sparkAwaitRendered) {
-      if (c.nodeType === ELEMENT_NODE && c.setAttribute) c.setAttribute('data-spark-await', '');
-    }
-  }
-  // Walk after the whole branch is inserted (see patchEach — nested if/else
-  // chains need their followers present when the head first patches).
-  for (const c of el.__sparkAwaitRendered) walkNode(c, branchScope, false);
-  hydrateBlockImports(el.__sparkAwaitRendered, branchScope);
-  el.__sparkAwaitRenderedState = state;
-}
-
-// Keep the current branch's reactive bindings fresh on later patches.
-function refreshAwait(el, scope) {
-  if (!el.__sparkAwaitRendered) return;
-  const branchScope = awaitBranchScope(el, scope, el.__sparkAwaitRenderedState);
-  for (const n of el.__sparkAwaitRendered) if (n.parentNode) walkNode(n, branchScope, false);
-}
-
-// (Re)start the block on a new promise/value: show pending, then settle into
-// then/catch. Stale promises (superseded by a newer evaluation) are ignored.
-function startAwait(el, source, scope) {
-  el.__sparkAwaitSource = source;
-  const thenable = source && typeof source.then === 'function';
-  if (!thenable) {
-    // A plain value (or nullish) — resolved immediately.
-    el.__sparkAwaitState = 'then';
-    el.__sparkAwaitValue = source;
-    applyAwaitState(el, scope);
-    return;
-  }
-  const p = source;
-  el.__sparkAwaitPromise = p;
-  el.__sparkAwaitState = 'pending';
-  applyAwaitState(el, scope); // loading, now
-
-  // Let the prerender settle loop wait so :then content is in the HTML.
-  pushPrerenderWait(p);
-
-  const settle = (state, payload) => {
-    if (el.__sparkAwaitPromise !== p) return; // superseded — drop
-    el.__sparkAwaitState = state;
-    if (state === 'then') el.__sparkAwaitValue = payload;
-    else el.__sparkAwaitError = payload;
-    // Re-render through the owning component's batched flush when present (so a
-    // burst of settles collapses into one patch). Crucially that flush re-walks
-    // in FULL mode, which does NOT re-evaluate the await expr (avoiding promise
-    // churn for inline exprs like fetch()) — it only applies the new state.
-    const comp = el.__sparkAwaitComp;
-    if (comp && comp.__sparkScheduleFull && comp.isConnected) comp.__sparkScheduleFull();
-    else applyAwaitState(el, el.__sparkAwaitScope || scope);
-  };
-  p.then((v) => settle('then', v), (e) => settle('catch', e));
-}
-
-function patchAwait(el, scope) {
-  if (!el.__sparkAwaitParsed) parseAwait(el);
-  if (!el.parentNode) return;
-  el.__sparkAwaitScope = scope; // latest scope for async settles + refresh
-  if (el.__sparkAwaitComp === undefined) el.__sparkAwaitComp = closestComponent(el);
-
-  const firstTime = !el.__sparkAwaitStarted;
-  const exprKeys = el.__sparkAwaitExprKeys;
-  // Re-evaluate the expr (and maybe restart) only on first sight, or — unless
-  // it's once() — in a dirty pass where one of the expr's own deps changed.
-  // Never in a full pass: that's where async settles re-render, and re-running
-  // an inline expr (fetch(url)) there would mint a new promise every time.
-  const reEval = firstTime
-    || (!el.__sparkAwaitOnce && capture.dirtyMode && setsIntersect(exprKeys, capture.dirtyKeys));
-
-  if (reEval) {
-    let set = el.__sparkAwaitExprKeys;
-    set = set ? (set.clear(), set) : new Set();
-    const prev = capture.set;
-    capture.set = set; // record THIS expr's deps (also flows to the block sink)
-    let result;
-    try { result = runExpr(el.__sparkAwaitFn, el.__sparkAwaitExpr, scope); }
-    finally { capture.set = prev; }
-    el.__sparkAwaitExprKeys = set.size ? set : null;
-
-    if (firstTime || result !== el.__sparkAwaitSource) {
-      el.__sparkAwaitStarted = true;
-      startAwait(el, result, scope);
-      return;
-    }
-  } else if (exprKeys && capture.sink) {
-    // Not re-evaluating this pass — still keep the block's gating deps.
-    for (const k of exprKeys) capture.sink.add(k);
-  }
-
-  // State may have advanced asynchronously since the last walk → swap branch;
-  // otherwise just refresh the current branch's reactive content.
-  if (el.__sparkAwaitState !== el.__sparkAwaitRenderedState) applyAwaitState(el, scope);
-  else refreshAwait(el, scope);
-}
-
-// ─── each="item in array" loops ───────────────────────────────────────
-// Reconciling, not rebuilding. The old implementation removed every clone
-// and recreated it on every patch — which fires on every keystroke — so an
-// <input> inside a loop could never hold focus and long lists thrashed the
-// DOM. We now keep one "block" of nodes per item and REUSE it across
-// patches: blocks are matched by key (default: index), reused in place
-// (no move when already correct, so focus survives), created for new items,
-// and destroyed for removed ones.
-//
-// Optional explicit key for identity-stable reconciliation across reorders:
-//   <template each="todo in todos" key="todo.id"> … </template>
-
-// A loop scope: the loop variable (`box.v`) and index (`box.iv`) resolve from
-// a mutable box, everything else forwards to the enclosing scope proxy (so
-// dependency capture still sees those reads). One proxy is created per block
-// and REUSED across patches — reconciliation just rewrites box.item / box.i /
-// box.scope — instead of allocating a proxy per row on every patch.
-function makeLoopScope(box) {
-  return new Proxy(box, {
-    get(b, k) {
-      if (k === b.v) return b.item;
-      if (b.iv && k === b.iv) return b.i;
-      if (k === Symbol.unscopables) return undefined;
-      return b.scope[k];
-    },
-    has(b, k) {
-      return k === b.v || (b.iv && k === b.iv) || k in b.scope;
-    },
-    set(b, k, v) {
-      // Never let an assignment clobber the loop variable/index on the
-      // shared parent scope; everything else writes through normally.
-      if (k === b.v || (b.iv && k === b.iv)) return true;
-      b.scope[k] = v;
-      return true;
-    },
-  });
-}
-
-// Siblings OWNED by an anchor node — the rendered output of an if/else
-// chain member, an await block, or a nested each. They sit after the anchor
-// in the DOM but belong to it, so a row move must carry them along.
-function anchorOwnedNodes(n) {
-  if (n.__sparkIfRendered && n.__sparkIfRendered.length) return n.__sparkIfRendered;
-  if (n.__sparkAwaitRendered && n.__sparkAwaitRendered.length) return n.__sparkAwaitRendered;
-  if (n.__sparkEachBlocks && n.__sparkEachBlocks.length) {
-    const out = [];
-    for (const b of n.__sparkEachBlocks) out.push(...b.nodes);
-    return out;
-  }
-  return null;
-}
-
-// The physically-last node of `n`'s span: `n` itself, or the deep end of the
-// last owned sibling its anchor rendered.
-function blockEnd(n) {
-  const owned = anchorOwnedNodes(n);
-  if (owned) {
-    for (let i = owned.length - 1; i >= 0; i--) {
-      if (owned[i].parentNode) return blockEnd(owned[i]);
-    }
-  }
-  return n;
-}
-
-// Ensure `n` sits right after `cursor` (moving it only when needed), then its
-// owned rendered siblings after it, recursively. Returns the new cursor.
-function placeWithRendered(cursor, n) {
-  if (cursor.nextSibling !== n) cursor.after(n);
-  cursor = n;
-  const owned = anchorOwnedNodes(n);
-  if (owned) {
-    for (const r of owned) {
-      if (r.parentNode) cursor = placeWithRendered(cursor, r);
-    }
-  }
-  return cursor;
-}
-
-function patchEach(el, scope) {
-  if (!el.__sparkEachParsed) {
-    const expr = el.getAttribute('each').trim();
-    const match = expr.match(/^(\w+)(?:\s*,\s*(\w+))?\s+in\s+(.+)$/);
-    if (!match) {
-      el.__sparkEachParsed = true;
-      warnOnce(
-        `each:${expr}`,
-        `[spark] Invalid each="${expr}". Expected each="item in items" or each="item, i in items".`,
-      );
-      return;
-    }
-
-    el.__sparkEachVar = match[1];
-    el.__sparkEachIndexVar = match[2] || null;
-    el.__sparkEachArrayExpr = match[3].trim();
-    el.__sparkEachArrayFn = compileExpr(el.__sparkEachArrayExpr);
-    el.__sparkEachKeyExpr = el.getAttribute('key')
-      ? el.getAttribute('key').trim()
-      : null;
-    el.__sparkEachKeyFn = el.__sparkEachKeyExpr ? compileExpr(el.__sparkEachKeyExpr) : null;
-
-    el.__sparkEachTemplate = cloneTemplateNodes(el);
-    el.__sparkEachParsed = true;
-    el.__sparkEachBlocks = []; // [{ key, nodes: [] }]
-  }
-
-  const {
-    __sparkEachVar: varName,
-    __sparkEachIndexVar: idxName,
-    __sparkEachArrayExpr: arrayExpr,
-    __sparkEachKeyExpr: keyExpr,
-    __sparkEachTemplate: templateNodes,
-  } = el;
-
-  if (!varName || !arrayExpr || !templateNodes) return;
-  if (!el.parentNode) return;
-
-  const arr = runExpr(el.__sparkEachArrayFn, arrayExpr, scope);
-  if (!Array.isArray(arr)) {
-    // null/undefined is a normal "loading" state; warn only for a real
-    // type mistake (e.g. each over an object or string).
-    if (arr != null) {
-      warnOnce(
-        `eacharr:${arrayExpr}`,
-        `[spark] each="… in ${arrayExpr}" expected an array but got ${typeof arr}. Nothing rendered.`,
-      );
-    }
-    return;
-  }
-
-  // The key expression evaluates through ONE shared per-anchor box+proxy;
-  // each block carries its own persistent box+proxy for walking its nodes.
-  // Reconciliation updates three box fields per row instead of allocating a
-  // new Proxy per row per patch (see makeLoopScope).
-  const keyFn = el.__sparkEachKeyFn;
-  let keyBox = el.__sparkEachKeyBox;
-  if (keyFn && !keyBox) {
-    keyBox = el.__sparkEachKeyBox = { v: varName, iv: idxName, item: null, i: 0, scope: null };
-    el.__sparkEachKeyScope = makeLoopScope(keyBox);
-  }
-
-  const oldBlocks = el.__sparkEachBlocks || [];
-  const oldByKey = new Map();
-  for (const b of oldBlocks) oldByKey.set(b.key, b);
-
-  const newBlocks = [];
-  let insertAfter = el;
-
-  // Track each row's raw item on the owning component, so a deep mutation
-  // (`todos[i].done = …`) can re-walk just that row instead of the whole
-  // component. A WeakSet → dropped rows are collected automatically.
-  const comp = el.__sparkEachComp || (el.__sparkEachComp = closestComponent(el));
-  const items = comp && (comp.__sparkItems || (comp.__sparkItems = new WeakSet()));
-
-  for (let i = 0; i < arr.length; i++) {
-    const item = arr[i];
-    const rawItem = (item && item[REACTIVE_RAW]) || item;
-    if (items && rawItem && typeof rawItem === 'object') items.add(rawItem);
-    let key = i;
-    if (keyFn) {
-      keyBox.item = item; keyBox.i = i; keyBox.scope = scope;
-      key = runExpr(keyFn, keyExpr, el.__sparkEachKeyScope);
-    }
-    let block = oldByKey.get(key);
-
-    if (block) {
-      oldByKey.delete(key);
-      // Point the block's persistent scope at this patch's item/index/scope.
-      const box = block.box;
-      box.item = item; box.i = i; box.scope = scope;
-      // Reuse the existing nodes — only move them if they're not already in
-      // the right spot, so a focused input is left untouched. An anchor's
-      // OWN rendered content (an if/else chain, await branch, or nested
-      // each inside this row) lives as siblings after it — reposition it
-      // along with the anchor, or reordering rows would strand it.
-      let cursor = insertAfter;
-      for (const n of block.nodes) {
-        cursor = placeWithRendered(cursor, n);
-      }
-      // Pure-row pass (capture.dirtyItems set): only re-walk a row whose item was
-      // mutated this tick. Otherwise nothing it reads changed, so skip it —
-      // this is what turns O(rows) into O(changed rows).
-      if (!capture.dirtyItems || capture.dirtyItems.has(rawItem)) {
-        for (const n of block.nodes) walkNode(n, block.scope, false);
-      }
-    } else {
-      const box = { v: varName, iv: idxName, item, i, scope };
-      const loopScope = makeLoopScope(box);
-      // hydrateBlockImports (inside renderClones) mutates `nodes` in place,
-      // swapping placeholders for booted hosts so reconciliation tracks them.
-      const nodes = [];
-      renderClones(templateNodes, insertAfter, nodes, loopScope);
-      block = { key, nodes, box, scope: loopScope };
-    }
-
-    newBlocks.push(block);
-    const last = block.nodes[block.nodes.length - 1];
-    // The next block starts after this row's LAST node — including any
-    // content its trailing anchor rendered (if/await/nested-each output).
-    if (last) insertAfter = blockEnd(last);
-  }
-
-  // Anything left in oldByKey was dropped from the array — clean it up.
-  for (const b of oldByKey.values()) {
-    for (const n of b.nodes) leaveNode(n); // cleanups + (optional) exit anim
-  }
-
-  el.__sparkEachBlocks = newBlocks;
-}
+// What STAYS here: the patch flush (patch + walkNode + the dirty-mode
+// walker), which is what calls these patchers and WRITES the capture
+// state — that's the one tight coupling the directives need to stay
+// adjacent to. The capture machinery (withCapture/withSink/shouldEval)
+// stays here too; the directive patchers reach it via the imported
+// `capture` object + the imported helpers.
+import {
+  lifecycle, enterNode,
+  patchIf, patchEach, patchAwait,
+} from './directives.js';
 
 // ─── Attribute / event bindings ───────────────────────────────────────
 // An element's bindings are parsed ONCE into a "plan": a list of the
@@ -2120,7 +1622,7 @@ function bootComponent(el) {
 // subscriptions. Called when if/each removes a subtree, or directly via
 // unmount(). Without this, cleanups never ran and store subscribers
 // (which capture the whole component scope) leaked forever.
-function destroyComponent(node) {
+export function destroyComponent(node) {
   if (!node || node.nodeType !== ELEMENT_NODE) return;
   const comps = [];
   if (node.hasAttribute && node.hasAttribute('name')) comps.push(node);
