@@ -70,7 +70,10 @@
     },
     "packages/spark": {
       "name": "spark-html",
-      "version": "0.29.0",
+      "version": "0.30.0",
+      "bin": {
+        "spark-html": "./bin/cli.js",
+      },
     },
     "packages/spark-html-bun": {
       "name": "spark-html-bun",
@@ -180,13 +183,13 @@
     },
     "packages/spark-ssr": {
       "name": "spark-ssr",
-      "version": "0.7.2",
+      "version": "0.8.0",
       "bin": {
         "spark-ssr": "./bin/cli.js",
       },
       "dependencies": {
         "linkedom": "^0.18.12",
-        "spark-html": "^0.27.8",
+        "spark-html": "^0.30.0",
         "spark-html-head": "^0.3.0",
       },
     },
@@ -443,7 +446,5 @@
     "spark-html-theme/spark-html": ["spark-html@0.27.14", "", {}, "sha512-aFsIP3YoBYuaEItwfXLLBFeFsMpSvwTOUKkoonspy1YGq0D3ttIY3J6RnJEBB84T8Ah6hWXJX7dXNSw8tup2cQ=="],
 
     "spark-prerender/spark-html": ["spark-html@0.27.14", "", {}, "sha512-aFsIP3YoBYuaEItwfXLLBFeFsMpSvwTOUKkoonspy1YGq0D3ttIY3J6RnJEBB84T8Ah6hWXJX7dXNSw8tup2cQ=="],
-
-    "spark-ssr/spark-html": ["spark-html@0.27.14", "", {}, "sha512-aFsIP3YoBYuaEItwfXLLBFeFsMpSvwTOUKkoonspy1YGq0D3ttIY3J6RnJEBB84T8Ah6hWXJX7dXNSw8tup2cQ=="],
   }
 }
