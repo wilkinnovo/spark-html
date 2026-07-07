@@ -14,8 +14,8 @@ import { createHmac, timingSafeEqual, randomBytes, randomUUID } from 'node:crypt
 import { loadConfig } from './config.js';
 import { connect } from './db.js';
 import {
-  extractBlocks, analyze, mergeAnalyses, dataPlan, rewriteParams, singleShaped,
-  maskComments, extractForms, validateFields, sqlTables, singular,
+  extractBlocks, analyze, mergeAnalyses, dataPlan, rewriteParams,
+  maskComments, extractForms, splitScript,
 } from './parse.js';
 import { renderFragment, renderFragmentTo, evalExpr } from './render.js';
 import { clientComponent, initModule } from './hydrate.js';
@@ -26,6 +26,7 @@ import { makeScreens, escapeHtml } from './screens.js';
 import { makeRequest, json } from './request.js';
 import { makeCrud } from './crud.js';
 import { makePage } from './page.js';
+import { makeRoutes } from './routes.js';
 import { inferSchema, diffSchema, pushSchema, seedTables } from './schema.js';
 // Head semantics live in one place for the whole family: spark-html-head owns
 // title/meta on the client (pushState updates); its /ssr module owns them
@@ -79,22 +80,6 @@ function matchPage(pages, pathname) {
     return { page: p, params };
   }
   return null;
-}
-
-// Split the page's <script> (the server-side escape hatch) from its markup.
-// Client scripts — <script src> and inline <script type="module"> — are NOT
-// server code; they stay in the markup and liftHead sends them to the browser.
-function splitScript(html) {
-  let code = '';
-  const { masked, restore } = maskComments(html);
-  const out = restore(masked.replace(
-    /<script\b(?![^>]*\bsrc=)(?![^>]*\btype\s*=\s*["']module["'])[^>]*>([\s\S]*?)<\/script>/gi,
-    (m, body) => {
-      code += body + '\n';
-      return '';
-    },
-  ));
-  return { html: out, code: code.trim() };
 }
 
 // One page-or-layout file, parsed. Analyze BEFORE lifting the head, so a
@@ -398,11 +383,17 @@ export async function serve(options = {}) {
     tableRows, registerTable, registerQuery,
   } = makeCrud(app);
   app.tableRows = tableRows;
+  app.registerQuery = registerQuery;
 
   // The page render pipeline (split to src/page.js; response-cache policy in
   // src/cache.js): servePage end to end, plus resolveSource for the
   // /__spark/data endpoints.
   const { servePage, resolveSource } = makePage(app);
+
+  // api/ folder endpoints, API matching, middleware.html (split to
+  // src/routes.js). routes.middleware is the compiled per-mtime function.
+  const routes = makeRoutes(app);
+  const { refreshApi, matchApi, refreshMiddleware, mwState } = routes;
 
   // ── the Spark family, wired in ──
   // Companion packages the app depends on get an importmap entry and are
@@ -534,91 +525,8 @@ export async function serve(options = {}) {
   refreshPages();
   await ensureSchema();
 
-  // ── api/ folder — custom endpoints ──
-  // api/ files re-scan per request too; script handlers hold a mutable def so
-  // edits take effect, and registration itself happens once per route.
-  const apiDefs = new Map(); // route path → { mtime, fn }
-  function refreshApi() {
-    const apiDir = join(root, 'api');
-    if (!existsSync(apiDir)) return;
-    (function scanApi(dir, prefix) {
-      for (const f of readdirSync(dir)) {
-        if (f.startsWith('.')) continue;
-        const full = join(dir, f);
-        if (statSync(full).isDirectory()) { scanApi(full, prefix + f + '/'); continue; }
-        if (!f.endsWith('.html')) continue;
-        const route = '/api/' + prefix + f.slice(0, -5);
-        const mtime = statSync(full).mtimeMs;
-        let def = apiDefs.get(route);
-        if (def && def.mtime === mtime) continue;
-        if (!def) { def = { mtime: 0, fn: null, registered: false }; apiDefs.set(route, def); }
-        def.mtime = mtime;
-        const source = readFileSync(full, 'utf8');
-        const { blocks, html } = extractBlocks(source);
-        const { code } = splitScript(html);
-        for (const b of blocks) {
-          for (const r of b.routes) registerQuery({ ...r, path: r.path || route, cache: b.cache });
-        }
-        def.fn = null;
-        if (code) {
-          try { def.fn = new AsyncFunction('req', 'res', 'db', 'fetch', 'mail', code); }
-          catch (e) { if (!quiet) console.warn(`[spark-ssr] ${route} <script> — ${e.message}`); }
-        }
-        if (def.fn && !def.registered) {
-          def.registered = true;
-          const segs = route.split('/').filter(Boolean);
-          for (const method of ['GET', 'POST', 'PUT', 'PATCH', 'DELETE']) {
-            apiRoutes.push({
-              method,
-              segs,
-              handler: async (req, res) => {
-                if (!def.fn) return json({ error: 'not found' }, 404);
-                const out = await def.fn(req, res, db, makeAppFetch(req), mail);
-                if (out instanceof Response) return out;
-                if (out && typeof out === 'object' && 'status' in out && 'body' in out) {
-                  return new Response(typeof out.body === 'string' ? out.body : JSON.stringify(out.body), { status: out.status });
-                }
-                return json(out ?? { ok: true });
-              },
-            });
-          }
-        }
-      }
-    })(apiDir, '');
-  }
   refreshApi();
 
-  function matchApi(method, pathname) {
-    const parts = pathname.split('/').filter(Boolean);
-    outer: for (const r of apiRoutes) {
-      if (r.method !== method || r.segs.length !== parts.length) continue;
-      const params = {};
-      for (let i = 0; i < parts.length; i++) {
-        if (r.segs[i].startsWith(':')) params[r.segs[i].slice(1)] = decodeURIComponent(parts[i]);
-        else if (r.segs[i] !== parts[i]) continue outer;
-      }
-      return { route: r, params };
-    }
-    return null;
-  }
-
-  // ── middleware.html (reloaded when the file changes) ──
-  let middleware = null;
-  let mwMtime = -1;
-  const mwState = { rateLimit: new Map(), state: {} };
-  function refreshMiddleware() {
-    const mwFile = join(root, 'middleware.html');
-    if (!existsSync(mwFile)) { middleware = null; mwMtime = -1; return; }
-    const mtime = statSync(mwFile).mtimeMs;
-    if (mtime === mwMtime) return;
-    mwMtime = mtime;
-    middleware = null;
-    const { code } = splitScript(readFileSync(mwFile, 'utf8'));
-    if (code) {
-      try { middleware = new AsyncFunction('req', 'res', 'rateLimit', 'state', 'fetch', 'mail', code); }
-      catch (e) { if (!quiet) console.warn(`[spark-ssr] middleware.html — ${e.message}`); }
-    }
-  }
   refreshMiddleware();
 
   // ── the server ──
@@ -681,10 +589,10 @@ export async function serve(options = {}) {
         }
 
         // middleware.html runs first, on every request.
-        if (middleware) {
+        if (routes.middleware) {
           const req = wrapReq(request, url, {}, session, srv);
           const res = { headers: {}, status: null };
-          const out = await middleware(req, res, mwState.rateLimit, mwState.state, makeAppFetch(req), mail);
+          const out = await routes.middleware(req, res, mwState.rateLimit, mwState.state, makeAppFetch(req), mail);
           Object.assign(extraHeaders, res.headers);
           if (out && typeof out === 'object' && out.status) {
             return new Response(typeof out.body === 'string' ? out.body : JSON.stringify(out.body ?? ''), {
