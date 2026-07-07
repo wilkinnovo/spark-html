@@ -96,10 +96,17 @@ if (TPL === 'ssr' || TPL === 'ssr-nodb') {
   serverArgs = ['x', 'spark', 'preview', '--port', String(PORT), '--strict-port'];
 }
 
+// The ssr (blog) template configures auth, and `spark-ssr start` runs in
+// production mode (watch:false) — it fails hard without a stable secret
+// (by design, see M3.3). Real deploys set this in the environment; do the
+// same here so the smoke test exercises the documented golden path.
+const serverEnv = { ...process.env };
+if (TPL === 'ssr') serverEnv.SESSION_SECRET = 'e2e-test-secret-not-for-production';
+
 const server = spawn('bun', serverArgs, {
   cwd: tmp,
   stdio: ['ignore', 'inherit', 'inherit'],
-  env: { ...process.env },
+  env: serverEnv,
 });
 
 // Clean shutdown: kill the server, clean up the temp dir.

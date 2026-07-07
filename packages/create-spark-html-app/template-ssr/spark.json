@@ -1,6 +1,6 @@
 {
   "db": "sqlite://./dev.db",
-  "auth": { "table": "users", "identity": "email" },
+  "auth": { "table": "users", "identity": "email", "secret": "ENV.SESSION_SECRET" },
   "mail": "./lib/mail.js",
   "fonts": [{ "family": "JetBrains Mono", "google": true, "weights": [400, 500, 700, 800] }]
 }
