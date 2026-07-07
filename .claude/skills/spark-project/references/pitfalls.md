@@ -47,6 +47,21 @@ tree-wide before components boot; fixed via retry-after-ancestor-ready.
 
 ## Fixed at v1-prep (historical — do not re-report as live)
 
+- **The rc.3 bugs.md batch (2026-07-07, all test-first):** (1) spark-ssr
+  `addRoots()` now treats any `x.foo(` member CALL as list-safe — the
+  `ARRAY_LIKE_MEMBERS` allowlist only covers bare property reads; a call
+  also never becomes a schema column. (2) Relative `import="components/x"`
+  resolves against the app root (`<base href>` else origin), never the
+  client-routed current URL (`componentURL()` in core; +0.10 KB gzip;
+  `test/import-base.js`). (3+4) spark-ssr auth CREATE enforces unique
+  identity (409) and non-blank identity + non-empty password (422)
+  server-side — the synthesized /signup screen is never form-scanned;
+  PATCH refuses identity collisions too (`test/security.js`, now 13 cases).
+  (5) A **null/undefined `:attr` result removes the attribute** — it used
+  to stringify to `attr=""`, which for boolean attributes means TRUE, so
+  `:hidden="q.loading || q.error"` (→ null) stuck hidden forever. This was
+  a CORE patcher semantic, not a spark-html-query bug.
+
 - **Import props froze at mount** — fixed in 0.29 (M2.1): whole-value
   `{expr}` props re-evaluate on the `$:` capture schedule. Mixed
   string-interpolated props re-evaluate as strings on the same schedule.

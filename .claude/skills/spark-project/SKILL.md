@@ -12,9 +12,25 @@ compilation step is out of scope by definition.** The stated mission (Wilkin,
 2026-07-06): be the *simplest* way to write SSR, prerender, and client-only
 apps while staying fast — "built for humans who want to code themselves."
 
-Knowledge here is accurate as of 2026-07-07 (spark-html 0.29.0 + the M3.1
-core split landed on main, spark-ssr 0.7.2). Function names are stable
-anchors; line numbers drift.
+Knowledge here is accurate as of 2026-07-07 (spark-html 0.30.0 + spark-ssr
+0.8.0 SHIPPED to npm — the M3 wave). Function names are stable anchors; line
+numbers drift.
+
+**M3 complete (0.30.0 / 0.8.0).** spark-ssr `serve()` decomposed into
+`src/{session,jobs,static,screens,request,crud,page,cache,routes}.js` (server.js
+807 lines, was 1,870) under byte-parity. Release-gating security pass:
+`Secure` cookies over HTTPS (trusted `X-Forwarded-Proto`, `req.secure`),
+`localPath()` closes open-redirect + header-injection via `_redirect`/`?next`,
+`maxRequestBodySize` (config.maxBodyMb, default 10 MB → 413), per-IP login
+rate-limit (429), production fail-hard when auth has no secret, and the static
+server never serves server-only trees (`SERVER_DIRS` = node_modules/jobs/lib/
+api/dist in `src/static.js`). Posture is documented in
+`packages/spark-ssr/SECURITY.md`; pinned by `test/security.js` (13 cases, each
+removal-sensitive). Core dual-package guard: `globalThis.__SPARK_CORE__` in
+`reactivity.js` warns loud on a second copy (+0.12 KB → 14.39/15.0). New
+`npx spark-html doctor` (`packages/spark/bin/cli.js`, `test/doctor.js`):
+duplicate-install scan, companion range checks, stale-SW heuristic. peerDeps
+flip stays deferred to the 1.0 wave (§5.4). NEXT: M4.
 
 This skill holds the **facts**. The judgment layer — value ordering, decision
 gates, change protocols — is the `spark-brain` skill; load it alongside this
@@ -93,7 +109,12 @@ See pitfalls.md "Fixed at v1-prep".)
   drift) → separate `stores` Maps → "store not created" in prod only.
   spark-html-bun 0.1.5 has a resolve-plugin fix; root cause is that some
   companions declare spark-html as a hard `dependency` (router, ssr) instead
-  of `peerDependencies` (persist does it right).
+  of `peerDependencies` (persist does it right). Since 0.30.0 the core WARNS
+  on a second copy (`globalThis.__SPARK_CORE__` in reactivity.js) and
+  `npx spark-html doctor` scans for it — but the structural fix (peerDeps flip)
+  is the 1.0 wave. The same drift bites the test suite: a stale nested copy
+  can mask a failure that a clean CI install exposes (see the release-checklist
+  memory) — dedupe before tagging.
 
 ## Deep references (load on demand)
 
