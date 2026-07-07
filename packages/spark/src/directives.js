@@ -30,11 +30,15 @@ import { REACTIVE_RAW, setsIntersect } from './reactivity.js';
 import {
   capture,
   warnOnce,
-  closestComponent, destroyComponent,
+  closestComponent,
   ELEMENT_NODE, TEXT_NODE,
   cloneTemplateNodes, insertClones, renderClones,
   walkNode, hydrateBlockImports, pushPrerenderWait,
 } from './index.js';
+// destroyComponent moved with the rest of the component lifecycle (M3.1).
+// Imported directly from component.js so index.js doesn't have to re-export
+// it: this is the only directives.js consumer of destroyComponent.
+import { destroyComponent } from './component.js';
 
 // Local one-liner copy of index.js's isPrerender — duplicating a trivial
 // pure global read is cheaper than exporting it across the circular
