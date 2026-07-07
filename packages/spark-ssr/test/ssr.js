@@ -179,6 +179,47 @@ await test('named bindings + block attrs: var = SQL/URL/glob/module, guard, seed
   assert.ok(blocks[2].routes[0].sql.startsWith('SELECT'), 'var prefix stripped from the SQL');
 });
 
+await test('reflow tolerance: Prettier-refilled single-token bindings still parse', () => {
+  // Prettier's HTML printer refills a column of `name = ./module.js` lines
+  // into packed/wrapped lines (real TabTube damage). The chain and dangling-
+  // value forms must yield the same bindings as the one-per-line original.
+  const { blocks } = extractBlocks(`<spark-ssr>
+  results = ./lib/search.js suggestions = ./lib/suggestion.js sharedVideo =
+  ./lib/video.js searching = ./lib/ssr/false.js loadingMore = ./lib/ssr/false.js
+  searchSkeletonRows = ./lib/ssr/search-skeleton.js moreSkeletonRows =
+  ./lib/ssr/more-skeleton.js tabtube = ./lib/ssr/tabtube.js savedList =
+  ./lib/ssr/saved-list.js isSaved = ./lib/ssr/is-saved.js
+</spark-ssr>`);
+  const byVar = Object.fromEntries(blocks[0].bindings.map((b) => [b.var, b]));
+  assert.equal(blocks[0].bindings.length, 10, 'all ten bindings survive the reflow');
+  assert.equal(byVar.results.value, './lib/search.js');
+  assert.equal(byVar.sharedVideo.value, './lib/video.js', 'wrapped value rejoined');
+  assert.equal(byVar.moreSkeletonRows.value, './lib/ssr/more-skeleton.js');
+  assert.equal(byVar.isSaved.kind, 'module');
+
+  // Mixed kinds pack too; multi-line SQL is untouched by the chain path.
+  const mixed = extractBlocks(`<spark-ssr>
+  repo = https://api.github.com/repos/x/y docs = ./content/*.md
+  posts = SELECT * FROM posts
+    WHERE published = 1
+</spark-ssr>`).blocks[0];
+  const mv = Object.fromEntries(mixed.bindings.map((b) => [b.var, b]));
+  assert.equal(mv.repo.kind, 'url');
+  assert.equal(mv.docs.kind, 'glob');
+  assert.ok(mv.posts.sql.includes('published = 1'), 'SQL continuation still joins');
+});
+
+await test('loud failure: an ununderstood <spark-ssr> line warns instead of vanishing', () => {
+  const warns = [];
+  const orig = console.warn;
+  console.warn = (...a) => warns.push(a.join(' '));
+  try {
+    extractBlocks('<spark-ssr>\n  this line is nonsense prose\n</spark-ssr>');
+  } finally { console.warn = orig; }
+  assert.ok(warns.some((w) => w.includes('not understood') && w.includes('nonsense')),
+    'dropped line produces a warning that quotes it');
+});
+
 await test('dataPlan: named bindings match exactly and report unresolved needs', () => {
   const a = analyze('<template each="post in posts"><p>{post.title}</p></template><p>{writer.name}</p><p>{missing.x}</p>');
   const plan = dataPlan(a, [{
