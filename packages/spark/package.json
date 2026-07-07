@@ -6,6 +6,9 @@
   "type": "module",
   "main": "./dist/spark.js",
   "types": "./src/index.d.ts",
+  "bin": {
+    "spark-html": "./bin/cli.js"
+  },
   "exports": {
     ".": {
       "types": "./src/index.d.ts",
@@ -17,7 +20,8 @@
   },
   "files": [
     "dist",
-    "src"
+    "src",
+    "bin"
   ],
   "scripts": {
     "build": "node ../../scripts/build-dist.mjs",

@@ -38,6 +38,17 @@ const isPrerender = () => globalThis.__SPARK_PRERENDER__;
 // ─── Stores: shared reactive state across components ──────────────────
 export const stores = new Map();           // name → { state, subscribers }
 
+// Dual-package guard. Two copies of spark-html in one page (a lockfile-drifted
+// nested install) each own a private `stores` Map, so a store created through
+// one is invisible to the other — the silent "store not created" class. A
+// second copy re-runs this module, so a marker already on globalThis means a
+// duplicate is loading: warn loud and name the fix. The copies still work in
+// isolation, so this is a diagnosis, not a throw.
+if (globalThis.__SPARK_CORE__ && !isPrerender()) {
+  console.error('[spark-html] a second copy of the runtime loaded — two store registries in one page cause "store not created" bugs. Dedupe the install (run `npx spark-html doctor`).');
+}
+globalThis.__SPARK_CORE__ = true;
+
 // Tag a store's state object with its kind ('store' | 'derived' | 'query') so
 // tooling (spark-html-devtools) can label it. Non-enumerable → never shows up
 // in JSON/state dumps. Global-registry symbol so sibling packages (the query
