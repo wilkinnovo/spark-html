@@ -393,8 +393,19 @@ export async function prerender(entryPath, options = {}) {
   //    specifiers resolve against the component file's location within the
   //    same roots used for component files; bare specifiers go to Node's
   //    resolver (the project's node_modules).
+  // A component script's own `import { store } from 'spark-html'` is a
+  // documented, normal pattern (theme(), any shared-state setup) — it must
+  // resolve to the SAME cache-busted copy prerender itself mounted with, not
+  // a second `import('spark-html')` (Node's plain resolution, no cache-bust
+  // query string, so a DIFFERENT module instance with its own empty `stores`
+  // Map — a store the entry script or a sibling component just registered
+  // would look "not created" here). Set once mount() actually resolves the
+  // runtime below; every call to importModule happens after that (component
+  // scripts only run during/after mount()).
+  let sparkModulePromise = null;
   const importModule = async (spec, importerPath) => {
     const clean = String(spec).split(/[?#]/)[0];
+    if (clean === 'spark-html' && sparkModulePromise) return sparkModulePromise;
     if (/^\.{0,2}\//.test(clean)) {
       const importerRel = String(importerPath || '').split(/[?#]/)[0].replace(/^\/+/, '');
       const importerDir = importerRel.includes('/')
@@ -418,7 +429,8 @@ export async function prerender(entryPath, options = {}) {
       // Import the runtime FRESH per page (cache-busted) so its module-load
       // cloak + caches bind to THIS document, and pages stay isolated.
       const url = import.meta.resolve('spark-html');
-      const spark = await import(url + '?prerender=' + Math.random().toString(36).slice(2));
+      sparkModulePromise = import(url + '?prerender=' + Math.random().toString(36).slice(2));
+      const spark = await sparkModulePromise;
 
       // ── Settle loop (design §5): the tree expands in waves — rAF reveals,
       //    and imports inside each/if resolve asynchronously, fetching more

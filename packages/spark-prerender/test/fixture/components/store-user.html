@@ -1,0 +1,8 @@
+<p class="count">Items ({todos.items.length})</p>
+<template each="t in todos.items"><span class="item">{t}</span></template>
+
+<script>
+  import { store } from 'spark-html';
+  store('todos', { items: ['alpha', 'beta', 'gamma'] });
+  const todos = useStore('todos');
+</script>

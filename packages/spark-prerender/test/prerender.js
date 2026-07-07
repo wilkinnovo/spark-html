@@ -184,6 +184,24 @@ await test('component <style> from an importing component is still scoped + inje
   jihas('[name="imported"]');
 });
 
+console.log('\nspark-prerender — store()');
+
+// A component's own `import { store } from 'spark-html'` must resolve to the
+// SAME cache-busted runtime instance prerender itself mounted with — a plain
+// `import('spark-html')` (Node's own resolution, no cache-bust) gets a
+// SEPARATE module with its own empty `stores` Map, so useStore() sees
+// nothing the component just registered. Found by the M4.6 audit.
+const storeEntry = join(here, 'fixture', 'store.html');
+const storeHtml = await prerender(storeEntry);
+
+await test('a component that both store()s and useStore()s the same store sees real data', () => {
+  assert.ok(storeHtml.includes('Items (3)'), 'store data reached the interpolation, not undefined');
+  assert.ok(storeHtml.includes('class="item">alpha<'), 'each loop rendered real store items');
+  assert.ok(storeHtml.includes('class="item">beta<'));
+  assert.ok(storeHtml.includes('class="item">gamma<'));
+  assert.ok(!storeHtml.includes('Items ()'), 'not the blank-store regression');
+});
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);
 
