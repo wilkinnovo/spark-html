@@ -51,16 +51,15 @@
       </div>
     </div>
   </div>
-  <blockquote class="hero-quote">“Spark-html is what web frameworks could've been if we didn't spend 21 years bolting JS frameworks on top of HTML instead of just reading the HTML.” <cite>— Anon9</cite></blockquote>
+  <div class="hero-quote">“Spark-html is what web frameworks could've been if we didn't spend 21 years bolting JS frameworks on top of HTML instead of just reading the HTML.” <cite>— Anon9</cite></div>
+  <div class="chips">
+    <span class="chip"><b>{stats.build}</b> build step</span>
+    <span class="chip"><b>~{stats.runtimeKb}kb</b> runtime</span>
+    <span class="chip"><b>{stats.deps}</b> dependencies</span>
+    <span class="chip"><b>{stats.tests}+</b> tests</span>
+    <span class="chip"><b>{stats.packages}</b> packages</span>
+  </div>
 </section>
-
-<div class="chips">
-  <span class="chip"><b>{stats.build}</b> build step</span>
-  <span class="chip"><b>~{stats.runtimeKb}kb</b> runtime</span>
-  <span class="chip"><b>{stats.deps}</b> dependencies</span>
-  <span class="chip"><b>{stats.tests}+</b> tests</span>
-  <span class="chip"><b>{stats.packages}</b> packages</span>
-</div>
 
 <section class="sec why">
   <p class="sec-eyebrow">Why Spark</p>
@@ -207,10 +206,6 @@
   .plus { padding: 8px 18px; background: var(--spark); color: #000; border: none; font-family: var(--font); font-weight: 700; font-size: 15px; cursor: pointer; }
   .plus:active { transform: scale(.95); }
 
-  .chips { display: flex; flex-wrap: wrap; gap: 10px; padding: 4px 0 56px; }
-  .chip { border: 1px solid var(--border); padding: 8px 14px; font-size: 13px; color: var(--muted); }
-  .chip b { color: var(--text); font-weight: 600; }
-
   .sec { padding: 52px 0; border-top: 1px solid var(--border); }
   .why-text { font-size: 16.5px; line-height: 1.85; color: var(--muted); max-width: 72ch; }
   .why-text b { color: var(--text); font-weight: 600; }
@@ -245,10 +240,13 @@
   .card .nm { padding: 12px 2px 2px; font-size: 15px; font-weight: 600; }
   .card .ds { font-size: 12.5px; color: var(--muted); }
 
-  .hero-quote { margin: 24px 0 0; font-size: 13.5px; line-height: 1.6; color: var(--muted-dim); font-style: italic; border-left: 2px solid var(--spark-ink); padding-left: 16px; max-width: 60ch; }
+  .hero-quote { font-size: 13.5px; line-height: 1.6; color: var(--muted-dim); font-style: italic; }
   .hero-quote cite { font-style: normal; color: var(--muted); }
+  .chips { display: flex; flex-wrap: wrap; gap: 10px; padding: 40px 0 0; }
+  .chip { font-size: 12.5px; background: var(--surface-2); border: 1px solid var(--border); padding: 8px 12px; border-radius: 6px; color: var(--muted); }
   @media (min-width: 861px) {
-    .hero-quote { grid-column: 2; justify-self: end; text-align: right; border-left: none; border-right: 2px solid var(--spark-ink); padding-left: 0; padding-right: 16px; }
+    .hero-quote { grid-column: 2; grid-row: 2; justify-self: end; text-align: right; border-left: none; border-right: 2px solid var(--spark-ink); padding-right: 16px; max-width: 55ch; }
+    .chips { grid-column: 1; grid-row: 2; align-self: end; padding: 0; }
   }
-  @media (max-width: 860px) { .hero { grid-template-columns: 1fr; padding: 48px 0 40px; } }
+  @media (max-width: 860px) { .hero { grid-template-columns: 1fr; gap: 24px; padding: 48px 0 40px; } }
 </style>
