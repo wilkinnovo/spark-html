@@ -1,6 +1,6 @@
 {
   "name": "spark-html-router",
-  "version": "0.9.3",
+  "version": "1.0.0-rc.1",
   "description": "Declarative <template route> client routing for spark-html — no JS config, just markup.",
   "type": "module",
   "main": "./src/index.js",
@@ -23,14 +23,14 @@
     "url": "git+https://github.com/wilkinnovo/spark-html.git",
     "directory": "packages/spark-html-router"
   },
-  "dependencies": {
-    "spark-html": "^0.27.0"
-  },
   "keywords": [
     "spark-html",
     "router",
     "spa",
     "routing"
   ],
-  "license": "MIT"
+  "license": "MIT",
+  "peerDependencies": {
+    "spark-html": ">=1.0.0-rc.1 <2"
+  }
 }

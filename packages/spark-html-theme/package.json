@@ -1,6 +1,6 @@
 {
   "name": "spark-html-theme",
-  "version": "0.2.0",
+  "version": "1.0.0-rc.1",
   "description": "One-line dark/light/system theming for spark-html — a reactive `theme` store, data-theme attribute, system watch, and localStorage persistence.",
   "type": "module",
   "main": "./src/index.js",
@@ -29,14 +29,14 @@
     "url": "git+https://github.com/wilkinnovo/spark-html.git",
     "directory": "packages/spark-html-theme"
   },
-  "dependencies": {
-    "spark-html": "^0.27.0"
-  },
   "keywords": [
     "spark-html",
     "theme",
     "dark-mode",
     "color-scheme"
   ],
-  "license": "MIT"
+  "license": "MIT",
+  "peerDependencies": {
+    "spark-html": ">=1.0.0-rc.1 <2"
+  }
 }

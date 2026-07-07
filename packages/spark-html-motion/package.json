@@ -1,6 +1,6 @@
 {
   "name": "spark-html-motion",
-  "version": "0.1.9",
+  "version": "1.0.0-rc.1",
   "description": "Declarative enter/leave transitions for spark-html — transition=\"fade|slide|scale\" on if/each blocks, Web Animations API, 0 deps, no compiler.",
   "type": "module",
   "main": "./src/index.js",
@@ -23,9 +23,6 @@
     "url": "git+https://github.com/wilkinnovo/spark-html.git",
     "directory": "packages/spark-html-motion"
   },
-  "dependencies": {
-    "spark-html": "^0.27.0"
-  },
   "keywords": [
     "spark-html",
     "motion",
@@ -33,5 +30,8 @@
     "animation",
     "enter-leave"
   ],
-  "license": "MIT"
+  "license": "MIT",
+  "peerDependencies": {
+    "spark-html": ">=1.0.0-rc.1 <2"
+  }
 }

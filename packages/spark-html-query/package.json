@@ -1,6 +1,6 @@
 {
   "name": "spark-html-query",
-  "version": "0.1.4",
+  "version": "1.0.0-rc.1",
   "description": "Declarative async data for spark-html — a self-fetching reactive store with loading/error/refetch. One dependency.",
   "type": "module",
   "main": "./src/index.js",
@@ -19,7 +19,7 @@
     "src"
   ],
   "peerDependencies": {
-    "spark-html": ">=0.23.1"
+    "spark-html": ">=1.0.0-rc.1 <2"
   },
   "repository": {
     "type": "git",
