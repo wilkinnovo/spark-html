@@ -70,11 +70,11 @@
     },
     "packages/spark": {
       "name": "spark-html",
-      "version": "0.27.14",
+      "version": "0.29.0",
     },
     "packages/spark-html-bun": {
       "name": "spark-html-bun",
-      "version": "0.1.4",
+      "version": "0.1.5",
       "bin": {
         "spark": "./bin/cli.js",
       },
@@ -431,5 +431,19 @@
     "youtubei.js": ["youtubei.js@17.2.0", "", { "dependencies": { "@bufbuild/protobuf": "^2.0.0", "fflate": "^0.8.2", "meriyah": "^6.1.4" } }, "sha512-XLNsgRKO1h7t4i9tIMWSQSeWdD7Ujkk5v1m5YCaumaHMhu/xuLqtO3M0Hq7CXNup9HlJ1NGrT1Y+HLIHnL6Ujg=="],
 
     "dom-serializer/entities": ["entities@4.5.0", "", {}, "sha512-V0hjH4dGPh9Ao5p0MoRY6BVqtwCjhz6vI5LT8AJ55H+4g9/4vbHx1I54fS0XuclLhDHArPQCiMjDxjaL8fPxhw=="],
+
+    "spark-html-devtools/spark-html": ["spark-html@0.27.14", "", {}, "sha512-aFsIP3YoBYuaEItwfXLLBFeFsMpSvwTOUKkoonspy1YGq0D3ttIY3J6RnJEBB84T8Ah6hWXJX7dXNSw8tup2cQ=="],
+
+    "spark-html-head/spark-html": ["spark-html@0.27.14", "", {}, "sha512-aFsIP3YoBYuaEItwfXLLBFeFsMpSvwTOUKkoonspy1YGq0D3ttIY3J6RnJEBB84T8Ah6hWXJX7dXNSw8tup2cQ=="],
+
+    "spark-html-motion/spark-html": ["spark-html@0.27.14", "", {}, "sha512-aFsIP3YoBYuaEItwfXLLBFeFsMpSvwTOUKkoonspy1YGq0D3ttIY3J6RnJEBB84T8Ah6hWXJX7dXNSw8tup2cQ=="],
+
+    "spark-html-router/spark-html": ["spark-html@0.27.14", "", {}, "sha512-aFsIP3YoBYuaEItwfXLLBFeFsMpSvwTOUKkoonspy1YGq0D3ttIY3J6RnJEBB84T8Ah6hWXJX7dXNSw8tup2cQ=="],
+
+    "spark-html-theme/spark-html": ["spark-html@0.27.14", "", {}, "sha512-aFsIP3YoBYuaEItwfXLLBFeFsMpSvwTOUKkoonspy1YGq0D3ttIY3J6RnJEBB84T8Ah6hWXJX7dXNSw8tup2cQ=="],
+
+    "spark-prerender/spark-html": ["spark-html@0.27.14", "", {}, "sha512-aFsIP3YoBYuaEItwfXLLBFeFsMpSvwTOUKkoonspy1YGq0D3ttIY3J6RnJEBB84T8Ah6hWXJX7dXNSw8tup2cQ=="],
+
+    "spark-ssr/spark-html": ["spark-html@0.27.14", "", {}, "sha512-aFsIP3YoBYuaEItwfXLLBFeFsMpSvwTOUKkoonspy1YGq0D3ttIY3J6RnJEBB84T8Ah6hWXJX7dXNSw8tup2cQ=="],
   }
 }

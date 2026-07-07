@@ -201,5 +201,47 @@ await test('a whole-value {expr} prop passes a real function, not its source tex
   assert.equal(body.querySelector('[name="listhost"] .picked').textContent, 'n=1', 'the real callback ran against the real row');
 });
 
+// ── reactive props: a whole-value {expr} prop re-evaluates when the
+// parent's scope key changes (M2.1) ──────────────────────────────────
+component('reactchild', `
+<p class="msg">{msg}</p>
+`);
+component('reactparenthost', `
+<div import="reactchild" msg="{label}"></div>
+<div import="reactchild" msg="{staticVal}"></div>
+<button class="update" onclick="{update}">change</button>
+<script>
+  let label = 'initial';
+  let staticVal = 'fixed';
+  function update() { label = 'updated'; }
+</script>
+`);
+
+parseHTML('<div import="reactparenthost"></div>', body);
+await mount();
+await tick();
+
+console.log('\nreactive props');
+await test('initial prop value renders', () => {
+  const msgs = body.querySelectorAll('[name="reactparenthost"] [name="reactchild"] .msg');
+  assert.equal(msgs.length, 2);
+  assert.equal(msgs[0].textContent, 'initial');
+  assert.equal(msgs[1].textContent, 'fixed');
+});
+await test('changing parent state re-evaluates the {expr} prop and updates child', async () => {
+  const msgs = body.querySelectorAll('[name="reactparenthost"] [name="reactchild"] .msg');
+  fire(body.querySelector('[name="reactparenthost"] .update'), 'click');
+  await tick();
+  const updated = body.querySelectorAll('[name="reactparenthost"] [name="reactchild"] .msg');
+  assert.equal(updated[0].textContent, 'updated', 'reactive prop re-evaluated and child re-rendered');
+  assert.equal(updated[1].textContent, 'fixed', 'unrelated prop unchanged');
+});
+await test('another write to the same parent key re-evaluates again', async () => {
+  body.querySelector('[name="reactparenthost"]').__sparkScope.label = 'second';
+  await tick();
+  const msgs = body.querySelectorAll('[name="reactparenthost"] [name="reactchild"] .msg');
+  assert.equal(msgs[0].textContent, 'second');
+});
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

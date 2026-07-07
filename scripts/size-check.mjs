@@ -11,7 +11,12 @@ import { gzipSync } from 'node:zlib';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
-const LIMIT_KB = 13.5; // frozen budget for spark-html (minified + gzipped). ~11.2KB after 0.22.x; bumped 0.1KB for the top-level-import prop fix (a plain `<div import> prop="{expr}"` reading its own enclosing component's state now actually evaluates instead of rendering literal braces — was silently broken since imports resolve tree-wide before any component boots); bumped another 0.1KB so an import path's query string (e.g. a server-baked "?id=3") survives the ".html" auto-append instead of landing inside the query value; bumped another 0.1KB so leaveNode() recursively tears down a nested each/if/await anchor's own rendered rows instead of just removing the (invisible) anchor tag and orphaning them; bumped another 0.1KB for braceDepths() — analyzeScript()'s let/const/var and function-declaration rewrites now apply ONLY at the script's own top level (depth 0), not inside a nested helper function's body, where they used to turn a true local variable into an implicit write to the reactive scope proxy — read-and-written by the same expression evaluation (an ordinary pattern), that became a genuine infinite patch loop (a real hang, not just a stale read); bumped another 0.1KB for evalPropValue() — a whole-value `{expr}` import prop (`items="{results}"`) now preserves its real evaluated type (array/object/function) instead of always round-tripping through string interpolation + JSON coercion, which silently mangled an array of objects into "[object Object],[object Object],…" and a function into its own source text.
+const LIMIT_KB = 15.0; // budget raised once at M1 (v1 plan §2). Allocation:
+//   Fail-loud dev invariants + inspect API (M1.2/1.3)  ~0.4 KB
+//   Reactive props (M2.1, actual ~0.29)                 ~0.7 KB
+//   Frozen 1.0 margin                                    ~0.5 KB
+//   Total: 1.6 KB added to 13.42 → 15.0 KB
+// Past bumps: ~11.2KB after 0.22.x; +0.1KB for top-level-import prop fix; +0.1KB for import query-string survival; +0.1KB for leaveNode() recursive teardown; +0.1KB for braceDepths(); +0.1KB for evalPropValue() real-type preservation; +0.29KB for reactive whole-value {expr} props (M2.1, 0.29.0).
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const entry = join(root, 'packages/spark/src/index.js');

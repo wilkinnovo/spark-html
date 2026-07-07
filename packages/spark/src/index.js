@@ -491,6 +491,25 @@ function buildProps(node, scope, host) {
     props[attr.name] = typeof val === 'string' ? coerce(val) : val;
   }
   if (pending) host.__sparkPend = node;
+  // Capture parent-scope deps for whole-value {expr} props so they can
+  // re-evaluate reactively when the parent's state changes (M2.1).
+  if (scope) {
+    for (const attr of node.attributes) {
+      if (attr.name === 'import' || attr.name === 'name' || attr.name.startsWith('data-spark')) continue;
+      if (!attr.value.includes('{')) continue;
+      const segs = parseTemplate(attr.value);
+      if (segs.length === 1 && typeof segs[0] === 'object') {
+        const prev = captureSet;
+        const deps = new Set();
+        captureSet = deps;
+        try { segs[0].fn(scope); } catch (e) { /* eval error at mount — deps still capture whatever was read */ }
+        finally { captureSet = prev; }
+        if (deps.size) {
+          (host.__sparkReactiveProps ||= []).push({ name: attr.name, fn: segs[0].fn, code: segs[0].code, deps });
+        }
+      }
+    }
+  }
   return props;
 }
 
@@ -1004,11 +1023,17 @@ function withSink(node, fn, a, b) {
   const prev = captureSink;
   let set = node.__sparkReadKeys;
   if (set == null) set = new Set();
+  const beforeSize = set.size;
   captureSink = set;
   try {
     return fn(a, b);
   } finally {
     captureSink = prev;
+    // Invariant: dep sets must never shrink (the 0.27.14 lesson).
+    // If this fires, something cleared or deleted from a withSink set.
+    if (!isPrerender() && set.size < beforeSize) {
+      console.error(`[spark] invariant: dep set shrank on ${node.tagName || '$:stmt'} — ${beforeSize}→${set.size}. This is a bug.`);
+    }
     // Propagate to an enclosing block so a nested loop's deps count for the
     // outer one too.
     if (prev) for (const k of set) prev.add(k);
@@ -1600,6 +1625,10 @@ function makeScope(rawCode, componentEl, props = {}) {
             if (gDirtyKeys.size > before) grew = true;
           }
         }
+        if (!isPrerender() && grew && passes > reactiveEffects.length) {
+          const cycling = reactiveEffects.filter(eff => shouldEval(eff)).map(eff => eff.src);
+          if (cycling.length) console.warn(`[spark] $: block(s) kept re-evaluating — possible cycle:`, cycling);
+        }
       }
     } finally {
       inReactive = false;
@@ -1650,6 +1679,21 @@ function makeScope(rawCode, componentEl, props = {}) {
       runReactive();
       patch(componentEl, scope);
       patchSlots();
+      // Reactive props (M2.1): push updates to child components whose
+      // whole-value {expr} prop deps changed since the last flush.
+      if (!isPrerender()) {
+        for (const child of componentEl.childNodes) {
+          if (child.nodeType !== ELEMENT_NODE || !child.__sparkNamed || !child.__sparkScope) continue;
+          const rps = child.__sparkReactiveProps;
+          if (!rps) continue;
+          if (!rps) continue;
+          for (const rp of rps) {
+            if (!gDirtyMode || setsIntersect(rp.deps, gDirtyKeys)) {
+              child.__sparkScope[rp.name] = runExpr(rp.fn, rp.code, scope);
+            }
+          }
+        }
+      }
     } catch (e) {
       reportError(e, { phase: 'update', component: componentEl.getAttribute('name') });
     } finally {
@@ -2798,10 +2842,35 @@ function bootComponent(el) {
     if (scriptSrc) {
       el.__sparkScope = makeScope(scriptSrc, el, el.__sparkProps || {});
     } else {
-      // A script-less component is pure UI — but it still renders what it
-      // receives: its props ARE its scope.
-      el.__sparkScope = { ...el.__sparkProps };
-      patch(el, el.__sparkScope);
+      // A script-less component is pure UI — but it needs a reactive scope
+      // proxy so dep tracking captures its bindings (for dirty-mode gating)
+      // and writes through __sparkSchedule trigger re-renders (M2.1).
+      const raw = { ...el.__sparkProps };
+      let scheduled = false;
+      const trigger = () => {
+        if (scheduled) return;
+        scheduled = true;
+        queueMicrotask(() => { scheduled = false; patch(el, scope); });
+      };
+      const scope = new Proxy(raw, {
+        get(target, key) {
+          if (typeof key === 'string') {
+            if (captureSet !== null) captureSet.add(key);
+            if (captureSink !== null) captureSink.add(key);
+          }
+          return target[key];
+        },
+        set(target, key, value) {
+          if (typeof key === 'symbol') { target[key] = value; return true; }
+          target[key] = value;
+          if (gDirtyKeys) gDirtyKeys.add(key);
+          trigger();
+          return true;
+        },
+      });
+      el.__sparkScope = scope;
+      el.__sparkSchedule = trigger;
+      patch(el, scope);
     }
   } catch (e) {
     reportError(e, { phase: 'boot', component: tag });
@@ -3215,5 +3284,18 @@ function inspectStores() {
   return out;
 }
 
-export { mount, unmount, component, store, derived, subscribe, evaluate, interpolate, parseSFC, scopeCss, inspectStores, lifecycle };
+// ── Inspection API (M1.3) ──────────────────────────────────────────────
+// Formalizes __spark* internals that every debugging session already uses.
+//   inspect.deps(node)  → the tracked dependency keys (Set or null)
+//   inspect.scope(el)   → the component's reactive scope proxy or null
+const inspect = {
+  deps(node) {
+    return node ? node.__sparkReadKeys ?? null : null;
+  },
+  scope(el) {
+    return el ? el.__sparkScope ?? null : null;
+  },
+};
+
+export { mount, unmount, component, store, derived, subscribe, evaluate, interpolate, parseSFC, scopeCss, inspectStores, inspect, lifecycle };
 export default { mount, unmount, component, store, derived };
