@@ -26,10 +26,20 @@ import { templateKids } from './render.js';
 import { definedNames } from './parse.js';
 
 // Structural roles from the analysis (names are the author's own).
-export function handlerRoles(analysis) {
-  const insert = analysis.handlers.find((h) => !h.inEach) || null;
-  const update = analysis.handlers.find((h) => h.inEach && h.withMemberBind) || null;
-  const del = analysis.handlers.find((h) => h.inEach && !h.withMemberBind) || null;
+export function handlerRoles(analysis, defined = new Set()) {
+  // "update" (bind:* on a loop member) and "delete" (plain in-loop call) are
+  // structurally distinguishable, but a page can have MORE than one plain
+  // in-loop handler — e.g. the docs' own toggle(p) + remove(p) — and both
+  // look identical to this heuristic (inEach, no member bind). Only one of
+  // them typically needs synthesis (the other is hand-written), so prefer a
+  // NOT-yet-defined candidate for each role: that's the one synthesis
+  // actually has to fill in. Falls back to the first structural match when
+  // every candidate is already defined (nothing to synthesize either way).
+  const pick = (pred) => analysis.handlers.find((h) => pred(h) && !defined.has(h.name))
+    || analysis.handlers.find(pred) || null;
+  const insert = pick((h) => !h.inEach);
+  const update = pick((h) => h.inEach && h.withMemberBind);
+  const del = pick((h) => h.inEach && !h.withMemberBind && h.name !== (update && update.name));
   return { insert, update, del };
 }
 
@@ -242,7 +252,7 @@ export function clientScript({ analysis, plan, tables = [], colsByTable = {}, ke
     const list = auto === undefined || auto === null ? null
       : auto === 'none' ? [] : String(auto).split(',').map((s) => s.trim()).filter(Boolean);
     const wants = (role) => role && !defined.has(role.name) && (list === null || list.includes(role.name));
-    const { insert, update, del } = handlerRoles(analysis);
+    const { insert, update, del } = handlerRoles(analysis, defined);
     const cols = colsByTable[defaultTable] || [];
     if (wants(insert)) {
       L.push(`async function ${insert.name}() {`);

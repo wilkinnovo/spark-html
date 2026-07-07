@@ -13,7 +13,7 @@ import { parseHTML } from 'linkedom';
 import {
   serve, rewriteParams, analyze, extractBlocks, dataPlan, singleShaped,
   extractForms, validateFields, parseFrontMatter, sqlTables, renderFragment,
-  makeSourceCache,
+  makeSourceCache, handlerRoles,
 } from '../src/index.js';
 
 let pass = 0, fail = 0;
@@ -548,6 +548,25 @@ await test('hydration e2e (§1): author <script> + ambient helpers mount and run
   } finally {
     m.restore();
   }
+});
+
+await test('handler synthesis: two plain in-loop call handlers (docs\' own "Ambient helpers" shape) — the DEFINED one keeps its role, the UNDEFINED one still gets synthesized', () => {
+  // toggle(p) and remove(p) are structurally identical to the role heuristic
+  // (both inEach, neither has a companion bind:* on the same node — that's
+  // what distinguishes "update" from "delete" when there IS one). Found by
+  // the M4.6 audit: reproducing the docs' own example verbatim synthesized
+  // nothing for remove(), because .find() picked whichever came first
+  // (toggle) for the "del" slot, and toggle is already author-defined so
+  // wants(del) never fired for the handler that actually needed it.
+  const a = analyze(
+    `<button onclick={create}>Save</button>
+     <template each="p in posts">
+       <button onclick={toggle(p)}>Toggle</button>
+       <button onclick={remove(p)}>Delete</button>
+     </template>`);
+  const definedByAuthor = new Set(['create', 'toggle']); // remove is left out — synthesized
+  const { del } = handlerRoles(a, definedByAuthor);
+  assert.equal(del && del.name, 'remove', 'the role picks the handler that still needs synthesis, not whichever is first');
 });
 
 await test('live reload: dev pages carry the client; editing a file pings SSE', async () => {
