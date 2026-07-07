@@ -1,8 +1,20 @@
 <template each="t in tabtube.tabs" key="t.videoId">
-  <div class="tab" :class="t.videoId === tabtube.activeId ? 'active' : ''" role="tab" onclick={switchTab(t.videoId)}>
-    <img class="tab-thumb" src="{t.thumbnail}" alt="">
+  <div
+    class="tab"
+    :class="t.videoId === tabtube.activeId ? 'active' : ''"
+    role="tab"
+    onclick="{switchTab(t.videoId, t.title)}"
+  >
+    <img class="tab-thumb" src="{t.thumbnail}" alt="" />
     <span class="tab-title">{t.title}</span>
-    <button type="button" class="tab-close" onclick="{closeTab(t.videoId, event)}" aria-label="Close tab">✕</button>
+    <button
+      type="button"
+      class="tab-close"
+      onclick="{closeTab(t.videoId, event)}"
+      aria-label="Close tab"
+    >
+      ✕
+    </button>
   </div>
 </template>
 <template if="tabtube.tabs.length === 0">
@@ -99,8 +111,9 @@
     }, true);
   });
 
-  function switchTab(id) {
+  function switchTab(id, title) {
     tabtube.activeId = id;
+      window.document.title = title + ' — TabTube';
   }
 
   function closeTab(id, event) {

@@ -199,6 +199,7 @@
   function openVideo(v) {
     if (!tabtube.tabs.some((t) => t.videoId === v.videoId)) tabtube.tabs = [...tabtube.tabs, v];
     tabtube.activeId = v.videoId;
+    window.document.title = v.title + ' — TabTube';
   }
 
   function isSaved(v) {
