@@ -423,7 +423,13 @@ export async function serve(options = {}) {
   app.themeInit = '';
   if (app.familyDeps.includes('spark-html-theme')) {
     try {
-      const { themeInitScript } = await import('spark-html-theme/init');
+      // Resolve from the APP's root, not this module's own location — a bare
+      // `import('spark-html-theme/init')` would resolve relative to
+      // server.js, which only works when the installer hoists the app's deps
+      // up to somewhere on server.js's own node_modules chain (not
+      // guaranteed under every package manager / linker).
+      const initPath = Bun.resolveSync('spark-html-theme/init', root);
+      const { themeInitScript } = await import(pathToFileURL(initPath).href);
       app.themeInit = `<script>${themeInitScript()}</script>`;
     } catch { /* older spark-html-theme without /init — theme() still works, with a flash */ }
   }
@@ -434,7 +440,8 @@ export async function serve(options = {}) {
   app.fontTags = '';
   if (config.fonts) {
     try {
-      const { fontHtml } = await import('spark-html-font');
+      const fontPath = Bun.resolveSync('spark-html-font', root);
+      const { fontHtml } = await import(pathToFileURL(fontPath).href);
       app.fontTags = fontHtml({ fonts: config.fonts });
     } catch (e) {
       if (!quiet) console.warn(`[spark-ssr] "fonts" configured but spark-html-font is not installed — ${e.message}`);

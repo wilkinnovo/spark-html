@@ -35,11 +35,18 @@ function makeProject() {
     name: 'x', type: 'module', dependencies: { 'spark-html': '*' },
   }));
   // Symlink spark-html into the temp project so Bun can resolve it from
-  // the import map builder. When the test runs from within the monorepo,
-  // Bun.resolveSync('spark-html', <test-dir>) finds the repo's copy.
+  // the import map builder. spark-html-bun has no dependency on spark-html
+  // itself (it's dev tooling, not a runtime consumer), so its own
+  // node_modules never gets a symlink from `bun install` — resolve the
+  // sibling workspace package by its known monorepo path instead of
+  // relying on node_modules hoisting (which varies with how the OTHER
+  // companions declare their spark-html dependency).
   try {
     const testDir = dirname(fileURLToPath(import.meta.url));
-    const src = Bun.resolveSync('spark-html', testDir);
+    const siblingPkg = join(testDir, '..', '..', 'spark');
+    const src = existsSync(join(siblingPkg, 'package.json'))
+      ? siblingPkg
+      : dirname(Bun.resolveSync('spark-html/package.json', testDir));
     const nm = join(root, 'node_modules');
     mkdirSync(nm);
     symlinkSync(src, join(nm, 'spark-html'));

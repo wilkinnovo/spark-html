@@ -4,8 +4,9 @@
  * invokes it through scripts/test-bun.mjs, which skips when bun is absent.
  */
 import { strict as assert } from 'node:assert';
-import { mkdtempSync, mkdirSync, writeFileSync, existsSync, readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { mkdtempSync, mkdirSync, writeFileSync, existsSync, readFileSync, symlinkSync } from 'node:fs';
+import { join, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { tmpdir } from 'node:os';
 import { parseHTML } from 'linkedom';
 
@@ -609,6 +610,17 @@ async function makeSiteApp() {
   writeFileSync(join(root, 'package.json'), JSON.stringify({
     name: 'site', dependencies: { 'spark-html-theme': '*', 'spark-html-font': '*' },
   }));
+  // moduleEntry() (src/static.js) resolves each family dep from `root` first;
+  // Bun's workspace linker doesn't hoist to the monorepo root node_modules,
+  // so symlink the sibling workspace packages in directly rather than relying
+  // on incidental global-cache resolution (the same fix as spark-html-bun's
+  // test/bun.js makeProject()).
+  const testDir = dirname(fileURLToPath(import.meta.url));
+  const siteNodeModules = join(root, 'node_modules');
+  mkdirSync(siteNodeModules);
+  for (const dep of ['spark-html-theme', 'spark-html-font']) {
+    symlinkSync(join(testDir, '..', '..', dep), join(siteNodeModules, dep));
+  }
   mkdirSync(join(root, 'pages', 'blog'), { recursive: true });
   mkdirSync(join(root, 'components'));
   mkdirSync(join(root, 'api'));
