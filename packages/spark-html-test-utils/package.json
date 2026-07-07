@@ -1,0 +1,37 @@
+{
+  "name": "spark-html-test-utils",
+  "version": "0.1.0",
+  "description": "Test helpers for spark-html: mount a component on linkedom, inspect its reactive scope, and fire realistic DOM events — no browser.",
+  "homepage": "https://wilkinnovo.github.io/spark-html",
+  "type": "module",
+  "main": "./src/index.js",
+  "exports": {
+    ".": {
+      "default": "./src/index.js"
+    }
+  },
+  "files": [
+    "src"
+  ],
+  "scripts": {
+    "test": "node test/test-utils.js"
+  },
+  "peerDependencies": {
+    "spark-html": ">=0.30.0"
+  },
+  "dependencies": {
+    "linkedom": "^0.18.12"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/wilkinnovo/spark-html.git",
+    "directory": "packages/spark-html-test-utils"
+  },
+  "keywords": [
+    "spark-html",
+    "testing",
+    "test-utils",
+    "linkedom"
+  ],
+  "license": "MIT"
+}
