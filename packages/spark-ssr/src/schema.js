@@ -20,7 +20,7 @@
  */
 import { join, resolve } from 'node:path';
 import { existsSync, readFileSync } from 'node:fs';
-import { singular } from './parse.js';
+import { singular, derivedSources } from './parse.js';
 
 const INPUT_TYPE = {
   checkbox: 'INTEGER', number: 'REAL', range: 'REAL',
@@ -57,6 +57,10 @@ export function inferSchema(pagesData, config, root) {
     }
     const usesSession = pd.analysis && (pd.analysis.needs.has('session')
       || (pd.blocks || []).some((b) => b.guard));
+    // `$: filtered = posts.filter(…)` — a reactive derivation's name mapped
+    // to what it reads. Lets the roots chain below follow
+    // `each="p in filtered"` back to `posts` (see derivedSources' own doc).
+    const derived = derivedSources(pd.code);
 
     for (const b of pd.blocks || []) {
       if (!b.table) continue;
@@ -67,16 +71,34 @@ export function inferSchema(pagesData, config, root) {
       // {var.field} interpolations for vars fed by this table → TEXT.
       const a = pd.analysis;
       if (a) {
-        const roots = [
-          ...Object.entries(varTable).filter(([, tb]) => tb === b.table).map(([v]) => v),
-        ];
-        // Loop vars over those roots read fields too: each="todo in todos".
-        for (const [lv, src] of a.loopSources || []) {
-          if (roots.includes(src)) roots.push(lv);
+        // Two groups, kept separate on purpose: `arrayRoots` are the table
+        // var itself and anything still shaped like the whole list (a `$:`
+        // filter/map/sort of it) — `{posts.length}` on one of these reads
+        // the ARRAY, not a row, and must never become a column. `rowRoots`
+        // are loop vars bound to one of those lists (each="p in posts" or
+        // each="p in filteredPosts") — THEIR field reads are real columns.
+        // Chain to a fixed point: a loop var over a root is row-shaped, a
+        // `$:` derivation of a root stays array-shaped, and either can feed
+        // the other (a loop var over a derived array). Bounded — real
+        // chains are 1-2 hops, never more.
+        const arrayRoots = Object.entries(varTable).filter(([, tb]) => tb === b.table).map(([v]) => v);
+        const rowRoots = [];
+        for (let hop = 0; hop < 5; hop++) {
+          let grew = false;
+          for (const [lv, src] of a.loopSources || []) {
+            if ((arrayRoots.includes(src) || rowRoots.includes(src)) && !rowRoots.includes(lv)) {
+              rowRoots.push(lv); grew = true;
+            }
+          }
+          for (const [name, src] of derived) {
+            if (arrayRoots.includes(src) && !arrayRoots.includes(name)) { arrayRoots.push(name); grew = true; }
+          }
+          if (!grew) break;
         }
-        for (const r of roots) {
+        for (const r of rowRoots) {
           for (const f of a.memberFields.get(r) || []) setCol(t, f, 'TEXT');
         }
+        const roots = [...arrayRoots, ...rowRoots]; // rowBinds below only cares about loop vars, but either shape is a valid loopVar match
         // bind kinds are stronger: a checkbox bind is a boolean column.
         for (const rb of a.rowBinds || []) {
           if (roots.includes(rb.loopVar)) {

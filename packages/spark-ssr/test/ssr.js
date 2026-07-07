@@ -13,7 +13,7 @@ import { parseHTML } from 'linkedom';
 import {
   serve, rewriteParams, analyze, extractBlocks, dataPlan, singleShaped,
   extractForms, validateFields, parseFrontMatter, sqlTables, renderFragment,
-  makeSourceCache, handlerRoles,
+  makeSourceCache, handlerRoles, projectSchema,
 } from '../src/index.js';
 
 let pass = 0, fail = 0;
@@ -2080,6 +2080,28 @@ await test('cli db: shows the inferred schema; db push creates it; then it match
 
   const again = Bun.spawnSync(['bun', cli, 'db', '--root', root]);
   assert.ok(String(again.stdout).includes('already matches'), 'idempotent');
+});
+
+await test('schema inference: a loop over a `$:`-derived filtered array still finds its table, and an unrelated {table.length} does not become a column', async () => {
+  // Found by the M4.6 audit: each="p in filteredPosts" (filteredPosts =
+  // posts.filter(…)) has no direct link back to the `posts` table var, so
+  // {p.title}/{p.body} were silently dropped from the inferred schema — AND
+  // {posts.length} elsewhere on the page (reading the ARRAY, not a row) got
+  // treated as a real column, inferring a bogus `length` field.
+  const root = mkdtempSync(join(tmpdir(), 'spark-ssr-schema-derived-'));
+  writeFileSync(join(root, 'spark.json'), JSON.stringify({ db: 'sqlite://./dev.db' }));
+  writeFileSync(join(root, 'index.html'), `<h1>Posts ({posts.length} total)</h1>
+<template each="p in filteredPosts">
+  <article><h2>{p.title}</h2><p>{p.body}</p></article>
+</template>
+<script>
+  $: filteredPosts = posts.filter(p => p.published);
+</script>
+<spark-ssr table="posts" />`);
+  const { schema } = await projectSchema(root);
+  assert.ok(schema.posts, 'posts table inferred at all');
+  assert.deepEqual(Object.keys(schema.posts.columns).sort(), ['body', 'title'],
+    `expected exactly [body, title], got ${JSON.stringify(schema.posts.columns)}`);
 });
 
 await test('safe schema evolution (T3.7): retype needs --force; db push --force rebuilds and keeps data', async () => {
