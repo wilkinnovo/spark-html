@@ -84,6 +84,19 @@ reading the code" is not verification here.
   app behind a real WAF/proxy limiter loses nothing. Custom `auth.plugin` login
   endpoints own their own limiting.
 
+## Account integrity
+
+- **Identity is unique.** The auth-table CREATE endpoint (built-in `/signup`'s
+  real form target) refuses a duplicate identity with a friendly `409` before
+  inserting — a duplicate row could never log in (login matches the first
+  row), so it would be a silent dead account. PATCH refuses moving an account
+  onto another account's identity the same way (`src/crud.js`).
+- **Required fields are enforced server-side.** The synthesized `/signup`
+  screen is never scanned by the form-validation pass, so the auth CREATE
+  hard-codes its own floor: non-blank identity and non-empty password
+  (`422 {errors}`) — a `password: null` row, which could never verify, is
+  impossible through the API.
+
 ## Response cache
 
 - **Anonymous-only.** The full-page cache stores only anonymous GETs whose

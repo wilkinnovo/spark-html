@@ -104,6 +104,23 @@ export function makeCrud(app) {
         const errors = validateFields(rules, fields);
         if (errors) return json({ errors }, 422);
       }
+      // The auth table is an identity store, not ordinary CRUD. Its built-in
+      // /signup screen is synthesized (never scanned by extractForms), so its
+      // `required` fields are re-checked here — a row with a null password
+      // could never log in (timingSafeEqual against nothing). And the
+      // identity must be unique: login matches the first row, so a duplicate
+      // would be a dead account with no error explaining why.
+      if (isAuthTable) {
+        const identity = config.auth.identity || 'email';
+        const errors = {};
+        if (!String(fields[identity] ?? '').trim()) errors[identity] = `${identity} is required`;
+        if (!String(fields.password ?? '')) errors.password = 'password is required';
+        if (Object.keys(errors).length) return json({ errors }, 422);
+        const dup = await db.query(`SELECT id FROM ${table} WHERE ${identity} = ?`, [fields[identity]]);
+        if (dup.length) {
+          return json({ errors: { [identity]: `that ${identity} is already registered — log in instead` } }, 409);
+        }
+      }
       const data = {};
       for (const [k, v] of Object.entries(fields)) {
         if (names.includes(k) && k !== 'id' && k !== 'user_id') data[k] = v;
@@ -139,6 +156,17 @@ export function makeCrud(app) {
       if (rules) {
         const errors = validateFields(rules, fields, { partial: true });
         if (errors) return json({ errors }, 422);
+      }
+      // Changing the identity column to one another account holds would
+      // create the same dead-login ambiguity as a duplicate signup.
+      if (isAuthTable) {
+        const identity = config.auth.identity || 'email';
+        if (typeof fields[identity] === 'string') {
+          const dup = await db.query(`SELECT id FROM ${table} WHERE ${identity} = ? AND id != ?`, [fields[identity], req.params.id]);
+          if (dup.length) {
+            return json({ errors: { [identity]: `that ${identity} is already registered` } }, 409);
+          }
+        }
       }
       const data = {};
       for (const [k, v] of Object.entries(fields)) {

@@ -272,5 +272,63 @@ await test('response cache is anon-only — a request with a session cookie bypa
   } finally { await s.stop?.(); }
 });
 
+// ── signup integrity: unique identity + server-side required fields ─────────
+await test('signup rejects a duplicate identity (409) — no dead second account', async () => {
+  const root = makeAuthApp();
+  const s = await serve({ root, port: 0, quiet: true });
+  const B = `http://localhost:${s.port}`;
+  try {
+    const first = await fetch(`${B}/api/users`, {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ email: 'dup@test.com', password: 'password123' }),
+    });
+    assert.equal(first.status, 201, 'first signup succeeds');
+    const second = await fetch(`${B}/api/users`, {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ email: 'dup@test.com', password: 'different456' }),
+    });
+    assert.equal(second.status, 409, 'duplicate identity must be rejected');
+    const j = await second.json();
+    assert.ok(j.errors && /already registered/.test(j.errors.email), 'error names the problem');
+    // The first account still logs in fine.
+    const ok = await fetch(`${B}/api/users?auth`, {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ email: 'dup@test.com', password: 'password123' }),
+    });
+    assert.equal(ok.status, 200, 'original account unaffected');
+  } finally { await s.stop?.(); }
+});
+
+await test('signup enforces required identity + password server-side (built-in screen is never file-scanned)', async () => {
+  const root = makeAuthApp();
+  const s = await serve({ root, port: 0, quiet: true });
+  const B = `http://localhost:${s.port}`;
+  try {
+    for (const body of [{ email: 'nopass@test.com' }, { password: 'secret123' }, { email: '   ', password: 'x' }]) {
+      const r = await fetch(`${B}/api/users`, {
+        method: 'POST', headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      assert.equal(r.status, 422, `must reject ${JSON.stringify(body)} — a null-password row can never log in`);
+    }
+  } finally { await s.stop?.(); }
+});
+
+await test('PATCH cannot move an account onto another account\'s identity', async () => {
+  const root = makeAuthApp();
+  const s = await serve({ root, port: 0, quiet: true });
+  const B = `http://localhost:${s.port}`;
+  try {
+    await signup(B); // me@x.com → id 1
+    await signup(B, 'other@x.com', 'secret2');
+    const cookie = (await login(B)).headers.get('set-cookie').split(';')[0];
+    const r = await fetch(`${B}/api/users/1`, {
+      method: 'PATCH', headers: { 'content-type': 'application/json', cookie },
+      body: JSON.stringify({ email: 'other@x.com' }),
+    });
+    assert.equal(r.status, 409, 'identity collision via PATCH must be rejected');
+  } finally { await s.stop?.(); }
+});
+
 console.log(`\n${pass} passed, ${fail} failed`);
 if (fail) process.exit(1);
