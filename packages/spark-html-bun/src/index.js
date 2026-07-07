@@ -524,11 +524,32 @@ export async function build(overrides = {}) {
         const msgs = (result.logs || []).map((l) => l.message || String(l)).join('\n');
         throw new Error(`[spark] build failed:\n${msgs}`);
       }
-      // Entry outputs come back in entrypoint order (verified for Bun's
-      // splitting output, incl. same-basename entries) — map each unique
-      // file to its hashed name, then rewrite every tag that referenced it.
-      const entryOuts = result.outputs.filter((o) => o.kind === 'entry-point');
-      const outName = new Map(files.map((file, i) => [file, entryOuts[i] && basename(entryOuts[i].path)]));
+      // Map each unique input file to its hashed output name. Outputs do NOT
+      // reliably come back in entrypoint order: a CSS entrypoint bundled
+      // alongside JS entrypoints comes back with kind 'asset', not
+      // 'entry-point' — filtering to entry-point-only then zipping by index
+      // silently mispairs every tag once a project has both a script and a
+      // stylesheet entry (the common case). Match by the `[name]-[hash].ext`
+      // naming pattern instead, which is kind-agnostic and input-order-
+      // independent. Two different entrypoints that share a basename+ext
+      // (e.g. src/main.js and src/components/main.js) are a real but rare
+      // ambiguity; fall back to encounter order between the tied candidates.
+      const candidatesByKey = new Map(); // "name.ext" → [output paths, in result.outputs order]
+      for (const o of result.outputs) {
+        if (o.kind !== 'entry-point' && o.kind !== 'asset') continue;
+        const b = basename(o.path);
+        const m = b.match(/^(.+)-[^.-]+(\.[^.]+)$/);
+        if (!m) continue;
+        const key = m[1] + m[2];
+        if (!candidatesByKey.has(key)) candidatesByKey.set(key, []);
+        candidatesByKey.get(key).push(b);
+      }
+      const outName = new Map();
+      for (const file of files) {
+        const key = basename(file, extname(file)) + extname(file);
+        const list = candidatesByKey.get(key);
+        outName.set(file, list && list.length ? list.shift() : undefined);
+      }
       for (const f of found) {
         const name = outName.get(f.file);
         if (!name) continue;

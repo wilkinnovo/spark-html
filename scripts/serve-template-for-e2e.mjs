@@ -71,13 +71,25 @@ console.log(`[template-e2e] Scaffolded ${TPL} at ${tmp}`);
 await $async('bun', ['install', '--no-save'], { cwd: tmp });
 
 // 5. Build (prerender template has its own build pipeline; SSR templates
-//    serve directly; basic template uses the dev server instead of build).
+//    serve directly; basic template uses the dev server instead of build \u2014
+//    see the note by its preview/dev branch below).
 if (TPL === 'prerender') {
   console.log('[template-e2e] Building\u2026');
   await $async('bun', ['run', 'build'], { cwd: tmp });
 } else if (TPL === 'ssr' || TPL === 'ssr-nodb') {
   if (!existsSync(join(tmp, 'spark.json'))) {
     writeFileSync(join(tmp, 'spark.json'), JSON.stringify({ db: 'sqlite::memory:' }, null, 2) + '\n');
+  } else if (TPL === 'ssr') {
+    // The template's shipped spark.json deliberately has no auth.secret —
+    // dev mode auto-generates an ephemeral one, and requiring a real secret
+    // is a deploy-time step (see the template's own README "Deploy"
+    // section), not a fresh-scaffold one. `spark-ssr start` runs in
+    // production mode (watch:false) and fails hard without a secret by
+    // design (M3.3) — set one here the same way a real deploy would.
+    const sparkJsonPath = join(tmp, 'spark.json');
+    const sparkJson = JSON.parse(readFileSync(sparkJsonPath, 'utf8'));
+    sparkJson.auth.secret = 'ENV.SESSION_SECRET';
+    writeFileSync(sparkJsonPath, JSON.stringify(sparkJson, null, 2) + '\n');
   }
 }
 
@@ -88,8 +100,14 @@ let serverArgs;
 if (TPL === 'ssr' || TPL === 'ssr-nodb') {
   serverArgs = ['x', 'spark-ssr', 'start', '--port', String(PORT)];
 } else if (TPL === 'basic') {
-  // Use the dev server (import-map based) — the build output has a mapping
-  // bug where CSS gets the JS asset name. Dev serves everything correctly.
+  // Use the dev server (import-map based), not build+preview. `bun install`
+  // here resolves spark-html-bun/spark-html from the registry/cache, NOT
+  // this monorepo's local workspace source — so build+preview can only ever
+  // smoke-test whatever's currently published, never an in-flight fix (the
+  // CSS/JS asset-mapping bug fixed in this same rc is covered instead by
+  // packages/spark-html-bun/test/bun.js, which imports the local source
+  // directly). Dev mode sidesteps the build step entirely and stays green
+  // regardless of what's on the registry.
   serverArgs = ['x', 'spark', 'dev', '--port', String(PORT)];
 } else {
   // prerender — use preview after build.

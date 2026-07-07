@@ -1,6 +1,6 @@
 {
   "lockfileVersion": 1,
-  "configVersion": 0,
+  "configVersion": 1,
   "workspaces": {
     "": {
       "name": "spark",
@@ -58,51 +58,53 @@
     },
     "packages/create-spark-html-app": {
       "name": "create-spark-html-app",
-      "version": "0.15.2",
-      "bin": "bin/index.js",
+      "version": "1.0.0-rc.1",
+      "bin": {
+        "create-spark-html-app": "bin/index.js",
+      },
     },
     "packages/prettier-plugin-spark": {
       "name": "prettier-plugin-spark",
-      "version": "0.1.4",
+      "version": "1.0.0-rc.1",
       "peerDependencies": {
         "prettier": "^3.0.0",
       },
     },
     "packages/spark": {
       "name": "spark-html",
-      "version": "0.30.0",
+      "version": "1.0.0-rc.1",
       "bin": {
         "spark-html": "./bin/cli.js",
       },
     },
     "packages/spark-html-bun": {
       "name": "spark-html-bun",
-      "version": "0.1.5",
+      "version": "1.0.0-rc.1",
       "bin": {
         "spark": "./bin/cli.js",
       },
     },
     "packages/spark-html-devtools": {
       "name": "spark-html-devtools",
-      "version": "0.1.9",
-      "dependencies": {
-        "spark-html": "^0.27.0",
+      "version": "1.0.0-rc.1",
+      "peerDependencies": {
+        "spark-html": ">=1.0.0-rc.1 <2",
       },
     },
     "packages/spark-html-font": {
       "name": "spark-html-font",
-      "version": "0.1.4",
+      "version": "1.0.0-rc.1",
     },
     "packages/spark-html-head": {
       "name": "spark-html-head",
-      "version": "0.3.0",
-      "dependencies": {
-        "spark-html": "^0.27.0",
+      "version": "1.0.0-rc.1",
+      "peerDependencies": {
+        "spark-html": ">=1.0.0-rc.1 <2",
       },
     },
     "packages/spark-html-image": {
       "name": "spark-html-image",
-      "version": "0.1.4",
+      "version": "1.0.0-rc.1",
       "dependencies": {
         "linkedom": "^0.18.12",
         "sharp": "^0.34.0",
@@ -110,87 +112,103 @@
     },
     "packages/spark-html-language-server": {
       "name": "spark-html-language-server",
-      "version": "0.2.1",
-      "bin": "bin/cli.js",
+      "version": "1.0.0-rc.1",
+      "bin": {
+        "spark-html-language-server": "bin/cli.js",
+      },
     },
     "packages/spark-html-manifest": {
       "name": "spark-html-manifest",
-      "version": "0.1.5",
+      "version": "1.0.0-rc.1",
       "dependencies": {
         "sharp": "^0.34.0",
       },
     },
     "packages/spark-html-motion": {
       "name": "spark-html-motion",
-      "version": "0.1.9",
-      "dependencies": {
-        "spark-html": "^0.27.0",
+      "version": "1.0.0-rc.1",
+      "peerDependencies": {
+        "spark-html": ">=1.0.0-rc.1 <2",
       },
     },
     "packages/spark-html-offline": {
       "name": "spark-html-offline",
-      "version": "0.1.5",
+      "version": "1.0.0-rc.1",
     },
     "packages/spark-html-persist": {
       "name": "spark-html-persist",
-      "version": "0.1.4",
+      "version": "1.0.0-rc.1",
       "peerDependencies": {
-        "spark-html": ">=0.23.1",
+        "spark-html": ">=1.0.0-rc.1 <2",
       },
     },
     "packages/spark-html-query": {
       "name": "spark-html-query",
-      "version": "0.1.4",
+      "version": "1.0.0-rc.1",
       "peerDependencies": {
-        "spark-html": ">=0.23.1",
+        "spark-html": ">=1.0.0-rc.1 <2",
       },
     },
     "packages/spark-html-router": {
       "name": "spark-html-router",
-      "version": "0.9.3",
-      "dependencies": {
-        "spark-html": "^0.27.0",
+      "version": "1.0.0-rc.1",
+      "peerDependencies": {
+        "spark-html": ">=1.0.0-rc.1 <2",
       },
     },
     "packages/spark-html-sri": {
       "name": "spark-html-sri",
-      "version": "0.1.3",
+      "version": "1.0.0-rc.1",
+    },
+    "packages/spark-html-test-utils": {
+      "name": "spark-html-test-utils",
+      "version": "1.0.0-rc.1",
+      "dependencies": {
+        "linkedom": "^0.18.12",
+      },
+      "peerDependencies": {
+        "spark-html": ">=1.0.0-rc.1 <2",
+      },
     },
     "packages/spark-html-theme": {
       "name": "spark-html-theme",
-      "version": "0.2.0",
-      "dependencies": {
-        "spark-html": "^0.27.0",
+      "version": "1.0.0-rc.1",
+      "peerDependencies": {
+        "spark-html": ">=1.0.0-rc.1 <2",
       },
     },
     "packages/spark-html-websocket": {
       "name": "spark-html-websocket",
-      "version": "0.1.3",
+      "version": "1.0.0-rc.1",
       "peerDependencies": {
-        "spark-html": ">=0.23.1",
+        "spark-html": ">=1.0.0-rc.1 <2",
       },
     },
     "packages/spark-prerender": {
       "name": "spark-prerender",
-      "version": "0.7.4",
+      "version": "1.0.0-rc.1",
       "bin": {
         "spark-prerender": "bin/cli.js",
       },
       "dependencies": {
         "linkedom": "^0.18.12",
-        "spark-html": "^0.27.0",
+      },
+      "peerDependencies": {
+        "spark-html": ">=1.0.0-rc.1 <2",
       },
     },
     "packages/spark-ssr": {
       "name": "spark-ssr",
-      "version": "0.8.0",
+      "version": "1.0.0-rc.1",
       "bin": {
         "spark-ssr": "./bin/cli.js",
       },
       "dependencies": {
         "linkedom": "^0.18.12",
-        "spark-html": "^0.30.0",
-        "spark-html-head": "^0.3.0",
+        "spark-html-head": "^1.0.0-rc.1",
+      },
+      "peerDependencies": {
+        "spark-html": ">=1.0.0-rc.1 <2",
       },
     },
     "website": {
@@ -219,7 +237,7 @@
   "packages": {
     "@bufbuild/protobuf": ["@bufbuild/protobuf@2.12.1", "", {}, "sha512-BvAMfS6LrgZiryOAZ4pBYucu4wG/Ei/9o9DZ9akbREnMLbPJiom2i8b9C8IsKErQoiKqVhrerzt3kOT/RrzLHg=="],
 
-    "@emnapi/runtime": ["@emnapi/runtime@1.11.1", "", { "dependencies": { "tslib": "^2.4.0" } }, "sha512-vgj7R3y3Wgx24IQaGPA/R6YFXLHVMOZ0uVEyIQPaWs+rd1AzfEMXlAC22FYwO1XkKR6NPsq7mUandH8oIRdZFw=="],
+    "@emnapi/runtime": ["@emnapi/runtime@1.11.2", "", { "dependencies": { "tslib": "^2.4.0" } }, "sha512-kyOl3X0DuTiT1h2ft8r2fYO8JYtU9a9Xis/zBSiGArNaagCOWx90N1k2wxp18czFDH+OgcWGb5ZP/XMt3dcyPA=="],
 
     "@esbuild/aix-ppc64": ["@esbuild/aix-ppc64@0.21.5", "", { "os": "aix", "cpu": "ppc64" }, "sha512-1SDgH6ZSPTlggy1yI6+Dbkiz8xzpHJEVAlF/AM1tHPLsf5STom9rwtjE4hKAF20FfXXNTFqEYXyJNWh1GiZedQ=="],
 
@@ -319,25 +337,25 @@
 
     "@playwright/test": ["@playwright/test@1.61.1", "", { "dependencies": { "playwright": "1.61.1" }, "bin": { "playwright": "cli.js" } }, "sha512-8nKv6+0RJSL9FE4jYOEGXnPeM/Hg12qZpmqzZjRh3qM0Y7c3z1mrOTfFLids72RDQYVh9WpLEfR5WdpNX4fkig=="],
 
-    "boolbase": ["boolbase@1.0.0", "", {}, "sha512-JZOSA7Mo9sNGB8+UjSgzdLtokWAky1zbztM3WRLCbZ70/3cTANmQmOdR7y2g+J0e2WXywy1yS468tY+IruqEww=="],
+    "boolbase": ["boolbase@2.0.0", "", {}, "sha512-DkVaaQHymRhpYEYo9x1oo7Q7B0Y6KJUsjm3c9eTyFDby4MHLBTwZ6ZDWBel5zrYxj1WsZgC5oLpiz+93MluXeA=="],
 
     "create-spark-html-app": ["create-spark-html-app@workspace:packages/create-spark-html-app"],
 
-    "css-select": ["css-select@5.2.2", "", { "dependencies": { "boolbase": "^1.0.0", "css-what": "^6.1.0", "domhandler": "^5.0.2", "domutils": "^3.0.1", "nth-check": "^2.0.1" } }, "sha512-TizTzUddG/xYLA3NXodFM0fSbNizXjOKhqiQQwvhlspadZokn1KDy0NZFS0wuEubIYAV5/c1/lAr0TaaFXEXzw=="],
+    "css-select": ["css-select@7.0.0", "", { "dependencies": { "boolbase": "^2.0.0", "css-what": "^8.0.0", "domhandler": "^6.0.1", "domutils": "^4.0.2", "nth-check": "^3.0.1" } }, "sha512-snmjEVXy+1LnwXdxhYvTMj1d9tOh4HxkA1YmoayVBeeyR2C14Pum7fcxJIm4SswYspVy866eYNwlH6xC3/VH5g=="],
 
-    "css-what": ["css-what@6.2.2", "", {}, "sha512-u/O3vwbptzhMs3L1fQE82ZSLHQQfto5gyZzwteVIEyeaY5Fc7R4dapF/BvRoSYFeqfBk4m0V1Vafq5Pjv25wvA=="],
+    "css-what": ["css-what@8.0.0", "", {}, "sha512-DH0Bqq3DNp5tdOReuNyAA+Ev4Y2GS5FMbZpeTLP6C4CDi0h5nL0BmUPChXw3o/qbHLDWHl49sbNqQVY7bMSDdw=="],
 
     "cssom": ["cssom@0.5.0", "", {}, "sha512-iKuQcq+NdHqlAcwUY0o/HL69XQrUaQdMjmStJ8JFmUaiiQErlhrmuigkg/CU4E2J0IyUKUrMAgl36TvN67MqTw=="],
 
     "detect-libc": ["detect-libc@2.1.2", "", {}, "sha512-Btj2BOOO83o3WyH59e8MgXsxEQVcarkUOpEYrubB0urwnN10yQ364rsiByU11nZlqWYZm05i/of7io4mzihBtQ=="],
 
-    "dom-serializer": ["dom-serializer@2.0.0", "", { "dependencies": { "domelementtype": "^2.3.0", "domhandler": "^5.0.2", "entities": "^4.2.0" } }, "sha512-wIkAryiqt/nV5EQKqQpo3SToSOV9J0DnbJqwK7Wv/Trc92zIAYZ4FlMu+JPFW1DfGFt81ZTCGgDEabffXeLyJg=="],
+    "dom-serializer": ["dom-serializer@3.1.1", "", { "dependencies": { "domelementtype": "^3.0.0", "domhandler": "^6.0.0", "entities": "^8.0.0" } }, "sha512-4MEa38/QexBob6gFNwu+EGdWvhJ1OKuNwdYY3Y3NyeWDQfnGeDYQUDfIRzWu5B5gsv03so2Uxd28YC6zrsx3Lw=="],
 
     "domelementtype": ["domelementtype@2.3.0", "", {}, "sha512-OLETBj6w0OsagBwdXnPdN0cnMfF9opN69co+7ZrbfPGrdpPVNBUj02spi6B1N7wChLQiPn4CSH/zJvXw56gmHw=="],
 
-    "domhandler": ["domhandler@5.0.3", "", { "dependencies": { "domelementtype": "^2.3.0" } }, "sha512-cgwlv/1iFQiFnU96XXgROh8xTeetsnJiDsTc7TYCLFd9+/WNkIqPTxiM/8pSd8VIrhXGTf1Ny1q1hquVqDJB5w=="],
+    "domhandler": ["domhandler@6.0.1", "", { "dependencies": { "domelementtype": "^3.0.0" } }, "sha512-gYzvtM72ZtxQO0T048kd6HWSbbGCNOUwcnfQ01cqIJ4X2IYKFFHZ5mKvrQETcFXxsRObZulDaKmy//R7TPtsBg=="],
 
-    "domutils": ["domutils@3.2.2", "", { "dependencies": { "dom-serializer": "^2.0.0", "domelementtype": "^2.3.0", "domhandler": "^5.0.3" } }, "sha512-6kZKyUajlDuqlHKVX1w7gyslj9MPIXzIFiz/rGu35uC1wMi+kMhQwGhl4lt9unC9Vb9INnY9Z3/ZA3+FhASLaw=="],
+    "domutils": ["domutils@4.0.2", "", { "dependencies": { "dom-serializer": "^3.0.0", "domelementtype": "^3.0.0", "domhandler": "^6.0.0" } }, "sha512-qI4JLRKnSzqFqr7hAlS5xQDusBCjKSEG4t4+7aNrIQMHBcsC2TGEhuyABJdYkgSewL57PNLYEiibY2iPKhKpaA=="],
 
     "entities": ["entities@7.0.1", "", {}, "sha512-TWrgLOFUQTH994YUyl1yT4uyavY5nNB5muff+RtWaqNVCAK408b5ZnnbNAUEWLTCpum9w6arT70i1XdQ4UeOPA=="],
 
@@ -351,23 +369,23 @@
 
     "htmlparser2": ["htmlparser2@10.1.0", "", { "dependencies": { "domelementtype": "^2.3.0", "domhandler": "^5.0.3", "domutils": "^3.2.2", "entities": "^7.0.1" } }, "sha512-VTZkM9GWRAtEpveh7MSF6SjjrpNVNNVJfFup7xTY3UpFtm67foy9HDVXneLtFVt4pMz5kZtgNcvCniNFb1hlEQ=="],
 
-    "linkedom": ["linkedom@0.18.12", "", { "dependencies": { "css-select": "^5.1.0", "cssom": "^0.5.0", "html-escaper": "^3.0.3", "htmlparser2": "^10.0.0", "uhyphen": "^0.2.0" }, "peerDependencies": { "canvas": ">= 2" }, "optionalPeers": ["canvas"] }, "sha512-jalJsOwIKuQJSeTvsgzPe9iJzyfVaEJiEXl+25EkKevsULHvMJzpNqwvj1jOESWdmgKDiXObyjOYwlUqG7wo1Q=="],
+    "linkedom": ["linkedom@0.18.13", "", { "dependencies": { "css-select": "^7.0.0", "cssom": "^0.5.0", "html-escaper": "^3.0.3", "htmlparser2": "^10.1.0", "uhyphen": "^0.2.0" }, "peerDependencies": { "canvas": ">= 2" }, "optionalPeers": ["canvas"] }, "sha512-ES/o9qotMpzpN2MHs+Iq/JcVoOj8Fa5wiQYrTdFpvAnwXL0g66XHHUc9WUMk6nAlBtGsFQ24ne+SYnvnaQ2FSw=="],
 
     "meriyah": ["meriyah@6.1.4", "", {}, "sha512-Sz8FzjzI0kN13GK/6MVEsVzMZEPvOhnmmI1lU5+/1cGOiK3QUahntrNNtdVeihrO7t9JpoH75iMNXg6R6uWflQ=="],
 
     "node-fetch": ["node-fetch@2.7.0", "", { "dependencies": { "whatwg-url": "^5.0.0" }, "peerDependencies": { "encoding": "^0.1.0" }, "optionalPeers": ["encoding"] }, "sha512-c4FRfUm/dbcWZ7U+1Wq0AwCyFL+3nt2bEw05wfxSz+DWpWsitgmSgYmy2dQdWyKC1694ELPqMs/YzUSNozLt8A=="],
 
-    "nth-check": ["nth-check@2.1.1", "", { "dependencies": { "boolbase": "^1.0.0" } }, "sha512-lqjrjmaOoAnWfMmBPL+XNnynZh2+swxiX3WUE0s4yEHI6m+AwrK2UZOimIRl3X/4QctVqS8AiZjFqyOGrMXb/w=="],
+    "nth-check": ["nth-check@3.0.1", "", { "dependencies": { "boolbase": "^2.0.0" } }, "sha512-GX0gsdbGVCgnRgbeGaubfjpBXyYRWOOCVeYh08bSQvDZqxz5ndXs1OTfAt/h36G1xvI94YIspsI0sVFqAV9+RQ=="],
 
-    "playwright": ["playwright@1.61.1", "", { "dependencies": { "playwright-core": "1.61.1" }, "optionalDependencies": { "fsevents": "2.3.2" }, "bin": "cli.js" }, "sha512-DWnY5o3YbLWK4GovuAVwpqL+1VwGNdUGrRr++8j8PtQQzvAVZUIMjKQ90fY689sEJZJBbZVw1rXaOKSTitkzPQ=="],
+    "playwright": ["playwright@1.61.1", "", { "dependencies": { "playwright-core": "1.61.1" }, "optionalDependencies": { "fsevents": "2.3.2" }, "bin": { "playwright": "cli.js" } }, "sha512-DWnY5o3YbLWK4GovuAVwpqL+1VwGNdUGrRr++8j8PtQQzvAVZUIMjKQ90fY689sEJZJBbZVw1rXaOKSTitkzPQ=="],
 
-    "playwright-core": ["playwright-core@1.61.1", "", { "bin": "cli.js" }, "sha512-h7Qlt6m4REp25qvIdvbDtVmD4LqVXfpRxhORv9L0jzETM05p4fuPJ3dKyuSXQxDSbXnmS79HAgi9589lGSpLkg=="],
+    "playwright-core": ["playwright-core@1.61.1", "", { "bin": { "playwright-core": "cli.js" } }, "sha512-h7Qlt6m4REp25qvIdvbDtVmD4LqVXfpRxhORv9L0jzETM05p4fuPJ3dKyuSXQxDSbXnmS79HAgi9589lGSpLkg=="],
 
-    "prettier": ["prettier@3.9.1", "", { "bin": "bin/prettier.cjs" }, "sha512-ppiDo2CSwexck1eyZUwJHg/N3nf1+6IRCv7W/VJ5vaLnVCmB7+3CdRfMwoCHBBX6xTrREDTksZ4OZl5SSf4zXA=="],
+    "prettier": ["prettier@3.9.4", "", { "bin": { "prettier": "bin/prettier.cjs" } }, "sha512-yWG/o/4oJfo036EKAfK6ACAoDOfHeRHx4tuxkfBZiauURiaSmYwlpOr5LQqKtIkRD2z1PLteme2WoxEnj4tHTg=="],
 
     "prettier-plugin-spark": ["prettier-plugin-spark@workspace:packages/prettier-plugin-spark"],
 
-    "semver": ["semver@7.8.5", "", { "bin": "bin/semver.js" }, "sha512-Y7/KDsb8LjooZpwaqGyulO6DQlksgCncchHGk+sZIY4SBvUocMBEFH5Ur1fI4dV+Jvl0w6cjvucaIi40puRioA=="],
+    "semver": ["semver@7.8.5", "", { "bin": { "semver": "bin/semver.js" } }, "sha512-Y7/KDsb8LjooZpwaqGyulO6DQlksgCncchHGk+sZIY4SBvUocMBEFH5Ur1fI4dV+Jvl0w6cjvucaIi40puRioA=="],
 
     "sharp": ["sharp@0.34.5", "", { "dependencies": { "@img/colour": "^1.0.0", "detect-libc": "^2.1.2", "semver": "^7.7.3" }, "optionalDependencies": { "@img/sharp-darwin-arm64": "0.34.5", "@img/sharp-darwin-x64": "0.34.5", "@img/sharp-libvips-darwin-arm64": "1.2.4", "@img/sharp-libvips-darwin-x64": "1.2.4", "@img/sharp-libvips-linux-arm": "1.2.4", "@img/sharp-libvips-linux-arm64": "1.2.4", "@img/sharp-libvips-linux-ppc64": "1.2.4", "@img/sharp-libvips-linux-riscv64": "1.2.4", "@img/sharp-libvips-linux-s390x": "1.2.4", "@img/sharp-libvips-linux-x64": "1.2.4", "@img/sharp-libvips-linuxmusl-arm64": "1.2.4", "@img/sharp-libvips-linuxmusl-x64": "1.2.4", "@img/sharp-linux-arm": "0.34.5", "@img/sharp-linux-arm64": "0.34.5", "@img/sharp-linux-ppc64": "0.34.5", "@img/sharp-linux-riscv64": "0.34.5", "@img/sharp-linux-s390x": "0.34.5", "@img/sharp-linux-x64": "0.34.5", "@img/sharp-linuxmusl-arm64": "0.34.5", "@img/sharp-linuxmusl-x64": "0.34.5", "@img/sharp-wasm32": "0.34.5", "@img/sharp-win32-arm64": "0.34.5", "@img/sharp-win32-ia32": "0.34.5", "@img/sharp-win32-x64": "0.34.5" } }, "sha512-Ou9I5Ft9WNcCbXrU9cMgPBcCK8LiwLqcbywW3t4oDV37n1pzpuNLsYiAV8eODnjbtQlSDwZ2cUEeQz4E54Hltg=="],
 
@@ -409,6 +427,8 @@
 
     "spark-html-sri": ["spark-html-sri@workspace:packages/spark-html-sri"],
 
+    "spark-html-test-utils": ["spark-html-test-utils@workspace:packages/spark-html-test-utils"],
+
     "spark-html-theme": ["spark-html-theme@workspace:packages/spark-html-theme"],
 
     "spark-html-websocket": ["spark-html-websocket@workspace:packages/spark-html-websocket"],
@@ -433,18 +453,20 @@
 
     "youtubei.js": ["youtubei.js@17.2.0", "", { "dependencies": { "@bufbuild/protobuf": "^2.0.0", "fflate": "^0.8.2", "meriyah": "^6.1.4" } }, "sha512-XLNsgRKO1h7t4i9tIMWSQSeWdD7Ujkk5v1m5YCaumaHMhu/xuLqtO3M0Hq7CXNup9HlJ1NGrT1Y+HLIHnL6Ujg=="],
 
-    "dom-serializer/entities": ["entities@4.5.0", "", {}, "sha512-V0hjH4dGPh9Ao5p0MoRY6BVqtwCjhz6vI5LT8AJ55H+4g9/4vbHx1I54fS0XuclLhDHArPQCiMjDxjaL8fPxhw=="],
+    "dom-serializer/domelementtype": ["domelementtype@3.0.0", "", {}, "sha512-umCQid3jKbDmVjx8jGaW7uUykm4DEUeyV21hPxNMo2nV955DhUThwqyOIDtreepP31hl84X7G5U9ZfsWvIB3Pg=="],
 
-    "spark-html-devtools/spark-html": ["spark-html@0.27.14", "", {}, "sha512-aFsIP3YoBYuaEItwfXLLBFeFsMpSvwTOUKkoonspy1YGq0D3ttIY3J6RnJEBB84T8Ah6hWXJX7dXNSw8tup2cQ=="],
+    "dom-serializer/entities": ["entities@8.0.0", "", {}, "sha512-zwfzJecQ/Uej6tusMqwAqU/6KL2XaB2VZ2Jg54Je6ahNBGNH6Ek6g3jjNCF0fG9EWQKGZNddNjU5F1ZQn/sBnA=="],
 
-    "spark-html-head/spark-html": ["spark-html@0.27.14", "", {}, "sha512-aFsIP3YoBYuaEItwfXLLBFeFsMpSvwTOUKkoonspy1YGq0D3ttIY3J6RnJEBB84T8Ah6hWXJX7dXNSw8tup2cQ=="],
+    "domhandler/domelementtype": ["domelementtype@3.0.0", "", {}, "sha512-umCQid3jKbDmVjx8jGaW7uUykm4DEUeyV21hPxNMo2nV955DhUThwqyOIDtreepP31hl84X7G5U9ZfsWvIB3Pg=="],
 
-    "spark-html-motion/spark-html": ["spark-html@0.27.14", "", {}, "sha512-aFsIP3YoBYuaEItwfXLLBFeFsMpSvwTOUKkoonspy1YGq0D3ttIY3J6RnJEBB84T8Ah6hWXJX7dXNSw8tup2cQ=="],
+    "domutils/domelementtype": ["domelementtype@3.0.0", "", {}, "sha512-umCQid3jKbDmVjx8jGaW7uUykm4DEUeyV21hPxNMo2nV955DhUThwqyOIDtreepP31hl84X7G5U9ZfsWvIB3Pg=="],
 
-    "spark-html-router/spark-html": ["spark-html@0.27.14", "", {}, "sha512-aFsIP3YoBYuaEItwfXLLBFeFsMpSvwTOUKkoonspy1YGq0D3ttIY3J6RnJEBB84T8Ah6hWXJX7dXNSw8tup2cQ=="],
+    "htmlparser2/domhandler": ["domhandler@5.0.3", "", { "dependencies": { "domelementtype": "^2.3.0" } }, "sha512-cgwlv/1iFQiFnU96XXgROh8xTeetsnJiDsTc7TYCLFd9+/WNkIqPTxiM/8pSd8VIrhXGTf1Ny1q1hquVqDJB5w=="],
 
-    "spark-html-theme/spark-html": ["spark-html@0.27.14", "", {}, "sha512-aFsIP3YoBYuaEItwfXLLBFeFsMpSvwTOUKkoonspy1YGq0D3ttIY3J6RnJEBB84T8Ah6hWXJX7dXNSw8tup2cQ=="],
+    "htmlparser2/domutils": ["domutils@3.2.2", "", { "dependencies": { "dom-serializer": "^2.0.0", "domelementtype": "^2.3.0", "domhandler": "^5.0.3" } }, "sha512-6kZKyUajlDuqlHKVX1w7gyslj9MPIXzIFiz/rGu35uC1wMi+kMhQwGhl4lt9unC9Vb9INnY9Z3/ZA3+FhASLaw=="],
 
-    "spark-prerender/spark-html": ["spark-html@0.27.14", "", {}, "sha512-aFsIP3YoBYuaEItwfXLLBFeFsMpSvwTOUKkoonspy1YGq0D3ttIY3J6RnJEBB84T8Ah6hWXJX7dXNSw8tup2cQ=="],
+    "htmlparser2/domutils/dom-serializer": ["dom-serializer@2.0.0", "", { "dependencies": { "domelementtype": "^2.3.0", "domhandler": "^5.0.2", "entities": "^4.2.0" } }, "sha512-wIkAryiqt/nV5EQKqQpo3SToSOV9J0DnbJqwK7Wv/Trc92zIAYZ4FlMu+JPFW1DfGFt81ZTCGgDEabffXeLyJg=="],
+
+    "htmlparser2/domutils/dom-serializer/entities": ["entities@4.5.0", "", {}, "sha512-V0hjH4dGPh9Ao5p0MoRY6BVqtwCjhz6vI5LT8AJ55H+4g9/4vbHx1I54fS0XuclLhDHArPQCiMjDxjaL8fPxhw=="],
   }
 }

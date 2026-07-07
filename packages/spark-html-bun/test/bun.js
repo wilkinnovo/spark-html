@@ -272,6 +272,33 @@ await test('build: the same file referenced twice maps both tags to one bundle',
   assert.ok(/^\/assets\/other-[\w-]+\.js$/.test(refs[2]), 'the other entry keeps its own bundle');
 });
 
+await test('build: a stylesheet link and a script entry both rewrite correctly', async () => {
+  // Bun.build classifies a bundled CSS entrypoint as kind 'asset', not
+  // 'entry-point' — mixing it with a JS entrypoint and then filtering
+  // outputs to entry-point-only before zipping by index silently mispairs
+  // every tag (the CSS tag gets the JS bundle's hashed name, the script tag
+  // is left unrewritten and 404s in prod). This is the default shape of
+  // every scaffolded app (one script + one stylesheet), so it must hold.
+  const r = mkdtempSync(join(tmpdir(), 'spark-bun-css-'));
+  writeFileSync(join(r, 'main.js'), "console.log('app');\nexport {};");
+  writeFileSync(join(r, 'style.css'), 'body { margin: 0; }');
+  writeFileSync(join(r, 'index.html'),
+    '<!doctype html><html><head>' +
+    '<link rel="stylesheet" href="/style.css" />' +
+    '</head><body>' +
+    '<script type="module" src="/main.js"></script>' +
+    '</body></html>');
+  writeFileSync(join(r, 'package.json'), JSON.stringify({ name: 'x', type: 'module' }));
+  await build({ root: r, quiet: true });
+  const html = readFileSync(join(r, 'dist', 'index.html'), 'utf8');
+  assert.ok(/href="\/assets\/style-[\w-]+\.css"/.test(html), 'stylesheet rewritten to its OWN hashed .css, not the JS bundle');
+  assert.ok(/src="\/assets\/main-[\w-]+\.js"/.test(html), 'script rewritten to its hashed .js, not left pointing at the source path');
+  const cssRef = html.match(/href="([^"]+)"/)[1];
+  const jsRef = html.match(/src="([^"]+)"/)[1];
+  assert.ok(existsSync(join(r, 'dist', cssRef.slice(1))), 'the referenced CSS file actually exists');
+  assert.ok(existsSync(join(r, 'dist', jsRef.slice(1))), 'the referenced JS file actually exists');
+});
+
 await test("build: a companion package's own nested spark-html copy is deduped to the app's own", async () => {
   // Reproduces lockfile drift: `bun install` can leave a companion package
   // with its OWN nested node_modules/spark-html (its sub-dependency range
