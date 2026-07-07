@@ -42,7 +42,13 @@ jobs:
           fi
 
       - name: Publish
-        run: npm publish --provenance --access public
+        run: |
+          PKG_VERSION=$(node -p "require('./package.json').version")
+          NPM_TAG="latest"
+          if [[ "$PKG_VERSION" == *-* ]]; then
+            NPM_TAG=$(node -p "'$PKG_VERSION'.split('-')[1].split('.')[0]")
+          fi
+          npm publish --provenance --access public --tag "$NPM_TAG"
         working-directory: packages/spark-ssr
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
