@@ -1,6 +1,6 @@
 {
   "name": "spark-html-test-utils",
-  "version": "1.0.0-rc.1",
+  "version": "1.0.0-rc.2",
   "description": "Test helpers for spark-html: mount a component on linkedom, inspect its reactive scope, and fire realistic DOM events — no browser.",
   "homepage": "https://wilkinnovo.github.io/spark-html",
   "type": "module",

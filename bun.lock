@@ -58,53 +58,53 @@
     },
     "packages/create-spark-html-app": {
       "name": "create-spark-html-app",
-      "version": "1.0.0-rc.1",
+      "version": "1.0.0-rc.2",
       "bin": {
         "create-spark-html-app": "bin/index.js",
       },
     },
     "packages/prettier-plugin-spark": {
       "name": "prettier-plugin-spark",
-      "version": "1.0.0-rc.1",
+      "version": "1.0.0-rc.2",
       "peerDependencies": {
         "prettier": "^3.0.0",
       },
     },
     "packages/spark": {
       "name": "spark-html",
-      "version": "1.0.0-rc.1",
+      "version": "1.0.0-rc.2",
       "bin": {
         "spark-html": "./bin/cli.js",
       },
     },
     "packages/spark-html-bun": {
       "name": "spark-html-bun",
-      "version": "1.0.0-rc.1",
+      "version": "1.0.0-rc.2",
       "bin": {
         "spark": "./bin/cli.js",
       },
     },
     "packages/spark-html-devtools": {
       "name": "spark-html-devtools",
-      "version": "1.0.0-rc.1",
+      "version": "1.0.0-rc.2",
       "peerDependencies": {
         "spark-html": ">=1.0.0-rc.1 <2",
       },
     },
     "packages/spark-html-font": {
       "name": "spark-html-font",
-      "version": "1.0.0-rc.1",
+      "version": "1.0.0-rc.2",
     },
     "packages/spark-html-head": {
       "name": "spark-html-head",
-      "version": "1.0.0-rc.1",
+      "version": "1.0.0-rc.2",
       "peerDependencies": {
         "spark-html": ">=1.0.0-rc.1 <2",
       },
     },
     "packages/spark-html-image": {
       "name": "spark-html-image",
-      "version": "1.0.0-rc.1",
+      "version": "1.0.0-rc.2",
       "dependencies": {
         "linkedom": "^0.18.12",
         "sharp": "^0.34.0",
@@ -112,57 +112,57 @@
     },
     "packages/spark-html-language-server": {
       "name": "spark-html-language-server",
-      "version": "1.0.0-rc.1",
+      "version": "1.0.0-rc.2",
       "bin": {
         "spark-html-language-server": "bin/cli.js",
       },
     },
     "packages/spark-html-manifest": {
       "name": "spark-html-manifest",
-      "version": "1.0.0-rc.1",
+      "version": "1.0.0-rc.2",
       "dependencies": {
         "sharp": "^0.34.0",
       },
     },
     "packages/spark-html-motion": {
       "name": "spark-html-motion",
-      "version": "1.0.0-rc.1",
+      "version": "1.0.0-rc.2",
       "peerDependencies": {
         "spark-html": ">=1.0.0-rc.1 <2",
       },
     },
     "packages/spark-html-offline": {
       "name": "spark-html-offline",
-      "version": "1.0.0-rc.1",
+      "version": "1.0.0-rc.2",
     },
     "packages/spark-html-persist": {
       "name": "spark-html-persist",
-      "version": "1.0.0-rc.1",
+      "version": "1.0.0-rc.2",
       "peerDependencies": {
         "spark-html": ">=1.0.0-rc.1 <2",
       },
     },
     "packages/spark-html-query": {
       "name": "spark-html-query",
-      "version": "1.0.0-rc.1",
+      "version": "1.0.0-rc.2",
       "peerDependencies": {
         "spark-html": ">=1.0.0-rc.1 <2",
       },
     },
     "packages/spark-html-router": {
       "name": "spark-html-router",
-      "version": "1.0.0-rc.1",
+      "version": "1.0.0-rc.2",
       "peerDependencies": {
         "spark-html": ">=1.0.0-rc.1 <2",
       },
     },
     "packages/spark-html-sri": {
       "name": "spark-html-sri",
-      "version": "1.0.0-rc.1",
+      "version": "1.0.0-rc.2",
     },
     "packages/spark-html-test-utils": {
       "name": "spark-html-test-utils",
-      "version": "1.0.0-rc.1",
+      "version": "1.0.0-rc.2",
       "dependencies": {
         "linkedom": "^0.18.12",
       },
@@ -172,21 +172,21 @@
     },
     "packages/spark-html-theme": {
       "name": "spark-html-theme",
-      "version": "1.0.0-rc.1",
+      "version": "1.0.0-rc.2",
       "peerDependencies": {
         "spark-html": ">=1.0.0-rc.1 <2",
       },
     },
     "packages/spark-html-websocket": {
       "name": "spark-html-websocket",
-      "version": "1.0.0-rc.1",
+      "version": "1.0.0-rc.2",
       "peerDependencies": {
         "spark-html": ">=1.0.0-rc.1 <2",
       },
     },
     "packages/spark-prerender": {
       "name": "spark-prerender",
-      "version": "1.0.0-rc.1",
+      "version": "1.0.0-rc.2",
       "bin": {
         "spark-prerender": "bin/cli.js",
       },
@@ -199,7 +199,7 @@
     },
     "packages/spark-ssr": {
       "name": "spark-ssr",
-      "version": "1.0.0-rc.1",
+      "version": "1.0.0-rc.2",
       "bin": {
         "spark-ssr": "./bin/cli.js",
       },

@@ -1,6 +1,6 @@
 {
   "name": "spark-html-sri",
-  "version": "1.0.0-rc.1",
+  "version": "1.0.0-rc.2",
   "description": "Subresource Integrity for spark-html — auto-hash built assets and components, verify at runtime, and make URL-imported components safe with an origin allow list + trust-on-first-use. Zero dependencies.",
   "type": "module",
   "main": "./src/index.js",
