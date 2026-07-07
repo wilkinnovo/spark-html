@@ -23,6 +23,7 @@ import { urlSource, globSource, moduleSource, makeSourceCache } from './sources.
 import { makeJobs } from './jobs.js';
 import { makeStatic } from './static.js';
 import { makeScreens, escapeHtml } from './screens.js';
+import { makeRequest } from './request.js';
 import { inferSchema, diffSchema, pushSchema, seedTables } from './schema.js';
 // Head semantics live in one place for the whole family: spark-html-head owns
 // title/meta on the client (pushState updates); its /ssr module owns them
@@ -349,8 +350,8 @@ export async function serve(options = {}) {
   // slots at call time, never at import time.
   const app = {
     root, config, db, secret, quiet, live, log, ctx,
-    pages, cache, liveTables, RELOAD_CLIENT,
-    broadcast, makeAppFetch: null,
+    pages, cache, liveTables, RELOAD_CLIENT, uploadsDir, sourceCache,
+    broadcast, makeAppFetch: null, uploadWebp: false,
     pageData: (page) => pageData(page, cache, pagesDir),
     // Mutable serve() state, exposed as getters so the modules always read
     // the current value (refreshPages reassigns pagesDir on every scan;
@@ -375,6 +376,12 @@ export async function serve(options = {}) {
     errorPage, authScreen, builtinAuthKind, devErrorPage,
     planPage, openapiDoc, clientTs, sitemapXml, robotsTxt,
   } = makeScreens(app);
+
+  // Request plumbing (split to src/request.js): the req wrapper, body/upload
+  // parsing, :token resolution, runSql (+source-cache TTL), the app-relative
+  // fetch, CORS. makeAppFetch is the late-bound slot jobs read at call time.
+  const { wrapReq, runSql, makeAppFetch, corsHeaders } = makeRequest(app);
+  app.makeAppFetch = makeAppFetch;
 
   // ── the Spark family, wired in ──
   // Companion packages the app depends on get an importmap entry and are
@@ -413,94 +420,7 @@ export async function serve(options = {}) {
 
   // spark-html-image, at write time (Tier 3): uploaded rasters get a webp
   // sibling, and :file.url points at it (original stays as :file.original).
-  const uploadWebp = familyDeps.includes('spark-html-image');
-
-  // ── request wrapper ──
-  function wrapReq(request, url, params, session, server) {
-    const headers = {};
-    for (const [k, v] of request.headers) headers[k.toLowerCase()] = v;
-    let bodyMemo = null;
-    const req = {
-      raw: request,
-      method: request.method,
-      url: url.href,
-      path: url.pathname,
-      params,
-      query: Object.fromEntries(url.searchParams),
-      headers,
-      session,
-      ip: server?.requestIP?.(request)?.address || headers['x-forwarded-for'] || '',
-      json: () => request.json(),
-      text: () => request.text(),
-      formData: () => request.formData(),
-      body() {
-        if (!bodyMemo) bodyMemo = parseBody(request);
-        return bodyMemo;
-      },
-    };
-    return req;
-  }
-
-  async function parseBody(request) {
-    const ct = request.headers.get('content-type') || '';
-    try {
-      if (ct.includes('application/json')) {
-        const fields = await request.json();
-        return { fields: fields && typeof fields === 'object' ? fields : {}, file: null };
-      }
-      if (ct.includes('multipart/form-data') || ct.includes('application/x-www-form-urlencoded')) {
-        const fd = await request.formData();
-        const fields = {};
-        let file = null;
-        for (const [k, v] of fd.entries()) {
-          if (v && typeof v === 'object' && typeof v.arrayBuffer === 'function') {
-            const ext = ((v.name || '').match(/\.\w+$/) || [''])[0];
-            const name = randomUUID() + ext;
-            mkdirSync(uploadsDir, { recursive: true });
-            await Bun.write(join(uploadsDir, name), v);
-            file = { url: '/uploads/' + name, original: '/uploads/' + name, name: v.name || name, size: v.size, type: v.type };
-            if (uploadWebp && /\.(png|jpe?g)$/i.test(name)) {
-              try {
-                const sharp = (await import('sharp')).default;
-                const webpName = name.replace(/\.\w+$/, '.webp');
-                await sharp(join(uploadsDir, name)).webp({ quality: 82 }).toFile(join(uploadsDir, webpName));
-                file.url = '/uploads/' + webpName;
-              } catch { /* sharp unavailable — original serves fine */ }
-            }
-            fields[k] = file.url;
-          } else {
-            fields[k] = v;
-          }
-        }
-        return { fields, file };
-      }
-    } catch { /* malformed body → empty */ }
-    return { fields: {}, file: null };
-  }
-
-  // ── param injection: resolve one :token from the request ──
-  async function resolveToken(tok, req) {
-    if (tok.startsWith('body.')) return dig((await req.body()).fields, tok.slice(5)) ?? null;
-    if (tok.startsWith('session.')) return dig(req.session || {}, tok.slice(8)) ?? null;
-    if (tok.startsWith('header.')) return req.headers[tok.slice(7).toLowerCase()] ?? null;
-    if (tok.startsWith('file.')) return dig((await req.body()).file || {}, tok.slice(5)) ?? null;
-    if (req.params[tok] !== undefined) return req.params[tok];
-    if (req.query[tok] !== undefined) return req.query[tok];
-    return null;
-  }
-
-  async function runSql(sqlText, req, ttl = 0) {
-    const { sql, tokens } = rewriteParams(sqlText);
-    const values = [];
-    for (const t of tokens) values.push(await resolveToken(t, req));
-    if (!ttl) return db.query(sql, values);
-    const key = 'q|' + sql + '|' + JSON.stringify(values);
-    const hit = sourceCache.get(key);
-    if (hit) return hit.value;
-    const rows = await db.query(sql, values);
-    sourceCache.set(key, rows, ttl, sqlTables(sqlText));
-    return rows;
-  }
+  app.uploadWebp = familyDeps.includes('spark-html-image');
 
   // ── auto-CRUD for <spark-ssr table="…"> ──
   const apiRoutes = []; // { method, segs: ['api','todos',':id'], handler }
@@ -796,26 +716,6 @@ export async function serve(options = {}) {
   await ensureSchema();
 
   // ── api/ folder — custom endpoints ──
-  app.makeAppFetch = makeAppFetch;
-  function makeAppFetch(req) {
-    return (input, init = {}) => {
-      let url = String(input);
-      if (url.startsWith('/')) url = `http://localhost:${ctx.port}${url}`;
-      init = { ...init };
-      const b = init.body;
-      const isPlainObject = b && typeof b === 'object'
-        && !(b instanceof FormData) && !(b instanceof URLSearchParams)
-        && !(b instanceof ArrayBuffer) && typeof b.arrayBuffer !== 'function'
-        && typeof b.getReader !== 'function';
-      if (isPlainObject) {
-        init.body = JSON.stringify(b);
-        init.headers = { 'content-type': 'application/json', ...(init.headers || {}) };
-      }
-      if (req && req.headers.cookie) init.headers = { cookie: req.headers.cookie, ...(init.headers || {}) };
-      return fetch(url, init);
-    };
-  }
-
   // api/ files re-scan per request too; script handlers hold a mutable def so
   // edits take effect, and registration itself happens once per route.
   const apiDefs = new Map(); // route path → { mtime, fn }
@@ -901,20 +801,6 @@ export async function serve(options = {}) {
     }
   }
   refreshMiddleware();
-
-  // ── CORS ──
-  function corsHeaders(origin) {
-    if (!config.cors) return null;
-    const allowed = config.cors === true ? '*'
-      : Array.isArray(config.cors) && origin && config.cors.includes(origin) ? origin : null;
-    if (!allowed) return null;
-    return {
-      'access-control-allow-origin': allowed,
-      'access-control-allow-methods': 'GET, POST, PUT, PATCH, DELETE, OPTIONS',
-      'access-control-allow-headers': 'content-type, authorization',
-      ...(allowed !== '*' ? { vary: 'origin' } : {}),
-    };
-  }
 
   // ── page rendering ──
   const namesOf = (code) =>
