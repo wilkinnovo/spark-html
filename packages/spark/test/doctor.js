@@ -8,7 +8,7 @@
  * the runtime guard can only hint at from inside the browser.
  */
 import { strict as assert } from 'node:assert';
-import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, writeFileSync, rmSync, symlinkSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { spawnSync } from 'node:child_process';
@@ -55,6 +55,23 @@ test('a duplicate nested spark-html install is caught (exit 1)', () => {
   assert.match(out, /2 copies of spark-html/);
   assert.match(out, /0\.27\.14/, 'names the drifted version');
   assert.match(out, /store not created/, 'explains the symptom');
+  rmSync(root, { recursive: true, force: true });
+});
+
+test('symlinked workspace installs of the SAME real copy are not a false-positive duplicate (exit 0)', () => {
+  // bun/pnpm workspaces give every consumer its own node_modules/spark-html
+  // *entry*, but as a symlink to one real package — not the lockfile-drift
+  // hazard above. Real-world case: the spark monorepo itself, where 7+
+  // companions each get a symlink to the same packages/spark.
+  const root = mkdtempSync(join(tmpdir(), 'doctor-symlink-'));
+  writeFileSync(join(root, 'package.json'), JSON.stringify({ name: 'app', dependencies: { 'spark-html': '^1.0.0', 'spark-html-router': '^1.0.0' } }));
+  pkg(join(root, 'node_modules', 'spark-html'), 'spark-html', '1.0.0');
+  mkdirSync(join(root, 'node_modules', 'spark-html-router', 'node_modules'), { recursive: true });
+  writeFileSync(join(root, 'node_modules', 'spark-html-router', 'package.json'), JSON.stringify({ name: 'spark-html-router', version: '1.0.0' }));
+  symlinkSync(join(root, 'node_modules', 'spark-html'), join(root, 'node_modules', 'spark-html-router', 'node_modules', 'spark-html'));
+  const { code, out } = run(root);
+  assert.equal(code, 0, out);
+  assert.match(out, /one spark-html install/);
   rmSync(root, { recursive: true, force: true });
 });
 

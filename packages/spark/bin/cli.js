@@ -6,7 +6,7 @@
  *
  *   npx spark-html doctor
  */
-import { readFileSync, existsSync, readdirSync, statSync } from 'node:fs';
+import { readFileSync, existsSync, readdirSync, statSync, realpathSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 
 const cmd = process.argv[2];
@@ -35,10 +35,18 @@ function findInstalls(pkg) {
     if (!existsSync(nm)) return;
     let entries;
     try { entries = readdirSync(nm); } catch { return; }
-    // The package itself, directly installed here.
+    // The package itself, directly installed here. A symlinked workspace
+    // install (bun/pnpm) gives every consumer its OWN node_modules/<pkg>
+    // entry pointing at the SAME real package — one module instance, one
+    // `stores` Map, not a hazard. Only distinct realpaths are distinct
+    // copies, so dedupe on realpath rather than the symlink's own location.
     const self = join(nm, pkg, 'package.json');
     if (existsSync(self)) {
-      try { found.push({ path: join(nm, pkg), version: JSON.parse(readFileSync(self, 'utf8')).version }); } catch { /* skip */ }
+      try {
+        const version = JSON.parse(readFileSync(self, 'utf8')).version;
+        const real = realpathSync(join(nm, pkg));
+        found.push({ path: join(nm, pkg), real, version });
+      } catch { /* skip */ }
     }
     // Recurse into each dependency's own nested node_modules.
     for (const e of entries) {
@@ -55,7 +63,8 @@ function findInstalls(pkg) {
   return found;
 }
 
-const installs = findInstalls('spark-html');
+const allInstalls = findInstalls('spark-html');
+const installs = [...new Map(allInstalls.map((i) => [i.real, i])).values()];
 if (installs.length <= 1) {
   ok(installs.length === 1
     ? `one spark-html install (${installs[0].version})`
