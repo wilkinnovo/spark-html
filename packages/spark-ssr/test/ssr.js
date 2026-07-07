@@ -320,7 +320,10 @@ await test('SSR: / renders the seeded rows into HTML', async () => {
 
 await test('hydration: page ships importmap + mount + component host with name', async () => {
   const html = await (await fetch(`${T}/`)).text();
-  assert.ok(html.includes('"spark-html":"/@modules/spark-html/index.js"'), 'importmap');
+  // The entry filename tracks the core's package `main` (src/index.js in the
+  // old multi-file layout, dist/spark.js since the single-file build) — assert
+  // the mapping, not the filename, so a core repackaging doesn't fail this.
+  assert.ok(/"spark-html":"\/@modules\/spark-html\/[\w.-]+"/.test(html), 'importmap maps spark-html');
   assert.ok(html.includes('mount()'), 'mount call');
   // BOTH import and name — the runtime's hydrate contract. Without name the
   // pre-rendered HTML is treated as slot content and projected NEXT TO the
