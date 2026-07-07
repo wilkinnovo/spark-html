@@ -76,6 +76,31 @@ await test('a script syntax error names the component and says state is unavaila
   assert.ok(w.some((x) => x.includes('badscript')), 'should name the component');
 });
 
+// ── arrow function as an on* handler (the React/Vue instinct): constructed
+// and discarded as an inert statement, not called — must warn loudly naming
+// the fix instead of just doing nothing on click.
+component('arrowhandler', `
+<button class="go" onclick="{() => bump(1)}">go</button>
+<p class="n">{n}</p>
+<script>
+  let n = 0;
+  function bump(by) { n += by; }
+</script>`);
+
+await test('an arrow function used as an on* handler warns and names the direct-call fix', async () => {
+  console.warn = (...args) => { warnings.push(args.join(' ')); };
+  try {
+    parseHTML('<div import="arrowhandler"></div>', body);
+    await mount(body, { quiet: true });
+    await tick();
+  } finally {
+    console.warn = realWarn;
+  }
+  const w = sparkWarns('constructed and discarded');
+  assert.ok(w.length >= 1, 'should warn about the arrow-function footgun');
+  assert.ok(w[0].includes('onclick={bump(1)}'), 'should name the direct-call fix');
+});
+
 // ── async onMount: a rejection is contained + reported, and a resolved
 // cleanup function still registers (it used to escape as an unhandled
 // promise rejection and the cleanup was dropped).

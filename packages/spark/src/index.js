@@ -1081,6 +1081,15 @@ function buildElementPlan(el) {
       const isRef = /^[a-zA-Z_$][\w$]*(?:\.[a-zA-Z_$][\w$]*)*$/.test(fnExpr);
       const code = isRef ? `${fnExpr}(event)` : fnExpr;
       const evt = name.slice(2);
+      // An arrow function here (`onclick={() => remove(item)}`, the React/
+      // Vue instinct) is run as a bare STATEMENT like any other non-ref
+      // expression: it constructs a closure and discards it — the click
+      // does nothing, with no error. Name the fix instead of failing silent.
+      if (/^(async\s*)?(\([^)]*\)|[a-zA-Z_$][\w$]*)\s*=>/.test(fnExpr)) {
+        const body = fnExpr.replace(/^(async\s*)?\([^)]*\)\s*=>\s*/, '').replace(/^(async\s*)?[a-zA-Z_$][\w$]*\s*=>\s*/, '');
+        warnOnce(name + '={' + fnExpr + '}',
+          `[spark] ${name}="{${fnExpr}}" — this is a function, not a handler: it's constructed and discarded on click, never called. Write the call directly instead, e.g. ${name}={${body}}.`);
+      }
       // Context is a factory: built only if the handler actually throws.
       const handlerCtx = () => ({
         phase: 'handler', component: componentNameFor(el), detail: name + '={' + fnExpr + '}',
