@@ -4,20 +4,25 @@
   "description": "Get your spark back. HTML that reacts!.",
   "homepage": "https://wilkinnovo.github.io/spark-html",
   "type": "module",
-  "main": "./src/index.js",
+  "main": "./dist/spark.js",
   "types": "./src/index.d.ts",
   "exports": {
     ".": {
       "types": "./src/index.d.ts",
-      "default": "./src/index.js"
+      "default": "./dist/spark.js"
     },
     "./globals": {
       "types": "./src/globals.d.ts"
     }
   },
   "files": [
+    "dist",
     "src"
   ],
+  "scripts": {
+    "build": "node ../../scripts/build-dist.mjs",
+    "prepublishOnly": "node ../../scripts/build-dist.mjs"
+  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/wilkinnovo/spark-html.git"

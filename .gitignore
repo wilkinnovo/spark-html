@@ -1,5 +1,12 @@
 node_modules
 dist
+# Exception: the committed single-file runtime bundle (M3.1 plan §5.1).
+# `main`/`exports` point here; fresh clones resolve it without a build step.
+# `prepublishOnly` regenerates it before each publish so the registry never
+# ships a stale bundle. Everything else named `dist` stays ignored (templates,
+# examples, build caches).
+!packages/spark/dist/
+!packages/spark/dist/**
 
 # Root .md files (except README.md) — design notes, not public docs
 /*.md

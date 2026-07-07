@@ -87,15 +87,21 @@ await test('dev: /@modules/spark-html serves the resolved runtime as JS', async 
   const res = await fetch(`${D}/@modules/spark-html`);
   assert.equal(res.status, 200);
   assert.equal(res.headers.get('content-type'), 'text/javascript');
-  assert.ok((await res.text()).includes('function mount'), 'the real runtime');
+  // M3.1: main now points at the bundled dist/spark.js (minified ESM). The
+  // export name `mount` survives minification (public API names are kept),
+  // so assert on that identifier — it's stable across src/<->dist and across
+  // minify on/off. The old `function mount` only matched the unminified src.
+  assert.ok((await res.text()).includes('mount'), 'the real runtime');
 });
 
 await test('dev: /@modules/<pkg>/<file> serves sibling files (relative imports)', async () => {
   // A package entry that imports './sibling.js' resolves it to this URL form;
-  // it must serve the file from inside the package dir, not 404.
-  const res = await fetch(`${D}/@modules/spark-html/index.js`);
+  // it must serve the file from inside the package dir, not 404. M3.1: the
+  // entry file is now dist/spark.js (not src/index.js) — the explicit-filename
+  // URL form uses the actual filename in main/exports.
+  const res = await fetch(`${D}/@modules/spark-html/spark.js`);
   assert.equal(res.status, 200);
-  assert.ok((await res.text()).includes('function mount'), 'entry served by file path');
+  assert.ok((await res.text()).includes('mount'), 'entry served by file path');
 });
 
 await test('dev: extensionless paths fall back to the app shell (SPA)', async () => {
