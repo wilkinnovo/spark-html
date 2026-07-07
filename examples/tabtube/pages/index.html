@@ -17,7 +17,10 @@
      components: components/tab-strip.html, components/video-player.html,
      components/search-box.html. -->
 <title>TabTube</title>
-<meta name="description" content="Search YouTube and watch, tab by tab — no database, no API key.">
+<meta
+  name="description"
+  content="Search YouTube and watch, tab by tab — no database, no API key."
+/>
 
 <div class="app">
   <header class="topbar">
@@ -31,15 +34,46 @@
       <div import="/components/search-box" onsearch="{doSearch}"></div>
 
       <div class="actions-row">
-        <button type="button" class="btn" :class="tabtube.showMyLists ? 'on' : ''" onclick={toggleMyLists}>My Lists</button>
+        <button
+          type="button"
+          class="btn"
+          :class="tabtube.showMyLists ? 'on' : ''"
+          onclick="{toggleMyLists}"
+        >
+          My Lists
+        </button>
       </div>
 
       <template if="!tabtube?.showMyLists">
         <div class="filters" role="tablist">
-          <button type="button" :class="tabtube.activeFilter === 'all' ? 'on' : ''" onclick={setFilter('all')}>All</button>
-          <button type="button" :class="tabtube.activeFilter === 'today' ? 'on' : ''" onclick={setFilter('today')}>Today</button>
-          <button type="button" :class="tabtube.activeFilter === 'week' ? 'on' : ''" onclick={setFilter('week')}>This week</button>
-          <button type="button" :class="tabtube.activeFilter === 'month' ? 'on' : ''" onclick={setFilter('month')}>This month</button>
+          <button
+            type="button"
+            :class="tabtube.activeFilter === 'all' ? 'on' : ''"
+            onclick="{setFilter('all')}"
+          >
+            All
+          </button>
+          <button
+            type="button"
+            :class="tabtube.activeFilter === 'today' ? 'on' : ''"
+            onclick="{setFilter('today')}"
+          >
+            Today
+          </button>
+          <button
+            type="button"
+            :class="tabtube.activeFilter === 'week' ? 'on' : ''"
+            onclick="{setFilter('week')}"
+          >
+            This week
+          </button>
+          <button
+            type="button"
+            :class="tabtube.activeFilter === 'month' ? 'on' : ''"
+            onclick="{setFilter('month')}"
+          >
+            This month
+          </button>
         </div>
 
         <div class="results-list">
@@ -54,14 +88,29 @@
                  opposite — the existing list stays, skeleton rows just
                  append after it — so it's deliberately not in this
                  condition. -->
-            <div class="result-card" :class="v.videoId === tabtube.activeId ? 'active' : ''" :hidden="searching || !matchesFilter(v, tabtube.activeFilter)" onclick={openVideo(v)}>
-              <img class="result-thumb" src="{v.thumbnail}" alt="" loading="lazy">
+            <div
+              class="result-card"
+              :class="v.videoId === tabtube.activeId ? 'active' : ''"
+              :hidden="searching || !matchesFilter(v, tabtube.activeFilter)"
+              onclick="{openVideo(v)}"
+            >
+              <img
+                class="result-thumb"
+                src="{v.thumbnail}"
+                alt=""
+                loading="lazy"
+              />
               <div class="result-meta">
                 <p class="result-title">{v.title}</p>
                 <p class="result-channel">{v.author.name}</p>
                 <p class="result-stats">{v.viewsFormatted} views · {v.ago}</p>
               </div>
-              <button type="button" class="save-btn" onclick="{toggleSaved(v, event)}" aria-label="Save to My Lists">
+              <button
+                type="button"
+                class="save-btn"
+                onclick="{toggleSaved(v, event)}"
+                aria-label="Save to My Lists"
+              >
                 {isSaved(v) ? '★' : '☆'}
               </button>
             </div>
@@ -78,7 +127,9 @@
               </div>
             </template>
           </template>
-          <template if="!searching && results.length === 0"><p class="empty">Search for videos above.</p></template>
+          <template if="!searching && results.length === 0"
+            ><p class="empty">Search for videos above.</p></template
+          >
           <!-- Always mounted (not a <template if>) so the SAME node is
                observed for the whole component's life — an if= branch is
                torn down and recreated every time `searching` flips, which
@@ -86,7 +137,10 @@
                display:none (from :hidden, while searching/empty) makes it
                report as non-intersecting on its own, so it naturally can't
                trigger loadMore() while there's nothing more to load. -->
-          <div class="scroll-sentinel" :hidden="searching || results.length === 0"></div>
+          <div
+            class="scroll-sentinel"
+            :hidden="searching || results.length === 0"
+          ></div>
           <template if="loadingMore">
             <template each="n in moreSkeletonRows" key="n">
               <div class="result-card skeleton">
@@ -105,17 +159,37 @@
       <template if="tabtube?.showMyLists">
         <div class="results-list">
           <template each="v in savedList.items" key="v.videoId">
-            <div class="result-card" :class="v.videoId === tabtube.activeId ? 'active' : ''" onclick={openVideo(v)}>
-              <img class="result-thumb" src="{v.thumbnail}" alt="" loading="lazy">
+            <div
+              class="result-card"
+              :class="v.videoId === tabtube.activeId ? 'active' : ''"
+              onclick="{openVideo(v)}"
+            >
+              <img
+                class="result-thumb"
+                src="{v.thumbnail}"
+                alt=""
+                loading="lazy"
+              />
               <div class="result-meta">
                 <p class="result-title">{v.title}</p>
                 <p class="result-channel">{v.author.name}</p>
                 <p class="result-stats">{v.viewsFormatted} views · {v.ago}</p>
               </div>
-              <button type="button" class="save-btn" onclick="{toggleSaved(v, event)}" aria-label="Remove from My Lists">★</button>
+              <button
+                type="button"
+                class="save-btn"
+                onclick="{toggleSaved(v, event)}"
+                aria-label="Remove from My Lists"
+              >
+                ★
+              </button>
             </div>
           </template>
-          <template if="savedList.items.length === 0"><p class="empty">Nothing saved yet — click ☆ on a result.</p></template>
+          <template if="savedList.items.length === 0"
+            ><p class="empty">
+              Nothing saved yet — click ☆ on a result.
+            </p></template
+          >
         </div>
       </template>
     </aside>
@@ -245,14 +319,9 @@
 </script>
 
 <spark-ssr>
-  results = ./lib/search.js
-  suggestions = ./lib/suggestion.js
-  sharedVideo = ./lib/video.js
-  searching = ./lib/ssr/false.js
-  loadingMore = ./lib/ssr/false.js
-  searchSkeletonRows = ./lib/ssr/search-skeleton.js
-  moreSkeletonRows = ./lib/ssr/more-skeleton.js
-  tabtube = ./lib/ssr/tabtube.js
-  savedList = ./lib/ssr/saved-list.js
-  isSaved = ./lib/ssr/is-saved.js
+  results = ./lib/search.js suggestions = ./lib/suggestion.js sharedVideo =
+  ./lib/video.js searching = ./lib/ssr/false.js loadingMore = ./lib/ssr/false.js
+  searchSkeletonRows = ./lib/ssr/search-skeleton.js moreSkeletonRows =
+  ./lib/ssr/more-skeleton.js tabtube = ./lib/ssr/tabtube.js savedList =
+  ./lib/ssr/saved-list.js isSaved = ./lib/ssr/is-saved.js
 </spark-ssr>
