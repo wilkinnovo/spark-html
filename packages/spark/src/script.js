@@ -9,9 +9,12 @@
  * the rewritten body and makeImporter resolves specifiers against the
  * component file's URL. None of this touches the reactivity core or DOM.
  *
- * Stays a string scanner, not a real parser, until post-1.0 — never inline
- * executable-code-looking strings in a component <script> (the scanner is
- * not string-aware where it doesn't need to be for correctness).
+ * Stays a string scanner, not a real parser, until post-1.0. Every rewrite
+ * and scan pass is string/comment-aware (braceDepths marks string interiors
+ * negative; the depth-0 gates reject them), so code-like text inside string
+ * literals is left byte-intact. The one construct it cannot parse is a
+ * regex literal containing a quote — that gets a loud console.warn naming
+ * the fix (warnScan) instead of a silent misread.
  */
 
 // ─── `$:` extraction (multi-line aware) ───────────────────────────────
@@ -48,17 +51,32 @@ export function skipString(src, i) {
   return i;
 }
 
-// The {/} nesting depth at every position in `src` (strings/comments
-// skipped so braces inside them don't miscount). Lets the declaration
-// rewrites below apply ONLY at the script's own top level: a `let`/`const`/
-// `function` inside a nested block (a helper function's body, an if/for
-// block) must stay a true local — rewriting it into a bare assignment turns
-// it into an implicit write to the reactive scope proxy. If that "local" is
-// both read and written by a single expression evaluation (an entirely
-// ordinary pattern — a helper computing an intermediate value it uses), the
-// expression's own dependency tracking picks up a dependency on it, and
-// since evaluating the expression ALSO writes it, every evaluation
-// re-triggers itself: a genuine infinite patch loop, not just a stale read.
+// Loud dev error for the one construct the scanner cannot parse: a regex
+// literal containing a quote (skipString misreads the quote as a string
+// opener and bails at the newline, misreading the rest of that line).
+const scanWarned = new Set();
+function warnScan(src, i, j) {
+  const near = src.slice(i, Math.min(j, i + 50));
+  if (scanWarned.has(near)) return;
+  scanWarned.add(near);
+  console.warn(`[spark] unterminated ${src[i]} string in <script> near ${near} — a regex literal with a quote? The scanner can't parse those: use new RegExp() or an imported .js module.`);
+}
+
+// The {/} nesting depth at every position in `src`. Positions inside
+// strings, template literals, and comments are marked with `~depth`
+// (always negative), so the depth-0 checks in the declaration rewrites
+// below reject them — a `let x = 1` line inside a top-level template
+// literal is DATA, and rewriting it would silently corrupt the string.
+// Real-code positions keep the plain depth: rewrites apply ONLY at the
+// script's own top level. A `let`/`const`/`function` inside a nested block
+// (a helper function's body, an if/for block) must stay a true local —
+// rewriting it into a bare assignment turns it into an implicit write to
+// the reactive scope proxy. If that "local" is both read and written by a
+// single expression evaluation (an entirely ordinary pattern — a helper
+// computing an intermediate value it uses), the expression's own dependency
+// tracking picks up a dependency on it, and since evaluating the expression
+// ALSO writes it, every evaluation re-triggers itself: a genuine infinite
+// patch loop, not just a stale read.
 export function braceDepths(src) {
   const depths = new Int32Array(src.length + 1);
   let depth = 0;
@@ -67,14 +85,15 @@ export function braceDepths(src) {
     const c = src[i];
     if (c === '"' || c === "'" || c === '`') {
       const j = skipString(src, i);
-      for (let k = i; k < j && k < src.length; k++) depths[k] = depth;
+      if (j === i + 1 || src[j - 1] !== c) warnScan(src, i, j);
+      for (let k = i; k < j && k < src.length; k++) depths[k] = ~depth;
       i = j;
       continue;
     }
     if (c === '/' && src[i + 1] === '/') {
       const s = i;
       while (i < src.length && src[i] !== '\n') i++;
-      for (let k = s; k < i; k++) depths[k] = depth;
+      for (let k = s; k < i; k++) depths[k] = ~depth;
       continue;
     }
     if (c === '/' && src[i + 1] === '*') {
@@ -82,7 +101,7 @@ export function braceDepths(src) {
       i += 2;
       while (i < src.length && !(src[i - 1] === '*' && src[i] === '/')) i++;
       i++;
-      for (let k = s; k < i && k < src.length; k++) depths[k] = depth;
+      for (let k = s; k < i && k < src.length; k++) depths[k] = ~depth;
       continue;
     }
     depths[i] = depth;
@@ -94,15 +113,45 @@ export function braceDepths(src) {
   return depths;
 }
 
+// Blank comments to spaces (newlines kept, so offsets and line numbers
+// stay aligned with the input) WITHOUT touching string contents. The old
+// regex-based strip wasn't string-aware: a string containing `/*` would eat
+// every real declaration up to the next `*/` in the code, silently
+// unseeding component state.
+function stripComments(src) {
+  let out = '';
+  let i = 0;
+  while (i < src.length) {
+    const c = src[i];
+    if (c === '"' || c === "'" || c === '`') { const j = skipString(src, i); out += src.slice(i, j); i = j; continue; }
+    if (c === '/' && src[i + 1] === '/') { while (i < src.length && src[i] !== '\n') { out += ' '; i++; } continue; }
+    if (c === '/' && src[i + 1] === '*') {
+      const s = i;
+      i += 2;
+      while (i < src.length && !(src[i - 1] === '*' && src[i] === '/')) i++;
+      i++;
+      out += src.slice(s, Math.min(i, src.length)).replace(/[^\n]/g, ' ');
+      continue;
+    }
+    out += c;
+    i++;
+  }
+  return out;
+}
+
 // Names declared by `let/const/var`, INCLUDING comma chains
 // (`let a = '', b = '', c`). The old code seeded only the first name, so the
 // rest leaked to the global scope (and weren't reactive). Destructuring
 // (`let {a} = …` / `let [a] = …`) is intentionally skipped — those stay local.
-export function extractDeclaredNames(code) {
+// `depths` (optional, from braceDepths) rejects matches inside string
+// literals — `let fake = 1` on a template-literal line is data, not a
+// declaration, and must not become a scope key.
+export function extractDeclaredNames(code, depths) {
   const names = [];
   const re = /(?:^|[\n;{}])\s*(?:let|const|var)\s+(?=[a-zA-Z_$])/g;
   let m;
   while ((m = re.exec(code)) !== null) {
+    if (depths && depths[m.index + m[0].length] < 0) continue;
     let i = m.index + m[0].length; // at the first declarator name
     let depth = 0;
     let expectName = true;
@@ -338,10 +387,14 @@ export function analyzeScript(rawCode) {
   let code = rawCode.replace(/\r\n?/g, '\n');
   // `export let x = …` marks a PROP (overridable from the import
   // placeholder). Record prop names, then treat as a normal declaration.
+  // Depth-gated like every other rewrite: `export let` on a line inside a
+  // string or comment is text, not a prop declaration.
   const propNames = new Set();
+  const rawDepths = braceDepths(code);
   code = code.replace(
     /(^|[\n;{}])(\s*)export\s+(let|const|var)\s+([a-zA-Z_$][\w$]*)/g,
-    (_, before, space, kw, name) => {
+    (m, before, space, kw, name, offset) => {
+      if (rawDepths[offset + before.length] < 0) return m;
       propNames.add(name);
       return `${before}${space}${kw} ${name}`;
     },
@@ -353,18 +406,20 @@ export function analyzeScript(rawCode) {
   const imports = extracted.imports;
   const reactiveStmts = extracted.reactiveStmts;
 
-  const codeNoComments = code
-    .replace(/\/\*[\s\S]*?\*\//g, '')
-    .replace(/(^|[^:])\/\/[^\n]*/g, '$1');
+  const codeNoComments = stripComments(code);
+  const seedDepths = braceDepths(codeNoComments);
 
   // Every name to seed on the scope so the proxy `has` trap claims it
-  // inside the with() block.
+  // inside the with() block. String-interior matches are rejected via
+  // seedDepths — code-like text in a string must not become a scope key.
   const seedNames = [];
   const funcRe =
     /(?:^|[\n;{}])\s*(?:async\s+)?function\s+([a-zA-Z_$][\w$]*)/g;
   let m;
-  for (const n of extractDeclaredNames(codeNoComments)) seedNames.push(n);
-  while ((m = funcRe.exec(codeNoComments)) !== null) seedNames.push(m[1]);
+  for (const n of extractDeclaredNames(codeNoComments, seedDepths)) seedNames.push(n);
+  while ((m = funcRe.exec(codeNoComments)) !== null) {
+    if (seedDepths[m.index + m[0].length - m[1].length] >= 0) seedNames.push(m[1]);
+  }
   // `$: x = …` implicitly declares x
   for (const stmt of reactiveStmts) {
     const t = stmt.match(/^([a-zA-Z_$][\w$]*)\s*=[^=]/);
