@@ -20,6 +20,7 @@ import {
 import { renderFragment, renderFragmentTo, evalExpr } from './render.js';
 import { clientComponent, initModule } from './hydrate.js';
 import { urlSource, globSource, moduleSource, makeSourceCache } from './sources.js';
+import { makeJobs } from './jobs.js';
 import { inferSchema, diffSchema, pushSchema, seedTables } from './schema.js';
 // Head semantics live in one place for the whole family: spark-html-head owns
 // title/meta on the client (pushState updates); its /ssr module owns them
@@ -342,114 +343,16 @@ export async function serve(options = {}) {
       try { c.enqueue(sseEnc.encode('data: ' + table + '\n\n')); } catch { liveClients.delete(c); }
     }
   }
-  const broadcastSql = (sql) => {
-    const event = /^\s*insert/i.test(sql) ? 'insert'
-      : /^\s*update/i.test(sql) ? 'update'
-      : /^\s*delete/i.test(sql) ? 'delete' : 'write';
-    for (const t of sqlTables(sql)) fireEvent(event, t, null);
-  };
+  // ── shared context for the extracted modules (M3.2 split) ──
+  // Fixed fields are startup constants; `broadcast` is bound above and
+  // `makeAppFetch` below (the request plumbing) — modules read late-bound
+  // slots at call time, never at import time.
+  const app = { root, config, db, secret, quiet, live, log, ctx, broadcast, makeAppFetch: null };
 
-  // ── declarative mail (Tier 3.8) ──
-  // mail(msg) is ambient in page/api/middleware <script>s and jobs. A msg is
-  // { to, subject, text, html, from } (or a bare string → text). The sender is
-  // a module ("mail":"./lib/mail.js", default export (msg, ctx)), a webhook
-  // ("mail":{ url, from, headers } → POST JSON), or a dev logger — so mail()
-  // always resolves, wired or not (the zero-config default is "it logs").
-  let mailSender = null;
-  async function loadMailSender() {
-    const m = config.mail;
-    if (typeof m === 'string' && /\.(m?js|ts)$/i.test(m)) {
-      const file = resolve(root, m.replace(/^\.\//, ''));
-      if (!file.startsWith(root) || !existsSync(file)) return null;
-      try {
-        const mod = await import(pathToFileURL(file).href);
-        return typeof mod.default === 'function' ? mod.default : null;
-      } catch (e) { if (!quiet) console.warn(`[spark-ssr] "mail" module ${m} — ${e.message}`); return null; }
-    }
-    if (m && typeof m === 'object' && m.url) {
-      return async (msg) => {
-        const res = await fetch(m.url, {
-          method: 'POST',
-          headers: { 'content-type': 'application/json', ...(m.headers || {}) },
-          body: JSON.stringify({ from: m.from, ...msg }),
-        });
-        if (!res.ok) throw new Error(`mail webhook ${res.status}`);
-        return { ok: true };
-      };
-    }
-    return null;
-  }
-  const mail = async (msg = {}) => {
-    const message = typeof msg === 'string' ? { text: msg } : (msg || {});
-    if (mailSender) return mailSender(message, { db });
-    if (!quiet) console.log(`[spark-ssr] mail (no sender configured) → to=${message.to ?? '?'} subject=${message.subject ?? ''}`);
-    return { ok: false, logged: true };
-  };
-
-  // ── declarative jobs (Tier 3.8) ──
-  // <spark-ssr job="digest" every="1d" /> schedules jobs/digest.js; job="onX"
-  // on="insert:orders" runs it after every matching write. The job body is a
-  // module the same shape as a data source — (req, db) — where `req` carries
-  // the trigger (req.event, req.row) plus req.mail / req.fetch.
-  const jobTimers = [];
-  const jobs = new Set();          // job names whose schedule/hook is wired
-  const eventHooks = new Map();    // "insert:orders" | "*:orders" → Set(jobName)
-  function parseEvery(s) {
-    const em = String(s).trim().match(/^(\d+(?:\.\d+)?)\s*(ms|s|m|h|d)?$/i);
-    if (!em) return 0;
-    const mult = { ms: 1, s: 1000, m: 60000, h: 3600000, d: 86400000 }[(em[2] || 's').toLowerCase()];
-    return Math.round(Number(em[1]) * mult);
-  }
-  function jobFile(name) {
-    for (const rel of [`jobs/${name}.js`, `lib/jobs/${name}.js`]) {
-      const f = resolve(root, rel);
-      if (f.startsWith(root) && existsSync(f)) return f;
-    }
-    return null;
-  }
-  async function runJob(name, event, row) {
-    const file = jobFile(name);
-    if (!file) { if (!quiet) console.warn(`[spark-ssr] job "${name}" has no module (jobs/${name}.js)`); return; }
-    try {
-      const bust = live ? '?v=' + statSync(file).mtimeMs : '';
-      const mod = await import(pathToFileURL(file).href + bust);
-      if (typeof mod.default !== 'function') return;
-      const req = {
-        job: name, event, row: row || null,
-        params: {}, query: {}, headers: {}, session: null,
-        mail, fetch: makeAppFetch(null),
-      };
-      await mod.default(req, db);
-    } catch (e) { if (!quiet) console.warn(`[spark-ssr] job "${name}" threw: ${e.message}`); }
-  }
-  function registerJob(b) {
-    if (!b.job || jobs.has(b.job)) return;
-    jobs.add(b.job);
-    if (b.on) {
-      const key = b.on.includes(':') ? b.on.toLowerCase() : '*:' + b.on.toLowerCase();
-      (eventHooks.get(key) || eventHooks.set(key, new Set()).get(key)).add(b.job);
-    }
-    if (b.every) {
-      const ms = parseEvery(b.every);
-      if (ms) {
-        const t = setInterval(() => { runJob(b.job, 'schedule', null); }, ms);
-        t.unref?.();
-        jobTimers.push(t);
-      } else if (!quiet) {
-        console.warn(`[spark-ssr] job "${b.job}" has an unparseable every="${b.every}"`);
-      }
-    }
-  }
-  // A write went through a table: refresh live/cache AND fire any job hooked to
-  // that event. `broadcast` stays the pure live-channel primitive underneath.
-  function fireEvent(event, table, row) {
-    broadcast(table);
-    const t = String(table).toLowerCase();
-    for (const key of [event + ':' + t, '*:' + t]) {
-      const set = eventHooks.get(key);
-      if (set) for (const name of set) runJob(name, event + ':' + table, row);
-    }
-  }
+  // Declarative mail + jobs + the write-event fan-out (split to src/jobs.js):
+  // mail() ambient sender, jobs/<name>.js on schedules and write hooks,
+  // fireEvent as the single "a write went through table X" path.
+  const { mail, initMail, registerJob, fireEvent, broadcastSql, jobTimers } = makeJobs(app);
 
   // ── the Spark family, wired in ──
   // Companion packages the app depends on get an importmap entry and are
@@ -866,11 +769,12 @@ export async function serve(options = {}) {
     columnsCache.clear(); // tables may have gained columns (§10)
     schemaDirty = false;
   }
-  mailSender = await loadMailSender();
+  await initMail();
   refreshPages();
   await ensureSchema();
 
   // ── api/ folder — custom endpoints ──
+  app.makeAppFetch = makeAppFetch;
   function makeAppFetch(req) {
     return (input, init = {}) => {
       let url = String(input);
