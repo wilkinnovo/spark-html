@@ -1,255 +1,276 @@
-# Graph Report - .  (2026-07-06)
+# Graph Report - /home/nine/spark  (2026-07-07)
 
 ## Corpus Check
-- 41 files · ~196,931 words
+- 142 files · ~226,287 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 1775 nodes · 2344 edges · 245 communities (119 shown, 126 thin omitted)
-- Extraction: 95% EXTRACTED · 5% INFERRED · 0% AMBIGUOUS · INFERRED: 111 edges (avg confidence: 0.61)
+- 2054 nodes · 2834 edges · 266 communities (147 shown, 119 thin omitted)
+- Extraction: 94% EXTRACTED · 6% INFERRED · 0% AMBIGUOUS · INFERRED: 175 edges (avg confidence: 0.71)
 - Token cost: 0 input · 0 output
 
 ## Community Hubs (Navigation)
-- [[_COMMUNITY_SSR CLI & Build|SSR CLI & Build]]
-- [[_COMMUNITY_Prerender Pipeline|Prerender Pipeline]]
-- [[_COMMUNITY_SSR Render Engine|SSR Render Engine]]
-- [[_COMMUNITY_Language Server|Language Server]]
-- [[_COMMUNITY_VS Code Extension|VS Code Extension]]
-- [[_COMMUNITY_Theme System Tests|Theme System Tests]]
-- [[_COMMUNITY_Bun Dev Server|Bun Dev Server]]
-- [[_COMMUNITY_DevTools Panel|DevTools Panel]]
-- [[_COMMUNITY_SRI Security|SRI Security]]
-- [[_COMMUNITY_Font Optimizer|Font Optimizer]]
-- [[_COMMUNITY_Prerender Package|Prerender Package]]
-- [[_COMMUNITY_Theme Package|Theme Package]]
-- [[_COMMUNITY_Website Config|Website Config]]
-- [[_COMMUNITY_Head Meta Tags|Head Meta Tags]]
-- [[_COMMUNITY_Image Optimizer|Image Optimizer]]
-- [[_COMMUNITY_Spark Core Runtime|Spark Core Runtime]]
-- [[_COMMUNITY_Query Store|Query Store]]
-- [[_COMMUNITY_Example Apps|Example Apps]]
-- [[_COMMUNITY_E2E Tests|E2E Tests]]
-- [[_COMMUNITY_Website Docs|Website Docs]]
-- [[_COMMUNITY_Manifest PWA|Manifest PWA]]
-- [[_COMMUNITY_Offline Cache|Offline Cache]]
-- [[_COMMUNITY_WebSocket Store|WebSocket Store]]
-- [[_COMMUNITY_Persist Store|Persist Store]]
-- [[_COMMUNITY_Router Navigation|Router Navigation]]
-- [[_COMMUNITY_Motion Transitions|Motion Transitions]]
-- [[_COMMUNITY_Create App Templates|Create App Templates]]
-- [[_COMMUNITY_Prettier Plugin|Prettier Plugin]]
-- [[_COMMUNITY_HTML Components|HTML Components]]
-- [[_COMMUNITY_Pinterest Example|Pinterest Example]]
-- [[_COMMUNITY_TabTube Example|TabTube Example]]
-- [[_COMMUNITY_Community 31|Community 31]]
-- [[_COMMUNITY_Community 32|Community 32]]
-- [[_COMMUNITY_Community 33|Community 33]]
-- [[_COMMUNITY_Community 34|Community 34]]
-- [[_COMMUNITY_Community 35|Community 35]]
-- [[_COMMUNITY_Community 36|Community 36]]
-- [[_COMMUNITY_Community 37|Community 37]]
-- [[_COMMUNITY_Community 38|Community 38]]
-- [[_COMMUNITY_Community 39|Community 39]]
-- [[_COMMUNITY_Community 40|Community 40]]
-- [[_COMMUNITY_Community 41|Community 41]]
-- [[_COMMUNITY_Community 42|Community 42]]
-- [[_COMMUNITY_Community 43|Community 43]]
-- [[_COMMUNITY_Community 44|Community 44]]
-- [[_COMMUNITY_Community 45|Community 45]]
-- [[_COMMUNITY_Community 46|Community 46]]
-- [[_COMMUNITY_Community 47|Community 47]]
-- [[_COMMUNITY_Community 48|Community 48]]
-- [[_COMMUNITY_Community 49|Community 49]]
-- [[_COMMUNITY_Community 50|Community 50]]
-- [[_COMMUNITY_Community 51|Community 51]]
-- [[_COMMUNITY_Community 52|Community 52]]
-- [[_COMMUNITY_Community 53|Community 53]]
-- [[_COMMUNITY_Community 54|Community 54]]
-- [[_COMMUNITY_Community 55|Community 55]]
-- [[_COMMUNITY_Community 56|Community 56]]
-- [[_COMMUNITY_Community 57|Community 57]]
-- [[_COMMUNITY_Community 58|Community 58]]
-- [[_COMMUNITY_Community 59|Community 59]]
-- [[_COMMUNITY_Community 60|Community 60]]
-- [[_COMMUNITY_Community 61|Community 61]]
-- [[_COMMUNITY_Community 62|Community 62]]
-- [[_COMMUNITY_Community 63|Community 63]]
-- [[_COMMUNITY_Community 64|Community 64]]
-- [[_COMMUNITY_Community 65|Community 65]]
-- [[_COMMUNITY_Community 66|Community 66]]
-- [[_COMMUNITY_Community 67|Community 67]]
-- [[_COMMUNITY_Community 68|Community 68]]
-- [[_COMMUNITY_Community 69|Community 69]]
-- [[_COMMUNITY_Community 70|Community 70]]
-- [[_COMMUNITY_Community 71|Community 71]]
-- [[_COMMUNITY_Community 72|Community 72]]
-- [[_COMMUNITY_Community 73|Community 73]]
-- [[_COMMUNITY_Community 74|Community 74]]
-- [[_COMMUNITY_Community 75|Community 75]]
-- [[_COMMUNITY_Community 76|Community 76]]
-- [[_COMMUNITY_Community 77|Community 77]]
-- [[_COMMUNITY_Community 78|Community 78]]
-- [[_COMMUNITY_Community 79|Community 79]]
-- [[_COMMUNITY_Community 80|Community 80]]
-- [[_COMMUNITY_Community 82|Community 82]]
-- [[_COMMUNITY_Community 84|Community 84]]
-- [[_COMMUNITY_Community 85|Community 85]]
-- [[_COMMUNITY_Community 87|Community 87]]
-- [[_COMMUNITY_Community 88|Community 88]]
-- [[_COMMUNITY_Community 89|Community 89]]
-- [[_COMMUNITY_Community 90|Community 90]]
-- [[_COMMUNITY_Community 94|Community 94]]
-- [[_COMMUNITY_Community 97|Community 97]]
-- [[_COMMUNITY_Community 98|Community 98]]
-- [[_COMMUNITY_Community 99|Community 99]]
-- [[_COMMUNITY_Community 101|Community 101]]
-- [[_COMMUNITY_Community 104|Community 104]]
-- [[_COMMUNITY_Community 105|Community 105]]
-- [[_COMMUNITY_Community 108|Community 108]]
-- [[_COMMUNITY_Community 109|Community 109]]
-- [[_COMMUNITY_Community 110|Community 110]]
-- [[_COMMUNITY_Community 112|Community 112]]
-- [[_COMMUNITY_Community 113|Community 113]]
-- [[_COMMUNITY_Community 114|Community 114]]
-- [[_COMMUNITY_Community 115|Community 115]]
-- [[_COMMUNITY_Community 117|Community 117]]
-- [[_COMMUNITY_Community 118|Community 118]]
-- [[_COMMUNITY_Community 119|Community 119]]
-- [[_COMMUNITY_Community 120|Community 120]]
-- [[_COMMUNITY_Community 121|Community 121]]
-- [[_COMMUNITY_Community 123|Community 123]]
-- [[_COMMUNITY_Community 127|Community 127]]
-- [[_COMMUNITY_Community 128|Community 128]]
-- [[_COMMUNITY_Community 129|Community 129]]
-- [[_COMMUNITY_Community 130|Community 130]]
-- [[_COMMUNITY_Community 132|Community 132]]
-- [[_COMMUNITY_Community 133|Community 133]]
-- [[_COMMUNITY_Community 134|Community 134]]
-- [[_COMMUNITY_Community 135|Community 135]]
-- [[_COMMUNITY_Community 136|Community 136]]
-- [[_COMMUNITY_Community 137|Community 137]]
-- [[_COMMUNITY_Community 138|Community 138]]
-- [[_COMMUNITY_Community 139|Community 139]]
-- [[_COMMUNITY_Community 140|Community 140]]
-- [[_COMMUNITY_Community 141|Community 141]]
-- [[_COMMUNITY_Community 142|Community 142]]
-- [[_COMMUNITY_Community 143|Community 143]]
-- [[_COMMUNITY_Community 145|Community 145]]
-- [[_COMMUNITY_Community 146|Community 146]]
-- [[_COMMUNITY_Community 147|Community 147]]
-- [[_COMMUNITY_Community 148|Community 148]]
-- [[_COMMUNITY_Community 149|Community 149]]
-- [[_COMMUNITY_Community 150|Community 150]]
-- [[_COMMUNITY_Community 151|Community 151]]
-- [[_COMMUNITY_Community 152|Community 152]]
-- [[_COMMUNITY_Community 153|Community 153]]
-- [[_COMMUNITY_Community 154|Community 154]]
-- [[_COMMUNITY_Community 155|Community 155]]
-- [[_COMMUNITY_Community 156|Community 156]]
-- [[_COMMUNITY_Community 157|Community 157]]
-- [[_COMMUNITY_Community 158|Community 158]]
-- [[_COMMUNITY_Community 159|Community 159]]
-- [[_COMMUNITY_Community 161|Community 161]]
-- [[_COMMUNITY_Community 162|Community 162]]
-- [[_COMMUNITY_Community 163|Community 163]]
-- [[_COMMUNITY_Community 164|Community 164]]
-- [[_COMMUNITY_Community 165|Community 165]]
-- [[_COMMUNITY_Community 166|Community 166]]
-- [[_COMMUNITY_Community 167|Community 167]]
-- [[_COMMUNITY_Community 169|Community 169]]
-- [[_COMMUNITY_Community 170|Community 170]]
-- [[_COMMUNITY_Community 171|Community 171]]
-- [[_COMMUNITY_Community 172|Community 172]]
-- [[_COMMUNITY_Community 173|Community 173]]
-- [[_COMMUNITY_Community 174|Community 174]]
-- [[_COMMUNITY_Community 175|Community 175]]
-- [[_COMMUNITY_Community 176|Community 176]]
-- [[_COMMUNITY_Community 177|Community 177]]
-- [[_COMMUNITY_Community 178|Community 178]]
-- [[_COMMUNITY_Community 179|Community 179]]
-- [[_COMMUNITY_Community 180|Community 180]]
-- [[_COMMUNITY_Community 181|Community 181]]
-- [[_COMMUNITY_Community 182|Community 182]]
-- [[_COMMUNITY_Community 183|Community 183]]
-- [[_COMMUNITY_Community 184|Community 184]]
-- [[_COMMUNITY_Community 185|Community 185]]
-- [[_COMMUNITY_Community 186|Community 186]]
-- [[_COMMUNITY_Community 187|Community 187]]
-- [[_COMMUNITY_Community 188|Community 188]]
-- [[_COMMUNITY_Community 189|Community 189]]
-- [[_COMMUNITY_Community 190|Community 190]]
-- [[_COMMUNITY_Community 191|Community 191]]
-- [[_COMMUNITY_Community 192|Community 192]]
-- [[_COMMUNITY_Community 193|Community 193]]
-- [[_COMMUNITY_Community 194|Community 194]]
-- [[_COMMUNITY_Community 195|Community 195]]
-- [[_COMMUNITY_Community 196|Community 196]]
-- [[_COMMUNITY_Community 197|Community 197]]
-- [[_COMMUNITY_Community 198|Community 198]]
-- [[_COMMUNITY_Community 199|Community 199]]
-- [[_COMMUNITY_Community 200|Community 200]]
-- [[_COMMUNITY_Community 201|Community 201]]
-- [[_COMMUNITY_Community 202|Community 202]]
-- [[_COMMUNITY_Community 203|Community 203]]
-- [[_COMMUNITY_Community 204|Community 204]]
-- [[_COMMUNITY_Community 207|Community 207]]
-- [[_COMMUNITY_Community 209|Community 209]]
-- [[_COMMUNITY_Community 210|Community 210]]
-- [[_COMMUNITY_Community 211|Community 211]]
-- [[_COMMUNITY_Community 212|Community 212]]
-- [[_COMMUNITY_Community 213|Community 213]]
-- [[_COMMUNITY_Community 214|Community 214]]
-- [[_COMMUNITY_Community 215|Community 215]]
-- [[_COMMUNITY_Community 217|Community 217]]
-- [[_COMMUNITY_Community 218|Community 218]]
-- [[_COMMUNITY_Community 219|Community 219]]
-- [[_COMMUNITY_Community 220|Community 220]]
-- [[_COMMUNITY_Community 221|Community 221]]
-- [[_COMMUNITY_Community 224|Community 224]]
-- [[_COMMUNITY_Community 226|Community 226]]
-- [[_COMMUNITY_Community 228|Community 228]]
-- [[_COMMUNITY_Community 229|Community 229]]
-- [[_COMMUNITY_Community 233|Community 233]]
-- [[_COMMUNITY_Community 234|Community 234]]
-- [[_COMMUNITY_Community 235|Community 235]]
-- [[_COMMUNITY_Community 236|Community 236]]
-- [[_COMMUNITY_Community 237|Community 237]]
-- [[_COMMUNITY_Community 238|Community 238]]
-- [[_COMMUNITY_Community 239|Community 239]]
-- [[_COMMUNITY_Community 240|Community 240]]
-- [[_COMMUNITY_Community 241|Community 241]]
-- [[_COMMUNITY_Community 242|Community 242]]
-- [[_COMMUNITY_Community 243|Community 243]]
-- [[_COMMUNITY_Community 244|Community 244]]
+- [[_COMMUNITY_Spark build & prerender CLI|Spark build & prerender CLI]]
+- [[_COMMUNITY_Core event firetest utils|Core event fire/test utils]]
+- [[_COMMUNITY_Language server analyzer|Language server analyzer]]
+- [[_COMMUNITY_SSR opcode renderer|SSR opcode renderer]]
+- [[_COMMUNITY_Scaffold + font package|Scaffold + font package]]
+- [[_COMMUNITY_SSR config + CRUD|SSR config + CRUD]]
+- [[_COMMUNITY_Devtools + ticks|Devtools + ticks]]
+- [[_COMMUNITY_Capture & component lifecycle|Capture & component lifecycle]]
+- [[_COMMUNITY_VSCode extension manifest|VSCode extension manifest]]
+- [[_COMMUNITY_Theme + data-theme matcher|Theme + data-theme matcher]]
+- [[_COMMUNITY_spark-html-bun CLI flags|spark-html-bun CLI flags]]
+- [[_COMMUNITY_SRI hashing & stamping|SRI hashing & stamping]]
+- [[_COMMUNITY_prerender package manifest|prerender package manifest]]
+- [[_COMMUNITY_Directive patchers|Directive patchers]]
+- [[_COMMUNITY_ssr package manifest|ssr package manifest]]
+- [[_COMMUNITY_theme package manifest|theme package manifest]]
+- [[_COMMUNITY_CSS scoping & matching|CSS scoping & matching]]
+- [[_COMMUNITY_website package deps|website package deps]]
+- [[_COMMUNITY_Pinterest examples|Pinterest examples]]
+- [[_COMMUNITY_head package manifest|head package manifest]]
+- [[_COMMUNITY_image package manifest|image package manifest]]
+- [[_COMMUNITY_SSR parse & data plan|SSR parse & data plan]]
+- [[_COMMUNITY_create-app templates manifest|create-app templates manifest]]
+- [[_COMMUNITY_manifest package manifest|manifest package manifest]]
+- [[_COMMUNITY_spark-html core package manifest|spark-html core package manifest]]
+- [[_COMMUNITY_Component boot & patch|Component boot & patch]]
+- [[_COMMUNITY_Expression compiler & cache|Expression compiler & cache]]
+- [[_COMMUNITY_router navigation|router navigation]]
+- [[_COMMUNITY_test-utils package manifest|test-utils package manifest]]
+- [[_COMMUNITY_SSR CLI commands|SSR CLI commands]]
+- [[_COMMUNITY_devtools (21)|devtools (21)]]
+- [[_COMMUNITY_font (21)|font (21)]]
+- [[_COMMUNITY_language-server (21)|language-server (21)]]
+- [[_COMMUNITY_motion (21)|motion (21)]]
+- [[_COMMUNITY_offline (21)|offline (21)]]
+- [[_COMMUNITY_persist (21)|persist (21)]]
+- [[_COMMUNITY_query (21)|query (21)]]
+- [[_COMMUNITY_router (21)|router (21)]]
+- [[_COMMUNITY_sri (21)|sri (21)]]
+- [[_COMMUNITY_websocket (21)|websocket (21)]]
+- [[_COMMUNITY_ssr (21)|ssr (21)]]
+- [[_COMMUNITY_create-spark-html-app (20)|create-spark-html-app (20)]]
+- [[_COMMUNITY_bun (20)|bun (20)]]
+- [[_COMMUNITY_editorsvscode (18)|editors/vscode (18)]]
+- [[_COMMUNITY_prettier-plugin-spark (18)|prettier-plugin-spark (18)]]
+- [[_COMMUNITY_create-spark-html-app (17)|create-spark-html-app (17)]]
+- [[_COMMUNITY_website (17)|website (17)]]
+- [[_COMMUNITY_query (16)|query (16)]]
+- [[_COMMUNITY_examplespinterest (16)|examples/pinterest (16)]]
+- [[_COMMUNITY_examplestabtube (16)|examples/tabtube (16)]]
+- [[_COMMUNITY_create-spark-html-app (16)|create-spark-html-app (16)]]
+- [[_COMMUNITY_website (16)|website (16)]]
+- [[_COMMUNITY_package.json (15)|package.json (15)]]
+- [[_COMMUNITY_spark (15)|spark (15)]]
+- [[_COMMUNITY_manifest (15)|manifest (15)]]
+- [[_COMMUNITY_examplesbasic (14)|examples/basic (14)]]
+- [[_COMMUNITY_examplesjsimports (14)|examples/jsimports (14)]]
+- [[_COMMUNITY_create-spark-html-app (14)|create-spark-html-app (14)]]
+- [[_COMMUNITY_prettier-plugin-spark (14)|prettier-plugin-spark (14)]]
+- [[_COMMUNITY_website (14)|website (14)]]
+- [[_COMMUNITY_create-spark-html-app (13)|create-spark-html-app (13)]]
+- [[_COMMUNITY_image (12)|image (12)]]
+- [[_COMMUNITY_README.md (12)|README.md (12)]]
+- [[_COMMUNITY_router (11)|router (11)]]
+- [[_COMMUNITY_websocket (11)|websocket (11)]]
+- [[_COMMUNITY_ssr (11)|ssr (11)]]
+- [[_COMMUNITY_scripts (11)|scripts (11)]]
+- [[_COMMUNITY_website (10)|website (10)]]
+- [[_COMMUNITY_offline (10)|offline (10)]]
+- [[_COMMUNITY_ssr (10)|ssr (10)]]
+- [[_COMMUNITY_editorsvscode (9)|editors/vscode (9)]]
+- [[_COMMUNITY_examplestabtube (9)|examples/tabtube (9)]]
+- [[_COMMUNITY_workflows (9)|workflows (9)]]
+- [[_COMMUNITY_head (9)|head (9)]]
+- [[_COMMUNITY_bun (8)|bun (8)]]
+- [[_COMMUNITY_motion (8)|motion (8)]]
+- [[_COMMUNITY_websocket (8)|websocket (8)]]
+- [[_COMMUNITY_spark (8)|spark (8)]]
+- [[_COMMUNITY_spark (8)|spark (8)]]
+- [[_COMMUNITY_spark (8)|spark (8)]]
+- [[_COMMUNITY_spark (8)|spark (8)]]
+- [[_COMMUNITY_spark (8)|spark (8)]]
+- [[_COMMUNITY_e2e (7)|e2e (7)]]
+- [[_COMMUNITY_head (7)|head (7)]]
+- [[_COMMUNITY_language-server (7)|language-server (7)]]
+- [[_COMMUNITY_websocket (7)|websocket (7)]]
+- [[_COMMUNITY_spark (7)|spark (7)]]
+- [[_COMMUNITY_spark (7)|spark (7)]]
+- [[_COMMUNITY_spark (7)|spark (7)]]
+- [[_COMMUNITY_spark (7)|spark (7)]]
+- [[_COMMUNITY_scripts (7)|scripts (7)]]
+- [[_COMMUNITY_devtools (6)|devtools (6)]]
+- [[_COMMUNITY_spark (6)|spark (6)]]
+- [[_COMMUNITY_spark (6)|spark (6)]]
+- [[_COMMUNITY_examplespinterest (5)|examples/pinterest (5)]]
+- [[_COMMUNITY_motion (5)|motion (5)]]
+- [[_COMMUNITY_router (5)|router (5)]]
+- [[_COMMUNITY_scripts (5)|scripts (5)]]
+- [[_COMMUNITY_website (5)|website (5)]]
+- [[_COMMUNITY_motion (4)|motion (4)]]
+- [[_COMMUNITY_examplesjsimports (4)|examples/jsimports (4)]]
+- [[_COMMUNITY_examplesjsimports (4)|examples/jsimports (4)]]
+- [[_COMMUNITY_font (4)|font (4)]]
+- [[_COMMUNITY_head (4)|head (4)]]
+- [[_COMMUNITY_manifest (4)|manifest (4)]]
+- [[_COMMUNITY_offline (4)|offline (4)]]
+- [[_COMMUNITY_prerender (4)|prerender (4)]]
+- [[_COMMUNITY_spark (4)|spark (4)]]
+- [[_COMMUNITY_scripts (4)|scripts (4)]]
+- [[_COMMUNITY_examplesbasic (3)|examples/basic (3)]]
+- [[_COMMUNITY_examplespinterest (3)|examples/pinterest (3)]]
+- [[_COMMUNITY_examplestabtube (3)|examples/tabtube (3)]]
+- [[_COMMUNITY_workflows (3)|workflows (3)]]
+- [[_COMMUNITY_README.md (3)|README.md (3)]]
+- [[_COMMUNITY_image (3)|image (3)]]
+- [[_COMMUNITY_query (3)|query (3)]]
+- [[_COMMUNITY_sri (3)|sri (3)]]
+- [[_COMMUNITY_prerender (3)|prerender (3)]]
+- [[_COMMUNITY_website (3)|website (3)]]
+- [[_COMMUNITY_website (3)|website (3)]]
+- [[_COMMUNITY_examplesbasic (2)|examples/basic (2)]]
+- [[_COMMUNITY_examplesjsimports (2)|examples/jsimports (2)]]
+- [[_COMMUNITY_examplesjsimports (2)|examples/jsimports (2)]]
+- [[_COMMUNITY_examplesjsimports (2)|examples/jsimports (2)]]
+- [[_COMMUNITY_examplesjsimports (2)|examples/jsimports (2)]]
+- [[_COMMUNITY_examplespinterest (2)|examples/pinterest (2)]]
+- [[_COMMUNITY_examplespinterest (2)|examples/pinterest (2)]]
+- [[_COMMUNITY_examplespinterest (2)|examples/pinterest (2)]]
+- [[_COMMUNITY_examplespinterest (2)|examples/pinterest (2)]]
+- [[_COMMUNITY_examplespinterest (2)|examples/pinterest (2)]]
+- [[_COMMUNITY_workflows (2)|workflows (2)]]
+- [[_COMMUNITY_workflows (2)|workflows (2)]]
+- [[_COMMUNITY_workflows (2)|workflows (2)]]
+- [[_COMMUNITY_workflows (2)|workflows (2)]]
+- [[_COMMUNITY_workflows (2)|workflows (2)]]
+- [[_COMMUNITY_workflows (2)|workflows (2)]]
+- [[_COMMUNITY_workflows (2)|workflows (2)]]
+- [[_COMMUNITY_workflows (2)|workflows (2)]]
+- [[_COMMUNITY_workflows (2)|workflows (2)]]
+- [[_COMMUNITY_workflows (2)|workflows (2)]]
+- [[_COMMUNITY_workflows (2)|workflows (2)]]
+- [[_COMMUNITY_workflows (2)|workflows (2)]]
+- [[_COMMUNITY_workflows (2)|workflows (2)]]
+- [[_COMMUNITY_workflows (2)|workflows (2)]]
+- [[_COMMUNITY_workflows (2)|workflows (2)]]
+- [[_COMMUNITY_create-spark-html-app (2)|create-spark-html-app (2)]]
+- [[_COMMUNITY_devtools (2)|devtools (2)]]
+- [[_COMMUNITY_head (2)|head (2)]]
+- [[_COMMUNITY_playwright.config.js (2)|playwright.config.js (2)]]
+- [[_COMMUNITY_scripts (2)|scripts (2)]]
+- [[_COMMUNITY_website (2)|website (2)]]
+- [[_COMMUNITY_website (2)|website (2)]]
+- [[_COMMUNITY_website (2)|website (2)]]
+- [[_COMMUNITY_examplesbasic (1)|examples/basic (1)]]
+- [[_COMMUNITY_examplesbasic (1)|examples/basic (1)]]
+- [[_COMMUNITY_examplesbasic (1)|examples/basic (1)]]
+- [[_COMMUNITY_examplesbasic (1)|examples/basic (1)]]
+- [[_COMMUNITY_examplesbasic (1)|examples/basic (1)]]
+- [[_COMMUNITY_examplesbasic (1)|examples/basic (1)]]
+- [[_COMMUNITY_examplesbasic (1)|examples/basic (1)]]
+- [[_COMMUNITY_examplesbasic (1)|examples/basic (1)]]
+- [[_COMMUNITY_examplesbasic (1)|examples/basic (1)]]
+- [[_COMMUNITY_examplesbasic (1)|examples/basic (1)]]
+- [[_COMMUNITY_examplesbasic (1)|examples/basic (1)]]
+- [[_COMMUNITY_examplesbasic (1)|examples/basic (1)]]
+- [[_COMMUNITY_examplesjsimports (1)|examples/jsimports (1)]]
+- [[_COMMUNITY_examplespinterest (1)|examples/pinterest (1)]]
+- [[_COMMUNITY_examplespinterest (1)|examples/pinterest (1)]]
+- [[_COMMUNITY_examplespinterest (1)|examples/pinterest (1)]]
+- [[_COMMUNITY_examplespinterest (1)|examples/pinterest (1)]]
+- [[_COMMUNITY_examplespinterest (1)|examples/pinterest (1)]]
+- [[_COMMUNITY_examplespinterest (1)|examples/pinterest (1)]]
+- [[_COMMUNITY_examplespinterest (1)|examples/pinterest (1)]]
+- [[_COMMUNITY_examplespinterest (1)|examples/pinterest (1)]]
+- [[_COMMUNITY_examplespinterest (1)|examples/pinterest (1)]]
+- [[_COMMUNITY_examplespinterest (1)|examples/pinterest (1)]]
+- [[_COMMUNITY_examplespinterest (1)|examples/pinterest (1)]]
+- [[_COMMUNITY_examplespinterest (1)|examples/pinterest (1)]]
+- [[_COMMUNITY_examplespinterest (1)|examples/pinterest (1)]]
+- [[_COMMUNITY_examplespinterest (1)|examples/pinterest (1)]]
+- [[_COMMUNITY_examplestabtube (1)|examples/tabtube (1)]]
+- [[_COMMUNITY_examplestabtube (1)|examples/tabtube (1)]]
+- [[_COMMUNITY_workflows (1)|workflows (1)]]
+- [[_COMMUNITY_create-spark-html-app (1)|create-spark-html-app (1)]]
+- [[_COMMUNITY_create-spark-html-app (1)|create-spark-html-app (1)]]
+- [[_COMMUNITY_create-spark-html-app (1)|create-spark-html-app (1)]]
+- [[_COMMUNITY_create-spark-html-app (1)|create-spark-html-app (1)]]
+- [[_COMMUNITY_create-spark-html-app (1)|create-spark-html-app (1)]]
+- [[_COMMUNITY_create-spark-html-app (1)|create-spark-html-app (1)]]
+- [[_COMMUNITY_create-spark-html-app (1)|create-spark-html-app (1)]]
+- [[_COMMUNITY_create-spark-html-app (1)|create-spark-html-app (1)]]
+- [[_COMMUNITY_create-spark-html-app (1)|create-spark-html-app (1)]]
+- [[_COMMUNITY_create-spark-html-app (1)|create-spark-html-app (1)]]
+- [[_COMMUNITY_create-spark-html-app (1)|create-spark-html-app (1)]]
+- [[_COMMUNITY_create-spark-html-app (1)|create-spark-html-app (1)]]
+- [[_COMMUNITY_create-spark-html-app (1)|create-spark-html-app (1)]]
+- [[_COMMUNITY_create-spark-html-app (1)|create-spark-html-app (1)]]
+- [[_COMMUNITY_create-spark-html-app (1)|create-spark-html-app (1)]]
+- [[_COMMUNITY_create-spark-html-app (1)|create-spark-html-app (1)]]
+- [[_COMMUNITY_create-spark-html-app (1)|create-spark-html-app (1)]]
+- [[_COMMUNITY_create-spark-html-app (1)|create-spark-html-app (1)]]
+- [[_COMMUNITY_create-spark-html-app (1)|create-spark-html-app (1)]]
+- [[_COMMUNITY_create-spark-html-app (1)|create-spark-html-app (1)]]
+- [[_COMMUNITY_create-spark-html-app (1)|create-spark-html-app (1)]]
+- [[_COMMUNITY_create-spark-html-app (1)|create-spark-html-app (1)]]
+- [[_COMMUNITY_create-spark-html-app (1)|create-spark-html-app (1)]]
+- [[_COMMUNITY_create-spark-html-app (1)|create-spark-html-app (1)]]
+- [[_COMMUNITY_create-spark-html-app (1)|create-spark-html-app (1)]]
+- [[_COMMUNITY_create-spark-html-app (1)|create-spark-html-app (1)]]
+- [[_COMMUNITY_create-spark-html-app (1)|create-spark-html-app (1)]]
+- [[_COMMUNITY_bun (1)|bun (1)]]
+- [[_COMMUNITY_router (1)|router (1)]]
+- [[_COMMUNITY_spark (1)|spark (1)]]
+- [[_COMMUNITY_ssr (1)|ssr (1)]]
+- [[_COMMUNITY_ssr (1)|ssr (1)]]
+- [[_COMMUNITY_ssr (1)|ssr (1)]]
+- [[_COMMUNITY_website (1)|website (1)]]
+- [[_COMMUNITY_website (1)|website (1)]]
+- [[_COMMUNITY_website (1)|website (1)]]
+- [[_COMMUNITY_website (1)|website (1)]]
+- [[_COMMUNITY_website (1)|website (1)]]
+- [[_COMMUNITY_website (1)|website (1)]]
 
 ## God Nodes (most connected - your core abstractions)
-1. `Element` - 29 edges
-2. `parseHTML()` - 26 edges
-3. `documentBody` - 23 edges
-4. `prerender()` - 20 edges
-5. `walkNode()` - 16 edges
-6. `Demos Gallery` - 14 edges
-7. `skipString()` - 14 edges
-8. `bootComponent()` - 13 edges
-9. `analyze()` - 12 edges
-10. `resolveImportNode()` - 12 edges
+1. `Spark monorepo README` - 33 edges
+2. `Element` - 29 edges
+3. `parseHTML()` - 24 edges
+4. `prerender()` - 22 edges
+5. `documentBody` - 21 edges
+6. `walkNode()` - 19 edges
+7. `skipString()` - 18 edges
+8. `serve()` - 16 edges
+9. `makeScope()` - 16 edges
+10. `Demos Gallery` - 14 edges
 
 ## Surprising Connections (you probably didn't know these)
-- `setupPlayground()` --calls--> `parseSFC()`  [INFERRED]
-  website/src/playground.js → packages/spark/src/index.js
-- `setupPlayground()` --calls--> `scopeCss()`  [INFERRED]
-  website/src/playground.js → packages/spark/src/index.js
 - `setupPlayground()` --calls--> `persist()`  [INFERRED]
   website/src/playground.js → packages/spark-html-persist/src/index.js
-- `setupPlayground()` --calls--> `store()`  [INFERRED]
+- `setupPlayground()` --calls--> `parseSFC()`  [INFERRED]
   website/src/playground.js → packages/spark/src/index.js
-- `setupPlayground()` --calls--> `subscribe()`  [INFERRED]
-  website/src/playground.js → packages/spark/src/index.js
+- `devtools()` --calls--> `render()`  [INFERRED]
+  packages/spark-html-devtools/src/index.js → packages/spark-html-router/src/index.js
+- `e2e workflow` --references--> `create-spark-html-app package`  [INFERRED]
+  .github/workflows/e2e.yml → README.md
+- `Publish prettier-plugin-spark workflow` --references--> `prettier-plugin-spark package`  [INFERRED]
+  .github/workflows/publish-prettier-plugin-spark.yml → README.md
 
 ## Import Cycles
-- None detected.
+- 3-file cycle: `packages/spark/src/directives.js -> packages/spark/src/reactivity.js -> packages/spark/src/index.js -> packages/spark/src/directives.js`
+- 3-file cycle: `packages/spark/src/component.js -> packages/spark/src/index.js -> packages/spark/src/directives.js -> packages/spark/src/component.js`
+- 4-file cycle: `packages/spark/src/component.js -> packages/spark/src/reactivity.js -> packages/spark/src/index.js -> packages/spark/src/directives.js -> packages/spark/src/component.js`
 
 ## Hyperedges (group relationships)
+- **Tag-gated npm provenance publish pipeline (shared by all publish-* workflows)** — github_workflows_publish_npm, github_workflows_publish_create_spark_html_app, github_workflows_publish_spark_ssr, github_workflows_publish_spark_prerender, github_workflows_publish_spark_html_bun [INFERRED 0.85]
+- **1.0 release CI verification battery (fuzz oracle + bench + e2e + size gate)** — github_workflows_bench, github_workflows_e2e, readme_concept_byte_identical_oracle, readme_concept_frozen_size_budget [INFERRED 0.75]
+- **Core runtime reactive mechanisms described in How it works** — readme_concept_text_level_extraction, readme_concept_proxy_scope_reactivity, readme_concept_o_changed_tracking, readme_concept_row_level_loop_patching, readme_concept_scoped_styles, readme_concept_cloak_style [INFERRED 0.85]
+- **Pinterest spark-ssr [param] pages** — examples_pinterest_pages_board__id_, examples_pinterest_pages_pin__id_, examples_pinterest_pages_u__username_ [INFERRED 0.85]
+- **spark-ignored docs reference components** — website_public_components_docs_body, website_public_components_ssr [INFERRED 0.95]
+- **spark-prerender store fixture chain** — packages_spark_prerender_test_fixture_components_store_reader, packages_spark_prerender_test_fixture_components_store_user, packages_spark_prerender_test_fixture_entry_store_external, packages_spark_prerender_test_fixture_entry_store_inline, packages_spark_prerender_test_fixture_store [INFERRED 0.85]
+- **TabTube shared 'tabtube' store flow** — examples_tabtube_pages_index, examples_tabtube_components_tab_strip [EXTRACTED 1.00]
+- **Website shell sharing 'app'/'route'/'theme' stores** — website_index, website_public_components_home, website_public_components_sidebar [INFERRED 0.75]
 - **Pinterest User Avatar Set** — examples_pinterest_public_img_avatar-ada_svg_avatar_ada, examples_pinterest_public_img_avatar-kai_svg_avatar_kai, examples_pinterest_public_img_avatar-mira_svg_avatar_mira, examples_pinterest_public_img_avatar-nova_svg_avatar_nova, examples_pinterest_public_img_avatar-default_svg_avatar_default [INFERRED 0.85]
 - **Pinterest Seed Content Photos** — examples_pinterest_public_img_seed_photo1_svg_seed_photo_sunset_ridge, examples_pinterest_public_img_seed_photo2_svg_seed_photo_ocean_calm, examples_pinterest_public_img_seed_photo3_svg_seed_photo_golden_hour, examples_pinterest_public_img_seed_photo4_svg_seed_photo_lavender_fields, examples_pinterest_public_img_seed_photo5_svg_seed_photo_mint_breeze, examples_pinterest_public_img_seed_photo6_svg_seed_photo_coral_bloom, examples_pinterest_public_img_seed_photo7_svg_seed_photo_night_sky, examples_pinterest_public_img_seed_photo8_svg_seed_photo_berry_punch, examples_pinterest_public_img_seed_photo9_svg_seed_photo_emerald_deep, examples_pinterest_public_img_seed_photo10_svg_seed_photo_soft_cream, examples_pinterest_public_img_seed_photo11_svg_seed_photo_orchid_dream, examples_pinterest_public_img_seed_photo12_svg_seed_photo_amber_glow [INFERRED 0.85]
 - **TabTube UI Components** — examples_tabtube_components_theme-toggle_html_theme_toggle_component, examples_tabtube_pages__layout_html_tabtube_layout [INFERRED 0.75]
@@ -260,373 +281,448 @@
 - **Spark Core Runtime** — packages_spark_readme, spark_html_mount, spark_html_store, spark_html_derived [EXTRACTED 1.00]
 - **Spark SSR Capabilities** — packages_spark_ssr_readme, spark_ssr_table, spark_ssr_job [EXTRACTED 1.00]
 - **Website UI Components** — website_public_components_home, website_public_components_docs_body, website_public_components_footer [INFERRED 0.90]
-- **Spark NPM Publishing Flow** — packages_spark, packages_spark_prerender, packages_create_spark_html_app [EXTRACTED 1.00]
 - **Spark Component Lifecycle Pattern** — examples_basic_components_lifecycle, examples_jsimports_components_import_async, packages_create_spark_html_app_template_ssr_components_todo_list [INFERRED 0.85]
 - **Spark Ecosystem Feature Demos** — website_public_components_demo_router, website_public_components_demo_theme, website_public_components_demo_motion, website_public_components_demo_query, website_public_components_demo_persist, website_public_components_demo_offline, website_public_components_demo_sri [EXTRACTED 1.00]
 - **Spark Core Feature Demos** — website_public_components_demo_todos, website_public_components_demo_reactive, website_public_components_demo_store, website_public_components_demo_lifecycle, website_public_components_demo_timer [EXTRACTED 1.00]
 - **Spark NPM Publishing Workflows** — github_workflows_publish_create_spark_html_app, github_workflows_publish_prettier_plugin_spark, github_workflows_publish_spark_html_bun, github_workflows_publish_spark_html_devtools, github_workflows_publish_spark_html_font, github_workflows_publish_spark_html_head, github_workflows_publish_spark_html_image, github_workflows_publish_spark_html_language_server, github_workflows_publish_spark_html_manifest, github_workflows_publish_spark_html_motion, github_workflows_publish_spark_html_offline, github_workflows_publish_spark_html_persist, github_workflows_publish_spark_html_query, github_workflows_publish_spark_html_router, github_workflows_publish_spark_html_sri, github_workflows_publish_spark_html_theme, github_workflows_publish_spark_html_websocket, github_workflows_publish_spark_prerender, github_workflows_publish_spark_ssr [EXTRACTED 1.00]
 
-## Communities (245 total, 126 thin omitted)
+## Communities (266 total, 119 thin omitted)
 
-### Community 0 - "SSR CLI & Build"
-Cohesion: 0.05
-Nodes (69): build(), dbCmd(), opts, root, SHIP_DIRS, SHIP_FILES, loadConfig(), resolveEnv() (+61 more)
-
-### Community 1 - "Prerender Pipeline"
+### Community 0 - "Spark build & prerender CLI"
 Cohesion: 0.06
-Nodes (40): main(), parseArgs(), sparkPrerender(), DEFAULT_META, defaultNotFoundHTML(), injectMetadata(), isComponentRequest(), makeBrowserStubs() (+32 more)
+Nodes (42): main(), parseArgs(), sparkPrerender(), DEFAULT_META, defaultNotFoundHTML(), injectMetadata(), isComponentRequest(), makeBrowserStubs() (+34 more)
 
-### Community 2 - "SSR Render Engine"
-Cohesion: 0.11
-Nodes (39): engines, bun, maskScripts(), compile(), compileAttrs(), compileList(), componentProgram(), COMPONENTS (+31 more)
+### Community 1 - "Core event fire/test utils"
+Cohesion: 0.05
+Nodes (46): findInstalls(), fire(), fireChange(), fireClick(), fireDrag(), fireInput(), fireKey(), fireSubmit() (+38 more)
 
-### Community 3 - "Language Server"
+### Community 2 - "Language server analyzer"
 Cohesion: 0.12
 Nodes (26): analyze(), analyzeScript(), analyzeSSR(), analyzeTemplate(), blankRange(), exprRefs(), findScript(), KNOWN_GLOBALS (+18 more)
 
-### Community 4 - "VS Code Extension"
+### Community 3 - "SSR opcode renderer"
+Cohesion: 0.11
+Nodes (37): bun, compile(), compileAttrs(), compileList(), componentProgram(), COMPONENTS, defaultAwaitError(), emitOpen() (+29 more)
+
+### Community 4 - "Scaffold + font package"
+Cohesion: 0.10
+Nodes (16): sparkFont(), fontCss(), fontHtml(), fontLinks(), fonts(), formatOf(), googleUrl(), METRICS (+8 more)
+
+### Community 5 - "SSR config + CRUD"
+Cohesion: 0.13
+Nodes (25): loadConfig(), resolveEnv(), makeCrud(), validateFields(), json(), makeRoutes(), layoutChain(), mergeHeads() (+17 more)
+
+### Community 6 - "Devtools + ticks"
+Cohesion: 0.09
+Nodes (10): stop, doc, documentBody, documentHead, parseHTML(), serialize(), VOID, inp (+2 more)
+
+### Community 7 - "Capture & component lifecycle"
+Cohesion: 0.09
+Nodes (27): reveal(), lifecycle(), capture, coerce(), componentURL(), dismissOverlay(), inflightComponents, inspect (+19 more)
+
+### Community 8 - "VSCode extension manifest"
 Cohesion: 0.07
 Nodes (28): activationEvents, categories, properties, title, contributes, configuration, grammars, dependencies (+20 more)
 
-### Community 5 - "Theme System Tests"
+### Community 9 - "Theme + data-theme matcher"
 Cohesion: 0.09
 Nodes (4): dataTheme(), html, mem, Element
 
-### Community 6 - "Bun Dev Server"
+### Community 10 - "spark-html-bun CLI flags"
 Cohesion: 0.11
 Nodes (18): [cmd, ...rest], opts, build(), buildImportMap(), dedupeSparkHtmlPlugin(), DEFAULTS, dev(), envLiteral() (+10 more)
 
-### Community 7 - "DevTools Panel"
-Cohesion: 0.16
-Nodes (24): components(), devtools(), readScope(), afterNav(), chain, closestOutlet(), currentPath(), defaultNotFoundHTML() (+16 more)
-
-### Community 8 - "SRI Security"
+### Community 11 - "SRI hashing & stamping"
 Cohesion: 0.13
 Nodes (19): sparkSri(), stamp(), stampTags(), ALGOS, b64(), blockedResponse(), DEFAULT_ALLOW, hostAllowed() (+11 more)
 
-### Community 9 - "Font Optimizer"
-Cohesion: 0.14
-Nodes (13): sparkFont(), fontCss(), fontHtml(), fontLinks(), fonts(), formatOf(), googleUrl(), METRICS (+5 more)
-
-### Community 10 - "Prerender Package"
+### Community 12 - "prerender package manifest"
 Cohesion: 0.08
-Nodes (25): bin, spark-prerender, default, default, dependencies, linkedom, spark-html, description (+17 more)
+Nodes (26): bin, spark-prerender, default, default, dependencies, linkedom, description, exports (+18 more)
 
-### Community 11 - "Theme Package"
+### Community 13 - "Directive patchers"
+Cohesion: 0.20
+Nodes (25): destroyComponent(), anchorOwnedNodes(), applyAwaitState(), awaitBranchScope(), blockEnd(), enterNode(), ifChain(), isPrerender() (+17 more)
+
+### Community 14 - "ssr package manifest"
 Cohesion: 0.08
-Nodes (24): default, default, dependencies, spark-html, description, exports, ./bun, ./init (+16 more)
+Nodes (25): bin, spark-ssr, default, dependencies, linkedom, spark-html-head, description, engines (+17 more)
 
-### Community 12 - "Website Config"
+### Community 15 - "theme package manifest"
+Cohesion: 0.08
+Nodes (24): default, default, description, exports, ./bun, ./init, files, homepage (+16 more)
+
+### Community 16 - "CSS scoping & matching"
+Cohesion: 0.18
+Nodes (23): cssMatchBrace(), cssMatchGroup(), NESTED_AT_RULES, scopeCss(), scopeRules(), scopeSelector(), scopeSelectorList(), splitSelectorList() (+15 more)
+
+### Community 17 - "website package deps"
 Cohesion: 0.08
 Nodes (24): dependencies, spark-html, spark-html-devtools, spark-html-head, spark-html-manifest, spark-html-motion, spark-html-offline, spark-html-persist (+16 more)
 
-### Community 13 - "Head Meta Tags"
+### Community 18 - "Pinterest examples"
 Cohesion: 0.09
-Nodes (23): default, dependencies, spark-html, description, exports, ./ssr, files, homepage (+15 more)
+Nodes (23): Pinterest Board [id] Page, dynamic route :id bound into spark-ssr SQL, spark-ssr UNION (created + re-saved pins) auto="none", Pinterest Pin [id] Page, refresh() re-runs all named sources after writes, dynamic route :id single-row lookup → auto-404, Pinterest User Profile [username] Page, dynamic route :username + optimistic client state (+15 more)
 
-### Community 14 - "Image Optimizer"
+### Community 19 - "head package manifest"
+Cohesion: 0.09
+Nodes (23): default, description, exports, ./ssr, files, homepage, keywords, license (+15 more)
+
+### Community 20 - "image package manifest"
 Cohesion: 0.09
 Nodes (23): default, default, dependencies, linkedom, sharp, description, exports, ./bun (+15 more)
 
-### Community 15 - "Spark Core Runtime"
-Cohesion: 0.09
-Nodes (20): analysisCache, dismissOverlay(), exprCache, inflightComponents, isPlainContainer(), MUTATORS, overlayErrors, overlaySeen (+12 more)
+### Community 21 - "SSR parse & data plan"
+Cohesion: 0.16
+Nodes (23): analyze(), ARRAY_LIKE_MEMBERS, classifySource(), dataPlan(), droppedWarned, editDistance(), extractBlocks(), extractForms() (+15 more)
 
-### Community 16 - "Query Store"
-Cohesion: 0.12
-Nodes (24): anchorOwnedNodes(), applyAwaitState(), awaitBranchScope(), blockEnd(), cloneTemplateNodes(), closestComponent(), destroyComponent(), enterNode() (+16 more)
-
-### Community 17 - "Example Apps"
-Cohesion: 0.08
-Nodes (23): bin, spark-ssr, default, dependencies, linkedom, spark-html, spark-html-head, description (+15 more)
-
-### Community 18 - "E2E Tests"
+### Community 22 - "create-app templates manifest"
 Cohesion: 0.09
 Nodes (22): dependencies, spark-html, spark-html-head, spark-html-manifest, spark-html-persist, spark-html-router, spark-html-sri, spark-html-theme (+14 more)
 
-### Community 19 - "Website Docs"
+### Community 23 - "manifest package manifest"
 Cohesion: 0.09
 Nodes (22): default, default, dependencies, sharp, description, exports, ./bun, files (+14 more)
 
-### Community 20 - "Manifest PWA"
+### Community 24 - "spark-html core package manifest"
+Cohesion: 0.09
+Nodes (22): bin, spark-html, default, description, exports, ./globals, files, types (+14 more)
+
+### Community 25 - "Component boot & patch"
+Cohesion: 0.19
+Nodes (21): bootComponent(), isPrerender(), isSparkComponent(), makeScope(), patch(), patchElement(), patchText(), pushPrerenderWait() (+13 more)
+
+### Community 26 - "Expression compiler & cache"
+Cohesion: 0.19
+Nodes (22): compileExpr(), compileStmt(), evalPropValue(), evaluate(), execute(), exprCache, exprSemicolons(), interpEnd() (+14 more)
+
+### Community 27 - "router navigation"
+Cohesion: 0.23
+Nodes (21): afterNav(), chain, closestOutlet(), currentPath(), defaultNotFoundHTML(), ensureCatchAll(), markActiveLinks(), navigate() (+13 more)
+
+### Community 28 - "test-utils package manifest"
+Cohesion: 0.09
+Nodes (21): default, dependencies, linkedom, description, exports, files, homepage, keywords (+13 more)
+
+### Community 29 - "SSR CLI commands"
+Cohesion: 0.18
+Nodes (19): build(), dbCmd(), opts, root, SHIP_DIRS, SHIP_FILES, derivedSources(), affinity() (+11 more)
+
+### Community 30 - "devtools (21)"
 Cohesion: 0.10
-Nodes (20): default, dependencies, spark-html, description, exports, files, homepage, keywords (+12 more)
+Nodes (20): default, description, exports, files, homepage, keywords, license, main (+12 more)
 
-### Community 21 - "Offline Cache"
-Cohesion: 0.12
-Nodes (6): stop, doc, documentHead, parseHTML(), serialize(), VOID
-
-### Community 22 - "WebSocket Store"
+### Community 31 - "font (21)"
 Cohesion: 0.10
 Nodes (20): default, default, description, exports, ./bun, files, homepage, keywords (+12 more)
 
-### Community 23 - "Persist Store"
+### Community 32 - "language-server (21)"
 Cohesion: 0.10
 Nodes (20): bin, spark-html-language-server, default, description, exports, files, homepage, keywords (+12 more)
 
-### Community 24 - "Router Navigation"
+### Community 33 - "motion (21)"
 Cohesion: 0.10
-Nodes (20): default, dependencies, spark-html, description, exports, files, homepage, keywords (+12 more)
+Nodes (20): default, description, exports, files, homepage, keywords, license, main (+12 more)
 
-### Community 25 - "Motion Transitions"
+### Community 34 - "offline (21)"
 Cohesion: 0.10
 Nodes (20): default, default, description, exports, ./bun, files, homepage, keywords (+12 more)
 
-### Community 26 - "Create App Templates"
+### Community 35 - "persist (21)"
 Cohesion: 0.10
 Nodes (20): default, description, exports, files, homepage, keywords, license, main (+12 more)
 
-### Community 27 - "Prettier Plugin"
+### Community 36 - "query (21)"
 Cohesion: 0.10
 Nodes (20): default, description, exports, files, homepage, keywords, license, main (+12 more)
 
-### Community 28 - "HTML Components"
+### Community 37 - "router (21)"
 Cohesion: 0.10
-Nodes (20): default, dependencies, spark-html, description, exports, files, homepage, keywords (+12 more)
+Nodes (20): default, description, exports, files, homepage, keywords, license, main (+12 more)
 
-### Community 29 - "Pinterest Example"
+### Community 38 - "sri (21)"
 Cohesion: 0.10
 Nodes (20): default, default, description, exports, ./bun, files, homepage, keywords (+12 more)
 
-### Community 30 - "TabTube Example"
+### Community 39 - "websocket (21)"
 Cohesion: 0.10
 Nodes (20): default, description, exports, files, homepage, keywords, license, main (+12 more)
 
-### Community 31 - "Community 31"
+### Community 40 - "ssr (21)"
+Cohesion: 0.19
+Nodes (15): connect(), clientComponent(), clientScript(), handlerRoles(), initModule(), primaryColumn(), stripDeclarations(), definedNames() (+7 more)
+
+### Community 41 - "create-spark-html-app (20)"
 Cohesion: 0.18
 Nodes (18): applyFeatures(), bail(), BOLT, c, FEATURES, here, isEmptyDir(), latestRange() (+10 more)
 
-### Community 32 - "Community 32"
+### Community 42 - "bun (20)"
 Cohesion: 0.11
 Nodes (19): bin, spark, default, description, engines, bun, exports, files (+11 more)
 
-### Community 33 - "Community 33"
+### Community 43 - "editors/vscode (18)"
 Cohesion: 0.12
 Nodes (17): name, 0, 0, injectionSelector, begin, beginCaptures, comment, end (+9 more)
 
-### Community 34 - "Community 34"
+### Community 44 - "prettier-plugin-spark (18)"
 Cohesion: 0.11
 Nodes (17): author, description, exports, files, homepage, keywords, license, main (+9 more)
 
-### Community 35 - "Community 35"
-Cohesion: 0.12
-Nodes (11): HeadOptions, AppShellSwOptions, ManifestConfig, ManifestIcon, PersistOptions, QueryOptions, QueryState, SriAlgorithm (+3 more)
-
-### Community 36 - "Community 36"
-Cohesion: 0.12
-Nodes (17): default, description, exports, ./globals, files, types, homepage, keywords (+9 more)
-
-### Community 37 - "Community 37"
-Cohesion: 0.17
-Nodes (18): analyzeScript(), braceDepths(), cssMatchBrace(), cssMatchGroup(), extractDeclaredNames(), extractTopLevel(), importAssign(), NESTED_AT_RULES (+10 more)
-
-### Community 38 - "Community 38"
+### Community 45 - "create-spark-html-app (17)"
 Cohesion: 0.12
 Nodes (16): dependencies, spark-html, spark-html-font, spark-html-theme, spark-ssr, devDependencies, spark-html-image, name (+8 more)
 
-### Community 39 - "Community 39"
+### Community 46 - "website (17)"
+Cohesion: 0.25
+Nodes (14): PersistOptions, escapeHtml(), highlightAll(), highlightCSS(), highlightHTML(), highlightJS(), highlightSource(), highlightTagBody() (+6 more)
+
+### Community 47 - "query (16)"
+Cohesion: 0.16
+Nodes (5): persist(), query(), RouterOptions, RouteState, MountOptions
+
+### Community 48 - "examples/pinterest (16)"
 Cohesion: 0.12
 Nodes (15): dependencies, spark-html, spark-html-theme, spark-ssr, devDependencies, spark-html-image, name, private (+7 more)
 
-### Community 40 - "Community 40"
+### Community 49 - "examples/tabtube (16)"
 Cohesion: 0.12
 Nodes (15): dependencies, spark-html, spark-html-persist, spark-html-theme, spark-ssr, youtube-suggest, youtubei.js, name (+7 more)
 
-### Community 41 - "Community 41"
+### Community 50 - "create-spark-html-app (16)"
 Cohesion: 0.12
 Nodes (15): bin, create-spark-html-app, description, engines, node, files, keywords, license (+7 more)
 
-### Community 42 - "Community 42"
+### Community 51 - "website (16)"
 Cohesion: 0.12
 Nodes (16): Demo Lifecycle, Demo Motion, Demo Offline, Demo Persist, Demo Prerender, Demo Query, Demo Reactive, Demo Router (+8 more)
 
-### Community 43 - "Community 43"
+### Community 52 - "package.json (15)"
 Cohesion: 0.13
 Nodes (14): devDependencies, esbuild, @playwright/test, prettier, name, private, scripts, dev (+6 more)
 
-### Community 44 - "Community 44"
+### Community 53 - "spark (15)"
+Cohesion: 0.15
+Nodes (10): allInstalls, cmp(), companions, coreVersion, cwd, installs, projectDeps, satisfies() (+2 more)
+
+### Community 54 - "manifest (15)"
 Cohesion: 0.29
 Nodes (8): sparkManifest(), ICON_SIZES, iconPath(), manifestHtml(), manifestJson(), slug(), swSource(), config
 
-### Community 45 - "Community 45"
-Cohesion: 0.22
-Nodes (15): bootComponent(), compileScript(), isPrerender(), makeImporter(), makeScope(), mount(), _origFetchComponent(), parseSFC() (+7 more)
-
-### Community 46 - "Community 46"
-Cohesion: 0.13
-Nodes (4): documentBody, inp, button, input
-
-### Community 47 - "Community 47"
+### Community 55 - "examples/basic (14)"
 Cohesion: 0.14
 Nodes (13): dependencies, spark-html, spark-html-motion, devDependencies, spark-html-bun, name, private, scripts (+5 more)
 
-### Community 48 - "Community 48"
+### Community 56 - "examples/jsimports (14)"
 Cohesion: 0.14
 Nodes (13): dependencies, spark-html, devDependencies, spark-html-bun, spark-prerender, name, private, scripts (+5 more)
 
-### Community 49 - "Community 49"
-Cohesion: 0.19
-Nodes (4): query(), RouterOptions, RouteState, MountOptions
-
-### Community 50 - "Community 50"
+### Community 57 - "create-spark-html-app (14)"
 Cohesion: 0.14
 Nodes (13): dependencies, spark-html, spark-html-font, spark-html-theme, spark-ssr, name, private, scripts (+5 more)
 
-### Community 51 - "Community 51"
+### Community 58 - "prettier-plugin-spark (14)"
 Cohesion: 0.19
 Nodes (9): formatBlock(), formatSpark(), FORWARD, innerOptions(), languages, parsers, printers, replaceAsync() (+1 more)
 
-### Community 52 - "Community 52"
+### Community 59 - "website (14)"
+Cohesion: 0.18
+Nodes (14): Caption "the file you save is the file that runs", counter.html example code, Editor card UI (counter.html), radial glow gradient (#ffd24a), reacts gradient (white→#ffd24a), Headline "HTML that reacts.", Stat chip: 0 deps, Stat chip: 14.6 kB gzip (+6 more)
+
+### Community 60 - "create-spark-html-app (13)"
 Cohesion: 0.15
 Nodes (12): dependencies, spark-html, devDependencies, spark-html-bun, name, private, scripts, build (+4 more)
 
-### Community 53 - "Community 53"
+### Community 61 - "image (12)"
 Cohesion: 0.20
 Nodes (6): localImagePath(), MIME, RASTER, sparkImage(), index, plugin
 
-### Community 54 - "Community 54"
-Cohesion: 0.27
-Nodes (10): persist(), derived(), markStoreKind(), store(), storeEntry(), subscribe(), buildSrcdoc(), DEFAULT_FILES (+2 more)
+### Community 62 - "README.md (12)"
+Cohesion: 0.21
+Nodes (12): Spark monorepo README, Byte-identical convergence oracle (fuzz vs from-scratch render), Cloak style hides components until booted/patched, Frozen 1.x size budget (14.63/15.0 kB) — sibling package not bigger core, No compiler, no virtual DOM — file ships byte-for-byte, O(changed) dependency tracking per binding, Script runs in a Proxy scope; assignments batched to one microtask, Row-level loop patching keyed by identity (+4 more)
 
-### Community 57 - "Community 57"
-Cohesion: 0.29
-Nodes (11): buildElementPlan(), compileExpr(), compileStmt(), componentNameFor(), evaluate(), execute(), formStateSnapshot(), reportError() (+3 more)
+### Community 65 - "ssr (11)"
+Cohesion: 0.24
+Nodes (4): rewriteParams(), localPath(), makeScreens(), STATUS_INFO
 
-### Community 58 - "Community 58"
+### Community 66 - "scripts (11)"
+Cohesion: 0.18
+Nodes (8): __dirname, pkg, pkgPath, ROOT, server, serverEnv, tmp, TPL_DIRS
+
+### Community 67 - "website (10)"
+Cohesion: 0.22
+Nodes (10): No-Build CDN Index, zero-tooling importmap + CDN + mount(), Spark Website Index, <template route> per page + sidebar import shell, Spark Home Page Component, live <div import="https://cdn…"> cross-origin component, useStore app/showcase/stats + $: derived sites, Spark Sidebar Component (+2 more)
+
+### Community 68 - "offline (10)"
 Cohesion: 0.36
 Nodes (4): sparkOffline(), offline(), shouldHandle(), swSource()
 
-### Community 59 - "Community 59"
+### Community 69 - "ssr (10)"
 Cohesion: 0.27
-Nodes (10): isSparkComponent(), isStaticNode(), kindOf(), patchElement(), patchText(), setsIntersect(), shouldEval(), walkNode() (+2 more)
+Nodes (7): makeCachePolicy(), makeJobs(), makePage(), sqlTables(), escapeHtml(), FLASH_COOKIE(), readFlash()
 
-### Community 60 - "Community 60"
-Cohesion: 0.49
-Nodes (9): escapeHtml(), highlightAll(), highlightCSS(), highlightHTML(), highlightJS(), highlightSource(), highlightTagBody(), injectTokenStyles() (+1 more)
-
-### Community 61 - "Community 61"
+### Community 71 - "editors/vscode (9)"
 Cohesion: 0.28
 Nodes (7): activate(), fs, isSparkWorkspace(), { LanguageClient }, path, serverOptions(), vscode
 
-### Community 62 - "Community 62"
+### Community 72 - "examples/tabtube (9)"
 Cohesion: 0.42
 Nodes (6): getInnertube(), isVideo(), search(), simplify(), formatViews(), sharedVideo()
 
-### Community 63 - "Community 63"
+### Community 73 - "workflows (9)"
+Cohesion: 0.22
+Nodes (9): bench workflow, e2e workflow, Publish create-spark-html-app workflow, Publish spark-html (core) workflow, Publish spark-ssr workflow, create-spark-html-app package, spark-html (core runtime package), spark-ssr package (+1 more)
+
+### Community 74 - "head (9)"
 Cohesion: 0.28
 Nodes (6): currentPath(), head(), installHistoryHook(), listeners, normalize(), t
 
-### Community 64 - "Community 64"
-Cohesion: 0.33
-Nodes (9): buildProps(), coerce(), evalPropValue(), exprSemicolons(), interpEnd(), interpolate(), parseTemplate(), runElementPlan() (+1 more)
-
-### Community 66 - "Community 66"
-Cohesion: 0.29
-Nodes (3): ThemeOptions, ThemeStore, theme()
-
-### Community 67 - "Community 67"
+### Community 75 - "bun (8)"
 Cohesion: 0.29
 Nodes (3): PipelineStep, RunOptions, SparkConfig
 
-### Community 68 - "Community 68"
+### Community 76 - "motion (8)"
 Cohesion: 0.29
 Nodes (4): animations, flushReady(), host, tick()
 
-### Community 69 - "Community 69"
+### Community 77 - "websocket (8)"
 Cohesion: 0.32
 Nodes (5): DEFAULTS, handles, nameFor(), sockets(), ws()
 
-### Community 70 - "Community 70"
+### Community 78 - "spark (8)"
 Cohesion: 0.32
 Nodes (3): has(), hasnt(), text()
 
-### Community 71 - "Community 71"
+### Community 79 - "spark (8)"
 Cohesion: 0.32
 Nodes (3): has(), hasnt(), text()
 
-### Community 73 - "Community 73"
+### Community 81 - "spark (8)"
 Cohesion: 0.25
 Nodes (4): dynP, header, incBtn, root
 
-### Community 74 - "Community 74"
+### Community 82 - "spark (8)"
 Cohesion: 0.25
 Nodes (5): cartStore, croissant, __dir, lis, shopEl
 
-### Community 75 - "Community 75"
+### Community 83 - "e2e (7)"
 Cohesion: 0.29
-Nodes (3): JS Import App Component, Basic Import Component, JS Import Demo Index
+Nodes (5): children, errors, HELPER, ROOT, TEMPLATES
 
-### Community 76 - "Community 76"
+### Community 84 - "head (7)"
 Cohesion: 0.33
 Nodes (4): headStore, nav(), popstate, pushState()
 
-### Community 77 - "Community 77"
+### Community 85 - "language-server (7)"
 Cohesion: 0.29
 Nodes (4): Analysis, Declaration, Diagnostic, SparkLanguageServer
 
-### Community 78 - "Community 78"
+### Community 86 - "websocket (7)"
 Cohesion: 0.29
 Nodes (3): WsOptions, WsStatus, WsStore
 
-### Community 79 - "Community 79"
+### Community 87 - "spark (7)"
 Cohesion: 0.38
 Nodes (3): has(), hasnt(), norm()
 
-### Community 82 - "Community 82"
+### Community 88 - "spark (7)"
+Cohesion: 0.33
+Nodes (3): col(), ih(), nval()
+
+### Community 90 - "spark (7)"
 Cohesion: 0.29
 Nodes (3): calls, modules, slotWarns
 
-### Community 85 - "Community 85"
-Cohesion: 0.40
-Nodes (4): motion(), prefersReduced(), presets, lifecycle()
+### Community 93 - "scripts (7)"
+Cohesion: 0.33
+Nodes (6): children, __dirname, HELPER, main(), startOne(), TEMPLATES
 
-### Community 89 - "Community 89"
+### Community 94 - "devtools (6)"
+Cohesion: 0.40
+Nodes (3): components(), devtools(), readScope()
+
+### Community 98 - "examples/pinterest (5)"
 Cohesion: 0.70
 Nodes (5): Avatar — Ada, Avatar — Default, Avatar — Kai, Avatar — Mira, Avatar — Nova
 
-### Community 97 - "Community 97"
+### Community 99 - "motion (5)"
+Cohesion: 0.50
+Nodes (3): motion(), prefersReduced(), presets
+
+### Community 103 - "scripts (5)"
+Cohesion: 0.40
+Nodes (4): entry, outDir, outFile, root
+
+### Community 104 - "website (5)"
+Cohesion: 0.50
+Nodes (5): Spark Docs Body Component, onMount scrollspy + click-lock TOC highlight, spark-ignore protects literal {brace} docs samples, spark-ssr Docs Component, spark-ignore over full spark-ssr reference content
+
+### Community 106 - "examples/jsimports (4)"
+Cohesion: 0.50
+Nodes (4): Basic Import Component, named import (capitalize) used in template, Default Import Component, default + named import from same module
+
+### Community 107 - "examples/jsimports (4)"
+Cohesion: 0.50
+Nodes (4): Derived Import Component, $: derived values combined with imported fns, Stateful Import Component, local state + onclick handlers + $: reactivity
+
+### Community 111 - "font (4)"
 Cohesion: 0.50
 Nodes (3): FontConfig, FontFace, FontMetrics
 
-### Community 99 - "Community 99"
+### Community 113 - "manifest (4)"
+Cohesion: 0.50
+Nodes (3): AppShellSwOptions, ManifestConfig, ManifestIcon
+
+### Community 114 - "offline (4)"
 Cohesion: 0.67
 Nodes (3): OfflineBuildOptions, OfflineOptions, OfflineSwOptions
 
-### Community 104 - "Community 104"
+### Community 120 - "scripts (4)"
 Cohesion: 0.50
 Nodes (3): entry, kb, root
 
-### Community 108 - "Community 108"
+### Community 124 - "examples/pinterest (3)"
+Cohesion: 0.67
+Nodes (3): 0d38de8a-3059-400d-8a5e-e8f4bff01a76.png (Pinterest upload image, PNG encoding), Depicted subject of 0d38de8a image (unidentified - vision unavailable), 0d38de8a-3059-400d-8a5e-e8f4bff01a76.webp (Pinterest upload image, WebP encoding)
+
+### Community 125 - "examples/tabtube (3)"
 Cohesion: 0.67
 Nodes (3): Theme Store (useStore), Theme Toggle Component, TabTube Layout Shell
 
-### Community 112 - "Community 112"
-Cohesion: 1.00
-Nodes (3): Spark Counter Example (counter.html), Spark Framework Banner, Spark Value Proposition
+### Community 126 - "workflows (3)"
+Cohesion: 0.67
+Nodes (3): Publish spark-html-head workflow, Publish spark-html-theme workflow, spark-html-head package
 
-### Community 113 - "Community 113"
+### Community 127 - "README.md (3)"
+Cohesion: 0.67
+Nodes (3): Publish spark-html-sri workflow, spark-html-sri package, CSP requires unsafe-eval (new Function for expressions/handlers)
+
+### Community 133 - "website (3)"
 Cohesion: 0.67
 Nodes (3): Showcase, DAT Taxi UI, Novo UI
 
+## Ambiguous Edges - Review These
+- `0d38de8a-3059-400d-8a5e-e8f4bff01a76.png (Pinterest upload image, PNG encoding)` → `Depicted subject of 0d38de8a image (unidentified - vision unavailable)`  [AMBIGUOUS]
+  examples/pinterest/uploads/0d38de8a-3059-400d-8a5e-e8f4bff01a76.png · relation: conceptually_related_to
+
 ## Knowledge Gaps
-- **744 isolated node(s):** `fs`, `path`, `vscode`, `{ LanguageClient }`, `name` (+739 more)
+- **830 isolated node(s):** `fs`, `path`, `vscode`, `{ LanguageClient }`, `name` (+825 more)
   These have ≤1 connection - possible missing edges or undocumented components.
-- **126 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+- **119 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `ws()` connect `Community 69` to `SSR CLI & Build`, `Community 54`?**
-  _High betweenness centrality (0.052) - this node is a cross-community bridge._
-- **Why does `connect()` connect `SSR CLI & Build` to `Community 69`?**
-  _High betweenness centrality (0.041) - this node is a cross-community bridge._
-- **Why does `Element` connect `Theme System Tests` to `Community 69`, `Community 68`, `Offline Cache`, `Community 46`?**
-  _High betweenness centrality (0.036) - this node is a cross-community bridge._
-- **Are the 3 inferred relationships involving `walkNode()` (e.g. with `patchAwait()` and `patchEach()`) actually correct?**
-  _`walkNode()` has 3 INFERRED edges - model-reasoned connections that need verification._
+- **What is the exact relationship between `0d38de8a-3059-400d-8a5e-e8f4bff01a76.png (Pinterest upload image, PNG encoding)` and `Depicted subject of 0d38de8a image (unidentified - vision unavailable)`?**
+  _Edge tagged AMBIGUOUS (relation: conceptually_related_to) - confidence is low._
+- **Why does `walk()` connect `Core event fire/test utils` to `spark-html-bun CLI flags`, `SSR config + CRUD`, `SSR parse & data plan`?**
+  _High betweenness centrality (0.050) - this node is a cross-community bridge._
+- **Why does `ws()` connect `websocket (8)` to `ssr (21)`?**
+  _High betweenness centrality (0.038) - this node is a cross-community bridge._
+- **Why does `prerender()` connect `Spark build & prerender CLI` to `Core event fire/test utils`?**
+  _High betweenness centrality (0.037) - this node is a cross-community bridge._
+- **Are the 2 inferred relationships involving `prerender()` (e.g. with `prerender.js` and `settle()`) actually correct?**
+  _`prerender()` has 2 INFERRED edges - model-reasoned connections that need verification._
 - **What connects `fs`, `path`, `vscode` to the rest of the system?**
-  _744 weakly-connected nodes found - possible documentation gaps or missing edges._
-- **Should `SSR CLI & Build` be split into smaller, more focused modules?**
-  _Cohesion score 0.05172413793103448 - nodes in this community are weakly interconnected._
-- **Should `Prerender Pipeline` be split into smaller, more focused modules?**
-  _Cohesion score 0.06057692307692308 - nodes in this community are weakly interconnected._
+  _830 weakly-connected nodes found - possible documentation gaps or missing edges._
+- **Should `Spark build & prerender CLI` be split into smaller, more focused modules?**
+  _Cohesion score 0.05834464043419267 - nodes in this community are weakly interconnected._
