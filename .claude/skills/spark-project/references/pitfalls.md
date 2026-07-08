@@ -51,9 +51,16 @@ tree-wide before components boot; fixed via retry-after-ancestor-ready.
   `addRoots()` now treats any `x.foo(` member CALL as list-safe — the
   `ARRAY_LIKE_MEMBERS` allowlist only covers bare property reads; a call
   also never becomes a schema column. (2) Relative `import="components/x"`
-  resolves against the app root (`<base href>` else origin), never the
-  client-routed current URL (`componentURL()` in core; +0.10 KB gzip;
-  `test/import-base.js`). (3+4) spark-ssr auth CREATE enforces unique
+  resolves against the app base (`<base href>` else the page URL as FIRST
+  loaded, captured pre-navigation), never the client-routed current URL
+  (`componentURL()` in core; `test/import-base.js`). **1.0.0 shipped this
+  as origin-root and broke subdirectory deployments (the production
+  website on GitHub Pages) — never force "/" as the base; fixed in 1.0.1.
+  Second half of the same outage: the website hero demo imported
+  `import="/components/url-card"` — ABSOLUTE paths bypass the base rule by
+  design, so it still 404'd at the origin root after 1.0.1; the demo now
+  imports the jsdelivr URL it advertises (which prerenderFetch also matches
+  at build).** (3+4) spark-ssr auth CREATE enforces unique
   identity (409) and non-blank identity + non-empty password (422)
   server-side — the synthesized /signup screen is never form-scanned;
   PATCH refuses identity collisions too (`test/security.js`, now 13 cases).
