@@ -15,9 +15,10 @@ apps while staying fast — "built for humans who want to code themselves."
 Knowledge here is accurate as of 2026-07-07 — **1.0.0 FINAL SHIPPED**: all 21
 packages at latest=1.0.0 on npm (registry-verified; release commit 4b26738).
 The gzip budget is FROZEN at 15.0 KB for the life of 1.x (14.63 used; margin
-spends blessed by Wilkin). V1-API-FREEZE.md governs semver; 1.x is fixes-only
-per spark-brain section 8. The docs#limits audit (plan appendix) is now
-UNBLOCKED — it was held until v1 shipped. Function names are stable anchors;
+spends blessed by Wilkin). V1-API-FREEZE.md governs semver (stable
+surface = fixes only; experimental surfaces may move in minors) per
+spark-brain section 8. The long-held docs#limits audit SHIPPED post-1.0
+(7ba0986, 2026-07-07). Function names are stable anchors;
 line numbers drift.
 
 **M3 complete (0.30.0 / 0.8.0).** spark-ssr `serve()` decomposed into
@@ -33,12 +34,14 @@ api/dist in `src/static.js`). Posture is documented in
 removal-sensitive). Core dual-package guard: `globalThis.__SPARK_CORE__` in
 `reactivity.js` warns loud on a second copy (+0.12 KB → 14.39/15.0). New
 `npx spark-html doctor` (`packages/spark/bin/cli.js`, `test/doctor.js`):
-duplicate-install scan, companion range checks, stale-SW heuristic. peerDeps
-flip stays deferred to the 1.0 wave (§5.4). NEXT: M4.
+duplicate-install scan, companion range checks, stale-SW heuristic. The
+peerDeps flip shipped in the 1.0 wave (`"spark-html": ">=1.0.0 <2"` —
+verified in the tree). M4 and the 1.0.0 release are complete.
 
 This skill holds the **facts**. The judgment layer — value ordering, decision
 gates, change protocols — is the `spark-brain` skill; load it alongside this
-one. The milestone sequence is `spark-from-here-to-v1.md` at repo root.
+one. The open work sequence is `spark-improvements.md` at repo root (the v1
+plan file served its purpose and was deleted 2026-07-07).
 
 ## Repo map
 
@@ -53,17 +56,18 @@ packages/spark-html-*/       companions: router, head, theme, persist, query, mo
 packages/prettier-plugin-spark/
 examples/                    basic, jsimports, no-build, pinterest, tabtube (tabtube = the big real-world one)
 website/                     spark-html.dev site; docs live in website/public/components/docs-body.html
-e2e/                         Playwright (thin — 3 tests as of now)
+e2e/                         Playwright (thin — 2 spec files / 7 tests)
 scripts/size-check.mjs       THE gzip budget gate (part of npm test)
 graphify-out/                knowledge graph of this repo — `graphify query "<question>"` works
-spark-from-here-to-v1.md     THE v1 release plan (trusted; spark-improvements.md is partly stale — its §7
-                             claims streaming/response-cache unshipped; they landed in spark-ssr 0.7.0)
+spark-improvements.md        the post-1.0 improvement program (rewritten 2026-07-07, trusted; untracked
+                             like every root .md except README — items re-enter spark-brain §5 gates at
+                             execution. The v1 plan spark-from-here-to-v1.md is done and deleted)
 ```
 
 ## Hard invariants — violating any of these has caused real shipped bugs
 
 1. **Gzip budget is law.** `scripts/size-check.mjs` gates the core at
-   15.0 KB (raised once at M1, itemized in the plan §2; freezes at 1.0-rc).
+   15.0 KB (raised once at M1, now frozen for the life of 1.x).
    Dedup is gzip-neutral; *unique entropy* (new identifiers, strings, logic)
    is what costs. Measure every candidate edit empirically (esbuild
    bundle+minify+gzipSync) — intuition is unreliable.
@@ -86,9 +90,10 @@ spark-from-here-to-v1.md     THE v1 release plan (trusted; spark-improvements.md
    1000-row render ~4.4 ms.
 6. **Release tags: push ≤3 per `git push`** — more and GitHub silently skips
    ALL tag-triggered publish workflows. Verify the npm registry, not CI green.
-7. **Docs hold:** the website docs#limits table has known staleness (audited
-   in spark-from-here-to-v1.md appendix) but Wilkin wants it updated only
-   AFTER v1 ships. Don't "helpfully" fix it early.
+7. **Docs row lifecycle:** the long-held docs#limits audit shipped post-1.0
+   (7ba0986). From here: a fix that closes a limitation deletes its row in
+   the same PR; a newly discovered constraint adds its row immediately
+   (spark-brain §6).
 8. **The core's full export line is de-facto public API.** `index.js` exports
    `mount, unmount, component, store, derived, subscribe, evaluate,
    interpolate, parseSFC, scopeCss, inspectStores, lifecycle` (single
@@ -115,8 +120,8 @@ See pitfalls.md "Fixed at v1-prep".)
   companions declare spark-html as a hard `dependency` (router, ssr) instead
   of `peerDependencies` (persist does it right). Since 0.30.0 the core WARNS
   on a second copy (`globalThis.__SPARK_CORE__` in reactivity.js) and
-  `npx spark-html doctor` scans for it — but the structural fix (peerDeps flip)
-  is the 1.0 wave. The same drift bites the test suite: a stale nested copy
+  `npx spark-html doctor` scans for it; the structural fix (peerDeps flip)
+  shipped in the 1.0 wave. The same drift bites the test suite: a stale nested copy
   can mask a failure that a clean CI install exposes (see the release-checklist
   memory) — dedupe before tagging.
 
@@ -130,5 +135,5 @@ See pitfalls.md "Fixed at v1-prep".)
 - `references/pitfalls.md` — the full bug history with root causes; what each
   one taught; browser-testing setup on this machine.
 
-For the roadmap: read `spark-from-here-to-v1.md` at repo root (milestones
-M1–M4, budget decision, security checklist, limits-table audit).
+For the roadmap: read `spark-improvements.md` at repo root — the post-1.0
+improvement program (untracked design note, like all root .md except README).

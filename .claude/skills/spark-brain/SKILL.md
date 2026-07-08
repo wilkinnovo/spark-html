@@ -8,14 +8,16 @@ description: The judgment layer for the Spark monorepo — value ordering, decis
 Written 2026-07-06 by Claude Fable 5 at Wilkin's request, against spark-html
 0.27.14 / spark-ssr 0.7.2, to be followed by every model that works in this
 repo after me. `spark-project` holds the **facts** (repo map, invariants,
-pitfalls, workflows). `spark-from-here-to-v1.md` holds the **sequence**
-(milestones M1–M4 and their exit criteria). This file holds the **judgment**:
+pitfalls, workflows). The **sequence** lives in `spark-improvements.md` — the
+post-1.0 program (its predecessor, the v1 plan `spark-from-here-to-v1.md`,
+completed and was deleted 2026-07-07). This file holds the **judgment**:
 how to decide when the facts and the sequence are silent, conflicting, or
 tempting you toward a mistake. It is written for the ways models like us
 actually fail here — every rule below is paid for by a real shipped bug or a
 real near-miss.
 
-**Precedence:** Wilkin's explicit instruction > this manual > the v1 plan >
+**Precedence:** Wilkin's explicit instruction > this manual > the active
+program doc (`spark-improvements.md`; before 2026-07-07, the v1 plan) >
 everything else. When a higher authority contradicts a lower one, say so once,
 plainly, with the tradeoff — then follow the higher authority without
 relitigating. When Wilkin overrides a rule here, record the override (see
@@ -24,8 +26,8 @@ instead of re-fighting it.
 
 **Session start ritual** (cheap, do it every time):
 1. Load `spark-project`, then this file.
-2. Read the STATUS block at the top of `spark-from-here-to-v1.md` if one
-   exists; if not, `git log --oneline -15` to see where reality is vs. the plan.
+2. Read the STATUS line at the top of `spark-improvements.md`, then
+   `git log --oneline -15` to see where reality is vs. the program.
 3. Only then touch the task. Never start editing the reactivity core, the
    budget, or a release from a cold context.
 
@@ -106,7 +108,8 @@ compressed into behavior:
   `withCapture`/`withSink`/`gDirtyKeys`. If an edit there feels easy, slow
   down and follow the core protocol (§4) to the letter.
 - **Verify documents against the tree before acting on them.** This includes
-  the plan and this manual. `spark-improvements.md` §7 would have burned
+  the plan and this manual. The pre-rewrite `spark-improvements.md` §7
+  (replaced 2026-07-07) would have burned
   weeks rebuilding features that already shipped. Line numbers rot; symbol
   names and exit criteria are the durable anchors. If a doc names a file,
   function, or flag — confirm it exists before recommending it. The knowledge
@@ -130,9 +133,9 @@ compressed into behavior:
   publish workflows ran (the >3-tags trap). Likewise "works in dev" proves
   nothing about prod — dev and prod resolution differ in spark-html-bun;
   suspect resolution first for works-in-dev-only bugs.
-- **Respect deliberate deferrals.** The docs#limits table stays un-fixed
-  until v1 ships (owner's call, minus the rows the plan's appendix says to
-  fix now). "Helpfully" fixing something the owner deliberately parked is a
+- **Respect deliberate deferrals.** (Worked example, since resolved: the
+  docs#limits table was held by owner's call until v1 shipped, then audited
+  in 7ba0986.) "Helpfully" fixing something the owner deliberately parked is a
   mistake wearing a virtue. When you find such a deferral, honor it; if you
   think it's wrong, say so once and let Wilkin decide.
 - **Exercise the change end-to-end.** Tests and typecheck are necessary, not
@@ -164,7 +167,7 @@ directive patchers) — the single riskiest code in the org:
 
 **The gzip budget:**
 - Measure every candidate edit empirically. Keep ≥25 bytes headroom.
-- The 15.0 KB allocation table in the plan §2 is a contract: reactive props
+- The 15.0 KB allocation (itemized in the retired v1 plan) is a contract: reactive props
   ~0.7, fail-loud invariants ~0.4, 0.5 frozen margin. Spending margin on
   anything else requires Wilkin's sign-off, stated as a budget question, not
   buried in a diff.
@@ -201,8 +204,9 @@ trailers, ever.
 
 ## 5. Scope defense
 
-Saying no is most of the job between here and 1.0. Standing denials (plan
-§8), enforced by default: no new spark-ssr features, no parser rewrite, no
+Saying no is most of the job — before 1.0 and after. Standing denials (now
+recorded with their gates in `spark-improvements.md` §6), enforced by
+default: no new spark-ssr feature domains, no parser rewrite, no
 partial hydration/islands, no gestures package, no budget creep, no user-side
 build step ever.
 
@@ -260,7 +264,8 @@ skills, and the tree disagreeing until none is trusted. Future models inherit
 only what's written; judgment that stays in a context window dies with it.
 
 - **Ownership:** facts → `spark-project` (map/invariants in SKILL.md, depth
-  in references/) · sequence and status → `spark-from-here-to-v1.md` ·
+  in references/) · sequence and status → `spark-improvements.md` (since
+  2026-07-07; the v1 plan before that) ·
   judgment and policy → this file · machine quirks and user prefs →
   `~/.claude` memory. One home per fact; the others point to it.
 - **Update in the same commit that invalidates.** Landed M1? Add a dated
@@ -270,7 +275,7 @@ only what's written; judgment that stays in a context window dies with it.
   rule here? Amend the rule with the date and the reason — the override *is*
   the new policy.
 - **Prune as deliberately as you add.** A stale rule is worse than no rule
-  (see: spark-improvements.md §7). When a documented constraint is fixed,
+  (see: the pre-rewrite spark-improvements.md §7 incident). When a documented constraint is fixed,
   delete it everywhere it lives — pitfalls entry moves to the historical
   section, limits row deleted, memory line updated.
 - **Keep the graph current.** After structural changes (new packages, big
