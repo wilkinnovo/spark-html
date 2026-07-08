@@ -12,9 +12,13 @@ compilation step is out of scope by definition.** The stated mission (Wilkin,
 2026-07-06): be the *simplest* way to write SSR, prerender, and client-only
 apps while staying fast — "built for humans who want to code themselves."
 
-Knowledge here is accurate as of 2026-07-07 (spark-html 0.30.0 + spark-ssr
-0.8.0 SHIPPED to npm — the M3 wave). Function names are stable anchors; line
-numbers drift.
+Knowledge here is accurate as of 2026-07-07 — **1.0.0 FINAL SHIPPED**: all 21
+packages at latest=1.0.0 on npm (registry-verified; release commit 4b26738).
+The gzip budget is FROZEN at 15.0 KB for the life of 1.x (14.63 used; margin
+spends blessed by Wilkin). V1-API-FREEZE.md governs semver; 1.x is fixes-only
+per spark-brain section 8. The docs#limits audit (plan appendix) is now
+UNBLOCKED — it was held until v1 shipped. Function names are stable anchors;
+line numbers drift.
 
 **M3 complete (0.30.0 / 0.8.0).** spark-ssr `serve()` decomposed into
 `src/{session,jobs,static,screens,request,crud,page,cache,routes}.js` (server.js
