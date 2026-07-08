@@ -72,7 +72,7 @@
     },
     "packages/spark": {
       "name": "spark-html",
-      "version": "1.0.0-rc.2",
+      "version": "1.0.0-rc.3",
       "bin": {
         "spark-html": "./bin/cli.js",
       },
@@ -186,7 +186,7 @@
     },
     "packages/spark-prerender": {
       "name": "spark-prerender",
-      "version": "1.0.0-rc.2",
+      "version": "1.0.0-rc.3",
       "bin": {
         "spark-prerender": "bin/cli.js",
       },
@@ -199,7 +199,7 @@
     },
     "packages/spark-ssr": {
       "name": "spark-ssr",
-      "version": "1.0.0-rc.2",
+      "version": "1.0.0-rc.3",
       "bin": {
         "spark-ssr": "./bin/cli.js",
       },
