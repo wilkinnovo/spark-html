@@ -350,6 +350,34 @@ templates.push({
   },
 });
 
+// 16: Nested each INSIDE keyed rows — pins the reconcile-skip × rowForce
+// interplay: replacing a row immutably (new nested array, same tick's dirty
+// key is only the OUTER array's) must still re-reconcile the nested each;
+// an outer-key-only change (sel) must skip both reconciles yet refresh the
+// :class; deep pushes into a nested array take the full-pass route.
+templates.push({
+  gen(rng, id) {
+    const name = `fz${id}`;
+    let nid = 1;
+    const mkTags = () => Array.from({ length: Math.floor(rng() * 3) }, () => pick(rng, ['t1', 't2', 't3']));
+    const mk = () => ({ id: nid++, tags: mkTags() });
+    const rows = Array.from({ length: Math.floor(rng() * 4) + 1 }, mk);
+    const src = (rowsJson, selVal) => `<template each="r in rows" key="r.id"><div :class="r.id === sel ? 'on' : 'off'"><b>{r.id}</b><template each="t in r.tags"><i>{t}</i></template></div></template><script>let rows = ${rowsJson}; let sel = ${selVal};</script>`;
+    const live = (el) => [...el.__sparkScope.rows];
+    return { name, source: src(JSON.stringify(rows), 0), mutators: [
+      { desc: 'replace row w/ new tags', apply: (el) => { const rs = live(el); if (rs.length) { const j = Math.floor(rng() * rs.length); rs[j] = { id: rs[j].id, tags: mkTags() }; } setScopeVar(el, 'rows', rs); return { rows: rs }; } },
+      { desc: 'reverse rows', apply: (el) => { const rs = live(el).reverse(); setScopeVar(el, 'rows', rs); return { rows: rs }; } },
+      { desc: 'set sel', apply: (el) => { const rows = el.__sparkScope.rows; const nv = rows.length ? rows[Math.floor(rng() * rows.length)].id : 0; setScopeVar(el, 'sel', nv); return { sel: nv }; } },
+      { desc: 'deep-push tag', apply: (el) => { const rows = el.__sparkScope.rows; if (rows.length) rows[Math.floor(rng() * rows.length)].tags.push(pick(rng, ['t8', 't9'])); return { rows: [...el.__sparkScope.rows] }; } },
+      { desc: 'insert row', apply: (el) => { const rs = live(el); rs.splice(Math.floor(rng() * (rs.length + 1)), 0, mk()); setScopeVar(el, 'rows', rs); return { rows: rs }; } },
+      { desc: 'remove row', apply: (el) => { const rs = live(el); if (rs.length) rs.splice(Math.floor(rng() * rs.length), 1); setScopeVar(el, 'rows', rs); return { rows: rs }; } },
+    ], schema: { rows, sel: 0 } };
+  },
+  rebuild(state, name) {
+    return { name, source: `<template each="r in rows" key="r.id"><div :class="r.id === sel ? 'on' : 'off'"><b>{r.id}</b><template each="t in r.tags"><i>{t}</i></template></div></template><script>let rows = ${JSON.stringify(state.rows)}; let sel = ${state.sel};</script>` };
+  },
+});
+
 // ── Run one scenario ───────────────────────────────────────────────────
 async function runScenario(rng, seed, id) {
   const tpl = pick(rng, templates);

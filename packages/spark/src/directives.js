@@ -515,6 +515,23 @@ export function patchEach(el, scope) {
     el.__sparkEachKeyFn = el.__sparkEachKeyExpr ? compileExpr(el.__sparkEachKeyExpr) : null;
 
     el.__sparkEachTemplate = cloneTemplateNodes(el);
+    // Template-level teardown fact, computed once: a row with no component
+    // boundaries and no nested anchors anywhere in its subtree needs none of
+    // the per-node teardown machinery (destroyComponent's querySelectorAll
+    // per node is the expensive part) — removal is just n.remove(), unless
+    // a leave transition wants to animate it out.
+    let deep = false;
+    for (const t of el.__sparkEachTemplate) {
+      if (t.nodeType !== ELEMENT_NODE) continue;
+      if (t.hasAttribute('name') || t.hasAttribute('import') || t.hasAttribute('each')
+        || t.hasAttribute('if') || t.hasAttribute('else-if') || t.hasAttribute('else')
+        || t.hasAttribute('await')
+        || (t.querySelector && t.querySelector('[name],[import],[each],[if],[else-if],[else],[await]'))) {
+        deep = true;
+        break;
+      }
+    }
+    el.__sparkEachDeepRows = deep;
     el.__sparkEachParsed = true;
     el.__sparkEachBlocks = []; // [{ key, nodes: [] }]
   }
@@ -530,7 +547,37 @@ export function patchEach(el, scope) {
   if (!varName || !arrayExpr || !templateNodes) return;
   if (!el.parentNode) return;
 
-  const arr = runExpr(el.__sparkEachArrayFn, arrayExpr, scope);
+  // Reconcile-skip: in a dirty-key pass that doesn't touch any key the array
+  // expression itself reads, the list's structure is untouched — the array
+  // wasn't reassigned (that key would be dirty) and wasn't deep-mutated
+  // (that forces a full or pure-row pass, dirtyMode false). Skip the whole
+  // reconcile (key evals, LIS, placement) and just refresh the rows whose
+  // external reads are dirty; per-node gating narrows further inside. Never
+  // inside a forced row walk (rowForce): there the enclosing row's item was
+  // replaced wholesale, so a nested array CAN be new even though this tick's
+  // dirty keys don't name it.
+  const arrKeysPrior = el.__sparkEachArrKeys;
+  if (capture.dirtyMode && !capture.rowForce && arrKeysPrior
+    && !setsIntersect(arrKeysPrior, capture.dirtyKeys)) {
+    for (const b of el.__sparkEachBlocks) {
+      if (b.ext && setsIntersect(b.ext, capture.dirtyKeys)) walkBlock(b, false);
+    }
+    return;
+  }
+
+  // Evaluate the array expr, accumulating its own keys (grow-only — a
+  // branching expr may read different keys on different passes) for the
+  // reconcile-skip gate above. Reads still flow to the anchor's sink.
+  const prevArrSet = capture.set;
+  const arrKeys = arrKeysPrior || (el.__sparkEachArrKeys = new Set());
+  capture.set = arrKeys;
+  let arr;
+  try {
+    arr = runExpr(el.__sparkEachArrayFn, arrayExpr, scope);
+  } finally {
+    capture.set = prevArrSet;
+    if (prevArrSet) for (const k of arrKeys) prevArrSet.add(k);
+  }
   if (!Array.isArray(arr)) {
     // null/undefined is a normal "loading" state; warn only for a real
     // type mistake (e.g. each over an object or string).
@@ -682,8 +729,12 @@ export function patchEach(el, scope) {
   }
 
   // Anything left in oldByKey was dropped from the array — clean it up.
+  // Shallow rows (no components/anchors in the template, no leave hook)
+  // need no teardown machinery: just detach.
+  const shallow = !el.__sparkEachDeepRows && !leaveHook;
   for (const b of oldByKey.values()) {
-    for (const n of b.nodes) leaveNode(n); // cleanups + (optional) exit anim
+    if (shallow) for (const n of b.nodes) n.remove();
+    else for (const n of b.nodes) leaveNode(n); // cleanups + (optional) exit anim
   }
 
   el.__sparkEachBlocks = newBlocks;

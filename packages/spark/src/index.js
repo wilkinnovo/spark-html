@@ -798,13 +798,55 @@ export function cloneTemplateNodes(el) {
   return nodes;
 }
 
+// Stamp a fresh clone with the recipe cached on its template counterpart:
+// the shared plan array, liveness, kind flags, text-interpolation caches —
+// and wire its per-instance listeners — by walking both trees in parallel
+// (cloneNode(true) guarantees identical shape). Elements the walk must own
+// (anchors, components, imports) are left unstamped. Returns whether the
+// subtree is fully static, and marks it so — a static row cell is then
+// skipped by every walk INCLUDING the first one.
+function stampTree(clone, tpl) {
+  if (clone.nodeType === TEXT_NODE) {
+    let t = tpl.__sparkTpl;
+    if (t === undefined) {
+      const s = tpl.textContent || '';
+      t = tpl.__sparkTpl = s.includes('{') ? s : null;
+    }
+    clone.__sparkTpl = t;
+    return t === null;
+  }
+  if (clone.nodeType !== ELEMENT_NODE) return true; // comments etc.
+  const kind = kindOf(tpl);
+  clone.__sparkKind = kind;
+  clone.__sparkNamed = tpl.__sparkNamed;
+  // Anchors, components, and import placeholders manage their own subtree —
+  // stamping (or static-marking) them would fight that machinery.
+  if (kind !== 0 || tpl.__sparkNamed || tpl.hasAttribute('import')) return false;
+  const a = tpl.__sparkAnalysis || (tpl.__sparkAnalysis = analyzeElement(tpl));
+  clone.__sparkPlan = a.plan; // shared — ops are stateless descriptors
+  wireElement(clone, a);
+  let allStatic = !a.live;
+  // Parallel descent — if the shapes ever diverge (they can't after a
+  // cloneNode, but be graceful), stop stamping and let the walk lazy-build.
+  let c = clone.firstChild, t = tpl.firstChild;
+  while (c && t) {
+    if (!stampTree(c, t)) allStatic = false;
+    c = c.nextSibling; t = t.nextSibling;
+  }
+  if (c || t) allStatic = false;
+  if (allStatic) clone.__sparkStatic = true;
+  return allStatic;
+}
+
 // Render a block: clone every template node, mark it managed (owned by its
-// anchor, not the parent walk), insert the clones in order after `cursor`,
-// and collect them into `out`. Shared by the each/if/await anchors.
+// anchor, not the parent walk), stamp it with the template's cached recipe,
+// insert the clones in order after `cursor`, and collect them into `out`.
+// Shared by the each/if/await anchors.
 export function insertClones(templateNodes, cursor, out) {
   for (const tpl of templateNodes) {
     const clone = tpl.cloneNode(true);
     clone.__sparkManaged = true;
+    stampTree(clone, tpl);
     cursor.after(clone);
     cursor = clone;
     out.push(clone);
@@ -1028,9 +1070,18 @@ import {
 // ref refreshed each patch (loop clones are reused with a new scope). Only
 // elements that are NOT live AND whose whole subtree is static can be
 // skipped wholesale (see walkNode).
-function buildElementPlan(el) {
+// Analysis half — PURE: reads the element's attributes and produces the
+// per-patch plan plus wiring descriptors (handlers/binds/form). Touches no
+// DOM and attaches no listeners, so the result is cacheable on a loop
+// TEMPLATE node and shared by every clone (stampTree) — clones skip the
+// attribute iteration and regex tests entirely.
+function analyzeElement(el) {
   const plan = [];
+  const handlers = [];
+  const binds = [];
+  let form = null;
   let live = false;
+  const a = { plan, handlers, binds, form: null, live: false };
   // An unresolved [import] placeholder's attributes are exclusively the
   // import machinery's territory (buildProps evaluates them as typed
   // whole-value props) — never the generic patcher's. Top-level imports
@@ -1042,19 +1093,13 @@ function buildElementPlan(el) {
   // below would stringify a prop like photo="{c.avatar}" into a plain
   // attribute (always a string, via interpolate()) BEFORE buildProps ever
   // saw the original {expr}, permanently losing whether it was a whole
-  // typed expression. Found via examples/spark-chat: an empty-string photo
-  // prop survived long enough to get corrupted here, then coerce()'d to
-  // boolean `true` in buildProps — see that fix's comment for the rest of
-  // the chain.
-  if (el.hasAttribute && el.hasAttribute('import')) return plan;
-  // Pre-scan: a <form bind:form> captures its onsubmit handler up front and
-  // strips the attribute, so neither the generic on-handler nor the attribute-
-  // interpolation path touches it — bind:form owns the submit lifecycle.
-  let formBinding = null;
-  if (el.hasAttribute && el.hasAttribute('bind:form') && (el.tagName || '').toLowerCase() === 'form') {
-    formBinding = el.getAttribute('onsubmit');
-    if (formBinding != null) el.removeAttribute('onsubmit');
-  }
+  // typed expression (see the examples/spark-chat fix).
+  if (el.hasAttribute && el.hasAttribute('import')) return a;
+  // Pre-scan: a <form bind:form> captures its onsubmit handler up front, so
+  // neither the generic on-handler nor the attribute-interpolation path
+  // touches it — bind:form owns the submit lifecycle. (wireElement strips it.)
+  const isForm = el.hasAttribute && el.hasAttribute('bind:form') && (el.tagName || '').toLowerCase() === 'form';
+  const formSubmit = isForm ? el.getAttribute('onsubmit') : null;
   for (const attr of [...el.attributes]) {
     const { name, value } = attr;
 
@@ -1064,14 +1109,15 @@ function buildElementPlan(el) {
     // back reactively; submit is auto-preventDefault'd and an async onsubmit
     // handler is awaited with `pending` / caught into `error`. No manual flags.
     if (name === 'bind:form') {
-      setupFormBinding(el, value.trim(), formBinding);
+      form = { stateName: value.trim(), handlerAttr: formSubmit };
       live = true;
       continue;
     }
+    if (isForm && name === 'onsubmit') continue; // owned by bind:form above
 
     // bind:value="draft" / bind:checked="done" — two-way binding.
     // Reading (per patch): push the scope value into the element.
-    // Writing (once): input/change event pushes the element value back.
+    // Writing (once, via wireElement): input/change pushes the value back.
     if (name === 'bind:value' || name === 'bind:checked' || name === 'bind:group') {
       const expr = value.trim();
       const tag = (el.tagName || '').toLowerCase();
@@ -1086,41 +1132,21 @@ function buildElementPlan(el) {
       else mode = 'value';                                      // text input / textarea
       // change vs input: discrete controls fire `change`, text fires `input`.
       const eventName = mode === 'value' || mode === 'number' || mode === 'text' ? 'input' : 'change';
-      const writeStmt = `${expr} = __val__`;
-      // Context is a factory: built only if the write actually throws.
-      const bindCtx = () => ({
-        phase: 'bind', component: componentNameFor(el), detail: name + '="' + expr + '"',
-      });
-      el.addEventListener(eventName, () => {
-        let val;
-        if (mode === 'checked') val = el.checked;
-        else if (mode === 'group') { if (!el.checked) return; val = el.value; }
-        else if (mode === 'number') { const v = el.value; val = v === '' ? null : Number(v); }
-        else if (mode === 'multi') {
-          val = [...(el.selectedOptions || [])].map((o) => o.value);
-        } else if (mode === 'text') val = el.textContent;
-        else val = el.value; // value / select
-        execute(writeStmt, el.__sparkScopeRef, null, val, bindCtx);
-        // Member writes don't trip the scope proxy, so re-render explicitly.
-        scheduleRerender(el);
-      });
+      binds.push({ name, expr, mode, eventName, writeStmt: `${expr} = __val__` });
       plan.push({ kind: 'bind', mode, expr, fn: compileExpr(expr) });
       live = true;
       continue;
     }
 
-    // onclick={…} — attached once; no per-patch op. A bare reference (a name or
-    // dotted path like `add` / `theme.toggle`) is CALLED with the event;
-    // anything else (`count++`, `pick='b'`, `add(5)`, `x = event.target.value`)
-    // is run as an inline statement, with `event` in scope.
+    // onclick={…} — attached once (wireElement); no per-patch op. A bare
+    // reference (a name or dotted path like `add` / `theme.toggle`) is CALLED
+    // with the event; anything else (`count++`, `pick='b'`, `add(5)`) is run
+    // as an inline statement, with `event` in scope.
     const trimmedValue = value.trim();
     if (/^on\w+$/.test(name) && trimmedValue.startsWith('{') && trimmedValue.endsWith('}')) {
-      // (A <form bind:form>'s onsubmit was already captured + stripped by the
-      // pre-scan above, so it never reaches here.)
       const fnExpr = trimmedValue.slice(1, -1).trim().replace(/(?:;\s*)+$/, '');
       const isRef = /^[a-zA-Z_$][\w$]*(?:\.[a-zA-Z_$][\w$]*)*$/.test(fnExpr);
       const code = isRef ? `${fnExpr}(event)` : fnExpr;
-      const evt = name.slice(2);
       // An arrow function here (`onclick={() => remove(item)}`, the React/
       // Vue instinct) is run as a bare STATEMENT like any other non-ref
       // expression: it constructs a closure and discards it — the click
@@ -1130,18 +1156,7 @@ function buildElementPlan(el) {
         warnOnce(name + '={' + fnExpr + '}',
           `[spark] ${name}="{${fnExpr}}" — this is a function, not a handler: it's constructed and discarded on click, never called. Write the call directly instead, e.g. ${name}={${body}}.`);
       }
-      // Context is a factory: built only if the handler actually throws.
-      const handlerCtx = () => ({
-        phase: 'handler', component: componentNameFor(el), detail: name + '={' + fnExpr + '}',
-      });
-      el.addEventListener(evt, (e) => {
-        // A plain onsubmit on a <form> almost always means "handle it in JS" —
-        // preventDefault by default so the page doesn't navigate (long-standing
-        // papercut). Escape hatch: call nothing / use a real <a> for navigation.
-        if (evt === 'submit' && e && e.preventDefault) e.preventDefault();
-        execute(code, el.__sparkScopeRef, e, undefined, handlerCtx);
-      });
-      el.removeAttribute(name);
+      handlers.push({ name, evt: name.slice(2), code, fnExpr });
       live = true;
       continue;
     }
@@ -1167,8 +1182,59 @@ function buildElementPlan(el) {
       live = true;
     }
   }
-  el.__sparkLive = live;
-  return plan;
+  a.form = form;
+  a.live = live;
+  return a;
+}
+
+// Wiring half — the per-INSTANCE side effects the analysis described:
+// attach event handlers (and strip their attributes), attach two-way bind
+// write-back listeners, set up bind:form. Every clone pays this (listeners
+// can't be shared), but never the attribute scan.
+function wireElement(el, a) {
+  for (const h of a.handlers) {
+    const handlerCtx = () => ({
+      phase: 'handler', component: componentNameFor(el), detail: h.name + '={' + h.fnExpr + '}',
+    });
+    el.addEventListener(h.evt, (e) => {
+      // A plain onsubmit on a <form> almost always means "handle it in JS" —
+      // preventDefault by default so the page doesn't navigate (long-standing
+      // papercut). Escape hatch: call nothing / use a real <a> for navigation.
+      if (h.evt === 'submit' && e && e.preventDefault) e.preventDefault();
+      execute(h.code, el.__sparkScopeRef, e, undefined, handlerCtx);
+    });
+    el.removeAttribute(h.name);
+  }
+  for (const b of a.binds) {
+    // Context is a factory: built only if the write actually throws.
+    const bindCtx = () => ({
+      phase: 'bind', component: componentNameFor(el), detail: b.name + '="' + b.expr + '"',
+    });
+    el.addEventListener(b.eventName, () => {
+      let val;
+      if (b.mode === 'checked') val = el.checked;
+      else if (b.mode === 'group') { if (!el.checked) return; val = el.value; }
+      else if (b.mode === 'number') { const v = el.value; val = v === '' ? null : Number(v); }
+      else if (b.mode === 'multi') {
+        val = [...(el.selectedOptions || [])].map((o) => o.value);
+      } else if (b.mode === 'text') val = el.textContent;
+      else val = el.value; // value / select
+      execute(b.writeStmt, el.__sparkScopeRef, null, val, bindCtx);
+      // Member writes don't trip the scope proxy, so re-render explicitly.
+      scheduleRerender(el);
+    });
+  }
+  if (a.form) {
+    if (a.form.handlerAttr != null) el.removeAttribute('onsubmit');
+    setupFormBinding(el, a.form.stateName, a.form.handlerAttr);
+  }
+  el.__sparkLive = a.live;
+}
+
+function buildElementPlan(el) {
+  const a = analyzeElement(el);
+  wireElement(el, a);
+  return a.plan;
 }
 
 function runElementPlan(el, scope) {
