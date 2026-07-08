@@ -33,11 +33,7 @@ jobs:
         run: bun install
 
       - name: Build website
-        # Base path = "/<repo-name>/" so assets and runtime-fetched
-        # component fragments resolve on GitHub Pages.
         run: bun run site:build
-        env:
-          BASE_PATH: /${{ github.event.repository.name }}/
 
       - uses: actions/upload-pages-artifact@v5
         with:

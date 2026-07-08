@@ -4,9 +4,8 @@ import font from 'spark-html-font/bun';
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { resolve, join } from 'node:path';
 
-// On GitHub Pages the site is served from /<repo>/, not /. The deploy workflow
-// sets BASE_PATH; locally it defaults to '/'.
-const base = process.env.BASE_PATH ?? '/';
+// Served at the apex of spark-html.dev (custom domain, see website/public/CNAME) — always root.
+const base = '/';
 
 // Bake the computed stats (scripts/gen-stats.js → src/stats.json) into the
 // built home component BEFORE prerender reads it — prerender runs mount() but
@@ -42,13 +41,13 @@ function prerenderFetch(url) {
 // fully-rendered HTML file per route, plus 404.html — GitHub Pages serves it
 // for unknown paths, and since the full app shell + router ship in it, deep
 // links still resolve client-side — plus sitemap.xml + robots.txt (site = the
-// GitHub Pages origin + base).
+// custom domain).
 export default {
   base,
   pipeline: [
     stats(),
     prerender({
-      site: 'https://wilkinnovo.github.io' + (base === '/' ? '' : base.replace(/\/$/, '')),
+      site: 'https://spark-html.dev',
       prerender: { fetch: prerenderFetch },
     }),
     // No-flash theming: the saved/OS theme lands on <html> before first paint,
