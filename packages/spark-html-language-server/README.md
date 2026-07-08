@@ -25,6 +25,9 @@ Language server (LSP) for [Spark](https://github.com/wilkinnovo/spark-html) sing
 - **Autocomplete**
   - props on import placeholders, read from the target component's
     `export let` declarations
+  - filesystem paths inside `import="…"` — `.html` component files (inserted
+    without the optional extension) and directories, listed relative to the
+    editing file, the workspace root, and its `public/`
   - every template directive (`each`, `if`/`else-if`/`else`, `await`/`then`/`catch`,
     `bind:value|checked|group|form`, `:hidden`-style dynamic attributes, `key`,
     `route`, `transition:fade|slide|scale`, `spark-ignore`)

@@ -325,6 +325,39 @@ await test('server: prop completion inside an import placeholder reads export le
   assert.ok(labels.includes('each') && labels.includes('bind:value'), 'directives offered too');
 });
 
+await test('server: path completion inside import="…" lists .html files and directories', () => {
+  const { request, notify } = makeServer();
+  request('initialize', { rootUri: pathToFileURL(dir).href });
+  // Cursor inside the value of import="components/" — expect card(.html).
+  const src = `<div import="components/"></div>`;
+  const uri = pathToFileURL(join(dir, 'pathtest.html')).href;
+  notify('textDocument/didOpen', { textDocument: { uri, text: src } });
+  const pos = offsetToPosition(src, src.indexOf('components/') + 'components/'.length);
+  const result = request('textDocument/completion', { textDocument: { uri }, position: pos });
+  const card = result.items.find((i) => i.label === 'card.html');
+  assert.ok(card, `card.html offered in ${result.items.map((i) => i.label)}`);
+  assert.equal(card.insertText, 'card', '.html-less insert (extension is optional)');
+
+  // Empty value → directories at the doc's dir (components/) are offered.
+  const src2 = `<div import=""></div>`;
+  notify('textDocument/didChange', { textDocument: { uri }, contentChanges: [{ text: src2 }] });
+  const pos2 = offsetToPosition(src2, src2.indexOf('import="') + 'import="'.length);
+  const result2 = request('textDocument/completion', { textDocument: { uri }, position: pos2 });
+  assert.ok(result2.items.some((i) => i.label === 'components/'), 'directory offered with trailing slash');
+
+  // A remote URL prefix gets no filesystem listing.
+  const src3 = `<div import="https://x.dev/"></div>`;
+  notify('textDocument/didChange', { textDocument: { uri }, contentChanges: [{ text: src3 }] });
+  const pos3 = offsetToPosition(src3, src3.indexOf('.dev/') + '.dev/'.length);
+  assert.equal(request('textDocument/completion', { textDocument: { uri }, position: pos3 }), null);
+
+  // Other attribute values still get no completions.
+  const src4 = `<div import="components/card" name=""></div>`;
+  notify('textDocument/didChange', { textDocument: { uri }, contentChanges: [{ text: src4 }] });
+  const pos4 = offsetToPosition(src4, src4.indexOf('name="') + 'name="'.length);
+  assert.equal(request('textDocument/completion', { textDocument: { uri }, position: pos4 }), null);
+});
+
 await test('server: {expr} completion offers script symbols + builtins', () => {
   const { request, notify } = makeServer();
   request('initialize', {});

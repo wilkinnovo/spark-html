@@ -17,7 +17,7 @@
  * SSR_BUILTINS.
  */
 
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { createRequire } from 'node:module';
@@ -82,7 +82,7 @@ export class SparkLanguageServer {
           return respond({
             capabilities: {
               textDocumentSync: 1, // full
-              completionProvider: { triggerCharacters: ['{', ':', '"', ' ', '.'] },
+              completionProvider: { triggerCharacters: ['{', ':', '"', ' ', '.', '/'] },
               hoverProvider: true,
               definitionProvider: true,
               // <spark-ssr> block bodies (SQL, URL/glob/module sources,
@@ -292,7 +292,11 @@ export class SparkLanguageServer {
         items.push(...directiveCompletions().map((c) => ({ ...c, kind: 14 })));
         return { isIncomplete: false, items };
       }
-      return null; // inside an attribute value — no completions
+      // Inside an attribute value. On import="…", complete paths from the
+      // filesystem; other attribute values get nothing.
+      const impVal = tagText.match(/\bimport\s*=\s*"([^"]*)$/);
+      if (impVal) return this.importPathCompletions(textDocument.uri, impVal[1]);
+      return null;
     }
 
     // After an unclosed `{` in text? Complete script symbols.
@@ -301,6 +305,50 @@ export class SparkLanguageServer {
       return { isIncomplete: false, items: symbolItems() };
     }
     return null;
+  }
+
+  // Filesystem completions inside import="…": .html component files and
+  // directories, listed from the same bases resolveImport checks (the doc's
+  // directory, then the workspace root and its public/), deduped by name.
+  importPathCompletions(docUri, prefix) {
+    if (/^[a-z]+:\/\//i.test(prefix)) return null; // remote URL — nothing to list
+    let docDir;
+    try { docDir = dirname(fileURLToPath(docUri)); } catch { return null; }
+    const dirPart = prefix.slice(0, prefix.lastIndexOf('/') + 1); // '' when no slash yet
+    const bases = prefix.startsWith('/')
+      ? [this.rootPath, this.rootPath && resolve(this.rootPath, 'public')]
+      : [docDir, this.rootPath, this.rootPath && resolve(this.rootPath, 'public')];
+    const items = [];
+    const seen = new Set();
+    for (const base of bases.filter(Boolean)) {
+      const dir = resolve(base, prefix.startsWith('/') ? dirPart.slice(1) : dirPart);
+      let entries;
+      try { entries = readdirSync(dir, { withFileTypes: true }); } catch { continue; }
+      for (const e of entries) {
+        if (e.name.startsWith('.') || e.name === 'node_modules' || seen.has(e.name)) continue;
+        seen.add(e.name);
+        if (e.isDirectory()) {
+          items.push({
+            label: `${e.name}/`,
+            kind: 19, // Folder
+            detail: 'directory',
+            sortText: `1${e.name}`,
+            // Re-trigger completion after descending into the directory.
+            command: { title: 'suggest', command: 'editor.action.triggerSuggest' },
+          });
+        } else if (e.name.endsWith('.html')) {
+          items.push({
+            label: e.name,
+            kind: 17, // File
+            detail: 'spark component',
+            // `.html` is optional in import paths — insert the short form.
+            insertText: e.name.slice(0, -5),
+            sortText: `0${e.name}`,
+          });
+        }
+      }
+    }
+    return items.length ? { isIncomplete: true, items } : null;
   }
 
   // ── hover ────────────────────────────────────────────────────────────────
@@ -325,7 +373,7 @@ export class SparkLanguageServer {
       if (SCRIPT_BUILTINS[word]) return md(`**\`${word}\`** — ${SCRIPT_BUILTINS[word]}`);
     } else {
       const d = directiveDoc(word.replace(/=.*$/, ''));
-      if (d) return md(`**\`${d.label}\`** · ${d.detail}\n\n${d.doc}`);
+      if (d) return md(`**\`${d.label}\`** · ${d.detail}\n\n${d.doc}\n\n---\n\n[spark-html docs ↗](https://wilkinnovo.github.io/spark-html)`);
     }
 
     const bare = word.match(/[A-Za-z_$][\w$]*/)?.[0];
