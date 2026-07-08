@@ -87,10 +87,21 @@ export function makeCrud(app) {
     on('GET', `api/${table}`, async (req) => {
       const { scoped } = await tableInfo(table);
       if (scoped && !req.session) return json({ error: 'unauthorized' }, 401);
-      const rows = await tableRows(table, req, tableOpts.get(table) || {});
-      // Password hashes never leave the auth table, not even to a session.
-      if (isAuthTable) for (const r of rows) delete r.password;
-      return json(isAuthTable ? [...rows] : rows);
+      // The auth table is an identity store, not ordinary CRUD: every row is
+      // an account, and the identity column (usually email) is private. Reads
+      // are own-account only — admins read all — the same posture PATCH and
+      // DELETE already have. Public author data belongs in a named SELECT
+      // that picks its public columns, never this endpoint.
+      if (isAuthTable) {
+        if (!req.session) return json({ error: 'unauthorized' }, 401);
+        const rows = isAdmin(req.session)
+          ? [...await tableRows(table, req, tableOpts.get(table) || {})]
+          : await db.query(`SELECT * FROM ${table} WHERE id = ?`, [req.session.id]);
+        // Password hashes never leave the auth table, not even to a session.
+        for (const r of rows) delete r.password;
+        return json(rows);
+      }
+      return json(await tableRows(table, req, tableOpts.get(table) || {}));
     });
 
     on('POST', `api/${table}`, async (req) => {

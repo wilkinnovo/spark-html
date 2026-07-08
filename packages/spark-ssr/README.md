@@ -423,9 +423,12 @@ scope; the return value becomes the JSON response).
   spark-html runtime, and your page `<script>` rides along with the ambient
   helpers above.
 - **Auth-table hygiene** — the auth table's auto CRUD never returns password
-  hashes, and PATCH/DELETE are own-account only. Configuring `auth` registers
-  the table (login/signup endpoints) without any page declaring it; disable
-  public signup in `middleware.html` if the app is invite-only.
+  hashes, and GET/PATCH/DELETE are own-account only (admins read the full
+  table; anonymous GET is 401 — registered emails are never enumerable).
+  Public author data belongs in a named `SELECT` that picks its public
+  columns. Configuring `auth` registers the table (login/signup endpoints)
+  without any page declaring it; disable public signup in `middleware.html`
+  if the app is invite-only.
 
 ## Performance — fast by default, nothing to configure
 

@@ -330,5 +330,38 @@ await test('PATCH cannot move an account onto another account\'s identity', asyn
   } finally { await s.stop?.(); }
 });
 
+await test('auth-table GET never enumerates accounts — anon 401, session own row only, admin all', async () => {
+  const root = makeAuthApp();
+  const s = await serve({ root, port: 0, quiet: true });
+  const B = `http://localhost:${s.port}`;
+  try {
+    await signup(B, 'admin@x.com', 'secret1');  // will get is_admin below
+    await signup(B, 'victim@x.com', 'secret2'); // the row that must not leak
+    // Grant the role BEFORE any login: bun:sqlite caches prepared statements
+    // per SQL string, so a `SELECT *` prepared pre-ALTER would not see the
+    // new column (a harness artifact — real schemas exist before logins).
+    await s.db.query('ALTER TABLE users ADD COLUMN is_admin INTEGER DEFAULT 0');
+    await s.db.query("UPDATE users SET is_admin = 1 WHERE email = 'admin@x.com'");
+    // The leak this closes (bugs.md #7): GET /api/users used to answer 200
+    // with every registered email to any unauthenticated caller.
+    const anon = await fetch(`${B}/api/users`);
+    assert.equal(anon.status, 401, 'unauthenticated GET must not enumerate accounts');
+    // A logged-in non-admin reads exactly their own row, nobody else's.
+    const asUser = async (email, password) => (await fetch(`${B}/api/users?auth`, {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ email, password }),
+    })).headers.get('set-cookie').split(';')[0];
+    const cookie = await asUser('victim@x.com', 'secret2');
+    const rows = await (await fetch(`${B}/api/users`, { headers: { cookie } })).json();
+    assert.deepEqual(rows.map((r) => r.email), ['victim@x.com'], 'a session reads only its own row');
+    assert.ok(rows.every((r) => !('password' in r)), 'no hash even on the own row');
+    // Admins still read the full table (the admin-screen use case).
+    const adminCookie = await asUser('admin@x.com', 'secret1');
+    const all = await (await fetch(`${B}/api/users`, { headers: { cookie: adminCookie } })).json();
+    assert.deepEqual(all.map((r) => r.email).sort(), ['admin@x.com', 'victim@x.com'], 'admins read the full table');
+    assert.ok(all.every((r) => !('password' in r)), 'no hashes on the admin read either');
+  } finally { await s.stop?.(); }
+});
+
 console.log(`\n${pass} passed, ${fail} failed`);
 if (fail) process.exit(1);

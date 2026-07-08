@@ -86,6 +86,13 @@ reading the code" is not verification here.
 
 ## Account integrity
 
+- **The user list is not enumerable.** The auth table's auto-CRUD `GET` is
+  own-account only: anonymous callers get `401`, a session reads exactly its
+  own row, and only admins (`is_admin`/`role`) read the full table — the same
+  posture PATCH/DELETE have (`src/crud.js`). Before this guard, `GET
+  /api/<auth table>` answered every registered identity (usually email) to
+  any unauthenticated caller. Public author data belongs in a named `SELECT`
+  that picks its public columns.
 - **Identity is unique.** The auth-table CREATE endpoint (built-in `/signup`'s
   real form target) refuses a duplicate identity with a friendly `409` before
   inserting — a duplicate row could never log in (login matches the first

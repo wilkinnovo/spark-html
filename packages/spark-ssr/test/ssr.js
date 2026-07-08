@@ -903,8 +903,10 @@ await test('family packages: theme init inlined, fonts in head, modules served, 
 
 await test('auth table hygiene: no hashes over the wire, writes are own-account only', async () => {
   const cookie = globalThis.__sparkTestCookie;
-  const rows = await (await fetch(`${S}/api/users`)).json();
-  assert.ok(rows.length > 0 && rows.every((r) => !('password' in r)), 'GET strips password hashes');
+  assert.equal((await fetch(`${S}/api/users`)).status, 401, 'anonymous GET is closed — emails are not public');
+  const rows = await (await fetch(`${S}/api/users`, { headers: { cookie } })).json();
+  assert.ok(rows.length === 1 && rows[0].email === 'a@b.c', 'a session reads only its own row');
+  assert.ok(rows.every((r) => !('password' in r)), 'GET strips password hashes');
 
   const anon = await fetch(`${S}/api/users/1`, {
     method: 'PATCH',
