@@ -6,6 +6,7 @@
     <ul class="nav">
       <li><a href="{app.base}/">Home</a></li>
       <li><a href="{app.base}/docs">Docs</a></li>
+      <li><a href="{app.base}/ssr">SSR</a></li>
       <li><a href="{app.base}/playground">Playground</a></li>
       <li><a href="{app.base}/tutorials">Tutorials</a></li>
       <li><a href="{app.base}/showcase">Showcase</a></li>
@@ -32,6 +33,7 @@
       <ul class="nav drawer-nav">
         <li><a href="{app.base}/">Home</a></li>
         <li><a href="{app.base}/docs">Docs</a></li>
+        <li><a href="{app.base}/ssr">SSR</a></li>
         <li><a href="{app.base}/playground">Playground</a></li>
         <li><a href="{app.base}/tutorials">Tutorials</a></li>
         <li><a href="{app.base}/showcase">Showcase</a></li>
@@ -113,7 +115,11 @@
   }
   @media (prefers-reduced-motion: reduce) { .flick-a .bolt, .flick-b .bolt { animation: none; } }
   .rail { display: flex; align-items: center; }
-  .nav { list-style: none; display: flex; gap: 54px; align-items: center; transform: rotate(90deg); }
+  /* The rotated list is longer than the rail is tall on short viewports —
+     it may overlap the logo/foot. Only the LINKS take pointer events, so the
+     list's transparent span never swallows a click meant for the logo. */
+  .nav { list-style: none; display: flex; gap: 44px; align-items: center; transform: rotate(90deg); pointer-events: none; }
+  .nav a { pointer-events: auto; }
   .nav li { margin: 0; }
   .nav a { color: var(--muted-nav); white-space: nowrap; }
   .nav a:hover { color: var(--text); }

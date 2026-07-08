@@ -33,6 +33,7 @@ head({
   title: {
     '/': 'Spark — HTML that reacts. Built for humans.',
     '/docs': 'Spark — Documentation',
+    '/ssr': 'Spark — Full-stack SSR',
     '/playground': 'Spark — Playground',
     '/tutorials': 'Spark — Tutorials',
     '/showcase': 'Spark — Showcase',

@@ -331,12 +331,14 @@ at it; `:file.original` keeps the source file).
 ## Page scripts — ambient helpers, less boilerplate
 
 An interactive page (handlers or `bind:`s) that declares data hydrates, and its
-`<script>` becomes the client component. One deliberate limit to know: the page
-`<script>` runs on the **client only** — the server never executes it during
-render. Compute display fields (formatted dates, view counts, derived text) in
-the **data source** (SQL expression or a module source), not in the page
-script, or the first server-rendered paint won't have them. Four helpers are
-always in scope — no imports, no `fetch()` plumbing:
+`<script>` becomes the client component. One deliberate limit to know: on a
+hydrating page that script runs on the **client only** — the server renders
+from the data sources alone and never executes it. Compute display fields
+(formatted dates, view counts, derived text) in the **data source** (SQL
+expression or a module source), not in the page script, or the first
+server-rendered paint won't have them. (A page with no handlers or binds keeps
+the classic behavior: its plain `<script>` runs on the server — the escape
+hatch.) Four helpers are always in scope — no imports, no `fetch()` plumbing:
 
 | Helper | Does |
 |---|---|

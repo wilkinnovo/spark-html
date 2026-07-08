@@ -4,6 +4,7 @@
     <h1><span class="l1">HTML that</span> <em>reacts.</em><br /><span class="l2">Built for humans.</span></h1>
     <p class="lede" :hidden="tab !== 'url'">Import a component <b>straight from a URL</b> — no install, no bundler. The browser fetches the <code>.html</code> and boots it live. Components are just files, anywhere. <b>Nothing else does that.</b></p>
     <p class="lede" :hidden="tab !== 'counter'">The component <b>is</b> the file. Save <code>counter.html</code> and the browser runs it <b>byte-for-byte</b> — reactive, scoped, untouched. Nothing else does that.</p>
+    <p class="lede" :hidden="tab !== 'ssr'">The template <b>is the backend</b>. spark-ssr reads this file and infers the <b>database, REST API, validation and hydration</b> — no server file, no ORM, no build. <a href="{app.base}/ssr">Read the SSR docs →</a></p>
     <div class="cli">
       <span class="prompt">$</span><code>bunx create-spark-html-app@latest</code>
       <button class="copy" onclick="{copy}">{copied ? 'copied' : 'copy'}</button>
@@ -18,6 +19,7 @@
     <div class="demo-tabs">
       <button :class="tab === 'url' ? 'dt on' : 'dt'" onclick="{showUrl}">URL import</button>
       <button :class="tab === 'counter' ? 'dt on' : 'dt'" onclick="{showCounter}">counter.html</button>
+      <button :class="tab === 'ssr' ? 'dt on' : 'dt'" onclick="{showSsr}">app.html (SSR)</button>
     </div>
     <div class="demo-body">
       <!-- Tab 1 (default): a component fetched live from a URL — the thing no
@@ -49,6 +51,33 @@
           </div>
         </div>
       </div>
+      <!-- Tab 3: the whole backend, inferred from one file (spark-ssr). The
+           live pane runs the same template client-side and shows the API call
+           the server would receive for each action — this site is static, so
+           the server half is simulated, and the label says so. -->
+      <div :hidden="tab !== 'ssr'">
+<pre class="code" spark-ignore>&lt;input bind:value=<span class="k">"draft"</span>&gt;&lt;button onclick=<span class="k">{add}</span>&gt;Add&lt;/button&gt;
+&lt;template each=<span class="k">"t in todos"</span>&gt;
+  &lt;input type="checkbox" bind:checked=<span class="k">"t.done"</span> onchange=<span class="k">{patch}</span>&gt;
+  {t.title} &lt;button onclick=<span class="k">{remove}</span>&gt;✕&lt;/button&gt;
+&lt;/template&gt;
+
+<span class="k">&lt;spark-ssr table="todos" live /&gt;</span></pre>
+        <div class="live">
+          <p class="live-label">● live — same template in this page; the inferred API call shows below (server simulated — this site is static)</p>
+          <div class="ssr-add">
+            <input class="ssr-in" bind:value="draft" placeholder="New task" onkeydown="{draftKey}">
+            <button class="plus" onclick="{addTodo}">Add</button>
+          </div>
+          <template each="t in todos" key="t.id">
+            <div class="ssr-row">
+              <label><input type="checkbox" bind:checked="t.done" onchange="{patchTodo(t)}"> <span :class="t.done ? 'ssr-done' : ''">{t.title}</span></label>
+              <button class="ssr-x" onclick="{removeTodo(t)}">✕</button>
+            </div>
+          </template>
+          <p class="ssr-api" :hidden="!lastApi">→ <code>{lastApi}</code></p>
+        </div>
+      </div>
     </div>
   </div>
   <div class="hero-quote">“Spark-html is what web frameworks could've been if we didn't spend 21 years bolting JS frameworks on top of HTML instead of just reading the HTML.” <cite>— Anon9</cite></div>
@@ -74,7 +103,7 @@
     <div class="cell"><h3>Shared stores<span class="dot">.</span></h3><p>Named stores let any two components share state. No providers.</p></div>
     <div class="cell"><h3>Declarative router<span class="dot">.</span></h3><p>&lt;template route&gt; + router(). Active links and a route store, free.</p></div>
     <div class="cell"><h3>SEO prerender<span class="dot">.</span></h3><p>Real HTML per route at build time. No SSR server, no app changes.</p></div>
-    <div class="cell"><h3>Full-stack SSR<span class="dot">.</span></h3><p>spark-ssr: the template is the backend — inferred database, REST, auth &amp; hydration. No server file.</p></div>
+    <div class="cell"><h3>Full-stack SSR<span class="dot">.</span></h3><p>spark-ssr: the template is the backend — inferred database, REST, auth &amp; hydration. No server file. <a href="{app.base}/ssr">SSR docs →</a></p></div>
     <div class="cell"><h3>One-line theming<span class="dot">.</span></h3><p>theme() — dark / light / system, persisted, no flash.</p></div>
   </div>
 </section>
@@ -86,7 +115,7 @@
       <div class="use-h"><span class="use-n">1</span> Load Spark from a CDN</div>
 <pre class="ucode" spark-ignore>&lt;script type=<span class="k">"importmap"</span>&gt;
   { "imports": {
-    "spark-html": <span class="k">"https://esm.sh/spark-html@0.27"</span>
+    "spark-html": <span class="k">"https://esm.sh/spark-html@1"</span>
   } }
 &lt;/script&gt;
 
@@ -137,6 +166,34 @@
   let tab = 'url'; // URL-import demo shown first
   function showUrl() { tab = 'url'; }
   function showCounter() { tab = 'counter'; }
+  function showSsr() { tab = 'ssr'; }
+
+  // SSR tab demo state — same template shape as the docs' one-file todo app.
+  // The API line shows the endpoint spark-ssr infers for each action.
+  let todos = [
+    { id: 1, title: 'Read the SSR docs', done: false },
+    { id: 2, title: 'Ship it', done: true },
+  ];
+  let draft = '';
+  let nextId = 3;
+  let lastApi = '';
+  function addTodo() {
+    const title = draft.trim();
+    if (!title) return;
+    todos.push({ id: nextId, title, done: false });
+    lastApi = 'POST /api/todos  { title: "' + title + '" }';
+    nextId++; draft = '';
+  }
+  function draftKey() {
+    if (event.key === 'Enter') addTodo();
+  }
+  function patchTodo(t) {
+    lastApi = 'PATCH /api/todos/' + t.id + '  { done: ' + t.done + ' }';
+  }
+  function removeTodo(t) {
+    todos = todos.filter((x) => x.id !== t.id);
+    lastApi = 'DELETE /api/todos/' + t.id;
+  }
 
   let count = 0;
   function inc() { count++; }
@@ -205,6 +262,17 @@
   .count { font-size: 26px; font-weight: 700; font-variant-numeric: tabular-nums; }
   .plus { padding: 8px 18px; background: var(--spark); color: #000; border: none; font-family: var(--font); font-weight: 700; font-size: 15px; cursor: pointer; }
   .plus:active { transform: scale(.95); }
+  .ssr-add { display: flex; gap: 10px; margin-bottom: 12px; }
+  .ssr-in { flex: 1; min-width: 0; background: var(--surface-2); border: 1px solid var(--border); color: var(--text); font-family: var(--font); font-size: 13.5px; padding: 8px 10px; }
+  .ssr-in:focus { outline: 1px solid var(--spark); }
+  .ssr-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 6px 0; border-bottom: 1px dashed var(--border); font-size: 14px; }
+  .ssr-row label { display: flex; align-items: center; gap: 8px; cursor: pointer; }
+  .ssr-row input[type="checkbox"] { accent-color: var(--spark); }
+  .ssr-done { text-decoration: line-through; color: var(--muted-dim); }
+  .ssr-x { background: none; border: none; color: var(--muted-dim); cursor: pointer; font-size: 13px; font-family: var(--font); }
+  .ssr-x:hover { color: var(--text); }
+  .ssr-api { margin-top: 12px; font-size: 12px; color: var(--spark-ink); }
+  .ssr-api code { font-size: 12px; }
 
   .sec { padding: 52px 0; border-top: 1px solid var(--border); }
   .why-text { font-size: 16.5px; line-height: 1.85; color: var(--muted); max-width: 72ch; }

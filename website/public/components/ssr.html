@@ -1,0 +1,309 @@
+<!-- Full-stack spark-ssr docs. Static reference content full of literal
+     {brace} and <spark-ssr> examples; spark-ignore keeps Spark (and the
+     prerenderer) from interpolating them. -->
+<div class="docs" spark-ignore>
+  <aside>
+    <p class="aside-title">spark-ssr</p>
+    <a href="#idea">The idea</a>
+    <a href="#quickstart">Quick start</a>
+    <a href="#inference">What gets inferred</a>
+    <a href="#config">Config</a>
+    <a href="#routing">Routing &amp; layouts</a>
+    <a href="#data">Data sources</a>
+    <a href="#guide-sql">Guide: a Pinterest-style app</a>
+    <a href="#guide-md">Guide: markdown &amp; modules</a>
+    <a href="#interactive">Interactive pages</a>
+    <a href="#auth">Auth &amp; sessions</a>
+    <a href="#forms">Forms without JS</a>
+    <a href="#schema">The template is the schema</a>
+    <a href="#jobs">Jobs &amp; mail</a>
+    <a href="#perf">Performance</a>
+    <a href="#security">Security</a>
+    <a href="#deploy">Deploy</a>
+  </aside>
+
+  <main>
+    <h1>Full-stack Spark — spark-ssr</h1>
+    <p class="intro">Zero config. No build. The HTML template <em>is</em> the backend: spark-ssr reads your pages and infers the schema, the REST API, the validation, the auth wiring, and the hydration — you write markup and (only when you want it) SQL.</p>
+
+    <h2 id="idea">The idea</h2>
+    <p>Every other full-stack framework asks you to describe your app twice: once in the UI and again in models, resolvers, route files, or an ORM. spark-ssr reads the single description you already wrote — the template — and derives the rest. <code>&lt;template each="todo in todos"&gt;</code> means you need data called <code>todos</code>; <code>{todo.title}</code> means it has a <code>title</code> column; <code>onclick={add}</code> outside the loop means insert; <code>onclick={remove}</code> inside it means delete.</p>
+    <p>When inference isn't enough, you drop down one level at a time — a named SQL query, a JS module, a custom endpoint — and everything else keeps working. The escape hatches are doors, not ejection seats.</p>
+
+    <h2 id="quickstart">Quick start</h2>
+    <p>A complete todo app — server-rendered, hydrated, persisted, and live across tabs — is one file:</p>
+    <pre spark-ignore>&lt;!-- index.html --&gt;
+&lt;h1&gt;Tasks&lt;/h1&gt;
+
+&lt;template await="todos"&gt;
+  &lt;input bind:value="draft" placeholder="New task"&gt;
+  &lt;button onclick={add}&gt;Add&lt;/button&gt;
+  &lt;template each="todo in todos"&gt;
+    &lt;li&gt;
+      &lt;input type="checkbox" bind:checked="todo.done" onchange={patch}&gt;
+      {todo.title}
+      &lt;button onclick={remove}&gt;✕&lt;/button&gt;
+    &lt;/li&gt;
+  &lt;/template&gt;
+&lt;/template&gt;
+
+&lt;spark-ssr table="todos" live /&gt;</pre>
+    <pre spark-ignore>bun add spark-ssr
+bun spark-ssr</pre>
+    <p>That's the whole app. The <code>todos</code> table is <strong>created for you</strong>, the CRUD API exists at <code>/api/todos</code>, the page is server-rendered and hydrated, and <code>live</code> keeps every open tab in sync over SSE. No <code>&lt;script&gt;</code>, no SQL, no server file, no build step.</p>
+    <p class="note">Scaffold the same thing with a blog starter: <code>bunx create-spark-html-app@latest myapp</code> and pick the <strong>ssr</strong> template.</p>
+
+    <h2 id="inference">What gets inferred</h2>
+    <table>
+      <tr><th>The template says</th><th>The framework knows</th></tr>
+      <tr><td><code>&lt;template each="todo in todos"&gt;</code></td><td>You need data called <code>todos</code></td></tr>
+      <tr><td><code>table="todos"</code></td><td>It's backed by the <code>todos</code> table</td></tr>
+      <tr><td><code>{todo.title}</code></td><td><code>title</code> is a TEXT column</td></tr>
+      <tr><td><code>bind:checked="todo.done"</code></td><td><code>done</code> is a boolean column</td></tr>
+      <tr><td><code>onclick={add}</code> (outside the loop)</td><td><code>POST /api/todos</code> — insert</td></tr>
+      <tr><td><code>bind:checked</code> + <code>onchange={patch}</code> (in loop)</td><td><code>PATCH /api/todos/:id</code></td></tr>
+      <tr><td><code>onclick={remove}</code> (inside the loop)</td><td><code>DELETE /api/todos/:id</code></td></tr>
+      <tr><td><code>&lt;template each="c in post.comments"&gt;</code></td><td>A <code>comments</code> table with a <code>post_id</code> foreign key, joined for you (batched — one query per page, not per row)</td></tr>
+      <tr><td><code>user_id</code> column + auth configured</td><td>Rows are scoped: <code>WHERE user_id = :session.id</code></td></tr>
+      <tr><td><code>required maxlength="120"</code> on an input</td><td>The server re-validates the same rules before the write</td></tr>
+    </table>
+
+    <h2 id="config">Config — spark.json (optional)</h2>
+    <pre spark-ignore>{
+  "db": "sqlite://./dev.db",
+  "auth": { "table": "users", "identity": "email", "secret": "ENV.SESSION_SECRET" }
+}</pre>
+    <p><strong>No spark.json at all?</strong> <code>db</code> defaults to <code>sqlite://./dev.db</code>, so <code>bun spark-ssr</code> runs on a folder holding one <code>index.html</code>. Postgres works with a <code>postgres://</code> URL (Bun ships both drivers). A spark.json that <em>exists</em> but omits <code>db</code> stays deliberately database-free — the markdown-blog mode. Other keys: <code>cors</code>, <code>fonts</code> (spark-html-font head tags in every page), <code>mail</code>, <code>maxBodyMb</code> (413 at the socket), <code>responseCache</code>.</p>
+
+    <h2 id="routing">Routing &amp; layouts</h2>
+    <p>The filesystem is the router: <code>pages/index.html</code> → <code>/</code>, <code>pages/blog/[slug].html</code> → <code>/blog/:slug</code> — and <code>:slug</code> binds straight into queries. <code>pages/_layout.html</code> wraps every page in its folder (nested folders nest layouts); the layout is a component and <code>&lt;slot&gt;</code> is the page. A layout's <code>&lt;spark-ssr&gt;</code> vars are in scope for every page it wraps.</p>
+    <p>A <code>[param]</code> page whose single-row lookup comes back empty <strong>404s automatically</strong> — no code. Every error status gets a styled default page; drop <code>pages/404.html</code> (or any <code>&lt;status&gt;.html</code>) to override. Guards are declarative: <code>&lt;spark-ssr guard="session" redirect="/login" /&gt;</code>, and <code>guard="session.is_admin"</code> works because role columns ride into the session.</p>
+
+    <h2 id="data">Data sources — one block, four worlds</h2>
+    <p>Named sources are page data with no endpoint exposed — what most pages actually want:</p>
+    <pre spark-ignore>&lt;spark-ssr&gt;
+  posts   = SELECT * FROM posts WHERE published = 1 ORDER BY created_at DESC
+  author  = SELECT id, name, bio FROM users LIMIT 1
+  repo    = https://api.github.com/repos/wilkinnovo/spark-html
+  entries = ./content/posts/*.md
+  weather = ./lib/weather.js
+&lt;/spark-ssr&gt;</pre>
+    <ul>
+      <li><strong>SQL</strong> — <code>:</code> params inject automatically: path params (<code>:slug</code>), query string (<code>:q</code>), body (<code>:body.title</code>), session (<code>:session.id</code>), headers, uploads (<code>:file.url</code>). All parameterized, always.</li>
+      <li><strong>URL</strong> — a server-side fetch, JSON parsed, params interpolate.</li>
+      <li><strong>Glob</strong> — files become rows: front-matter → columns, body → <code>.body</code>, filename → <code>.slug</code>. A blog with no database at all.</li>
+      <li><strong>Module</strong> — <code>export default (req, db) =&gt; value</code>. Any ORM, any API, any computation — the escape hatch with a declarative front door.</li>
+    </ul>
+    <p>List conventions ride along free: <code>limit="20"</code> gives <code>?page=</code> (+ <code>{posts.total}</code>/<code>{posts.pages}</code>), <code>?sort=</code> is validated against real columns, <code>search="title,body"</code> powers <code>?q=</code>. <code>&lt;spark-pager for="posts"/&gt;</code> and <code>&lt;spark-search/&gt;</code> are the drop-in, no-JS controls.</p>
+
+    <h2 id="guide-sql">Guide — build a Pinterest-style app (SQL-driven)</h2>
+    <p>This is the shape of <a href="https://github.com/wilkinnovo/spark-html/tree/main/examples/pinterest" target="_blank" rel="noopener"><code>examples/pinterest</code></a> — a real multi-table app (users, boards, pins, saves, follows) built entirely from templates. The whole walkthrough is four steps.</p>
+    <h3>1 · Auth in one line of config</h3>
+    <pre spark-ignore>// spark.json
+{ "db": "sqlite://./dev.db",
+  "auth": { "table": "users", "identity": "email" } }</pre>
+    <p>That alone gives you working <code>/login</code>, <code>/signup</code>, and <code>/logout</code> pages with zero UI written (override any of them by dropping your own <code>pages/login.html</code>). Signup enforces a unique identity and required password <em>server-side</em>; passwords hash on insert and never leave the table.</p>
+    <h3>2 · The layout owns the chrome</h3>
+    <pre spark-ignore>&lt;!-- pages/_layout.html --&gt;
+&lt;link rel="stylesheet" href="/style.css"&gt;
+&lt;div import="/components/nav"&gt;&lt;/div&gt;
+&lt;slot&gt;&lt;/slot&gt;</pre>
+    <p><code>{session}</code> and <code>{path}</code> are ambient on every page — the nav component branches logged-in/logged-out on <code>session</code> without declaring anything.</p>
+    <h3>3 · The home feed is a query and a loop</h3>
+    <pre spark-ignore>&lt;!-- pages/index.html --&gt;
+&lt;title&gt;{q ? 'Search: ' + q : 'Pinspire'}&lt;/title&gt;
+
+&lt;div class="masonry"&gt;
+  &lt;template each="pin in pins" key="pin.id"&gt;
+    &lt;a class="pin-card" href="/pin/{pin.id}"&gt;
+      &lt;img src="{pin.image}" alt="{pin.title}" loading="lazy"&gt;
+      &lt;p&gt;{pin.title} — {pin.owner_name}&lt;/p&gt;
+    &lt;/a&gt;
+  &lt;/template&gt;
+&lt;/div&gt;
+
+&lt;spark-ssr&gt;
+  pins = SELECT p.*, u.name AS owner_name, u.avatar AS owner_avatar
+         FROM pins p JOIN users u ON u.id = p.user_id
+         WHERE :q IS NULL OR p.title LIKE '%' || :q || '%'
+         ORDER BY p.created_at DESC
+&lt;/spark-ssr&gt;</pre>
+    <p>No script, no handlers — a pure function of <code>(path, query)</code>, which makes this page a <strong>response-cache candidate</strong> in production: served at in-memory-string speed, invalidated automatically when a write touches its tables.</p>
+    <h3>4 · A detail page: param, auto-404, no-JS writes</h3>
+    <pre spark-ignore>&lt;!-- pages/pin/[id].html --&gt;
+&lt;title&gt;{pin.title} · Pinspire&lt;/title&gt;
+&lt;img src="{pin.image}" alt="{pin.title}"&gt;
+
+&lt;form action="/api/saves" method="post" flash="Saved!"&gt;
+  &lt;input type="hidden" name="pin_id" value="{pin.id}"&gt;
+  &lt;button&gt;Save&lt;/button&gt;
+&lt;/form&gt;
+
+&lt;spark-ssr&gt;
+  pin = SELECT p.*, u.name AS owner_name FROM pins p
+        JOIN users u ON u.id = p.user_id WHERE p.id = :id LIMIT 1
+&lt;/spark-ssr&gt;</pre>
+    <p>A missing pin 404s by itself (single-row lookup, empty result). The save button is a plain form — it works with JavaScript disabled, redirects back, and <code>flash="Saved!"</code> survives the redirect as a one-shot toast. Uploads are the same story: a multipart form streams to <code>uploads/</code> and <code>:file.url</code> binds the stored URL into the INSERT.</p>
+    <p>Then <code>bun spark-ssr db</code> shows the schema all of this implied, and <code>bun spark-ssr</code> already created it at startup. That's the app.</p>
+
+    <h2 id="guide-md">Guide — markdown &amp; module data (no database at all)</h2>
+    <p>spark-ssr doesn't assume SQL. Two shapes cover most database-free sites:</p>
+    <h3>A markdown blog in one page</h3>
+    <pre spark-ignore>&lt;!-- pages/index.html --&gt;
+&lt;template each="post in posts"&gt;
+  &lt;a href="/blog/{post.slug}"&gt;&lt;h2&gt;{post.title}&lt;/h2&gt;&lt;p&gt;{post.excerpt}&lt;/p&gt;&lt;/a&gt;
+&lt;/template&gt;
+
+&lt;spark-ssr&gt;
+  posts = ./content/posts/*.md
+&lt;/spark-ssr&gt;
+
+&lt;!-- pages/blog/[slug].html --&gt;
+&lt;title&gt;{post.title}&lt;/title&gt;
+&lt;article&gt;{post.body}&lt;/article&gt;
+
+&lt;spark-ssr&gt;
+  post = ./content/posts/:slug.md
+&lt;/spark-ssr&gt;</pre>
+    <p>Front-matter keys become columns, the body is <code>.body</code>, the filename is <code>.slug</code>, and a missing slug 404s automatically. Glob sources re-read only files whose mtime moved. Add markdown files, get pages — <code>/sitemap.xml</code> enumerates them for free.</p>
+    <h3>Module sources — the TabTube shape</h3>
+    <p><a href="https://github.com/wilkinnovo/spark-html/tree/main/examples/tabtube" target="_blank" rel="noopener"><code>examples/tabtube</code></a> is a YouTube search/watch app with <strong>zero database and zero custom endpoints</strong> — every source is a JS module:</p>
+    <pre spark-ignore>&lt;!-- pages/index.html (abridged) --&gt;
+&lt;input bind:value="q" oninput={search} placeholder="Search"&gt;
+&lt;template each="video in results"&gt;
+  &lt;div class="card" onclick={play(video)}&gt;{video.title}&lt;/div&gt;
+&lt;/template&gt;
+
+&lt;script&gt;
+  async function search() { refresh(); }   // re-runs every source with ?q
+&lt;/script&gt;
+
+&lt;spark-ssr&gt;
+  results     = ./lib/search.js
+  suggestions = ./lib/suggestion.js
+&lt;/spark-ssr&gt;</pre>
+    <pre spark-ignore>// lib/search.js — any code you want; req.query.q is the live search box
+export default async (req) =&gt; {
+  if (!req.query.q) return [];
+  return await searchYouTube(req.query.q);   // your code, any API, any ORM
+};</pre>
+    <p>The page server-renders for real (a shareable <code>/?q=…</code> URL needs no JS), then hydrates; the client's re-search goes through the ambient <code>refresh()</code>, which re-runs the same modules with the current query string. Hydration is <strong>source-agnostic</strong> — SQL, markdown, URLs, and modules all hydrate and refresh identically.</p>
+
+    <h2 id="interactive">Interactive pages — scripts, helpers, synthesized handlers</h2>
+    <p>A page with handlers or binds that declares data <strong>hydrates</strong>: full HTML first, then the same spark-html runtime takes over. Its <code>&lt;script&gt;</code> becomes the client component, with four ambient helpers in scope — <code>api_create(body)</code>, <code>api_update(id, body)</code>, <code>api_delete(id)</code>, and <code>refresh()</code>. Any handler the template references but you didn't write is <strong>synthesized</strong>, so an admin page is just its custom bits. <code>&lt;spark-ssr auto="none"&gt;</code> turns synthesis off.</p>
+    <p class="note">One deliberate limit: on a hydrating page that script runs on the <em>client only</em> — the server renders from the data sources alone. Compute display fields (formatted dates, counts) in the data source, not the page script, or the first paint won't have them. A page with no handlers keeps the classic escape hatch: its plain <code>&lt;script&gt;</code> runs on the server.</p>
+    <p>Add <code>live</code> to any table block and every write through the server pings hydrated pages over SSE — every open tab refetches through its own session, scoping intact. No socket code.</p>
+
+    <h2 id="auth">Auth &amp; sessions</h2>
+    <p>Built-in email/password sessions: <code>POST /api/users?auth</code> logs in, passwords hash on insert, sessions are HMAC-signed <code>HttpOnly; SameSite=Lax</code> cookies (<code>Secure</code> over HTTPS). Configuring <code>auth</code> gives you working <code>/login</code>, <code>/signup</code>, <code>/logout</code> pages with zero UI. Signup rejects a duplicate identity (409, friendly message) and enforces identity + password presence server-side — the built-in screens hold themselves to the same rules your forms get.</p>
+    <p>Tables with a <code>user_id</code> column are scoped automatically (<code>WHERE user_id = :session.id</code>); an <code>is_admin</code>/<code>role</code> column rides into the session so <code>guard="session.is_admin"</code> just works, and admins read scoped tables unscoped. OAuth or magic links? <code>auth.plugin</code> answers "who is this person?" — the framework still does sessions and cookies.</p>
+
+    <h2 id="forms">Forms without JavaScript</h2>
+    <pre spark-ignore>&lt;form action="/api/posts" method="post" redirect="/admin" flash="Draft saved"&gt;
+  &lt;input name="title" required maxlength="120"&gt;
+  &lt;textarea name="body"&gt;&lt;/textarea&gt;
+  &lt;button&gt;Save draft&lt;/button&gt;
+&lt;/form&gt;</pre>
+    <p>A plain form post that succeeds 303s back (the app works with JavaScript disabled); a failed one re-renders the page with <code>{errors.title}</code> and <code>{values.title}</code> in scope. <strong>The form is the validator</strong>: <code>required</code>, <code>maxlength</code>, <code>min</code>/<code>max</code>, <code>type="email"</code>, <code>pattern</code> — the constraints you wrote for the browser run again on the server before the write. Violations answer <code>422</code>.</p>
+
+    <h2 id="schema">The template is the schema</h2>
+    <pre spark-ignore>bun spark-ssr db          # inferred schema vs live DB — a diff
+bun spark-ssr db push     # apply additive changes
+bun spark-ssr db push --force   # …and destructive ones (retype/drop)</pre>
+    <p><code>serve</code> runs the safe half automatically — missing tables are created and <code>seed="./seed/x.json"</code> files applied (once, idempotently) at startup, so a fresh clone runs on <code>bun spark-ssr</code> alone. Destructive changes never happen implicitly: a retype or column drop is reported by <code>db diff</code> and requires <code>--force</code>; on SQLite a forced retype rebuilds the table and copies rows across — it never silently drops data.</p>
+
+    <h2 id="jobs">Background jobs &amp; mail</h2>
+    <pre spark-ignore>&lt;spark-ssr job="digest"  every="1d" /&gt;          &lt;!-- jobs/digest.js on a schedule --&gt;
+&lt;spark-ssr job="onOrder" on="insert:orders" /&gt;  &lt;!-- after every matching write --&gt;</pre>
+    <p>A job is a module with the same shape as a data source — <code>export default (req, db) =&gt; …</code>, with the affected row on <code>req.row</code> for write-triggered jobs. Mail is one config line (a module or a webhook); <code>mail()</code> is ambient in every page/api/middleware script and on <code>req.mail</code> in jobs — with nothing configured it logs, so it always resolves.</p>
+
+    <h2 id="perf">Performance — fast by default</h2>
+    <ul>
+      <li><strong>Precompiled render programs</strong> — every page/component parses once (mtime-invalidated) into a flat program; a request is a string-emitting loop. No DOM, no re-parse, no serializer per request. A 1,000-row page renders in ~6 ms.</li>
+      <li><strong>Full-page response cache</strong> — in production, anonymous GETs of pure <code>(path, query)</code> pages serve straight from memory, auto-detected, invalidated by the same write hooks that power <code>live</code>. Requests carrying a session cookie always bypass it.</li>
+      <li><strong>Streaming</strong> — production list pages flush the <code>&lt;head&gt;</code> immediately and stream rows as they render.</li>
+      <li><strong>Batched relations</strong> — a 50-post page with comments is one <code>WHERE post_id IN (…)</code>, not 50 queries.</li>
+    </ul>
+    <p>The 1.0 release gate re-measured all of it: ~7,300–7,500 req/s on the 1,000-row benchmark page, above the baseline the suite defends. <code>test/bench.js</code> runs the whole battery — latency percentiles and RSS, not just throughput.</p>
+
+    <h2 id="security">Security</h2>
+    <p>spark-ssr ships auth, sessions, SQL, uploads, and file serving — it's treated as a security product with a framework attached. The audited posture lives in <a href="https://github.com/wilkinnovo/spark-html/blob/main/packages/spark-ssr/SECURITY.md" target="_blank" rel="noopener"><code>SECURITY.md</code></a>, and every claim is pinned by a test that <em>fails if the protection is removed</em>: signed sessions with timing-safe verification, no open redirects or header injection through <code>_redirect</code>/<code>?next</code>, fully parameterized SQL with allowlisted <code>?sort</code> columns, no path traversal, server-only trees never served, body-size caps (413), per-IP login rate limiting (429), unique-identity signup, and a production server that refuses to start with auth configured but no secret.</p>
+
+    <h2 id="deploy">Deploy</h2>
+    <pre spark-ignore>bun spark-ssr build            # dist/ with a compiled single binary
+bun spark-ssr build --docker   # …plus a Dockerfile: copy, run
+bun spark-ssr start            # production: watch + live reload off, cache + streaming on</pre>
+    <p class="note">Spark 1.0 shipped with its release gate in public view: 100,000/100,000 fuzz scenarios clean, benchmarks above baseline, e2e green, and a security suite where every protection has a test that fails without it. The docs you just read describe the stable 1.x surface — see the <a href="https://github.com/wilkinnovo/spark-html/blob/main/V1-API-FREEZE.md" target="_blank" rel="noopener">API freeze document</a> for what's stable vs experimental.</p>
+  </main>
+</div>
+
+<script>
+  let pageTitle = 'Spark — Full-stack SSR';
+  let pageDescription = 'spark-ssr — zero-config full-stack Spark: the template is the backend. Inferred schema, REST API, auth, forms, jobs, markdown and module data sources.';
+  onMount(() => {
+    if (typeof window !== 'undefined' && window.highlightAll) window.highlightAll();
+    const links = [...document.querySelectorAll('.docs aside a')];
+    const byId = new Map();
+    links.forEach((a) => { const h = a.getAttribute('href') || ''; if (h[0] === '#') byId.set(h.slice(1), a); });
+    const heads = [...document.querySelectorAll('.docs main [id]')].filter((h) => byId.has(h.id));
+    if (!heads.length) return;
+    let lockUntil = 0;
+    function setActive(id) {
+      links.forEach((a) => a.classList.remove('active'));
+      const a = byId.get(id);
+      if (a) a.classList.add('active');
+    }
+    function spy() {
+      if (Date.now() < lockUntil) return;
+      let current = heads[0].id;
+      for (const h of heads) {
+        if (h.getBoundingClientRect().top <= 120) current = h.id; else break;
+      }
+      setActive(current);
+    }
+    spy();
+    window.addEventListener('scroll', spy, { passive: true });
+    links.forEach((a) => a.addEventListener('click', () => {
+      const h = a.getAttribute('href') || '';
+      if (h[0] === '#') { setActive(h.slice(1)); lockUntil = Date.now() + 900; }
+    }));
+    return () => window.removeEventListener('scroll', spy);
+  });
+</script>
+
+<style>
+  .docs {
+    padding: 56px 0 90px;
+    display: grid; grid-template-columns: 190px minmax(0, 1fr); gap: 48px; align-items: start;
+  }
+  aside { position: sticky; top: 24px; display: flex; flex-direction: column; gap: 1px; }
+  .aside-title { font-size: 11px; text-transform: uppercase; letter-spacing: .12em; color: var(--muted-dim); margin-bottom: 12px; }
+  aside a { color: var(--muted); font-size: 13.5px; padding: 5px 0; transition: color .12s; }
+  aside a:hover { color: var(--text); }
+  aside a.active { color: var(--spark-ink); font-weight: 700; }
+  main { min-width: 0; }
+  h1 { font-size: clamp(30px, 5vw, 40px); letter-spacing: -.03em; font-weight: 800; margin-bottom: 10px; }
+  .intro { color: var(--muted); font-size: 16px; max-width: 62ch; }
+  h2 { font-size: 20px; margin: 46px 0 14px; padding-top: 22px; border-top: 1px solid var(--border); letter-spacing: -.01em; scroll-margin-top: 24px; font-weight: 700; }
+  h3 { font-size: 16px; margin: 26px 0 10px; font-weight: 700; }
+  p { margin: 10px 0; font-size: 14.5px; color: var(--muted); max-width: 70ch; line-height: 1.75; }
+  p strong { color: var(--text); font-weight: 600; }
+  ul { margin: 10px 0 10px 18px; color: var(--muted); font-size: 14.5px; max-width: 70ch; line-height: 1.75; }
+  li { margin: 6px 0; }
+  .note { border-left: 2px solid var(--spark); background: var(--surface); padding: 12px 16px; font-size: 14px; color: var(--muted); margin: 14px 0; }
+  code { font-size: 13px; background: var(--surface-2); padding: 2px 6px; color: var(--spark-ink); }
+  pre { background: var(--surface); border: 1px solid var(--border); padding: 16px 18px; font-size: 13px; line-height: 1.7; color: var(--muted); overflow-x: auto; margin: 14px 0; white-space: pre; }
+  pre code { background: none; padding: 0; color: inherit; }
+  table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 14px; }
+  th, td { text-align: left; padding: 10px 14px; border-bottom: 1px solid var(--border); vertical-align: top; color: var(--muted); }
+  th { font-size: 11px; text-transform: uppercase; letter-spacing: .1em; color: var(--muted-dim); font-weight: 500; }
+  td:first-child { color: var(--text); }
+  td code { white-space: nowrap; }
+  main a { color: var(--spark-ink); }
+  @media (max-width: 800px) {
+    .docs { grid-template-columns: 1fr; gap: 24px; }
+    aside { position: static; flex-direction: row; flex-wrap: wrap; gap: 6px 14px; }
+    aside a { padding: 2px 0; }
+    table { display: block; overflow-x: auto; }
+  }
+</style>

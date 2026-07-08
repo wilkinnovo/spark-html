@@ -48,7 +48,7 @@ bun add -d spark-html-bun</pre>
     <h3 id="no-build">No build, no install</h3>
     <p>Because components are fetched at runtime and the runtime is a single ES module, you can use Spark with <strong>zero tooling</strong> — straight from a CDN with an import map. No install, no bundler, no compiler:</p>
     <pre spark-ignore>&lt;script type="importmap"&gt;
-  { "imports": { "spark-html": "https://esm.sh/spark-html@0.27" } }
+  { "imports": { "spark-html": "https://esm.sh/spark-html@1" } }
 &lt;/script&gt;
 
 &lt;div import="components/counter"&gt;&lt;/div&gt;
@@ -463,12 +463,12 @@ cd myapp &amp;&amp; bun install &amp;&amp; bun dev</pre>
     <table>
       <tr><th>Limit</th><th>Detail</th></tr>
       <tr><td>One scope per component</td><td>All top-level declarations share the component scope. JS <code>import</code> statements are supported (transformed to dynamic imports); <code>import.meta</code> is not available inside component scripts.</td></tr>
-      <tr><td>Block scoping</td><td><code>let</code>/<code>const</code> with a simple identifier inside functions hoist to component scope. Destructuring declarations are untouched and stay local.</td></tr>
+      <tr><td>Block scoping</td><td>Only <em>top-level</em> <code>let</code>/<code>const</code> declarations become component state. Inside a function body they are true block-scoped locals, and destructuring declarations stay local everywhere.</td></tr>
       <tr><td>Reactivity depth</td><td>Plain objects/arrays are deeply reactive, and <code>Map</code>/<code>Set</code> mutations (<code>set</code>/<code>add</code>/<code>delete</code>/<code>clear</code>) are tracked too. Class instances and <code>Date</code> are not — reassign the variable to update.</td></tr>
       <tr><td>Loop reconciliation</td><td>Reuse is positional by default; reordering a list without a <code>key</code> keeps nodes in place and rewrites their contents. Add <code>key="…"</code> for identity-stable moves.</td></tr>
-      <tr><td>Code-shaped strings</td><td>The script rewriter is not string-aware: a multiline string that <em>looks like</em> JS declarations (live-editor sources, executable snippets) can be rewritten inside the string. Keep such strings in imported <code>.js</code> modules; display-only samples in markup are fine under <code>spark-ignore</code>.</td></tr>
+      <tr><td>The rewriter is a scanner, not a parser</td><td>It is string- and comment-aware: code-shaped text inside string literals stays byte-intact. The one construct it cannot parse is a regex literal containing a quote character — that case warns loudly and names the fix (move the regex to an imported <code>.js</code> module). Display-only samples in markup are fine under <code>spark-ignore</code>.</td></tr>
       <tr><td>Coarse store updates</td><td>Stores are deeply reactive (an in-place <code>cart.items.push(x)</code> notifies every subscriber), but each notification re-renders subscribers with a full (cheap) pass — store reads aren't tracked per key the way component-local state is. For shared computed values, <code>derived()</code> recomputes once and only notifies when a key actually changes (memoized).</td></tr>
-      <tr><td>SSR hydration &amp; components</td><td>On a <code>spark-ssr</code> page that hydrates, a loop row passed into a child component's prop (<code>&lt;div import="/card" post="{p}"&gt;</code> <em>inside</em> an <code>each</code>) doesn't survive the client re-render — inline the markup in the loop instead. Static (non-hydrating) pages and top-level component props are unaffected.</td></tr>
+      <tr><td>Hydrating SSR pages never run their script on the server</td><td>On an <em>interactive</em> <code>spark-ssr</code> page (handlers or binds), the page's own <code>&lt;script&gt;</code> becomes the client component and executes on the client only — the server renders from the data sources alone. Compute display fields (formatted dates, counts, derived text) in the data source (SQL expression or module source), or the first paint won't have them. A non-interactive page keeps the escape hatch: its plain <code>&lt;script&gt;</code> runs on the server. By design, permanent.</td></tr>
       <tr><td>SSR response cache &amp; writes outside the server</td><td>In production, spark-ssr's full-page cache is invalidated by writes <em>through the server</em> (its API or SQL routes). A row changed directly in the database by another process stays invisible on cached public pages until the TTL lapses (60&nbsp;s default — set <code>"responseCache"</code> in spark.json, or <code>false</code> to disable).</td></tr>
     </table>
   </main>
