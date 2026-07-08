@@ -31,8 +31,8 @@ npm. Every package README carries a family compatibility table (added in the
 | font | 0.1.4 | |
 | manifest | 0.1.5 | |
 | sri | 0.1.3 | Subresource integrity. |
-| language-server | 0.2.1 | SSR-aware since 0.2.0: page detection, ssrVars/singular matching, ambient globals, synthesized-handler suppression. Planned diagnostics: frozen-prop footgun, SSR-script-only identifier. |
-| prettier-plugin-spark | 0.1.4 | Formatting for .html SFCs. |
+| language-server | 1.1.0 | SSR-aware since 0.2.0 (page detection, ssrVars/singular matching, ambient globals, synthesized-handler suppression). 1.1.0: semanticTokens/full for <spark-ssr> bodies (src/semantic.js — SQL/params/sources/routes) + textDocument/formatting delegating to prettier-plugin-spark when resolvable (zero runtime deps kept). |
+| prettier-plugin-spark | 1.1.0 | Formats <script>/<style> AND <spark-ssr> bodies (formatSsrBody: aligned bindings, clause-broken SQL, quote/comment-aware; oracle-tested against spark-ssr extractBlocks). Markup untouched. |
 
 Editors: `editors/vscode` extension wraps the language server.
 
