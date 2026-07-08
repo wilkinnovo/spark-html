@@ -1,6 +1,6 @@
 {
   "name": "spark-prerender",
-  "version": "1.0.0-rc.3",
+  "version": "1.0.0",
   "description": "Build-time prerender (SEO) for spark-html — reuses the real runtime, no SSR server, no app-code changes.",
   "type": "module",
   "main": "./src/prerender.js",
@@ -42,6 +42,6 @@
   ],
   "license": "MIT",
   "peerDependencies": {
-    "spark-html": ">=1.0.0-rc.1 <2"
+    "spark-html": ">=1.0.0 <2"
   }
 }

@@ -1,6 +1,6 @@
 {
   "name": "spark-html-head",
-  "version": "1.0.0-rc.2",
+  "version": "1.0.0",
   "description": "Reactive document <title> and <meta> per route for spark-html — one line, no dependencies.",
   "type": "module",
   "main": "./src/index.js",
@@ -37,6 +37,6 @@
   ],
   "license": "MIT",
   "peerDependencies": {
-    "spark-html": ">=1.0.0-rc.1 <2"
+    "spark-html": ">=1.0.0 <2"
   }
 }

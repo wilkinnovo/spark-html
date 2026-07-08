@@ -1,6 +1,6 @@
 {
   "name": "prettier-plugin-spark",
-  "version": "1.0.0-rc.2",
+  "version": "1.0.0",
   "description": "Prettier plugin for spark-html single-file components — formats the <script> and <style> blocks and leaves your markup byte-for-byte untouched (so {interpolations} and onclick={handlers} are never corrupted).",
   "type": "module",
   "main": "index.js",

@@ -1,6 +1,6 @@
 {
   "name": "spark-html-offline",
-  "version": "1.0.0-rc.2",
+  "version": "1.0.0",
   "description": "Offline-capable URL imports for spark-html — a tiny service worker that caches CDN-imported components on first fetch and serves them when the network is gone. Zero dependencies.",
   "type": "module",
   "main": "./src/index.js",

@@ -1,6 +1,6 @@
 {
   "name": "create-spark-html-app",
-  "version": "1.0.0-rc.2",
+  "version": "1.0.0",
   "description": "Scaffold a spark-html app — dev/build/preview on Bun",
   "type": "module",
   "bin": {

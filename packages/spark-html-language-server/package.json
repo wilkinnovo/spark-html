@@ -1,6 +1,6 @@
 {
   "name": "spark-html-language-server",
-  "version": "1.0.0-rc.2",
+  "version": "1.0.0",
   "description": "Language server (LSP) for spark-html single-file components, including spark-ssr pages — diagnostics (undefined bindings, unused imports, script errors, missing key), spark-ssr-aware inferred page data & ambient helpers, go-to-definition for component imports and symbols, prop autocomplete from export let, and hover docs for every directive. Zero dependencies.",
   "type": "module",
   "main": "./src/index.js",

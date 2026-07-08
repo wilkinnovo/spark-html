@@ -1,6 +1,6 @@
 {
   "name": "spark-html-devtools",
-  "version": "1.0.0-rc.2",
+  "version": "1.0.0",
   "description": "A tiny in-page devtools panel for spark-html — live store state, component tree, and patch activity.",
   "type": "module",
   "main": "./src/index.js",
@@ -31,6 +31,6 @@
   ],
   "license": "MIT",
   "peerDependencies": {
-    "spark-html": ">=1.0.0-rc.1 <2"
+    "spark-html": ">=1.0.0 <2"
   }
 }

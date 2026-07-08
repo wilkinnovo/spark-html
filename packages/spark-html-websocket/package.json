@@ -1,6 +1,6 @@
 {
   "name": "spark-html-websocket",
-  "version": "1.0.0-rc.2",
+  "version": "1.0.0",
   "description": "Declarative WebSocket for spark-html — a reactive store with auto-reconnect, JSON parsing, status, and send(). Zero dependencies.",
   "type": "module",
   "main": "./src/index.js",
@@ -24,7 +24,7 @@
     "directory": "packages/spark-html-websocket"
   },
   "peerDependencies": {
-    "spark-html": ">=1.0.0-rc.1 <2"
+    "spark-html": ">=1.0.0 <2"
   },
   "keywords": [
     "spark-html",

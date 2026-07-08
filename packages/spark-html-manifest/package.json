@@ -1,6 +1,6 @@
 {
   "name": "spark-html-manifest",
-  "version": "1.0.0-rc.2",
+  "version": "1.0.0",
   "description": "PWA manifest + icons + offline app shell for spark-html sites from a single config — a spark-html-bun build step that generates manifest.webmanifest, resizes icons, injects the head tags, and optionally emits a minimal service worker.",
   "type": "module",
   "main": "./src/index.js",
