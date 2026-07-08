@@ -47,6 +47,24 @@ tree-wide before components boot; fixed via retry-after-ancestor-ready.
 
 ## Fixed at v1-prep (historical — do not re-report as live)
 
+- **1.0.3 (2026-07-08, found via examples/spark-chat): each/if-CLONED
+  `[import]` placeholder props were corrupted client-side.** Two compounding
+  causes: `buildElementPlan()`'s generic `interp` op ran on the still-
+  unresolved clone (patch() walks it synchronously, before async
+  `hydrateBlockImports()`), stringifying whole-value `{expr}` props via
+  `interpolate()`; then `buildProps()` `coerce()`d the resulting string,
+  whose `'' → true` rule (meant for bare `<div disabled>`) promoted a
+  legitimate empty-string prop to boolean `true` — so `if="photo"` was
+  always truthy for empty avatars. SSR HTML was unaffected, which disguised
+  it as a server/client sync bug. Fix: an unresolved `[import]` node returns
+  an empty element plan (its attributes belong to the import machinery), and
+  `coerce()` only runs on literal attributes or mixed interpolations — a
+  whole single `{expr}` result is used exactly as evaluated. Regression:
+  `test/repro-bugs.js` `test_bug_1_0_2_empty_string_prop`. Related design
+  fact from the same hunt: `name` is a RESERVED import attribute (component
+  identity), silently excluded from props like `import`/`data-spark*` —
+  rename the prop, don't debug it.
+
 - **The rc.3 bugs.md batch (2026-07-07, all test-first):** (1) spark-ssr
   `addRoots()` now treats any `x.foo(` member CALL as list-safe — the
   `ARRAY_LIKE_MEMBERS` allowlist only covers bare property reads; a call
