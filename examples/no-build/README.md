@@ -13,7 +13,7 @@ components/hello.html    ← another, with a prop
 
 ```html
 <script type="importmap">
-  { "imports": { "spark-html": "https://esm.sh/spark-html@0.30" } }
+  { "imports": { "spark-html": "https://esm.sh/spark-html@1" } }
 </script>
 <script type="module">
   import { mount } from 'spark-html';

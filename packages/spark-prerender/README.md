@@ -195,10 +195,11 @@ of throwing. Disable with `stubBrowserGlobals: false`, or extend/override with
 
 Honest limitations:
 
-- **Stores created in `main.js` are not present.** The entry's bootstrap
-  `<script>` is not executed (linkedom doesn't run page scripts); the
-  prerenderer calls `mount()` itself. Components that read a store render with
-  empty state (and warn) — that content is client-rendered.
+- **The entry's own `<script type="module">` IS executed** (as of 1.0): a
+  bootstrap `main.js` doing `store(…); mount()` runs before prerendering, so
+  stores it creates are present in the prerendered HTML, and each page in a
+  batch gets its own isolated runtime instance (no cross-page store leakage).
+  The prerenderer still calls `mount()` afterward — safe and idempotent.
 - **Hydration is supported.** Prerendered HTML carries `import` paths and props
   as attributes (`makeHydratable()`). On the client, `mount()` adopts the
   prerendered DOM in place — it boots each component while detached and swaps
@@ -221,7 +222,7 @@ their web apps. Add only what you use.
 
 | Package | What it does |
 |---|---|
-| [`spark-html`](https://www.npmjs.com/package/spark-html) | The runtime — components, reactivity, stores, forms, scoped styles. ~14.4 kB gzip, 0 deps. |
+| [`spark-html`](https://www.npmjs.com/package/spark-html) | The runtime — components, reactivity, stores, forms, scoped styles. ~14.6 kB gzip, 0 deps. |
 | [`spark-html-bun`](https://www.npmjs.com/package/spark-html-bun) | Dev server, bundler & preview on Bun — scoped HMR, no-build dev, post-build pipeline. |
 | [`spark-html-router`](https://www.npmjs.com/package/spark-html-router) | `<template route>` routing — nested routes/layouts, `route.query`, active links. |
 | [`spark-html-theme`](https://www.npmjs.com/package/spark-html-theme) | Dark/light/system theming in one line — persisted, no flash. |

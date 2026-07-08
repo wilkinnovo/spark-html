@@ -16,7 +16,7 @@ no build step — for people who love hand-writing their web apps.
 </style>
 ```
 
-**~14.4 kB gzipped**.
+**~14.6 kB gzipped**.
 
 ---
 
@@ -330,10 +330,10 @@ on a reused dev port. Zero config; exits non-zero when something needs a look.
 ## Limits
 
 - **One reactive scope per component** — all top-level `let`/`function` declarations share a single proxy scope within each component.
-- **`let`/`const` inside functions** — plain declarations (`let x = 1`) still hoist to component scope. Destructuring (`let {a} = obj`) stays block-local.
+- **Only top-level declarations become component state** — `let`/`const` inside a function body are true block-scoped locals (as of 0.28), and destructuring (`let {a} = obj`) stays local everywhere.
 - **Class instances / `Date`** — not deeply reactive (intentional). Reassign the variable to trigger an update. Plain objects, arrays, `Map`, and `Set` are all tracked.
 - **Loops reconcile by index by default** — add `key="…"` for identity-stable reordering (keeps focus, preserves element state).
-- **Code-shaped strings in scripts** — the declaration rewriter is not string-aware: a multiline string that *looks like* JS (`"let x = 1;"` — live-editor sources, executable snippets) can be rewritten inside the string. Keep such strings in imported `.js` modules; display-only samples in markup are fine under `spark-ignore`.
+- **The script rewriter is a scanner, not a parser** — it is string- and comment-aware (code-shaped text inside string literals stays byte-intact, as of 0.30), with one documented unparseable construct: a regex literal containing a quote character. That case warns loudly and names the fix (move the regex to an imported `.js` module).
 - **CSP** — the runtime uses `new Function` for expressions and event handlers, so a strict Content Security Policy needs `unsafe-eval`. For integrity of what you *load*, [`spark-html-sri`](https://www.npmjs.com/package/spark-html-sri) hashes and verifies assets and URL-imported components.
 - **`import.meta`** — not available inside component scripts (imports are replayed as dynamic `import()`). Bare specifiers need an import map when running without a bundler.
 
@@ -345,7 +345,7 @@ their web apps. Add only what you use.
 
 | Package | What it does |
 |---|---|
-| [`spark-html`](https://www.npmjs.com/package/spark-html) | The runtime — components, reactivity, stores, forms, scoped styles. ~14.4 kB gzip, 0 deps. |
+| [`spark-html`](https://www.npmjs.com/package/spark-html) | The runtime — components, reactivity, stores, forms, scoped styles. ~14.6 kB gzip, 0 deps. |
 | [`spark-html-bun`](https://www.npmjs.com/package/spark-html-bun) | Dev server, bundler & preview on Bun — scoped HMR, no-build dev, post-build pipeline. |
 | [`spark-html-router`](https://www.npmjs.com/package/spark-html-router) | `<template route>` routing — nested routes/layouts, `route.query`, active links. |
 | [`spark-html-theme`](https://www.npmjs.com/package/spark-html-theme) | Dark/light/system theming in one line — persisted, no flash. |
