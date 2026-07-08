@@ -44,6 +44,19 @@
         "spark-html-image": "*",
       },
     },
+    "examples/spark-chat": {
+      "name": "spark-chat",
+      "version": "0.0.0",
+      "dependencies": {
+        "spark-html": "*",
+        "spark-html-font": "*",
+        "spark-html-theme": "*",
+        "spark-ssr": "*",
+      },
+      "devDependencies": {
+        "spark-html-image": "*",
+      },
+    },
     "examples/tabtube": {
       "name": "spark-example-tabtube",
       "version": "0.0.0",
@@ -58,53 +71,53 @@
     },
     "packages/create-spark-html-app": {
       "name": "create-spark-html-app",
-      "version": "1.0.0-rc.2",
+      "version": "1.0.0",
       "bin": {
         "create-spark-html-app": "bin/index.js",
       },
     },
     "packages/prettier-plugin-spark": {
       "name": "prettier-plugin-spark",
-      "version": "1.0.0-rc.2",
+      "version": "1.0.0",
       "peerDependencies": {
         "prettier": "^3.0.0",
       },
     },
     "packages/spark": {
       "name": "spark-html",
-      "version": "1.0.0-rc.3",
+      "version": "1.0.2",
       "bin": {
         "spark-html": "./bin/cli.js",
       },
     },
     "packages/spark-html-bun": {
       "name": "spark-html-bun",
-      "version": "1.0.0-rc.2",
+      "version": "1.0.0",
       "bin": {
         "spark": "./bin/cli.js",
       },
     },
     "packages/spark-html-devtools": {
       "name": "spark-html-devtools",
-      "version": "1.0.0-rc.2",
+      "version": "1.0.0",
       "peerDependencies": {
         "spark-html": ">=1.0.0-rc.1 <2",
       },
     },
     "packages/spark-html-font": {
       "name": "spark-html-font",
-      "version": "1.0.0-rc.2",
+      "version": "1.0.0",
     },
     "packages/spark-html-head": {
       "name": "spark-html-head",
-      "version": "1.0.0-rc.2",
+      "version": "1.0.0",
       "peerDependencies": {
-        "spark-html": ">=1.0.0-rc.1 <2",
+        "spark-html": ">=1.0.0 <2",
       },
     },
     "packages/spark-html-image": {
       "name": "spark-html-image",
-      "version": "1.0.0-rc.2",
+      "version": "1.0.0",
       "dependencies": {
         "linkedom": "^0.18.12",
         "sharp": "^0.34.0",
@@ -112,57 +125,57 @@
     },
     "packages/spark-html-language-server": {
       "name": "spark-html-language-server",
-      "version": "1.0.0-rc.2",
+      "version": "1.0.0",
       "bin": {
         "spark-html-language-server": "bin/cli.js",
       },
     },
     "packages/spark-html-manifest": {
       "name": "spark-html-manifest",
-      "version": "1.0.0-rc.2",
+      "version": "1.0.0",
       "dependencies": {
         "sharp": "^0.34.0",
       },
     },
     "packages/spark-html-motion": {
       "name": "spark-html-motion",
-      "version": "1.0.0-rc.2",
+      "version": "1.0.0",
       "peerDependencies": {
         "spark-html": ">=1.0.0-rc.1 <2",
       },
     },
     "packages/spark-html-offline": {
       "name": "spark-html-offline",
-      "version": "1.0.0-rc.2",
+      "version": "1.0.0",
     },
     "packages/spark-html-persist": {
       "name": "spark-html-persist",
-      "version": "1.0.0-rc.2",
+      "version": "1.0.0",
       "peerDependencies": {
         "spark-html": ">=1.0.0-rc.1 <2",
       },
     },
     "packages/spark-html-query": {
       "name": "spark-html-query",
-      "version": "1.0.0-rc.2",
+      "version": "1.0.0",
       "peerDependencies": {
         "spark-html": ">=1.0.0-rc.1 <2",
       },
     },
     "packages/spark-html-router": {
       "name": "spark-html-router",
-      "version": "1.0.0-rc.2",
+      "version": "1.0.0",
       "peerDependencies": {
         "spark-html": ">=1.0.0-rc.1 <2",
       },
     },
     "packages/spark-html-sri": {
       "name": "spark-html-sri",
-      "version": "1.0.0-rc.2",
+      "version": "1.0.0",
     },
     "packages/spark-html-test-utils": {
       "name": "spark-html-test-utils",
-      "version": "1.0.0-rc.2",
+      "version": "1.0.0",
       "dependencies": {
         "linkedom": "^0.18.12",
       },
@@ -172,21 +185,21 @@
     },
     "packages/spark-html-theme": {
       "name": "spark-html-theme",
-      "version": "1.0.0-rc.2",
+      "version": "1.0.0",
       "peerDependencies": {
-        "spark-html": ">=1.0.0-rc.1 <2",
+        "spark-html": ">=1.0.0 <2",
       },
     },
     "packages/spark-html-websocket": {
       "name": "spark-html-websocket",
-      "version": "1.0.0-rc.2",
+      "version": "1.0.0",
       "peerDependencies": {
         "spark-html": ">=1.0.0-rc.1 <2",
       },
     },
     "packages/spark-prerender": {
       "name": "spark-prerender",
-      "version": "1.0.0-rc.3",
+      "version": "1.0.0",
       "bin": {
         "spark-prerender": "bin/cli.js",
       },
@@ -199,16 +212,16 @@
     },
     "packages/spark-ssr": {
       "name": "spark-ssr",
-      "version": "1.0.0-rc.3",
+      "version": "1.0.0",
       "bin": {
         "spark-ssr": "./bin/cli.js",
       },
       "dependencies": {
         "linkedom": "^0.18.12",
-        "spark-html-head": "^1.0.0-rc.1",
+        "spark-html-head": "^1.0.0",
       },
       "peerDependencies": {
-        "spark-html": ">=1.0.0-rc.1 <2",
+        "spark-html": ">=1.0.0 <2",
       },
     },
     "website": {
@@ -390,6 +403,8 @@
     "sharp": ["sharp@0.34.5", "", { "dependencies": { "@img/colour": "^1.0.0", "detect-libc": "^2.1.2", "semver": "^7.7.3" }, "optionalDependencies": { "@img/sharp-darwin-arm64": "0.34.5", "@img/sharp-darwin-x64": "0.34.5", "@img/sharp-libvips-darwin-arm64": "1.2.4", "@img/sharp-libvips-darwin-x64": "1.2.4", "@img/sharp-libvips-linux-arm": "1.2.4", "@img/sharp-libvips-linux-arm64": "1.2.4", "@img/sharp-libvips-linux-ppc64": "1.2.4", "@img/sharp-libvips-linux-riscv64": "1.2.4", "@img/sharp-libvips-linux-s390x": "1.2.4", "@img/sharp-libvips-linux-x64": "1.2.4", "@img/sharp-libvips-linuxmusl-arm64": "1.2.4", "@img/sharp-libvips-linuxmusl-x64": "1.2.4", "@img/sharp-linux-arm": "0.34.5", "@img/sharp-linux-arm64": "0.34.5", "@img/sharp-linux-ppc64": "0.34.5", "@img/sharp-linux-riscv64": "0.34.5", "@img/sharp-linux-s390x": "0.34.5", "@img/sharp-linux-x64": "0.34.5", "@img/sharp-linuxmusl-arm64": "0.34.5", "@img/sharp-linuxmusl-x64": "0.34.5", "@img/sharp-wasm32": "0.34.5", "@img/sharp-win32-arm64": "0.34.5", "@img/sharp-win32-ia32": "0.34.5", "@img/sharp-win32-x64": "0.34.5" } }, "sha512-Ou9I5Ft9WNcCbXrU9cMgPBcCK8LiwLqcbywW3t4oDV37n1pzpuNLsYiAV8eODnjbtQlSDwZ2cUEeQz4E54Hltg=="],
 
     "smol-jsonp": ["smol-jsonp@1.1.0", "", {}, "sha512-KepnXN97cwVKrQUjkirxhVAuKtwuFMQ7AXZqgIRW9TcLRByie93UPyfUl3uSzY2WpnsiP1P+I7ob1+DrA39aBQ=="],
+
+    "spark-chat": ["spark-chat@workspace:examples/spark-chat"],
 
     "spark-example-basic": ["spark-example-basic@workspace:examples/basic"],
 

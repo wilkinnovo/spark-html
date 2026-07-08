@@ -99,9 +99,47 @@ async function test_bug_0_27_14() {
   console.log('  0.27.14 -- nested each-in-if reconciles after sibling mutation');
 }
 
+// --- 1.0.2 - whole-value {expr} prop coerced '' -> true -----------------
+// Root cause: 0.27.13 made a whole-value {expr} prop (v="{obj}") evaluate
+// directly via evalPropValue instead of going through the string
+// interpolation path, so it stopped being stringified into "[object
+// Object]" — but buildProps() still ran EVERY string-typed result through
+// coerce(), and coerce('') means "bare boolean attribute" (e.g. <div
+// disabled>, attr.value === '' with no {} at all). An {expr} that legally
+// evaluates to the empty string — e.g. photo="{c.avatar}" inside an
+// each-loop where c.avatar is '' — got silently upgraded to `true`, a
+// completely different value/type than what the data source produced.
+// Found building examples/spark-chat: an avatar component's `if="photo"`
+// always took the truthy branch for users with no photo, because `photo`
+// arrived as boolean `true`, never the empty string that was actually
+// selected. Server-rendered HTML (curl) was unaffected — SSR's page.js
+// evaluates page-level data sources independently of buildProps() — only
+// client-side hydration/mount of an IMPORTED COMPONENT went through this
+// code path, so the SSR-vs-browser split made it easy to misdiagnose as a
+// server/client sync issue rather than an attribute-coercion bug.
+// Fixed by: buildProps() only calls coerce() on a literal (non-{}) attribute
+// or a MIXED interpolation ("{a}-{b}", always a real string) — a WHOLE
+// single {expr} result is used exactly as evaluated, string or not.
+async function test_bug_1_0_2_empty_string_prop() {
+  component('inner102', '<p class="pv">[{typeof photo}:{photo}]</p><script>let photo = props.photo;</script>');
+  component('bug102', '<template each="c in items">' +
+    '<div import="inner102" photo="{c.photo}"></div>' +
+    '</template>' +
+    "<script>let items = [{ photo: '' }, { photo: 'x.png' }];</script>");
+  body.childNodes = [];
+  parseHTML('<div import="bug102"></div>', body);
+  await mount();
+  await new Promise(r => setTimeout(r, 10));
+  var pvs = body.querySelectorAll('.pv');
+  assert.equal(pvs.length, 2, '1.0.2: both rows must render');
+  assert.equal(pvs[0].textContent, '[string:]', "1.0.2: '' prop must stay the empty string, not become boolean true");
+  assert.equal(pvs[1].textContent, '[string:x.png]', '1.0.2: a real string prop must still work');
+  console.log('  1.0.2 -- empty-string {expr} prop is not coerced to true');
+}
+
 // --- Run ---------------------------------------------------------------
 var passed = 0, failed = 0;
-var fns = [test_bug_0_27_12, test_bug_0_27_13, test_bug_0_27_14];
+var fns = [test_bug_0_27_12, test_bug_0_27_13, test_bug_0_27_14, test_bug_1_0_2_empty_string_prop];
 for (var i = 0; i < fns.length; i++) {
   try {
     await fns[i]();

@@ -149,12 +149,12 @@ function dismissOverlay() {
 
 // ─── Expression evaluation (split to src/expr.js) ──────────────────────
 // compileExpr, runExpr, evaluate, execute, interpEnd, parseTemplate,
-// interpolate, evalPropValue — the compile/cache/run pipeline and template
+// interpolate — the compile/cache/run pipeline and template
 // interpolation. Imports skipString from ./script.js and warnOnce/reportError
 // from here (circular import, safe: function declarations hoisted in ESM).
 import {
   compileExpr, compileStmt, runExpr, evaluate, execute,
-  interpEnd, exprSemicolons, parseTemplate, interpolate, evalPropValue,
+  interpEnd, exprSemicolons, parseTemplate, interpolate,
 } from './expr.js';
 
 // Name of the component that owns `el` (nearest [name] ancestor, or itself).
@@ -300,13 +300,29 @@ export function buildProps(node, scope, host) {
       host.setAttribute(attr.name, scope && brace ? interpolate(attr.value, scope) : attr.value);
       continue;
     }
-    const val = scope && brace ? evalPropValue(attr.value, scope) : attr.value;
-    // Only a genuine STRING needs coerce()'s "true"/"false"/number/JSON
-    // parsing (that's for plain HTML attribute text, e.g. a literal
-    // `count="3"` or an interpolated `class`-style mixed template) — a
-    // whole-value expression that already evaluated to a real array,
-    // object, function, number, or boolean is passed through as-is.
-    props[attr.name] = typeof val === 'string' ? coerce(val) : val;
+    // A WHOLE single {expr} attribute (e.g. photo="{c.avatar}") is already
+    // fully typed by runExpr — including when it evaluates to a string, and
+    // including the empty string. It must NOT go through coerce(): coerce's
+    // `'' → true` rule exists for a genuinely bare literal attribute (e.g.
+    // `<div disabled>`, attr.value === '' with no `{}` at all) — an
+    // evaluated prop that merely happens to equal '' is not that, and
+    // silently promoting it to `true` corrupts any prop whose real value is
+    // falsy-but-defined (an empty string, 0, ""). Only a literal attribute
+    // string or a MIXED interpolation (`"{a}-{b}"`, always a real string)
+    // goes through coerce()'s "true"/"false"/number/JSON text parsing.
+    let val, wholeExpr = false;
+    if (scope && brace) {
+      const segs = parseTemplate(attr.value);
+      if (segs.length === 1 && typeof segs[0] === 'object') {
+        val = runExpr(segs[0].fn, segs[0].code, scope);
+        wholeExpr = true;
+      } else {
+        val = interpolate(attr.value, scope);
+      }
+    } else {
+      val = attr.value;
+    }
+    props[attr.name] = (!wholeExpr && typeof val === 'string') ? coerce(val) : val;
   }
   if (pending) host.__sparkPend = node;
   // Capture parent-scope deps for whole-value {expr} props so they can
@@ -1007,6 +1023,22 @@ import {
 function buildElementPlan(el) {
   const plan = [];
   let live = false;
+  // An unresolved [import] placeholder's attributes are exclusively the
+  // import machinery's territory (buildProps evaluates them as typed
+  // whole-value props) — never the generic patcher's. Top-level imports
+  // never reach here (mount() resolves them into named component hosts,
+  // which walkNode's component-boundary check skips, BEFORE patch() ever
+  // walks that subtree). But an each/if-CLONED import placeholder IS
+  // walked by patch() synchronously, before hydrateBlockImports resolves
+  // it asynchronously — so without this guard, the generic `interp` op
+  // below would stringify a prop like photo="{c.avatar}" into a plain
+  // attribute (always a string, via interpolate()) BEFORE buildProps ever
+  // saw the original {expr}, permanently losing whether it was a whole
+  // typed expression. Found via examples/spark-chat: an empty-string photo
+  // prop survived long enough to get corrupted here, then coerce()'d to
+  // boolean `true` in buildProps — see that fix's comment for the rest of
+  // the chain.
+  if (el.hasAttribute && el.hasAttribute('import')) return plan;
   // Pre-scan: a <form bind:form> captures its onsubmit handler up front and
   // strips the attribute, so neither the generic on-handler nor the attribute-
   // interpolation path touches it — bind:form owns the submit lifecycle.

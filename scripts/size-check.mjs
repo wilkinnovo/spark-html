@@ -19,9 +19,11 @@ const LIMIT_KB = 15.0; // budget raised once at M1 (v1 plan §2). Allocation:
 // Past bumps: ~11.2KB after 0.22.x; +0.1KB for top-level-import prop fix; +0.1KB for import query-string survival; +0.1KB for leaveNode() recursive teardown; +0.1KB for braceDepths(); +0.1KB for evalPropValue() real-type preservation; +0.29KB for reactive whole-value {expr} props (M2.1, 0.29.0).
 // FROZEN AT 1.0.0 (2026-07-07) for the life of 1.x — "it doesn't fit" now has
 // exactly one answer: a sibling package. Margin spends into the last 0.5 KB
-// (arrow-handler warn +0.14, app-root import fix +0.10 → 14.63 used, 0.37
-// headroom) were blessed by Wilkin at the 1.0.0 promotion — both loud-failure/
-// correctness, the exact category the margin existed for.
+// (arrow-handler warn +0.14, app-root import fix +0.10, app-base 1.0.2 fix
+// +0.01, each-cloned-import-prop coercion fix (buildElementPlan `[import]`
+// guard + buildProps whole-expr coerce fix) +0.02 → ~14.66 used, ~0.34
+// headroom) — all correctness/loud-failure, the exact category the margin
+// existed for.
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const entry = join(root, 'packages/spark/src/index.js');
