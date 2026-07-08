@@ -1,0 +1,16 @@
+<title>Log in · sparkShare</title>
+<meta name="robots" content="noindex">
+
+<form class="panel auth-form" action="/api/users?auth" method="post" redirect="/dashboard">
+  <h2>Log in</h2>
+  <label>Email
+    <input type="email" name="email" autocomplete="username" required autofocus>
+  </label>
+  <label>Password
+    <input type="password" name="password" autocomplete="current-password" required>
+  </label>
+  <button>Log in</button>
+  <template if="errors"><p class="error">Wrong email or password.</p></template>
+  <p class="hint">Try it: ava@sparkshare.dev / spark</p>
+  <p class="alt">Need an account? <a href="/signup">Sign up</a></p>
+</form>

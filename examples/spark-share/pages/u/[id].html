@@ -1,0 +1,36 @@
+<title>{owner ? owner.name : 'Not found'} · sparkShare</title>
+<meta name="description" content="{owner ? owner.bio : 'This profile does not exist.'}">
+
+<template if="owner">
+  <header class="hero profile-head">
+    <template if="owner.avatar"><img class="avatar" src="{owner.avatar}" alt="{owner.name}" width="88" height="88"></template>
+    <template else><span class="avatar initials big">{owner.name[0]}</span></template>
+    <div>
+      <h1>{owner.name}</h1>
+      <p class="lede">{owner.bio}</p>
+    </div>
+  </header>
+
+  <main>
+    <div class="doc-grid">
+      <template each="doc in docs" key="doc.id">
+        <div import="/components/doc-card" doc="{doc}"></div>
+      </template>
+    </div>
+    <template if="docs.length === 0">
+      <p class="empty">No public files yet.</p>
+    </template>
+  </main>
+</template>
+<template else status="404">
+  <article class="share-view">
+    <h1>Not found</h1>
+    <p>No such profile.</p>
+    <p><a href="/">← Back to sparkShare</a></p>
+  </article>
+</template>
+
+<spark-ssr>
+  owner = SELECT id, name, bio, avatar FROM users WHERE id = :id LIMIT 1
+  docs = ./lib/public-documents.js
+</spark-ssr>

@@ -1,0 +1,36 @@
+<title>sparkShare — share files, the simple way</title>
+<meta name="description" content="Upload, organize and share any file with a private or public link. Built on spark-ssr — no build step, no framework tax.">
+
+<template if="!me">
+  <header class="hero">
+    <div>
+      <p class="eyebrow">⚡ powered by spark-ssr</p>
+      <h1>Your files. One link away.</h1>
+      <p class="lede">Upload any document, image, video or audio file. Share it privately with a
+        unique link, or make it public and show it off on your profile. No build step, no
+        third-party storage — just HTML that infers its own backend.</p>
+      <div class="hero-actions">
+        <a class="cta" href="/signup">Get started free</a>
+        <a class="ghost-link" href="/login">Log in</a>
+      </div>
+    </div>
+  </header>
+</template>
+
+<main>
+  <section class="discovery">
+    <h2>Recently shared publicly</h2>
+    <div class="doc-grid">
+      <template each="doc in recent" key="doc.id">
+        <div import="/components/doc-card" doc="{doc}"></div>
+      </template>
+    </div>
+    <template if="recent.length === 0">
+      <p class="empty">Nothing public yet — <a href="/signup">sign up</a> and share the first file.</p>
+    </template>
+  </section>
+</main>
+
+<spark-ssr>
+  recent = ./lib/recent-public.js
+</spark-ssr>

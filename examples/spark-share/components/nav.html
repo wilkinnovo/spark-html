@@ -1,0 +1,24 @@
+<!-- Pure UI, no <script> — `me` and `path` are props from the layout. -->
+<nav class="nav">
+  <a class="brand" href="/">⚡ sparkShare</a>
+  <span class="links">
+    <template if="me">
+      <a href="/dashboard" :class="path === '/dashboard' ? 'on' : ''">My files</a>
+      <a href="/u/{me.id}" :class="path.startsWith('/u/') ? 'on' : ''">Profile</a>
+      <a href="/settings" :class="path === '/settings' ? 'on' : ''">Settings</a>
+      <span import="/components/theme-toggle"></span>
+      <span class="avatar-chip">
+        <template if="me.avatar"><img class="mini-avatar" src="{me.avatar}" alt="{me.name}"></template>
+        <template else><span class="mini-avatar initials">{me.name[0]}</span></template>
+      </span>
+      <form action="/api/logout" method="post" redirect="/">
+        <button class="ghost">Sign out</button>
+      </form>
+    </template>
+    <template else>
+      <span import="/components/theme-toggle"></span>
+      <a href="/login" :class="path === '/login' ? 'on' : ''">Log in</a>
+      <a class="cta" href="/signup">Sign up</a>
+    </template>
+  </span>
+</nav>

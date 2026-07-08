@@ -1,0 +1,7 @@
+<button class="ghost toggle" onclick={theme.toggle} aria-label="Toggle theme">
+  {theme.resolved === 'dark' ? '☀️' : '🌙'}
+</button>
+
+<script>
+  const theme = useStore('theme');
+</script>

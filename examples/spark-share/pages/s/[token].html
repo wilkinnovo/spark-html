@@ -1,0 +1,48 @@
+<!-- /s/:token — the public share-link screen. The token alone is the access
+     control (Dropbox-style): visibility only affects whether a file is
+     listed on the owner's profile, never whether the link itself works. -->
+<title>{doc ? doc.filename : 'Not found'} · sparkShare</title>
+<meta name="description" content="{doc ? 'Shared via sparkShare by ' + doc.owner_name : 'This file does not exist.'}">
+<meta name="robots" content="noindex">
+
+<template if="doc">
+  <article class="share-view">
+    <header class="share-head">
+      <span class="doc-icon big">{doc.icon}</span>
+      <div>
+        <h1>{doc.filename}</h1>
+        <p class="doc-meta">{doc.sizeLabel} · shared {doc.createdLabel} by {doc.owner_name}</p>
+      </div>
+      <a class="cta" href="{doc.url}" download="{doc.filename}">Download</a>
+    </header>
+
+    <div class="viewer">
+      <template if="doc.type === 'image'">
+        <img class="viewer-media" src="{doc.url}" alt="{doc.filename}">
+      </template>
+      <template if="doc.type === 'video'">
+        <video class="viewer-media" src="{doc.url}" controls></video>
+      </template>
+      <template if="doc.type === 'audio'">
+        <audio class="viewer-audio" src="{doc.url}" controls></audio>
+      </template>
+      <template if="doc.type === 'pdf' || doc.url.endsWith('.txt')">
+        <iframe class="viewer-frame" src="{doc.url}" title="{doc.filename}"></iframe>
+      </template>
+      <template if="!doc.viewable">
+        <p class="empty">No inline preview for this file type — download it to view.</p>
+      </template>
+    </div>
+  </article>
+</template>
+<template else status="404">
+  <article class="share-view">
+    <h1>Not found</h1>
+    <p>That share link doesn't exist, or the file was removed.</p>
+    <p><a href="/">← Back to sparkShare</a></p>
+  </article>
+</template>
+
+<spark-ssr>
+  doc = ./lib/shared-document.js
+</spark-ssr>

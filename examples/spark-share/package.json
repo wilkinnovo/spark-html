@@ -1,0 +1,18 @@
+{
+  "name": "spark-share",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "bun spark-ssr",
+    "db": "bun spark-ssr db",
+    "start": "bun spark-ssr start",
+    "build": "bun spark-ssr build"
+  },
+  "dependencies": {
+    "spark-html": "latest",
+    "spark-ssr": "latest",
+    "spark-html-theme": "latest",
+    "spark-html-font": "latest"
+  }
+}

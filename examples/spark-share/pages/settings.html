@@ -1,0 +1,68 @@
+<title>Settings · sparkShare</title>
+<meta name="robots" content="noindex">
+
+<spark-ssr guard="session" redirect="/login" />
+
+<main class="settings">
+  <h1>Settings</h1>
+
+  <section class="panel">
+    <h2>Profile</h2>
+    <div class="row avatar-row">
+      <template if="me.avatar"><img class="avatar" src="{me.avatar}" alt="{me.name}" width="72" height="72"></template>
+      <template else><span class="avatar initials">{me.name[0]}</span></template>
+      <label class="ghost file-label">
+        Change photo
+        <input type="file" accept="image/*" onchange={uploadAvatar} hidden>
+      </label>
+      <template if="avatarSaved"><span class="saved-hint">Saved ✓</span></template>
+    </div>
+
+    <label>Name
+      <input type="text" bind:value="me.name">
+    </label>
+    <label>Email
+      <input type="email" value="{me.email}" disabled>
+    </label>
+    <label>Bio
+      <textarea rows="3" bind:value="me.bio"></textarea>
+    </label>
+    <button onclick={saveProfile} :disabled="!me.name">Save changes</button>
+    <template if="profileSaved"><span class="saved-hint">Saved ✓</span></template>
+  </section>
+
+  <section class="panel">
+    <h2>Account</h2>
+    <p class="muted">Signed in as <strong>{me.email}</strong></p>
+    <form action="/api/logout" method="post" redirect="/">
+      <button class="ghost">Sign out</button>
+    </form>
+  </section>
+</main>
+
+<script>
+  let profileSaved = false;
+  let avatarSaved = false;
+
+  async function saveProfile() {
+    await api_update('users', me.id, { name: me.name, bio: me.bio });
+    profileSaved = true;
+    setTimeout(() => { profileSaved = false; }, 2000);
+  }
+
+  async function uploadAvatar(e) {
+    const f = e.target.files[0];
+    if (!f) return;
+    const fd = new FormData();
+    fd.append('avatar', f);
+    const r = await fetch('/api/users/' + me.id, { method: 'PATCH', body: fd });
+    const updated = await r.json();
+    if (updated.avatar) {
+      me = { ...me, avatar: updated.avatar };
+      avatarSaved = true;
+      setTimeout(() => { avatarSaved = false; }, 2000);
+    }
+  }
+</script>
+
+<spark-ssr table="users" seed="./seed/users.json" />

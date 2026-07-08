@@ -1,0 +1,13 @@
+<!-- Runs on EVERY request. The auth table's auto-CRUD GET /api/users used
+     to be public and unauthenticated — fine for a single-author blog, but
+     sparkShare is multi-user, so it leaked every registered email
+     address. Nothing in this app reads that endpoint
+     (profiles are served through named SELECTs that only pick public
+     columns), so it's safe to close entirely. spark-ssr 1.0.1 fixed the
+     framework gap (bugs.md #7: anon → 401, session → own row, admin → all);
+     this stays as defense-in-depth. -->
+<script>
+  if (req.path === '/api/users' && req.method === 'GET') {
+    return { status: 403, body: 'Not available.' };
+  }
+</script>

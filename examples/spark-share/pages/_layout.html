@@ -1,0 +1,18 @@
+<!-- Every page renders inside this layout. `me` is ambient here (a named
+     data source keyed off the session, NOT `session` itself — a hydrating
+     page's client script can't see `session`, see spark-project pitfalls),
+     so any page below can read {me.name}/{me.avatar} for free. -->
+<link rel="stylesheet" href="/style.css">
+<script type="module" src="/app.js"></script>
+
+<div import="/components/nav" me="{me}" path="{path}"></div>
+
+<slot></slot>
+
+<footer class="site-footer">
+  <span>⚡ sparkShare — a spark-ssr example</span>
+</footer>
+
+<spark-ssr>
+  me = SELECT id, name, email, bio, avatar FROM users WHERE id = :session.id LIMIT 1
+</spark-ssr>

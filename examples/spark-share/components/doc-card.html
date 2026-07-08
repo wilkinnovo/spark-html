@@ -1,0 +1,17 @@
+<!-- Read-only file card — profile grids + the homepage discovery strip.
+     `doc` arrives pre-formatted from a module data source (sizeLabel,
+     createdLabel, icon, shareUrl); no script needed here at all. -->
+<a class="doc-card" href="{doc.shareUrl}">
+  <span class="doc-icon">{doc.icon}</span>
+  <span class="doc-body">
+    <strong class="doc-name">{doc.filename}</strong>
+    <span class="doc-meta">{doc.sizeLabel} · {doc.createdLabel}</span>
+    <template if="doc.owner_name">
+      <span class="doc-owner">
+        <template if="doc.owner_avatar"><img class="mini-avatar" src="{doc.owner_avatar}" alt="{doc.owner_name}"></template>
+        <template else><span class="mini-avatar initials">{doc.owner_name[0]}</span></template>
+        {doc.owner_name}
+      </span>
+    </template>
+  </span>
+</a>

@@ -57,6 +57,16 @@
         "spark-html-image": "*",
       },
     },
+    "examples/spark-share": {
+      "name": "spark-share",
+      "version": "0.0.0",
+      "dependencies": {
+        "spark-html": "latest",
+        "spark-html-font": "latest",
+        "spark-html-theme": "latest",
+        "spark-ssr": "latest",
+      },
+    },
     "examples/tabtube": {
       "name": "spark-example-tabtube",
       "version": "0.0.0",
@@ -78,7 +88,7 @@
     },
     "packages/prettier-plugin-spark": {
       "name": "prettier-plugin-spark",
-      "version": "1.0.0",
+      "version": "1.1.0",
       "peerDependencies": {
         "prettier": "^3.0.0",
       },
@@ -125,7 +135,7 @@
     },
     "packages/spark-html-language-server": {
       "name": "spark-html-language-server",
-      "version": "1.0.0",
+      "version": "1.3.0",
       "bin": {
         "spark-html-language-server": "bin/cli.js",
       },
@@ -454,6 +464,8 @@
 
     "spark-prerender": ["spark-prerender@workspace:packages/spark-prerender"],
 
+    "spark-share": ["spark-share@workspace:examples/spark-share"],
+
     "spark-ssr": ["spark-ssr@workspace:packages/spark-ssr"],
 
     "spark-website": ["spark-website@workspace:website"],
@@ -483,6 +495,14 @@
     "htmlparser2/domhandler": ["domhandler@5.0.3", "", { "dependencies": { "domelementtype": "^2.3.0" } }, "sha512-cgwlv/1iFQiFnU96XXgROh8xTeetsnJiDsTc7TYCLFd9+/WNkIqPTxiM/8pSd8VIrhXGTf1Ny1q1hquVqDJB5w=="],
 
     "htmlparser2/domutils": ["domutils@3.2.2", "", { "dependencies": { "dom-serializer": "^2.0.0", "domelementtype": "^2.3.0", "domhandler": "^5.0.3" } }, "sha512-6kZKyUajlDuqlHKVX1w7gyslj9MPIXzIFiz/rGu35uC1wMi+kMhQwGhl4lt9unC9Vb9INnY9Z3/ZA3+FhASLaw=="],
+
+    "spark-share/spark-html": ["spark-html@1.0.3", "", { "bin": { "spark-html": "bin/cli.js" } }, "sha512-2STPKXMN9IM5EbhgfxGLRnN1vqXNGSMNonoXwUgZYisT8tXcYecg6TxtlzErESKsfplrooS4d8BcJRJz93CvbA=="],
+
+    "spark-share/spark-html-font": ["spark-html-font@1.0.0", "", {}, "sha512-pfaMQ26PZBlHk0ExMpBd6Beg5bpYQ6gznSVYHQvCVwGyEQ2e53grQJELhv48YR2U6oCTmTihxUaaF7N9+6IS9g=="],
+
+    "spark-share/spark-html-theme": ["spark-html-theme@1.0.0", "", { "peerDependencies": { "spark-html": ">=1.0.0 <2" } }, "sha512-jqjAkWrxr7zZuFROLAq7fH0WGVUWfPmeRR02v+pmzWrOGZcawjqhC6LDPPRSmZQ/huk6vCOmQak5kbdaK86bVA=="],
+
+    "spark-share/spark-ssr": ["spark-ssr@1.0.0", "", { "dependencies": { "linkedom": "^0.18.12", "spark-html-head": "^1.0.0" }, "peerDependencies": { "spark-html": ">=1.0.0 <2" }, "bin": { "spark-ssr": "bin/cli.js" } }, "sha512-tFqwD1HNLZ6/J5cF6ncBwzt5lSA5RlV0IdJ6PLCgOdVJGb0IZxL1//ZX7TGa0LaeG0oPRkZ4YewIXAV9++aVBw=="],
 
     "htmlparser2/domutils/dom-serializer": ["dom-serializer@2.0.0", "", { "dependencies": { "domelementtype": "^2.3.0", "domhandler": "^5.0.2", "entities": "^4.2.0" } }, "sha512-wIkAryiqt/nV5EQKqQpo3SToSOV9J0DnbJqwK7Wv/Trc92zIAYZ4FlMu+JPFW1DfGFt81ZTCGgDEabffXeLyJg=="],
 

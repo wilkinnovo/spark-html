@@ -1,0 +1,98 @@
+<title>My files · sparkShare</title>
+<meta name="robots" content="noindex">
+
+<spark-ssr guard="session" redirect="/login" />
+
+<main class="dashboard">
+  <header class="dash-head">
+    <div>
+      <h1>My files</h1>
+      <p class="muted">{stats.count} file{stats.count === 1 ? '' : 's'} · {stats.totalLabel} used</p>
+    </div>
+  </header>
+
+  <section class="panel">
+    <h2>Upload a file</h2>
+    <form class="upload-form" action="/api/documents" method="post" enctype="multipart/form-data"
+          redirect="/dashboard" flash="Uploaded!">
+      <input class="grow" type="file" name="url" required onchange={pickFile}>
+      <input type="text" name="filename" placeholder="Display name" bind:value="pendingName" required>
+      <select name="visibility">
+        <option value="private">Private (link only)</option>
+        <option value="public">Public (shown on profile)</option>
+      </select>
+      <input type="hidden" name="type" value="{pendingType}">
+      <input type="hidden" name="size" value="{pendingSize}">
+      <input type="hidden" name="share_token" value="{newToken}">
+      <button>Upload</button>
+    </form>
+    <p class="hint">Documents, images, video, audio, spreadsheets, archives — anything.</p>
+  </section>
+
+  <section class="panel">
+    <h2>Your files</h2>
+    <template each="doc in docs" key="doc.id">
+      <div class="row doc-row">
+        <span class="doc-icon">{doc.icon}</span>
+        <span class="grow">
+          <strong>{doc.filename}</strong>
+          <span class="doc-meta">{doc.sizeLabel} · {doc.createdLabel}</span>
+        </span>
+        <span :class="doc.visibility === 'public' ? 'pill live' : 'pill draft'">{doc.visibility}</span>
+        <a href="{doc.shareUrl}" target="_blank" rel="noopener">Open</a>
+        <button onclick={copyLink(doc)}>Copy link</button>
+        <button onclick={toggleVisibility(doc)}>{doc.visibility === 'public' ? 'Make private' : 'Make public'}</button>
+        <button class="danger" onclick={removeDoc(doc)}>Delete</button>
+      </div>
+    </template>
+    <template if="docs.length === 0">
+      <p class="empty">No files yet — upload your first one above.</p>
+    </template>
+  </section>
+</main>
+
+<script>
+  let pendingName = '';
+  let pendingType = 'file';
+  let pendingSize = 0;
+
+  function pickFile(e) {
+    const f = e.target.files[0];
+    if (!f) return;
+    if (!pendingName) pendingName = f.name;
+    pendingType = categoryOf(f.type, f.name);
+    pendingSize = f.size;
+  }
+
+  function categoryOf(mime, name) {
+    if (mime.startsWith('image/')) return 'image';
+    if (mime.startsWith('video/')) return 'video';
+    if (mime.startsWith('audio/')) return 'audio';
+    if (mime === 'application/pdf') return 'pdf';
+    if (/\.(zip|rar|7z|tar|gz)$/i.test(name)) return 'archive';
+    if (/\.(xls|xlsx|csv)$/i.test(name) || mime.includes('spreadsheet')) return 'spreadsheet';
+    if (/\.(doc|docx|txt|md|rtf)$/i.test(name) || mime.startsWith('text/')) return 'document';
+    return 'file';
+  }
+
+  async function toggleVisibility(doc) {
+    await api_update('documents', doc.id, { visibility: doc.visibility === 'public' ? 'private' : 'public' });
+    refresh();
+  }
+
+  async function removeDoc(doc) {
+    await api_delete('documents', doc.id);
+    refresh();
+  }
+
+  async function copyLink(doc) {
+    await navigator.clipboard.writeText(location.origin + doc.shareUrl);
+  }
+</script>
+
+<spark-ssr table="documents" seed="./seed/documents.json" />
+<spark-ssr>
+  docs = ./lib/my-documents.js
+  stats = ./lib/storage-stats.js
+  newToken = ./lib/new-token.js
+</spark-ssr>

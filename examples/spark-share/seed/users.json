@@ -1,0 +1,30 @@
+[
+  {
+    "email": "ava@sparkshare.dev",
+    "password": "spark",
+    "name": "Ava Chen",
+    "bio": "Product designer. Sharing specs and shots with the team.",
+    "avatar": "/img/avatar1.png"
+  },
+  {
+    "email": "ben@sparkshare.dev",
+    "password": "spark",
+    "name": "Ben Osei",
+    "bio": "Finance lead — budgets, backups, the boring important stuff.",
+    "avatar": ""
+  },
+  {
+    "email": "cleo@sparkshare.dev",
+    "password": "spark",
+    "name": "Cleo Martins",
+    "bio": "Video + brand. If it moves, I probably shared it here.",
+    "avatar": "/img/avatar2.png"
+  },
+  {
+    "email": "drew@sparkshare.dev",
+    "password": "spark",
+    "name": "Drew Park",
+    "bio": "Contracts and meeting notes, mostly private.",
+    "avatar": ""
+  }
+]

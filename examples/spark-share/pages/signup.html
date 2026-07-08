@@ -1,0 +1,18 @@
+<title>Sign up · sparkShare</title>
+<meta name="robots" content="noindex">
+
+<form class="panel auth-form" action="/api/users" method="post" redirect="/login" flash="Account created — sign in below.">
+  <h2>Create your account</h2>
+  <label>Name
+    <input type="text" name="name" autocomplete="name" required autofocus>
+  </label>
+  <label>Email
+    <input type="email" name="email" autocomplete="username" required>
+  </label>
+  <label>Password
+    <input type="password" name="password" autocomplete="new-password" required minlength="4">
+  </label>
+  <button>Create account</button>
+  <template if="errors"><p class="error">That email is already registered — log in instead.</p></template>
+  <p class="alt">Already have an account? <a href="/login">Log in</a></p>
+</form>
