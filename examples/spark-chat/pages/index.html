@@ -113,29 +113,33 @@
 
 <script>
   const REPLIES = [
-    'Haha, fair point.',
-    'Oh nice, tell me more.',
+    "Haha, fair point.",
+    "Oh nice, tell me more.",
     "I'm mid-something, back in a bit!",
-    'Good idea, let’s do that.',
-    'lol yeah',
-    'On it.',
-    'Wait really?',
-    'Sounds good to me 👍',
-    'Can we talk about this later today?',
-    'Same here honestly.',
-    'That tracks.',
-    'Sending you something in a sec.',
+    "Good idea, let’s do that.",
+    "lol yeah",
+    "On it.",
+    "Wait really?",
+    "Sounds good to me 👍",
+    "Can we talk about this later today?",
+    "Same here honestly.",
+    "That tracks.",
+    "Sending you something in a sec.",
   ];
 
   let lightbox = null;
-  function openLightbox(m) { lightbox = m; }
-  function closeLightbox() { lightbox = null; }
+  function openLightbox(m) {
+    lightbox = m;
+  }
+  function closeLightbox() {
+    lightbox = null;
+  }
 
   async function send(e) {
     e.preventDefault();
     const body = draft.trim();
     if (!body) return;
-    draft = '';
+    draft = "";
     await api_create({ sender_id: me.id, recipient_id: peer.id, body });
     refresh();
     autoReply();
@@ -148,11 +152,19 @@
   function autoReply() {
     const replyingTo = peer.id;
     const replyingAs = me.id;
-    setTimeout(async () => {
-      const body = REPLIES[Math.floor(Math.random() * REPLIES.length)];
-      await api_create({ sender_id: replyingTo, recipient_id: replyingAs, body, auto_reply: 1 });
-      refresh();
-    }, 900 + Math.random() * 1600);
+    setTimeout(
+      async () => {
+        const body = REPLIES[Math.floor(Math.random() * REPLIES.length)];
+        await api_create({
+          sender_id: replyingTo,
+          recipient_id: replyingAs,
+          body,
+          auto_reply: 1,
+        });
+        refresh();
+      },
+      900 + Math.random() * 1600,
+    );
   }
 
   // Attachments post straight to the auto-CRUD /api/messages endpoint as
@@ -163,19 +175,22 @@
   // via a custom endpoint would.
   async function attach(e) {
     const file = e.target.files[0];
-    e.target.value = '';
+    e.target.value = "";
     if (!file) return;
-    const ext = (file.name || '').toLowerCase().match(/\.\w+$/)?.[0] || '';
-    const type = /\.(png|jpe?g|gif|webp|svg)$/.test(ext) ? 'image'
-      : /\.(mp4|webm|mov|mkv)$/.test(ext) ? 'video' : 'doc';
+    const ext = (file.name || "").toLowerCase().match(/\.\w+$/)?.[0] || "";
+    const type = /\.(png|jpe?g|gif|webp|svg)$/.test(ext)
+      ? "image"
+      : /\.(mp4|webm|mov|mkv)$/.test(ext)
+        ? "video"
+        : "doc";
     const fd = new FormData();
-    fd.append('sender_id', me.id);
-    fd.append('recipient_id', peer.id);
-    fd.append('body', '');
-    fd.append('attachment_url', file);
-    fd.append('attachment_type', type);
-    fd.append('attachment_name', file.name);
-    await fetch('/api/messages', { method: 'POST', body: fd });
+    fd.append("sender_id", me.id);
+    fd.append("recipient_id", peer.id);
+    fd.append("body", "");
+    fd.append("attachment_url", file);
+    fd.append("attachment_type", type);
+    fd.append("attachment_name", file.name);
+    await fetch("/api/messages", { method: "POST", body: fd });
     refresh();
     autoReply();
   }
@@ -184,8 +199,18 @@
 <spark-ssr table="messages" seed="./seed/messages.json" live />
 
 <spark-ssr>
-  me       = SELECT id, name, email, COALESCE(bio, '') AS bio, avatar, CASE (id % 8) WHEN 0 THEN '#ffd24a' WHEN 1 THEN '#7dd3fc' WHEN 2 THEN '#f9a8d4' WHEN 3 THEN '#a5b4fc' WHEN 4 THEN '#86efac' WHEN 5 THEN '#fca5a5' WHEN 6 THEN '#fdba74' ELSE '#c4b5fd' END AS avatar_color, UPPER(SUBSTR(name, 1, 1)) AS avatar_initial FROM users WHERE id = :session.id
-  contacts = SELECT id, name, COALESCE(bio, '') AS bio, avatar, CASE (id % 8) WHEN 0 THEN '#ffd24a' WHEN 1 THEN '#7dd3fc' WHEN 2 THEN '#f9a8d4' WHEN 3 THEN '#a5b4fc' WHEN 4 THEN '#86efac' WHEN 5 THEN '#fca5a5' WHEN 6 THEN '#fdba74' ELSE '#c4b5fd' END AS avatar_color, UPPER(SUBSTR(name, 1, 1)) AS avatar_initial FROM users WHERE id != :session.id ORDER BY name
-  peer     = SELECT id, name, COALESCE(bio, '') AS bio, avatar, CASE (id % 8) WHEN 0 THEN '#ffd24a' WHEN 1 THEN '#7dd3fc' WHEN 2 THEN '#f9a8d4' WHEN 3 THEN '#a5b4fc' WHEN 4 THEN '#86efac' WHEN 5 THEN '#fca5a5' WHEN 6 THEN '#fdba74' ELSE '#c4b5fd' END AS avatar_color, UPPER(SUBSTR(name, 1, 1)) AS avatar_initial FROM users WHERE id = :with
-  thread   = SELECT * FROM messages WHERE (sender_id = :session.id AND recipient_id = :with) OR (sender_id = :with AND recipient_id = :session.id) ORDER BY created_at
+  me       = SELECT id, name, email, COALESCE(bio, '') AS bio, avatar, CASE (id % 8) WHEN 0 THEN '#ffd24a' WHEN 1 THEN '#7dd3fc' WHEN 2 THEN '#f9a8d4' WHEN 3 THEN '#a5b4fc' WHEN 4 THEN '#86efac' WHEN 5 THEN '#fca5a5' WHEN 6 THEN '#fdba74' ELSE '#c4b5fd' END AS avatar_color, UPPER(SUBSTR(name, 1, 1)) AS avatar_initial
+    FROM users
+    WHERE id = :session.id
+  contacts = SELECT id, name, COALESCE(bio, '') AS bio, avatar, CASE (id % 8) WHEN 0 THEN '#ffd24a' WHEN 1 THEN '#7dd3fc' WHEN 2 THEN '#f9a8d4' WHEN 3 THEN '#a5b4fc' WHEN 4 THEN '#86efac' WHEN 5 THEN '#fca5a5' WHEN 6 THEN '#fdba74' ELSE '#c4b5fd' END AS avatar_color, UPPER(SUBSTR(name, 1, 1)) AS avatar_initial
+    FROM users
+    WHERE id != :session.id
+    ORDER BY name
+  peer     = SELECT id, name, COALESCE(bio, '') AS bio, avatar, CASE (id % 8) WHEN 0 THEN '#ffd24a' WHEN 1 THEN '#7dd3fc' WHEN 2 THEN '#f9a8d4' WHEN 3 THEN '#a5b4fc' WHEN 4 THEN '#86efac' WHEN 5 THEN '#fca5a5' WHEN 6 THEN '#fdba74' ELSE '#c4b5fd' END AS avatar_color, UPPER(SUBSTR(name, 1, 1)) AS avatar_initial
+    FROM users
+    WHERE id = :with
+  thread   = SELECT *
+    FROM messages
+    WHERE (sender_id = :session.id AND recipient_id = :with) OR (sender_id = :with AND recipient_id = :session.id)
+    ORDER BY created_at
 </spark-ssr>

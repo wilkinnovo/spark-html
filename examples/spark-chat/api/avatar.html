@@ -11,6 +11,9 @@
 <script>
   const { file } = await req.body();
   if (!file) return { ok: false };
-  await db.query('UPDATE users SET avatar = ? WHERE id = ?', [file.url, req.session.id]);
+  await db.query("UPDATE users SET avatar = ? WHERE id = ?", [
+    file.url,
+    req.session.id,
+  ]);
   return { ok: true, avatar: file.url };
 </script>

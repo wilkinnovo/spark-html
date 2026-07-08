@@ -62,5 +62,7 @@
 <spark-ssr table="users" seed="./seed/users.json" />
 
 <spark-ssr>
-  me = SELECT id, name, email, COALESCE(bio, '') AS bio, avatar, CASE (id % 8) WHEN 0 THEN '#ffd24a' WHEN 1 THEN '#7dd3fc' WHEN 2 THEN '#f9a8d4' WHEN 3 THEN '#a5b4fc' WHEN 4 THEN '#86efac' WHEN 5 THEN '#fca5a5' WHEN 6 THEN '#fdba74' ELSE '#c4b5fd' END AS avatar_color, UPPER(SUBSTR(name, 1, 1)) AS avatar_initial FROM users WHERE id = :session.id
+  me = SELECT id, name, email, COALESCE(bio, '') AS bio, avatar, CASE (id % 8) WHEN 0 THEN '#ffd24a' WHEN 1 THEN '#7dd3fc' WHEN 2 THEN '#f9a8d4' WHEN 3 THEN '#a5b4fc' WHEN 4 THEN '#86efac' WHEN 5 THEN '#fca5a5' WHEN 6 THEN '#fdba74' ELSE '#c4b5fd' END AS avatar_color, UPPER(SUBSTR(name, 1, 1)) AS avatar_initial
+    FROM users
+    WHERE id = :session.id
 </spark-ssr>
