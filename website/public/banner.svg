@@ -22,7 +22,7 @@
   <!-- ── left column ─────────────────────────────────────────────── -->
   <!-- wordmark -->
   <text x="56" y="72" font-size="17" font-weight="700" fill="#ffffff" letter-spacing="6">
-    <tspan fill="#ffd24a">⚡</tspan> SPARK
+    <tspan fill="#ffd24a">⚡</tspan> SPARK <tspan fill="#ffd24a" letter-spacing="2">1.0</tspan>
   </text>
 
   <!-- headline -->
@@ -44,11 +44,11 @@
   <!-- stat chips -->
   <g font-size="12.5" font-weight="600">
     <rect x="56" y="272" width="104" height="32" rx="8" fill="#0b0b0b" stroke="#1c1c1c"/>
-    <text x="108" y="293" text-anchor="middle"><tspan fill="#ffd24a">13 kB</tspan><tspan fill="#888888"> gzip</tspan></text>
+    <text x="108" y="293" text-anchor="middle"><tspan fill="#ffd24a">14.6 kB</tspan><tspan fill="#888888"> gzip</tspan></text>
     <rect x="170" y="272" width="88" height="32" rx="8" fill="#0b0b0b" stroke="#1c1c1c"/>
     <text x="214" y="293" text-anchor="middle"><tspan fill="#ffd24a">0</tspan><tspan fill="#888888"> deps</tspan></text>
     <rect x="268" y="272" width="120" height="32" rx="8" fill="#0b0b0b" stroke="#1c1c1c"/>
-    <text x="328" y="293" text-anchor="middle"><tspan fill="#ffd24a">20</tspan><tspan fill="#888888"> packages</tspan></text>
+    <text x="328" y="293" text-anchor="middle"><tspan fill="#ffd24a">21</tspan><tspan fill="#888888"> packages</tspan></text>
     <rect x="398" y="272" width="112" height="32" rx="8" fill="#0b0b0b" stroke="#1c1c1c"/>
     <text x="454" y="293" text-anchor="middle"><tspan fill="#ffd24a">MIT</tspan><tspan fill="#888888"> license</tspan></text>
   </g>

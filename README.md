@@ -34,7 +34,7 @@ byte-for-byte — reactive, scoped, untouched.
 ```
 
 No compiler generates code from your template. No virtual DOM allocates and diffs
-a tree per frame. The file you write is what runs — ~14.4 kB gzipped, zero dependencies.
+a tree per frame. The file you write is what runs — ~14.6 kB gzipped, zero dependencies.
 
 ## Built for humans
 
@@ -46,6 +46,29 @@ no compiler rewriting your source, no virtual DOM between you and the page, no
 scaffolding you didn't ask for. Twenty-one small packages, each one readable in a
 sitting — add only what you use, and everything you write stays yours,
 byte-for-byte, in view-source forever.
+
+## 1.0 — released, and proven on the way out the door
+
+Spark hit **1.0.0** on 2026-07-07 — all 21 packages, one wave. A 1.0 is a
+promise, so we made the release earn it. **The battery it passed on the exact
+promotion commit:**
+
+- **100,000 / 100,000** fuzz scenarios clean (+ 9 corpus regressions) — every
+  scenario asserts the patched DOM is byte-identical to a from-scratch render
+  of the same final state. Convergence isn't a goal; it's the oracle.
+- **Bench above the 0.7.0 baseline** (big page 7.3–7.5k req/s vs the 6.9k
+  baseline we defend) — performance is measured, never assumed.
+- **e2e 7/7, full `npm test` green, size gate at 14.63 / 15.0 kB** — and the
+  budget is now **frozen for the life of 1.x**. If a feature doesn't fit, the
+  answer is a sibling package, not a bigger core. That rule is the pitch.
+- **21 release tags pushed in seven batches of ≤3, publish workflows verified
+  per batch** (the >3-tag trap where GitHub silently skips every tag-triggered
+  workflow never got a chance), then every package **confirmed on the npm
+  registry** — we verify the registry, not the green checkmark.
+
+Semver from here: everything documented is API for the life of 1.x. The
+surfaces allowed to change in a minor are explicitly marked experimental —
+see each package's README.
 
 ## Quick start
 
@@ -75,7 +98,7 @@ mount();
 
 ```html
 <script type="importmap">
-  { "imports": { "spark-html": "https://esm.sh/spark-html@0.30" } }
+  { "imports": { "spark-html": "https://esm.sh/spark-html@1" } }
 </script>
 <div import="components/counter"></div>
 <script type="module">import { mount } from 'spark-html'; mount()</script>
@@ -91,7 +114,7 @@ just files at a URL, so you can even `import` one straight from a CDN. See
   template. The file you write is what runs.
 - **No virtual DOM** — patches mutate the DOM directly. No intermediate tree to
   allocate, diff, or discard per frame.
-- **~14.4 kB gzipped, zero dependencies** — parses, mounts, and patches in a single
+- **~14.6 kB gzipped, zero dependencies** — parses, mounts, and patches in a single
   microtask.
 - **O(changed) dependency tracking** — each binding records which scope keys it
   reads. A write re-evaluates only the bindings that actually changed.
@@ -134,10 +157,10 @@ just files at a URL, so you can even `import` one straight from a CDN. See
 Spark trades completeness for simplicity — these are deliberate edges, not roadmap gaps:
 
 - **One reactive scope per component** — all top-level `let`/`function` declarations share a single proxy scope within each component.
-- **`let`/`const` inside functions** — plain declarations (`let x = 1`) still hoist to component scope. Destructuring (`let {a} = obj`) stays block-local.
+- **Only top-level declarations become component state** — `let`/`const` inside a function body are true block-scoped locals (as of 0.28), and destructuring (`let {a} = obj`) stays local everywhere.
 - **Class instances / `Date`** — not deeply reactive (intentional). Reassign the variable to trigger an update. Plain objects, arrays, `Map`, and `Set` are all tracked.
 - **Loops reconcile by index by default** — add `key="…"` for identity-stable reordering (keeps focus, preserves element state).
-- **Code-shaped strings in scripts** — the declaration rewriter is not string-aware: a multiline string that _looks like_ JS (`"let x = 1;"` — live-editor sources, executable snippets) can be rewritten inside the string. Keep such strings in imported `.js` modules; display-only samples in markup are fine under `spark-ignore`.
+- **The script rewriter is a scanner, not a parser** — it is string- and comment-aware (code-shaped text inside string literals stays byte-intact, as of 0.30), with one documented unparseable construct: a regex literal containing a quote character. That case warns loudly and names the fix (move the regex to an imported `.js` module).
 - **CSP** — the runtime uses `new Function` for expressions and event handlers, so a strict Content Security Policy needs `unsafe-eval`. For integrity of what you _load_, [`spark-html-sri`](packages/spark-html-sri/README.md) hashes and verifies assets and URL-imported components.
 - **`import.meta`** — not available inside component scripts (imports are replayed as dynamic `import()`). Bare specifiers need an import map when running without a bundler.
 
@@ -168,7 +191,7 @@ Spark trades completeness for simplicity — these are deliberate edges, not roa
 
 | Package                                  | What it does                                                                                                        |
 | ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
-| [`spark-html`](packages/spark/README.md) | The runtime — `mount()`, components, reactivity, `store`/`derived`, `bind:form`, scoped styles, plus `npx spark-html doctor`. ~14.4 kB gzip, 0 deps. |
+| [`spark-html`](packages/spark/README.md) | The runtime — `mount()`, components, reactivity, `store`/`derived`, `bind:form`, scoped styles, plus `npx spark-html doctor`. ~14.6 kB gzip, 0 deps. |
 
 **UI &amp; UX siblings** (add only what you use)
 
@@ -213,7 +236,7 @@ Spark trades completeness for simplicity — these are deliberate edges, not roa
 ## This repo
 
 ```
-packages/        spark-html + its 20 sibling/tooling packages — 21 in all
+packages/        spark-html + its 20 sibling/tooling packages — 21 in all, every one at 1.0.0
 examples/        basic (Bun app) · jsimports · no-build (CDN) · pinterest &amp; tabtube (spark-ssr)
 editors/         Zed + VS Code extensions for .html component highlighting
 website/         the docs/playground/tutorials site — built with Spark itself
