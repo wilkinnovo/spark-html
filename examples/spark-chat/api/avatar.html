@@ -1,0 +1,16 @@
+<!-- Custom endpoint: POST /api/avatar. Avatar upload needs multipart, which
+     the JSON-body api_update() helper can't send — so this is the escape
+     hatch (req/db in scope, per the spark-ssr README's "Custom endpoints").
+     req.body().file is set by the framework for the uploaded field; only the
+     signed-in user's own row is ever touched. The plain-form 303-back-to-
+     referer behavior (server.js's "answer a browser like a browser") kicks
+     in automatically for any multipart POST under /api/* — no redirect
+     logic needed here, just answer success/failure. -->
+<spark-ssr guard="session" status="401" />
+
+<script>
+  const { file } = await req.body();
+  if (!file) return { ok: false };
+  await db.query('UPDATE users SET avatar = ? WHERE id = ?', [file.url, req.session.id]);
+  return { ok: true, avatar: file.url };
+</script>

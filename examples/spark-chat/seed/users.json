@@ -1,0 +1,8 @@
+[
+  { "email": "me@spark-html.com", "password": "spark", "name": "Ada Spark", "bio": "Building with no build step ⚡", "avatar": "" },
+  { "email": "milo@spark-html.com", "password": "spark", "name": "Milo Reyes", "bio": "Coffee, then code.", "avatar": "" },
+  { "email": "priya@spark-html.com", "password": "spark", "name": "Priya Nair", "bio": "Design systems nerd.", "avatar": "" },
+  { "email": "theo@spark-html.com", "password": "spark", "name": "Theo Bloom", "bio": "Currently offline, mostly.", "avatar": "" },
+  { "email": "sana@spark-html.com", "password": "spark", "name": "Sana Ito", "bio": "Available for questions.", "avatar": "" },
+  { "email": "kai@spark-html.com", "password": "spark", "name": "Kai Fischer", "bio": "Shipping small things daily.", "avatar": "" }
+]

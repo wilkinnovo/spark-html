@@ -1,0 +1,66 @@
+<!-- Own profile + settings. Name/bio update through the auth table's auto
+     CRUD (PATCH is own-account only — enforced server-side regardless of
+     the id in the URL). Avatar upload posts to the small custom endpoint at
+     /api/avatar since file uploads need multipart, not JSON. -->
+<title>Your profile · spark chat</title>
+<meta name="robots" content="noindex">
+
+<spark-ssr guard="session" redirect="/login" />
+
+<main class="auth-screen">
+  <div class="auth-card profile-card">
+    <a class="back" href="/">← Back to chats</a>
+    <div class="auth-brand">Your profile</div>
+
+    <div class="profile-avatar-row">
+      <div import="/components/avatar" label="{me.name}" photo="{me.avatar}" color="{me.avatar_color}" initial="{me.avatar_initial}" size="72"></div>
+      <form class="upload-form" action="/api/avatar" method="post" enctype="multipart/form-data" redirect="/profile">
+        <label class="upload-label">
+          Change photo
+          <input type="file" name="file" accept="image/*" required>
+        </label>
+        <button>Upload</button>
+      </form>
+    </div>
+
+    <section class="panel">
+      <label>Name
+        <input bind:value="me.name" maxlength="60">
+      </label>
+      <label>About
+        <textarea bind:value="me.bio" rows="3" maxlength="200"></textarea>
+      </label>
+      <button onclick={save} :disabled="!me.name.trim()">Save changes</button>
+      <template if="saved"><p class="hint">Saved.</p></template>
+    </section>
+
+    <section class="panel">
+      <h3>Settings</h3>
+      <div class="row">
+        <span class="grow">Theme</span>
+        <span import="/components/theme-toggle"></span>
+      </div>
+      <div class="row">
+        <span class="grow">Signed in as {me.email}</span>
+      </div>
+      <form action="/api/logout" method="post" redirect="/login">
+        <button class="ghost danger">Sign out</button>
+      </form>
+    </section>
+  </div>
+</main>
+
+<script>
+  let saved = false;
+
+  async function save() {
+    await api_update(me.id, { name: me.name, bio: me.bio });
+    saved = true;
+  }
+</script>
+
+<spark-ssr table="users" seed="./seed/users.json" />
+
+<spark-ssr>
+  me = SELECT id, name, email, COALESCE(bio, '') AS bio, avatar, CASE (id % 8) WHEN 0 THEN '#ffd24a' WHEN 1 THEN '#7dd3fc' WHEN 2 THEN '#f9a8d4' WHEN 3 THEN '#a5b4fc' WHEN 4 THEN '#86efac' WHEN 5 THEN '#fca5a5' WHEN 6 THEN '#fdba74' ELSE '#c4b5fd' END AS avatar_color, UPPER(SUBSTR(name, 1, 1)) AS avatar_initial FROM users WHERE id = :session.id
+</spark-ssr>

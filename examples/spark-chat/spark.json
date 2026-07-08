@@ -1,0 +1,7 @@
+{
+  "db": "sqlite://./dev.db",
+  "auth": { "table": "users", "identity": "email" },
+  "mail": "./lib/mail.js",
+  "maxBodyMb": 25,
+  "fonts": [{ "family": "JetBrains Mono", "google": true, "weights": [400, 500, 700, 800] }]
+}

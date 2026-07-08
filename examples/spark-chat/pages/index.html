@@ -1,0 +1,191 @@
+<!-- The chat screen — master (contacts) + detail (thread), WhatsApp-style.
+     ?with=<id> selects the open conversation; a plain link changes it, so
+     the whole screen works with JavaScript disabled (`live` + the compose
+     box + the demo auto-reply are the only bits that need hydration).
+     `thread` is a session-scoped read (both directions of the pair) separate
+     from the `messages` table block, which only exists here for schema +
+     seed + the live CRUD API. Responsive: below 720px the sidebar and the
+     thread pane are mutually exclusive full-screen views, toggled by
+     whether ?with= is set (`.app.has-peer`) — see public/style.css.
+
+     Auto-reply is deliberately client-side, not a background job: because
+     this page also guards on `session` and reads `:session.id`, spark-ssr's
+     schema inference marks EVERY table declared here (including `messages`)
+     as session-scoped — it adds a `user_id` column and requires a session
+     on every write. A job runs with no session (`req.session` is null), so
+     its writes 401. Posting the reply from the browser that's already
+     signed in sidesteps that entirely and reuses the exact same `live` path
+     a real message takes — see post-v1-bugs.md for the full writeup. -->
+<title>{peer ? peer.name + ' · ' : ''}spark chat</title>
+<meta name="robots" content="noindex">
+
+<spark-ssr guard="session" redirect="/login" />
+
+<div :class="peer ? 'app has-peer' : 'app'">
+  <aside class="sidebar">
+    <header class="sidebar-head">
+      <a class="me" href="/profile" title="Your profile">
+        <div import="/components/avatar" label="{me.name}" photo="{me.avatar}" color="{me.avatar_color}" initial="{me.avatar_initial}" size="36"></div>
+        <span class="me-name">{me.name}</span>
+      </a>
+      <span class="sidebar-actions">
+        <span import="/components/theme-toggle"></span>
+        <form action="/api/logout" method="post" redirect="/login">
+          <button class="ghost" title="Sign out">⏻</button>
+        </form>
+      </span>
+    </header>
+
+    <nav class="contacts">
+      <template each="c in contacts" key="c.id">
+        <a class="contact" :class="peer && peer.id === c.id ? 'contact on' : 'contact'" href="/?with={c.id}">
+          <div import="/components/avatar" label="{c.name}" photo="{c.avatar}" color="{c.avatar_color}" initial="{c.avatar_initial}" size="44"></div>
+          <span class="contact-info">
+            <strong>{c.name}</strong>
+            <span class="contact-bio">{c.bio}</span>
+          </span>
+        </a>
+      </template>
+    </nav>
+  </aside>
+
+  <main class="thread-pane">
+    <template if="peer">
+      <header class="thread-head">
+        <a class="back-mobile" href="/" aria-label="Back to chats">←</a>
+        <div import="/components/avatar" label="{peer.name}" photo="{peer.avatar}" color="{peer.avatar_color}" initial="{peer.avatar_initial}" size="38"></div>
+        <div>
+          <strong>{peer.name}</strong>
+          <p class="thread-sub">{peer.bio}</p>
+        </div>
+      </header>
+
+      <div class="thread-body">
+        <template each="m in thread" key="m.id">
+          <div :class="m.sender_id === me.id ? 'bubble mine' : 'bubble theirs'">
+            <template if="m.attachment_url">
+              <template if="m.attachment_type === 'image'">
+                <img class="attachment-img" :src="m.attachment_url" alt="attachment" onclick={openLightbox(m)}>
+              </template>
+              <template if="m.attachment_type === 'video'">
+                <video class="attachment-video" :src="m.attachment_url" controls></video>
+              </template>
+              <template if="m.attachment_type === 'doc'">
+                <a class="attachment-doc" :href="m.attachment_url" target="_blank" rel="noopener">
+                  📎 {m.attachment_name || 'Document'}
+                </a>
+              </template>
+            </template>
+            <template if="m.body"><p>{m.body}</p></template>
+            <span class="bubble-time">{m.created_at}</span>
+          </div>
+        </template>
+        <template if="thread.length === 0">
+          <p class="empty">No messages yet — say hi to {peer.name}.</p>
+        </template>
+      </div>
+
+      <form class="composer" onsubmit={send}>
+        <label class="attach-btn" title="Attach a photo, video, or document">
+          📎
+          <input type="file" hidden onchange={attach} accept="image/*,video/*,.pdf,.doc,.docx,.txt,.zip,.csv">
+        </label>
+        <input class="grow" bind:value="draft" placeholder="Message {peer.name}" autocomplete="off">
+        <button :disabled="!draft.trim()">Send</button>
+      </form>
+    </template>
+
+    <template else>
+      <div class="thread-empty">
+        <p>⚡</p>
+        <p>Pick a conversation to start chatting.</p>
+      </div>
+    </template>
+  </main>
+
+  <template if="lightbox">
+    <div class="lightbox" onclick={closeLightbox}>
+      <button class="lightbox-close" onclick={closeLightbox} aria-label="Close">✕</button>
+      <img class="lightbox-img" :src="lightbox.attachment_url" alt="attachment" onclick={event.stopPropagation()}>
+    </div>
+  </template>
+</div>
+
+<script>
+  const REPLIES = [
+    'Haha, fair point.',
+    'Oh nice, tell me more.',
+    "I'm mid-something, back in a bit!",
+    'Good idea, let’s do that.',
+    'lol yeah',
+    'On it.',
+    'Wait really?',
+    'Sounds good to me 👍',
+    'Can we talk about this later today?',
+    'Same here honestly.',
+    'That tracks.',
+    'Sending you something in a sec.',
+  ];
+
+  let lightbox = null;
+  function openLightbox(m) { lightbox = m; }
+  function closeLightbox() { lightbox = null; }
+
+  async function send(e) {
+    e.preventDefault();
+    const body = draft.trim();
+    if (!body) return;
+    draft = '';
+    await api_create({ sender_id: me.id, recipient_id: peer.id, body });
+    refresh();
+    autoReply();
+  }
+
+  // Demo behavior: whoever you just messaged writes back after a short
+  // human-ish delay, so `live` visibly pushes an update into the open
+  // thread with zero manual refresh — see the note at the top of this file
+  // for why this runs client-side instead of as a background job.
+  function autoReply() {
+    const replyingTo = peer.id;
+    const replyingAs = me.id;
+    setTimeout(async () => {
+      const body = REPLIES[Math.floor(Math.random() * REPLIES.length)];
+      await api_create({ sender_id: replyingTo, recipient_id: replyingAs, body, auto_reply: 1 });
+      refresh();
+    }, 900 + Math.random() * 1600);
+  }
+
+  // Attachments post straight to the auto-CRUD /api/messages endpoint as
+  // multipart — api_create() is JSON-only, but a file field in ANY
+  // multipart POST auto-uploads and becomes its column's URL string
+  // (spark-ssr's generic multipart handling), so this still goes through
+  // the real table write and its `live` ping, unlike a hand-rolled insert
+  // via a custom endpoint would.
+  async function attach(e) {
+    const file = e.target.files[0];
+    e.target.value = '';
+    if (!file) return;
+    const ext = (file.name || '').toLowerCase().match(/\.\w+$/)?.[0] || '';
+    const type = /\.(png|jpe?g|gif|webp|svg)$/.test(ext) ? 'image'
+      : /\.(mp4|webm|mov|mkv)$/.test(ext) ? 'video' : 'doc';
+    const fd = new FormData();
+    fd.append('sender_id', me.id);
+    fd.append('recipient_id', peer.id);
+    fd.append('body', '');
+    fd.append('attachment_url', file);
+    fd.append('attachment_type', type);
+    fd.append('attachment_name', file.name);
+    await fetch('/api/messages', { method: 'POST', body: fd });
+    refresh();
+    autoReply();
+  }
+</script>
+
+<spark-ssr table="messages" seed="./seed/messages.json" live />
+
+<spark-ssr>
+  me       = SELECT id, name, email, COALESCE(bio, '') AS bio, avatar, CASE (id % 8) WHEN 0 THEN '#ffd24a' WHEN 1 THEN '#7dd3fc' WHEN 2 THEN '#f9a8d4' WHEN 3 THEN '#a5b4fc' WHEN 4 THEN '#86efac' WHEN 5 THEN '#fca5a5' WHEN 6 THEN '#fdba74' ELSE '#c4b5fd' END AS avatar_color, UPPER(SUBSTR(name, 1, 1)) AS avatar_initial FROM users WHERE id = :session.id
+  contacts = SELECT id, name, COALESCE(bio, '') AS bio, avatar, CASE (id % 8) WHEN 0 THEN '#ffd24a' WHEN 1 THEN '#7dd3fc' WHEN 2 THEN '#f9a8d4' WHEN 3 THEN '#a5b4fc' WHEN 4 THEN '#86efac' WHEN 5 THEN '#fca5a5' WHEN 6 THEN '#fdba74' ELSE '#c4b5fd' END AS avatar_color, UPPER(SUBSTR(name, 1, 1)) AS avatar_initial FROM users WHERE id != :session.id ORDER BY name
+  peer     = SELECT id, name, COALESCE(bio, '') AS bio, avatar, CASE (id % 8) WHEN 0 THEN '#ffd24a' WHEN 1 THEN '#7dd3fc' WHEN 2 THEN '#f9a8d4' WHEN 3 THEN '#a5b4fc' WHEN 4 THEN '#86efac' WHEN 5 THEN '#fca5a5' WHEN 6 THEN '#fdba74' ELSE '#c4b5fd' END AS avatar_color, UPPER(SUBSTR(name, 1, 1)) AS avatar_initial FROM users WHERE id = :with
+  thread   = SELECT * FROM messages WHERE (sender_id = :session.id AND recipient_id = :with) OR (sender_id = :with AND recipient_id = :session.id) ORDER BY created_at
+</spark-ssr>

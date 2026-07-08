@@ -1,0 +1,28 @@
+<!-- Plain insert into the auth table — passwords hash on the way in
+     (spark-ssr README, "Auth-table hygiene"). No ?auth here: that query
+     string is reserved for the login endpoint. Success redirects to /login
+     so the new account signs in explicitly. -->
+<title>Create account · spark chat</title>
+<meta name="robots" content="noindex">
+
+<main class="auth-screen">
+  <div class="auth-card">
+    <div class="auth-brand">⚡ spark chat</div>
+    <p class="auth-tag">Create an account to start chatting.</p>
+
+    <form class="panel login" action="/api/users" method="post" redirect="/login">
+      <label>Name
+        <input type="text" name="name" maxlength="60" required>
+      </label>
+      <label>Email
+        <input type="email" name="email" autocomplete="username" required>
+      </label>
+      <label>Password
+        <input type="password" name="password" autocomplete="new-password" minlength="4" required>
+      </label>
+      <button>Create account</button>
+      <template if="errors && errors.email"><p class="error">That email is already registered.</p></template>
+      <p class="hint">Already have an account? <a href="/login">Sign in</a></p>
+    </form>
+  </div>
+</main>

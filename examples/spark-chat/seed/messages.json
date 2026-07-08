@@ -1,0 +1,14 @@
+[
+  { "sender_id": 2, "recipient_id": 1, "body": "Hey Ada! Did you see the new release notes?", "attachment_url": "", "attachment_type": "", "attachment_name": "", "auto_reply": 0 },
+  { "sender_id": 1, "recipient_id": 2, "body": "Just read them — the SSR live updates are so clean.", "attachment_url": "", "attachment_type": "", "attachment_name": "", "auto_reply": 0 },
+  { "sender_id": 2, "recipient_id": 1, "body": "Right? No socket code anywhere in the app.", "attachment_url": "", "attachment_type": "", "attachment_name": "", "auto_reply": 0 },
+  { "sender_id": 1, "recipient_id": 2, "body": "That's the whole pitch honestly.", "attachment_url": "", "attachment_type": "", "attachment_name": "", "auto_reply": 0 },
+  { "sender_id": 3, "recipient_id": 1, "body": "Sent over the new component designs, take a look when you can.", "attachment_url": "", "attachment_type": "", "attachment_name": "", "auto_reply": 0 },
+  { "sender_id": 1, "recipient_id": 3, "body": "On it, thank you!", "attachment_url": "", "attachment_type": "", "attachment_name": "", "auto_reply": 0 },
+  { "sender_id": 3, "recipient_id": 1, "body": "No rush, whenever works.", "attachment_url": "", "attachment_type": "", "attachment_name": "", "auto_reply": 0 },
+  { "sender_id": 5, "recipient_id": 1, "body": "Quick one — does spark-chat support group threads yet?", "attachment_url": "", "attachment_type": "", "attachment_name": "", "auto_reply": 0 },
+  { "sender_id": 1, "recipient_id": 5, "body": "Not yet, 1:1 only for now.", "attachment_url": "", "attachment_type": "", "attachment_name": "", "auto_reply": 0 },
+  { "sender_id": 6, "recipient_id": 1, "body": "Shipped the settings page today, feels good.", "attachment_url": "", "attachment_type": "", "attachment_name": "", "auto_reply": 0 },
+  { "sender_id": 1, "recipient_id": 6, "body": "Nice! Screenshot?", "attachment_url": "", "attachment_type": "", "attachment_name": "", "auto_reply": 0 },
+  { "sender_id": 6, "recipient_id": 1, "body": "Later — heading into a call.", "attachment_url": "", "attachment_type": "", "attachment_name": "", "auto_reply": 0 }
+]

@@ -1,0 +1,422 @@
+/* spark chat — same design system as the Spark showcase: monospace
+   JetBrains Mono type, a gold --spark accent, dark by default. Fonts come
+   from spark.json ("fonts" → spark-html-font injects @font-face + the
+   --font-jetbrains-mono stack); theming is the data-theme attribute
+   spark-html-theme maintains. */
+
+:root {
+  --bg: #000;
+  --surface: #0a0a0a;
+  --surface-2: #101014;
+  --border: #1a1a1a;
+  --border-strong: #333;
+  --text: #fff;
+  --muted: #888;
+  --muted-dim: #555;
+  --spark: #ffd24a;
+  --spark-ink: #ffd24a;
+  --danger: #ff6b6b;
+  --radius: 12px;
+  --sidebar-w: 340px;
+  --font: var(--font-jetbrains-mono, "JetBrains Mono", ui-monospace, monospace);
+}
+
+[data-theme="light"] {
+  --bg: #fff;
+  --surface: #fafafa;
+  --surface-2: #f4f4f5;
+  --border: #ededed;
+  --border-strong: #d4d4d4;
+  --text: #1a1a1a;
+  --muted: #666;
+  --muted-dim: #999;
+  --spark: #ffd24a;
+  --spark-ink: #9a6a00;
+  --danger: #d63b3b;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+html, body { height: 100%; }
+body {
+  margin: 0;
+  font-family: var(--font);
+  line-height: 1.5;
+  background: var(--bg);
+  color: var(--text);
+  -webkit-font-smoothing: antialiased;
+  overflow: hidden;
+}
+
+a { color: inherit; text-decoration: none; }
+::selection { background: var(--spark); color: #000; }
+[data-theme="light"] ::selection { background: #ffe9a8; color: #111; }
+[hidden] { display: none !important; }
+
+input, textarea {
+  font: inherit;
+  color: var(--text);
+  background: var(--bg);
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  padding: 0.5rem 0.7rem;
+}
+input:focus, textarea:focus { outline: none; border-color: var(--spark); }
+
+button {
+  font: inherit;
+  cursor: pointer;
+  color: var(--text);
+  background: var(--surface-2);
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  padding: 0.5rem 0.8rem;
+  transition: border-color 0.12s, color 0.12s, transform 0.08s;
+}
+button:hover:not(:disabled) { border-color: var(--spark); color: var(--spark-ink); }
+button:active:not(:disabled) { transform: scale(0.97); }
+button:disabled { opacity: 0.4; cursor: default; }
+button.danger:hover:not(:disabled) { border-color: var(--danger); color: var(--danger); }
+button.ghost { border: none; background: none; padding: 0.3rem 0.5rem; font-size: 1.05rem; }
+button.ghost:hover:not(:disabled) { color: var(--spark-ink); transform: none; }
+
+.hint { color: var(--muted); font-size: 0.85rem; }
+.error { color: var(--danger); }
+.empty { color: var(--muted); }
+
+/* ── avatar (components/avatar.html) ── */
+.av {
+  border-radius: 50%;
+  object-fit: cover;
+  border: 1px solid var(--border-strong);
+  flex-shrink: 0;
+}
+.av-fallback {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  color: #000;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  flex-shrink: 0;
+}
+
+/* ── auth screens (login / signup / profile) ── */
+.auth-screen {
+  min-height: 100vh;
+  min-height: 100dvh; /* iOS Safari: 100vh includes the area behind the collapsing address bar */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+  overflow-y: auto;
+}
+.auth-card {
+  width: 100%;
+  max-width: 400px;
+}
+.auth-brand { font-size: 1.4rem; font-weight: 800; margin-bottom: 0.15rem; }
+.auth-tag { color: var(--muted); margin: 0 0 1.5rem; }
+.back { display: inline-block; color: var(--muted); margin-bottom: 1rem; }
+.back:hover { color: var(--spark-ink); }
+
+.panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1.25rem;
+  margin: 0 0 1.25rem;
+}
+.panel h3 { margin: 0 0 0.75rem; font-size: 0.95rem; color: var(--muted); }
+
+.login { display: grid; gap: 0.75rem; }
+.login label, .panel label {
+  display: grid;
+  gap: 0.3rem;
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+.panel input, .panel textarea { width: 100%; }
+
+.profile-card .panel .row { margin-top: 0.5rem; }
+.profile-avatar-row {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+}
+.upload-form { display: flex; align-items: center; gap: 0.6rem; }
+.upload-label {
+  font-size: 0.85rem;
+  color: var(--muted);
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+.upload-label input[type="file"] { font-size: 0.8rem; max-width: 190px; }
+
+.row { display: flex; align-items: center; gap: 0.6rem; margin: 0.4rem 0; }
+.grow { flex: 1; }
+
+/* ── app shell: sidebar + thread ── */
+.app {
+  display: flex;
+  height: 100vh;
+  height: 100dvh; /* iOS Safari: 100vh includes the area behind the collapsing
+    address bar, so the flex column's last child (the composer) got pushed
+    below the visible viewport with overflow:hidden clipping it entirely —
+    100dvh tracks the actual visible viewport as the chrome collapses. */
+}
+
+.sidebar {
+  width: var(--sidebar-w);
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid var(--border);
+  background: var(--surface);
+}
+.sidebar-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--border);
+}
+.me { display: flex; align-items: center; gap: 0.6rem; min-width: 0; }
+.me:hover .me-name { color: var(--spark-ink); }
+.me-name {
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.sidebar-actions { display: flex; align-items: center; gap: 0.15rem; flex-shrink: 0; }
+.sidebar-actions form { display: contents; }
+
+.contacts { flex: 1; overflow-y: auto; }
+.contact {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.65rem 1rem;
+  border-bottom: 1px solid var(--border);
+  transition: background 0.1s;
+}
+.contact:hover { background: var(--surface-2); }
+.contact.on { background: var(--surface-2); border-left: 3px solid var(--spark); }
+.contact-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  min-width: 0;
+}
+.contact-info strong { font-size: 0.95rem; }
+.contact-bio {
+  color: var(--muted);
+  font-size: 0.8rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.thread-pane {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.thread-head {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1.25rem;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+}
+.thread-sub { margin: 0; color: var(--muted); font-size: 0.8rem; }
+
+.thread-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.bubble {
+  max-width: 60%;
+  padding: 0.55rem 0.8rem;
+  border-radius: 14px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+}
+.bubble p { margin: 0; white-space: pre-wrap; word-break: break-word; }
+.bubble-time {
+  display: block;
+  margin-top: 0.2rem;
+  font-size: 0.7rem;
+  color: var(--muted-dim);
+}
+.bubble.theirs { align-self: flex-start; }
+.bubble.mine {
+  align-self: flex-end;
+  background: var(--spark);
+  color: #000;
+  border-color: var(--spark);
+}
+.bubble.mine .bubble-time { color: rgba(0, 0, 0, 0.55); }
+
+/* ── attachments ── */
+.attachment-img {
+  display: block;
+  max-width: 100%;
+  max-height: 260px;
+  border-radius: 8px;
+  margin-bottom: 0.3rem;
+  cursor: zoom-in;
+  transition: opacity 0.12s;
+}
+.attachment-img:hover { opacity: 0.9; }
+.attachment-video {
+  display: block;
+  max-width: 100%;
+  max-height: 260px;
+  border-radius: 8px;
+  margin-bottom: 0.3rem;
+  background: #000;
+}
+.attachment-doc {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.4rem 0.6rem;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.15);
+  color: inherit;
+  word-break: break-all;
+}
+.attachment-doc:hover { text-decoration: underline; }
+
+.composer {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.85rem 1.25rem;
+  /* iPhone home-indicator safe area — needs viewport-fit=cover (in the page
+     head) to be non-zero at all; a no-op elsewhere. */
+  padding-bottom: calc(0.85rem + env(safe-area-inset-bottom));
+  border-top: 1px solid var(--border);
+  background: var(--surface);
+}
+.attach-btn {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.2rem;
+  height: 2.2rem;
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: 1.1rem;
+  transition: background 0.12s;
+}
+.attach-btn:hover { background: var(--surface-2); }
+
+.thread-empty {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  color: var(--muted);
+}
+.thread-empty p:first-child { font-size: 2.5rem; }
+
+.back-mobile { display: none; font-size: 1.2rem; padding: 0.2rem 0.3rem; flex-shrink: 0; }
+.back-mobile:hover { color: var(--spark-ink); }
+
+/* ── responsive: sidebar and thread become mutually exclusive full-screen
+     views below 720px, toggled by whether a conversation is open (?with=,
+     reflected server-side as .app.has-peer so there's no flash on load) ── */
+@media (max-width: 720px) {
+  .sidebar { width: 100%; }
+  .app.has-peer .sidebar { display: none; }
+  .app:not(.has-peer) .thread-pane { display: none; }
+  .back-mobile { display: inline-flex; }
+  .bubble { max-width: 82%; }
+  .thread-body { padding: 0.85rem; }
+  .composer { padding: 0.6rem 0.85rem; }
+  .contact { padding: 0.75rem 1rem; }
+}
+
+@media (max-width: 480px) {
+  .auth-screen { padding: 1rem; align-items: flex-start; padding-top: 3rem; }
+  .thread-head { padding: 0.6rem 0.85rem; }
+  .sidebar-head { padding: 0.6rem 0.75rem; }
+}
+
+/* ── lightbox: click an image attachment to view it full-size ── */
+.lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  background: rgba(0, 0, 0, 0.85);
+  cursor: zoom-out;
+  animation: lightbox-in 0.12s ease-out;
+}
+@keyframes lightbox-in { from { opacity: 0; } to { opacity: 1; } }
+.lightbox-img {
+  max-width: 100%;
+  max-height: 100%;
+  border-radius: 8px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+  cursor: default;
+}
+.lightbox-close {
+  position: fixed;
+  top: 1rem;
+  right: 1rem;
+  width: 2.4rem;
+  height: 2.4rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #fff;
+  font-size: 1.1rem;
+}
+.lightbox-close:hover { background: rgba(255, 255, 255, 0.2); border-color: rgba(255, 255, 255, 0.35); color: #fff; }
+
+/* ── themed scrollbars — the sidebar contact list and the message thread
+   are the two panes that actually scroll; match the app's own surfaces
+   instead of the OS default (dark scrollbar on a light page or vice versa
+   looks broken). Firefox + WebKit/Blink/Safari both covered. ── */
+.contacts, .thread-body, .auth-screen {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-strong) transparent;
+}
+.contacts::-webkit-scrollbar, .thread-body::-webkit-scrollbar, .auth-screen::-webkit-scrollbar {
+  width: 9px;
+}
+.contacts::-webkit-scrollbar-track, .thread-body::-webkit-scrollbar-track, .auth-screen::-webkit-scrollbar-track {
+  background: transparent;
+}
+.contacts::-webkit-scrollbar-thumb, .thread-body::-webkit-scrollbar-thumb, .auth-screen::-webkit-scrollbar-thumb {
+  background-color: var(--border-strong);
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+.contacts::-webkit-scrollbar-thumb:hover, .thread-body::-webkit-scrollbar-thumb:hover, .auth-screen::-webkit-scrollbar-thumb:hover {
+  background-color: var(--spark);
+}

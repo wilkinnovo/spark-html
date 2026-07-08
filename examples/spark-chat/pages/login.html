@@ -1,0 +1,25 @@
+<!-- Sign in with a PLAIN FORM — no JavaScript required. The server answers
+     a browser like a browser: success 303s to redirect="/"; a wrong
+     password re-renders this page with {errors} in scope. -->
+<title>Sign in · spark chat</title>
+<meta name="robots" content="noindex">
+
+<main class="auth-screen">
+  <div class="auth-card">
+    <div class="auth-brand">⚡ spark chat</div>
+    <p class="auth-tag">Realtime messaging, server-rendered.</p>
+
+    <form class="panel login" action="/api/users?auth" method="post" redirect="/">
+      <label>Email
+        <input type="email" name="email" autocomplete="username" required>
+      </label>
+      <label>Password
+        <input type="password" name="password" autocomplete="current-password" required>
+      </label>
+      <button>Sign in</button>
+      <template if="errors"><p class="error">Wrong email or password.</p></template>
+      <p class="hint">Try <code>milo@spark-html.com</code> / <code>spark</code></p>
+      <p class="hint">New here? <a href="/signup">Create an account</a></p>
+    </form>
+  </div>
+</main>

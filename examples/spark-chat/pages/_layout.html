@@ -1,0 +1,17 @@
+<!-- App shell for every page: stylesheet + client boot script. Chat/profile
+     chrome (sidebar + thread) lives in pages/index.html itself since it's
+     only meaningful signed-in and its layout is page-specific — the login
+     and signup pages want the full viewport to themselves too.
+
+     viewport-fit=cover is added to the viewport meta from app.js, not a
+     second <meta> tag here — spark-ssr always emits its own
+     `<meta name="viewport">` unconditionally (unlike <title>, it isn't
+     deduped against a page/layout-supplied one), so two tags would both
+     land in <head> and which one wins is unspecified. Mutating the DOM
+     node app.js's single source of truth. Without viewport-fit=cover,
+     env(safe-area-inset-*) in style.css resolves to 0 on iPhone and the
+     composer sits flush under the home-indicator area. -->
+<link rel="stylesheet" href="/style.css">
+<script type="module" src="/app.js"></script>
+
+<slot></slot>

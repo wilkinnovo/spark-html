@@ -1,0 +1,21 @@
+{
+  "name": "spark-chat",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "bun spark-ssr",
+    "db": "bun spark-ssr db",
+    "start": "bun spark-ssr start",
+    "build": "bun spark-ssr build"
+  },
+  "dependencies": {
+    "spark-html": "*",
+    "spark-ssr": "*",
+    "spark-html-theme": "*",
+    "spark-html-font": "*"
+  },
+  "devDependencies": {
+    "spark-html-image": "*"
+  }
+}

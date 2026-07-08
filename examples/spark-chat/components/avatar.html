@@ -1,0 +1,13 @@
+<!-- Pure UI. Props: label, photo (optional uploaded avatar url), size,
+     color, initial — color/initial are precomputed in SQL by the caller
+     since a <script> here can't see props during SSR. No photo → initials
+     on a color hashed from the name, so every seeded/new user gets a
+     distinct avatar with zero assets. -->
+<template if="photo">
+  <img class="av" :src="photo" :style="'width:' + (size || 44) + 'px;height:' + (size || 44) + 'px'" alt="{label}">
+</template>
+<template else>
+  <span class="av av-fallback" :style="'width:' + (size || 44) + 'px;height:' + (size || 44) + 'px;background:' + (color || '#888')">
+    {initial}
+  </span>
+</template>

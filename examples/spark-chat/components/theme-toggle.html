@@ -1,0 +1,9 @@
+<!-- The spark-html-theme store, as a button. theme() itself boots in
+     /app.js; the server also inlines the no-flash init snippet in <head>. -->
+<button class="ghost toggle" onclick={theme.toggle} aria-label="Toggle theme">
+  {theme.resolved === 'dark' ? '☀️' : '🌙'}
+</button>
+
+<script>
+  const theme = useStore('theme');
+</script>
