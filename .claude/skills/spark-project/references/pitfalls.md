@@ -145,6 +145,33 @@ tree-wide before components boot; fixed via retry-after-ancestor-ready.
 - **Dev vs prod resolution differ** in spark-html-bun (import maps vs
   Bun.build). "Works in dev, breaks in prod" bugs: suspect resolution first.
 
+## 1.1.0 speed-release invariants (2026-07-08)
+
+- **Row handlers read `e.currentTarget`, not a closed-over element.** One
+  listener function per handler per TEMPLATE is shared by every clone
+  (wireElement, `h.l`). Any test helper that fires synthetic events MUST set
+  `currentTarget` per bubble level (all `fire()` helpers were updated; the
+  dom-shim's `document.addEventListener` is a real registry now, plus
+  `matches()` and comma selector lists). A handler that "does nothing" in a
+  test is usually a fire() without currentTarget.
+- **Internal `__spark*` boolean flags are set as `1`, read by truthiness.**
+  Never compare them `=== true` (size golf; test/perf.js asserts were
+  changed to `assert.ok`). Sibling packages verified to do truthy reads.
+- **Shallow keyed rows patch via `block.live` (stamp-time dynamic-node
+  list), not a DOM walk.** `patchLive` runs patchText/patchElement over the
+  collected nodes; correctness depends on the shallow guarantee
+  (`__sparkEachDeepRows` — no anchors/components/imports anywhere in the
+  template). Content injected into a row by user JS at runtime is NOT
+  picked up by row refreshes — same class of limitation as manual DOM edits
+  elsewhere.
+- **Handler attributes are stripped from the TEMPLATE at analysis**
+  (analyzeElement) — clones are born without on* attrs; the one clone made
+  before analysis is stripped in stampTree. If a row inexplicably keeps a
+  raw `onclick="{…}"` attr, that pipeline broke.
+- **Full document-level event delegation was REJECTED at +0.232 KB gzip**
+  (budget outranks perf, spark-brain §2). If it ever returns, it is a
+  budget conversation first — see spark-speed-up.md ledger G5.
+
 ## Meta
 
 - `spark-improvements.md` (repo root) is a decent diagnosis doc but its §7 is
