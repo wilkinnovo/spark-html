@@ -61,8 +61,7 @@ export function compileExpr(code) {
 // the with-version forever. An empty key set still builds (globals-only
 // expressions like {Math.random()} get an optimizable body too).
 function buildFast(fn, keys) {
-  let names = '';
-  for (const k of keys) names += (names ? ',' : '') + k;
+  const names = [...keys].join(',');
   try {
     fn.__fast = new Function('__scope__',
       `${names ? `const {${names}} = __scope__;\n` : ''}return (${fn.__src})\n`);

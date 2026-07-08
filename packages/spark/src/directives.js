@@ -33,7 +33,7 @@ import {
   closestComponent,
   ELEMENT_NODE, TEXT_NODE,
   cloneTemplateNodes, insertClones, renderClones,
-  walkNode, hydrateBlockImports, pushPrerenderWait,
+  walkNode, patchLive, hydrateBlockImports, pushPrerenderWait,
 } from './index.js';
 // destroyComponent moved with the rest of the component lifecycle (M3.1).
 // Imported directly from component.js so index.js doesn't have to re-export
@@ -107,7 +107,7 @@ function parseIfMember(el) {
   // A bare else compiles as the constant `true` — the chain scan stops there.
   el.__sparkIfFn = compileExpr(el.__sparkIfExpr === null ? 'true' : el.__sparkIfExpr);
   el.__sparkIfTemplate = cloneTemplateNodes(el);
-  el.__sparkIfParsed = true;
+  el.__sparkIfParsed = 1;
 }
 
 // Collect the if / else-if / else chain headed at `el` (computed once, cached
@@ -171,7 +171,7 @@ export function patchIf(el, scope) {
     } else if (show && isShown) {
       // keep contents fresh
       m.__sparkIfRendered.forEach((n) => {
-        if (n.parentNode) walkNode(n, scope, false);
+        if (n.parentNode) walkNode(n, scope);
       });
     }
   }
@@ -227,7 +227,7 @@ function parseAwait(el) {
   el.__sparkThenTpl = clone(thenNodes);
   el.__sparkCatchTpl = clone(catchNodes);
   if (!isTplAnchor) el.innerHTML = '';
-  el.__sparkAwaitParsed = true;
+  el.__sparkAwaitParsed = 1;
 
   // Hydration: drop any branch content a prerender baked as live siblings
   // (tagged data-spark-await) so the client re-runs the promise and renders
@@ -270,7 +270,7 @@ function applyAwaitState(el, scope) {
   }
   // Walk after the whole branch is inserted (see patchEach — nested if/else
   // chains need their followers present when the head first patches).
-  for (const c of el.__sparkAwaitRendered) walkNode(c, branchScope, false);
+  for (const c of el.__sparkAwaitRendered) walkNode(c, branchScope);
   hydrateBlockImports(el.__sparkAwaitRendered, branchScope);
   el.__sparkAwaitRenderedState = state;
 }
@@ -279,7 +279,7 @@ function applyAwaitState(el, scope) {
 function refreshAwait(el, scope) {
   if (!el.__sparkAwaitRendered) return;
   const branchScope = awaitBranchScope(el, scope, el.__sparkAwaitRenderedState);
-  for (const n of el.__sparkAwaitRendered) if (n.parentNode) walkNode(n, branchScope, false);
+  for (const n of el.__sparkAwaitRendered) if (n.parentNode) walkNode(n, branchScope);
 }
 
 // (Re)start the block on a new promise/value: show pending, then settle into
@@ -344,7 +344,7 @@ export function patchAwait(el, scope) {
     el.__sparkAwaitExprKeys = set.size ? set : null;
 
     if (firstTime || result !== el.__sparkAwaitSource) {
-      el.__sparkAwaitStarted = true;
+      el.__sparkAwaitStarted = 1;
       startAwait(el, result, scope);
       return;
     }
@@ -482,9 +482,12 @@ function walkBlock(block, force) {
   const prevForce = capture.rowForce;
   const ext = block.ext || (block.ext = new Set());
   capture.sink = ext;
-  if (force) capture.rowForce = true;
+  if (force) capture.rowForce = 1;
   try {
-    for (const nd of block.nodes) walkNode(nd, block.scope, false);
+    // Shallow row with a stamp-time recipe: patch its dynamic nodes directly
+    // (rowForce lifts per-node dep gating when the row's own item changed).
+    if (block.live) patchLive(block.live, block.scope);
+    else for (const nd of block.nodes) walkNode(nd, block.scope);
   } finally {
     capture.sink = prevSink;
     capture.rowForce = prevForce;
@@ -497,7 +500,7 @@ export function patchEach(el, scope) {
     const expr = el.getAttribute('each').trim();
     const match = expr.match(/^(\w+)(?:\s*,\s*(\w+))?\s+in\s+(.+)$/);
     if (!match) {
-      el.__sparkEachParsed = true;
+      el.__sparkEachParsed = 1;
       warnOnce(
         `each:${expr}`,
         `[spark] Invalid each="${expr}". Expected each="item in items" or each="item, i in items".`,
@@ -520,19 +523,17 @@ export function patchEach(el, scope) {
     // the per-node teardown machinery (destroyComponent's querySelectorAll
     // per node is the expensive part) — removal is just n.remove(), unless
     // a leave transition wants to animate it out.
-    let deep = false;
+    let deep = 0;
     for (const t of el.__sparkEachTemplate) {
       if (t.nodeType !== ELEMENT_NODE) continue;
-      if (t.hasAttribute('name') || t.hasAttribute('import') || t.hasAttribute('each')
-        || t.hasAttribute('if') || t.hasAttribute('else-if') || t.hasAttribute('else')
-        || t.hasAttribute('await')
+      if ((t.matches && t.matches('[name],[import],[each],[if],[else-if],[else],[await]'))
         || (t.querySelector && t.querySelector('[name],[import],[each],[if],[else-if],[else],[await]'))) {
-        deep = true;
+        deep = 1;
         break;
       }
     }
     el.__sparkEachDeepRows = deep;
-    el.__sparkEachParsed = true;
+    el.__sparkEachParsed = 1;
     el.__sparkEachBlocks = []; // [{ key, nodes: [] }]
   }
 
@@ -560,7 +561,7 @@ export function patchEach(el, scope) {
   if (capture.dirtyMode && !capture.rowForce && arrKeysPrior
     && !setsIntersect(arrKeysPrior, capture.dirtyKeys)) {
     for (const b of el.__sparkEachBlocks) {
-      if (b.ext && setsIntersect(b.ext, capture.dirtyKeys)) walkBlock(b, false);
+      if (b.ext && setsIntersect(b.ext, capture.dirtyKeys)) walkBlock(b);
     }
     return;
   }
@@ -596,14 +597,10 @@ export function patchEach(el, scope) {
   // new Proxy per row per patch (see makeLoopScope).
   const keyFn = el.__sparkEachKeyFn;
   let keyBox = el.__sparkEachKeyBox;
-  if (keyFn) {
-    if (!keyBox) {
-      keyBox = el.__sparkEachKeyBox = { v: varName, iv: idxName, item: null, i: 0, scope };
-      el.__sparkEachKeyScope = makeLoopScope(keyBox);
-    } else if (keyBox.scope !== scope) {
-      keyBox.scope = scope;
-      el.__sparkEachKeyScope = makeLoopScope(keyBox);
-    }
+  if (keyFn && (!keyBox || keyBox.scope !== scope)) {
+    if (keyBox) keyBox.scope = scope;
+    else keyBox = el.__sparkEachKeyBox = { v: varName, iv: idxName, item: null, i: 0, scope };
+    el.__sparkEachKeyScope = makeLoopScope(keyBox);
   }
 
   const oldBlocks = el.__sparkEachBlocks || [];
@@ -625,7 +622,7 @@ export function patchEach(el, scope) {
   const entries = new Array(count);
   const seq = [];   // reused blocks' old positions, in new order
   const seqAt = []; // entry index of each seq member
-  let increasing = true; // reused rows already in relative order → zero moves
+  let increasing = 1; // reused rows already in relative order → zero moves
   let prevOld = -1;
   for (let i = 0; i < count; i++) {
     const item = arr[i];
@@ -671,21 +668,21 @@ export function patchEach(el, scope) {
       }
       block.raw = raw;
       if (increasing) {
-        if (block.oldIdx < prevOld) increasing = false;
+        if (block.oldIdx < prevOld) increasing = 0;
         else prevOld = block.oldIdx;
       }
       seqAt.push(i);
       seq.push(block.oldIdx);
     }
-    entries[i] = { block, item, raw, key, walk, force, stay: false };
+    entries[i] = { block, item, raw, key, walk, force };
   }
 
   // ── Phase 2: rows on a longest increasing subsequence of old positions
   // keep their DOM position; every other reused row moves exactly once.
   if (increasing) {
-    for (const e of entries) if (e.block) e.stay = true;
+    for (const e of entries) if (e.block) e.stay = 1;
   } else {
-    for (const k of lisMembers(seq)) entries[seqAt[k]].stay = true;
+    for (const k of lisMembers(seq)) entries[seqAt[k]].stay = 1;
   }
 
   // ── Phase 3: place / create / walk, forward with a moving cursor ──
@@ -711,11 +708,15 @@ export function patchEach(el, scope) {
       // hydrateBlockImports (inside renderClones) mutates `nodes` in place,
       // swapping placeholders for booted hosts so reconciliation tracks them.
       const nodes = [];
-      block = { key: e.key, nodes, box, scope: loopScope, raw: e.raw, ext: new Set() };
+      // Shallow rows (no anchors/components/imports anywhere in the
+      // template) collect their dynamic nodes at stamp time; walkBlock then
+      // patches that list instead of walking the row's DOM.
+      const live = el.__sparkEachDeepRows ? 0 : [];
+      block = { key: e.key, nodes, box, scope: loopScope, raw: e.raw, ext: new Set(), live };
       const prevSink = capture.sink;
       capture.sink = block.ext;
       try {
-        renderClones(templateNodes, insertAfter, nodes, loopScope);
+        renderClones(templateNodes, insertAfter, nodes, loopScope, live);
       } finally {
         capture.sink = prevSink;
         if (prevSink) for (const k of block.ext) prevSink.add(k);

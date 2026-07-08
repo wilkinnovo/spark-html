@@ -574,7 +574,7 @@ import {
 //                  (walkBlock): the row's inputs changed wholesale, so
 //                  per-node key gating is suspended for the walk, exactly
 //                  like a full pass scoped to one row
-export const capture = { set: null, sink: null, dirtyMode: false, dirtyKeys: null, dirtyItems: null, rowForce: false };
+export const capture = { set: null, sink: null, dirtyMode: false, dirtyKeys: null, dirtyItems: null, rowForce: 0 };
 
 // A node should re-evaluate this pass if we're in full mode, inside a forced
 // row walk, it has no recorded deps yet (first sight), it's untracked
@@ -790,11 +790,9 @@ function setupFormBinding(form, stateName, handlerAttr) {
 // fragment, or — for a non-template anchor — its children (which are then
 // cleared; the anchor renders clones as managed siblings).
 export function cloneTemplateNodes(el) {
-  if (el.tagName.toLowerCase() === 'template') {
-    return [...el.content.childNodes].map((n) => n.cloneNode(true));
-  }
-  const nodes = [...el.childNodes].map((n) => n.cloneNode(true));
-  el.innerHTML = '';
+  const isTpl = el.tagName.toLowerCase() === 'template';
+  const nodes = [...(isTpl ? el.content : el).childNodes].map((n) => n.cloneNode(true));
+  if (!isTpl) el.innerHTML = '';
   return nodes;
 }
 
@@ -805,14 +803,10 @@ export function cloneTemplateNodes(el) {
 // (anchors, components, imports) are left unstamped. Returns whether the
 // subtree is fully static, and marks it so — a static row cell is then
 // skipped by every walk INCLUDING the first one.
-function stampTree(clone, tpl) {
+function stampTree(clone, tpl, live) {
   if (clone.nodeType === TEXT_NODE) {
-    let t = tpl.__sparkTpl;
-    if (t === undefined) {
-      const s = tpl.textContent || '';
-      t = tpl.__sparkTpl = s.includes('{') ? s : null;
-    }
-    clone.__sparkTpl = t;
+    const t = clone.__sparkTpl = textTpl(tpl);
+    if (live && t !== null) live.push(clone);
     return t === null;
   }
   if (clone.nodeType !== ELEMENT_NODE) return true; // comments etc.
@@ -821,20 +815,28 @@ function stampTree(clone, tpl) {
   clone.__sparkNamed = tpl.__sparkNamed;
   // Anchors, components, and import placeholders manage their own subtree —
   // stamping (or static-marking) them would fight that machinery.
-  if (kind !== 0 || tpl.__sparkNamed || tpl.hasAttribute('import')) return false;
-  const a = tpl.__sparkAnalysis || (tpl.__sparkAnalysis = analyzeElement(tpl));
+  if (kind || tpl.__sparkNamed || tpl.hasAttribute('import')) return false;
+  let a = tpl.__sparkAnalysis;
+  if (!a) {
+    // First stamp for this template: analyzeElement just stripped the
+    // TEMPLATE's handler attributes, but this clone predates that — strip it
+    // too. Every later clone is born clean.
+    a = tpl.__sparkAnalysis = analyzeElement(tpl);
+    for (const h of a.handlers) clone.removeAttribute(h.name);
+  }
   clone.__sparkPlan = a.plan; // shared — ops are stateless descriptors
   wireElement(clone, a);
+  if (live && a.live) live.push(clone);
   let allStatic = !a.live;
   // Parallel descent — if the shapes ever diverge (they can't after a
   // cloneNode, but be graceful), stop stamping and let the walk lazy-build.
   let c = clone.firstChild, t = tpl.firstChild;
   while (c && t) {
-    if (!stampTree(c, t)) allStatic = false;
+    if (!stampTree(c, t, live)) allStatic = false;
     c = c.nextSibling; t = t.nextSibling;
   }
   if (c || t) allStatic = false;
-  if (allStatic) clone.__sparkStatic = true;
+  if (allStatic) clone.__sparkStatic = 1;
   return allStatic;
 }
 
@@ -842,28 +844,29 @@ function stampTree(clone, tpl) {
 // anchor, not the parent walk), stamp it with the template's cached recipe,
 // insert the clones in order after `cursor`, and collect them into `out`.
 // Shared by the each/if/await anchors.
-export function insertClones(templateNodes, cursor, out) {
+export function insertClones(templateNodes, cursor, out, live) {
   for (const tpl of templateNodes) {
     const clone = tpl.cloneNode(true);
-    clone.__sparkManaged = true;
-    stampTree(clone, tpl);
+    clone.__sparkManaged = 1;
+    stampTree(clone, tpl, live);
     cursor.after(clone);
     cursor = clone;
     out.push(clone);
   }
-  return cursor;
 }
 
 // Full first render of an if/each block: insert the clones, THEN walk them
 // (a nested if/else chain needs its followers present when its head first
 // runs), fire the enter hook, and resolve any [import] placeholders (async).
-export function renderClones(templateNodes, cursor, out, scope) {
-  insertClones(templateNodes, cursor, out);
-  for (const clone of out) {
-    walkNode(clone, scope, false);
-    enterNode(clone);
-  }
-  hydrateBlockImports(out, scope);
+export function renderClones(templateNodes, cursor, out, scope, live) {
+  insertClones(templateNodes, cursor, out, live);
+  // Shallow keyed rows arrive with a stamp-time recipe (live): patch those
+  // nodes directly, skipping the tree descent — no anchors, components, or
+  // imports can exist there (the caller guarantees it).
+  if (live) patchLive(live, scope);
+  else for (const clone of out) walkNode(clone, scope);
+  for (const clone of out) enterNode(clone);
+  if (!live) hydrateBlockImports(out, scope);
 }
 
 // Is a child node already known to be static — i.e. re-walking it can't
@@ -871,11 +874,9 @@ export function renderClones(templateNodes, cursor, out, scope) {
 // comments qualify. An each/if anchor (never marked static) and any element
 // with a live binding do not, so the parent keeps descending into them.
 function isStaticNode(n) {
-  if (n.nodeType === TEXT_NODE) {
-    return n.__sparkTpl == null; // null = no `{…}`; undefined = not seen yet
-  }
-  if (n.nodeType !== ELEMENT_NODE) return true;
-  return n.__sparkStatic === true;
+  // text: null tpl = no `{…}` (undefined = not seen yet); non-elements static
+  return n.nodeType === TEXT_NODE ? n.__sparkTpl == null
+    : n.nodeType !== ELEMENT_NODE || n.__sparkStatic;
 }
 
 // Classify an element once — the attributes that shape the walk (spark-ignore,
@@ -917,7 +918,7 @@ export function walkNode(node, scope, isRoot = false) {
   // Escape hatch: subtrees marked spark-ignore are never patched —
   // essential for documentation/code samples containing literal {braces}.
   if (kind === 1) {
-    if (!isRoot) node.__sparkStatic = true;
+    if (!isRoot) node.__sparkStatic = 1;
     return;
   }
   // Don't reach into a nested component's territory — it self-manages via
@@ -926,7 +927,7 @@ export function walkNode(node, scope, isRoot = false) {
   // `<input name="email">`) is not a boundary, so it keeps patching against the
   // parent scope (its `bind:value`/`{…}` read the parent's state).
   if (!isRoot && node.__sparkNamed && isSparkComponent(node)) {
-    node.__sparkStatic = true;
+    node.__sparkStatic = 1;
     return;
   }
 
@@ -962,7 +963,7 @@ export function walkNode(node, scope, isRoot = false) {
         '[spark] <template else-if>/<template else> must directly follow a <template if> (or another else-if). Branch ignored.',
       );
     }
-    if (!isRoot) node.__sparkStatic = true;
+    if (!isRoot) node.__sparkStatic = 1;
     return;
   }
 
@@ -1019,14 +1020,19 @@ export function walkNode(node, scope, isRoot = false) {
   if (!isRoot) node.__sparkStatic = allStatic;
 }
 
-function patchText(node, scope) {
-  let tpl = node.__sparkTpl;
-  if (tpl === undefined) {
-    // Static text (no `{`) caches as null — later passes are one null check,
-    // not a string scan.
-    const t = node.textContent || '';
-    tpl = node.__sparkTpl = t.includes('{') ? t : null;
+// Static text (no `{`) caches as null — later passes are one null check,
+// not a string scan.
+function textTpl(n) {
+  let t = n.__sparkTpl;
+  if (t === undefined) {
+    const s = n.textContent || '';
+    t = n.__sparkTpl = s.includes('{') ? s : null;
   }
+  return t;
+}
+
+export function patchText(node, scope) {
+  const tpl = textTpl(node);
   if (tpl === null) return;      // static text: nothing to do
   if (!shouldEval(node)) return; // deps unchanged this pass
   const next = withCapture(node, interpolate, tpl, scope);
@@ -1080,8 +1086,8 @@ function analyzeElement(el) {
   const handlers = [];
   const binds = [];
   let form = null;
-  let live = false;
-  const a = { plan, handlers, binds, form: null, live: false };
+  let live = 0;
+  const a = { plan, handlers, binds, form: null, live: 0 };
   // An unresolved [import] placeholder's attributes are exclusively the
   // import machinery's territory (buildProps evaluates them as typed
   // whole-value props) — never the generic patcher's. Top-level imports
@@ -1110,7 +1116,7 @@ function analyzeElement(el) {
     // handler is awaited with `pending` / caught into `error`. No manual flags.
     if (name === 'bind:form') {
       form = { stateName: value.trim(), handlerAttr: formSubmit };
-      live = true;
+      live = 1;
       continue;
     }
     if (isForm && name === 'onsubmit') continue; // owned by bind:form above
@@ -1134,7 +1140,7 @@ function analyzeElement(el) {
       const eventName = mode === 'value' || mode === 'number' || mode === 'text' ? 'input' : 'change';
       binds.push({ name, expr, mode, eventName, writeStmt: `${expr} = __val__` });
       plan.push({ kind: 'bind', mode, expr, fn: compileExpr(expr) });
-      live = true;
+      live = 1;
       continue;
     }
 
@@ -1157,7 +1163,7 @@ function analyzeElement(el) {
           `[spark] ${name}="{${fnExpr}}" — this is a function, not a handler: it's constructed and discarded on click, never called. Write the call directly instead, e.g. ${name}={${body}}.`);
       }
       handlers.push({ name, evt: name.slice(2), code, fnExpr });
-      live = true;
+      live = 1;
       continue;
     }
 
@@ -1170,7 +1176,7 @@ function analyzeElement(el) {
       // class now (before the first :class run overwrites the attribute).
       if (realAttr === 'class') op.staticClass = el.getAttribute('class') || '';
       plan.push(op);
-      live = true;
+      live = 1;
       continue;
     }
 
@@ -1179,12 +1185,25 @@ function analyzeElement(el) {
     // live value has none, which is why this is cached, not re-read).
     if (value.includes('{')) {
       plan.push({ kind: 'interp', name, tpl: value });
-      live = true;
+      live = 1;
     }
   }
+  // Strip handler attributes here, not in wireElement: on a loop TEMPLATE
+  // node this runs once, so every later clone is born without them — no
+  // per-clone removeAttribute, and the served rows match the no-framework
+  // markup byte-for-byte. (A `{…}` on* attr must never reach the native
+  // inline-handler machinery anyway.)
+  for (const h of handlers) el.removeAttribute(h.name);
   a.form = form;
   a.live = live;
   return a;
+}
+
+// Patch a stamp-time live-node recipe: the row's dynamic nodes, directly —
+// no tree descent, no per-node static/kind checks. Per-node dep gating
+// still applies inside patchText/patchElement.
+export function patchLive(live, scope) {
+  for (const nd of live) (nd.nodeType === TEXT_NODE ? patchText : patchElement)(nd, scope);
 }
 
 // Wiring half — the per-INSTANCE side effects the analysis described:
@@ -1192,18 +1211,21 @@ function analyzeElement(el) {
 // write-back listeners, set up bind:form. Every clone pays this (listeners
 // can't be shared), but never the attribute scan.
 function wireElement(el, a) {
+  // One SHARED listener per handler descriptor (h.l, built lazily): a loop
+  // template's analysis — and therefore its listener closures — is shared by
+  // every clone, so creating 1,000 rows allocates zero handler closures. The
+  // element comes back out of e.currentTarget. A plain onsubmit on a <form>
+  // almost always means "handle it in JS" — preventDefault by default so the
+  // page doesn't navigate (long-standing papercut). Escape hatch: call
+  // nothing / use a real <a> for navigation.
   for (const h of a.handlers) {
-    const handlerCtx = () => ({
-      phase: 'handler', component: componentNameFor(el), detail: h.name + '={' + h.fnExpr + '}',
+    el.addEventListener(h.evt, h.l ??= (e) => {
+      const t = e.currentTarget;
+      if (h.evt === 'submit' && e.preventDefault) e.preventDefault();
+      execute(h.code, t.__sparkScopeRef, e, undefined, () => ({
+        phase: 'handler', component: componentNameFor(t), detail: h.name + '={' + h.fnExpr + '}',
+      }));
     });
-    el.addEventListener(h.evt, (e) => {
-      // A plain onsubmit on a <form> almost always means "handle it in JS" —
-      // preventDefault by default so the page doesn't navigate (long-standing
-      // papercut). Escape hatch: call nothing / use a real <a> for navigation.
-      if (h.evt === 'submit' && e && e.preventDefault) e.preventDefault();
-      execute(h.code, el.__sparkScopeRef, e, undefined, handlerCtx);
-    });
-    el.removeAttribute(h.name);
   }
   for (const b of a.binds) {
     // Context is a factory: built only if the write actually throws.
@@ -1274,13 +1296,14 @@ function runElementPlan(el, scope) {
       // null/undefined removes the attribute — `hidden="a.loading || a.error"`
       // yields null when both are clear, and stringifying that to hidden=""
       // would mean hidden=TRUE (an empty boolean attribute is present).
-      if ((typeof result === 'boolean' || result == null) && op.staticClass === undefined) {
+      const sc = op.staticClass;
+      if ((typeof result === 'boolean' || result == null) && sc === undefined) {
         result ? el.setAttribute(op.realAttr, '') : el.removeAttribute(op.realAttr);
       } else {
         let str = String(result ?? '');
         // `:class` merges with the captured static class.
-        if (op.staticClass !== undefined) {
-          str = (op.staticClass + ' ' + str).trim();
+        if (sc !== undefined) {
+          str = (sc + ' ' + str).trim();
         }
         if (el.getAttribute(op.realAttr) !== str) el.setAttribute(op.realAttr, str);
       }
@@ -1296,7 +1319,7 @@ function runElementPlan(el, scope) {
   }
 }
 
-function patchElement(el, scope) {
+export function patchElement(el, scope) {
   // Stash the current scope so long-lived listeners always read the live one
   // — never the scope captured at first render (loop clones are reused). This
   // happens every walk, even when the bindings are skipped below.

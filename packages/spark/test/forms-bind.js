@@ -13,7 +13,7 @@ async function test(name, fn) {
 const tick = () => new Promise((r) => setTimeout(r, 5));
 const txt = (el) => (el ? el.textContent : '');
 const fire = (el, type, evt = {}) =>
-  (el._listeners[type] || []).forEach((f) => f({ type, target: el, preventDefault() {}, ...evt }));
+  (el._listeners[type] || []).forEach((f) => f({ type, target: el, currentTarget: el, preventDefault() {}, ...evt }));
 
 // A submit handler that resolves or rejects on demand, so we can observe the
 // pending → settled transition.

@@ -21,7 +21,7 @@ const tick = () => new Promise((r) => setTimeout(r, 5));
 function fire(el, type) {
   const e = { type, target: el };
   let n = el;
-  while (n) { (n._listeners?.[type] || []).forEach((fn) => fn(e)); n = n.parentNode; }
+  while (n) { e.currentTarget = n; (n._listeners?.[type] || []).forEach((fn) => fn(e)); n = n.parentNode; }
 }
 
 // Child component receiving per-item props.

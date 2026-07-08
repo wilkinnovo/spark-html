@@ -378,6 +378,34 @@ templates.push({
   },
 });
 
+// 18: SHALLOW keyed rows with a delegated handler, a spark-ignore island
+// (literal braces stay byte-intact), and an interpolated attribute — pins
+// the stamp-time live-node recipe (walkBlock's no-descent fast path) and
+// delegated wiring: handler attrs stripped, ignore content untouched, and
+// external-key (sel) updates re-render only via the recipe.
+templates.push({
+  gen(rng, id) {
+    const name = `fz${id}`;
+    let nid = 1;
+    const mk = () => ({ id: nid++, label: pick(rng, ['aa', 'bb', 'cc']) });
+    const rows = Array.from({ length: Math.floor(rng() * 5) + 2 }, mk);
+    const src = (rowsJson, selVal) => `<template each="r in rows" key="r.id"><div class="rw" :class="r.id === sel ? 'on' : 'off'" onclick="{sel = r.id}" data-lab="{r.label}!"><em>{r.label}</em><span spark-ignore>{not.code}</span></div></template><p class="sl">{sel}</p><script>let rows = ${rowsJson}; let sel = ${selVal};</script>`;
+    const live = (el) => [...el.__sparkScope.rows];
+    return { name, source: src(JSON.stringify(rows), 0), mutators: [
+      { desc: 'swap extremes', apply: (el) => { const rs = live(el); if (rs.length > 1) { const t = rs[0]; rs[0] = rs[rs.length - 1]; rs[rs.length - 1] = t; } setScopeVar(el, 'rows', rs); return { rows: rs }; } },
+      { desc: 'shuffle', apply: (el) => { const rs = live(el); for (let j = rs.length - 1; j > 0; j--) { const k = Math.floor(rng() * (j + 1)); const t = rs[j]; rs[j] = rs[k]; rs[k] = t; } setScopeVar(el, 'rows', rs); return { rows: rs }; } },
+      { desc: 'set sel', apply: (el) => { const rows = el.__sparkScope.rows; const nv = rows.length ? rows[Math.floor(rng() * rows.length)].id : 0; setScopeVar(el, 'sel', nv); return { sel: nv }; } },
+      { desc: 'replace one immutably', apply: (el) => { const rs = live(el); if (rs.length) { const j = Math.floor(rng() * rs.length); rs[j] = { id: rs[j].id, label: pick(rng, ['zz', 'ww']) }; } setScopeVar(el, 'rows', rs); return { rows: rs }; } },
+      { desc: 'remove one', apply: (el) => { const rs = live(el); if (rs.length) rs.splice(Math.floor(rng() * rs.length), 1); setScopeVar(el, 'rows', rs); return { rows: rs }; } },
+      { desc: 'insert one', apply: (el) => { const rs = live(el); rs.splice(Math.floor(rng() * (rs.length + 1)), 0, mk()); setScopeVar(el, 'rows', rs); return { rows: rs }; } },
+      { desc: 'deep-mutate one', apply: (el) => { const rows = el.__sparkScope.rows; if (rows.length) rows[Math.floor(rng() * rows.length)].label = pick(rng, ['mm', 'nn']); return { rows: [...el.__sparkScope.rows] }; } },
+    ], schema: { rows, sel: 0 } };
+  },
+  rebuild(state, name) {
+    return { name, source: `<template each="r in rows" key="r.id"><div class="rw" :class="r.id === sel ? 'on' : 'off'" onclick="{sel = r.id}" data-lab="{r.label}!"><em>{r.label}</em><span spark-ignore>{not.code}</span></div></template><p class="sl">{sel}</p><script>let rows = ${JSON.stringify(state.rows)}; let sel = ${state.sel};</script>` };
+  },
+});
+
 // ── Run one scenario ───────────────────────────────────────────────────
 async function runScenario(rng, seed, id) {
   const tpl = pick(rng, templates);

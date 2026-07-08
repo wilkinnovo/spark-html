@@ -12,7 +12,7 @@ async function test(name, fn) {
   catch (e) { fail++; console.log(`  ❌ ${name}\n     ${e.message}`); }
 }
 const tick = () => new Promise((r) => setTimeout(r, 5));
-const fire = (el, t) => { let n = el; while (n) { (n._listeners?.[t] || []).forEach((f) => f({ type: t, target: el })); n = n.parentNode; } };
+const fire = (el, t) => { const e = { type: t, target: el }; let n = el; while (n) { e.currentTarget = n; (n._listeners?.[t] || []).forEach((f) => f(e)); n = n.parentNode; } };
 const txt = (el) => (el ? el.textContent : '');
 
 console.log('\ninterpolate — brace-aware');

@@ -17,7 +17,7 @@ const tick = () => new Promise((r) => setTimeout(r, 5));
 function fire(el, type) {
   const e = { type, target: el };
   let n = el;
-  while (n) { (n._listeners?.[type] || []).forEach((fn) => fn(e)); n = n.parentNode; }
+  while (n) { e.currentTarget = n; (n._listeners?.[type] || []).forEach((fn) => fn(e)); n = n.parentNode; }
 }
 
 // ── reconciling loop ──
@@ -232,6 +232,55 @@ await test('booted components are revealed (data-spark-ready)', () => {
   const comp = body.querySelector('[name="looplist"]');
   assert.equal(comp.getAttribute('data-spark-ready'), '');
   assert.equal(comp.hasAttribute('data-spark-cloak'), false);
+});
+
+// ── shared loop-row handlers + live-node recipes ──
+// Handlers inside stamped keyed rows share ONE listener function per
+// template (no per-clone closures; the element is read from
+// e.currentTarget). Clicking a row must run the handler with the ROW's
+// scope (loop var resolved per row), and external-key updates must
+// re-render only through the row's recorded live-node recipe.
+component('dlgrows', `
+  <template each="r in rows" key="r.id">
+    <span class="dr" :class="r.id === sel ? 'hot' : ''" onclick="{choose(r.id)}">{r.label}</span>
+  </template>
+  <p class="dsel">{sel}</p>
+  <script>
+    let rows = [{ id: 1, label: 'one' }, { id: 2, label: 'two' }, { id: 3, label: 'three' }];
+    let sel = 0;
+    function choose(id) { sel = id; }
+  </script>
+`);
+parseHTML('<div import="dlgrows"></div>', body);
+await mount();
+await tick();
+
+console.log('\nshared loop-row handlers');
+await test('row handlers share one listener function across clones', () => {
+  const spans = body.querySelectorAll('[name="dlgrows"] .dr');
+  assert.equal(spans.length, 3);
+  assert.equal(spans[0]._listeners.click.length, 1);
+  assert.equal(spans[0]._listeners.click[0], spans[1]._listeners.click[0], 'same shared function, no per-clone closure');
+  assert.equal(spans[1]._listeners.click[0], spans[2]._listeners.click[0]);
+  assert.ok(!spans[0].getAttribute('onclick'), 'raw onclick attribute stripped from the clone');
+});
+await test('clicking a row runs the handler with that row\'s loop scope', async () => {
+  const spans = body.querySelectorAll('[name="dlgrows"] .dr');
+  fire(spans[1], 'click');
+  await tick();
+  assert.equal(body.querySelector('[name="dlgrows"] .dsel').textContent, '2');
+  const after = body.querySelectorAll('[name="dlgrows"] .dr');
+  assert.equal(after[1].getAttribute('class').includes('hot'), true, 'clicked row gains the class');
+  assert.equal(after[0].getAttribute('class').includes('hot'), false);
+});
+await test('a second click moves the selection (old row un-selects via its live recipe)', async () => {
+  const spans = body.querySelectorAll('[name="dlgrows"] .dr');
+  fire(spans[2], 'click');
+  await tick();
+  const after = body.querySelectorAll('[name="dlgrows"] .dr');
+  assert.equal(after[2].getAttribute('class').includes('hot'), true);
+  assert.equal(after[1].getAttribute('class').includes('hot'), false, 'previously selected row cleared');
+  assert.equal(body.querySelector('[name="dlgrows"] .dsel').textContent, '3');
 });
 
 console.log(`\n${pass} passed, ${fail} failed`);

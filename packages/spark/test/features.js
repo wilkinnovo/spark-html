@@ -12,7 +12,7 @@ async function test(name, fn) {
 }
 const tick = () => new Promise(r => setTimeout(r, 5));
 function fire(el, type) {
-  const e = { type, target: el };
+  const e = { type, target: el, currentTarget: el };
   (el._listeners[type] || []).forEach(fn => fn(e));
 }
 

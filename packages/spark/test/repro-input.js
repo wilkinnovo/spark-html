@@ -24,7 +24,7 @@ const input = body.querySelector('input');
 const button = body.querySelector('button');
 
 function fire(el, type) {
-  const e = { type, target: el };
+  const e = { type, target: el, currentTarget: el };
   (el._listeners[type] || []).forEach(fn => fn(e));
 }
 

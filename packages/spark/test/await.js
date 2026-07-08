@@ -19,7 +19,7 @@ function defer() {
   const promise = new Promise((res, rej) => { resolve = res; reject = rej; });
   return { promise, resolve, reject };
 }
-const fire = (el, type) => (el._listeners[type] || []).forEach((f) => f({ type, target: el }));
+const fire = (el, type) => (el._listeners[type] || []).forEach((f) => f({ type, target: el, currentTarget: el }));
 const text = () => body.textContent.replace(/\s+/g, ' ').trim();
 const has = (s) => assert.ok(text().includes(s), `expected "${s}" in: ${text()}`);
 const hasnt = (s) => assert.ok(!text().includes(s), `did NOT expect "${s}" in: ${text()}`);

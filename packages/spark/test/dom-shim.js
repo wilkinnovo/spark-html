@@ -152,28 +152,16 @@ export class Element {
   }
   querySelectorAll(sel) {
     // Supports: tag, .class, [attr], [attr="v"], tag[attr="v"],
-    // :scope > X, and descendant combinators "A B C".
+    // :scope > X, descendant combinators "A B C", and comma lists "A, B".
+    if (sel.includes(',')) {
+      return [...new Set(sel.split(',').flatMap((p) => this.querySelectorAll(p.trim())))];
+    }
     const scoped = sel.startsWith(':scope > ');
     const chain = (scoped ? sel.slice(9) : sel).trim().split(/\s+/);
-    const matchOne = (el, simple) => {
-      const mClass = simple.match(/^\.([\w-]+)$/);
-      if (mClass) return (el.getAttribute('class') || '').split(/\s+/).includes(mClass[1]);
-      const mAttrV = simple.match(/^(\w+)?\[([\w-]+)="([^"]*)"\]$/);
-      if (mAttrV) {
-        const [, tag, attr, v] = mAttrV;
-        return (!tag || el.tagName === tag.toUpperCase()) && el.getAttribute(attr) === v;
-      }
-      const mAttr = simple.match(/^(\w+)?\[([\w-]+)\]$/);
-      if (mAttr) {
-        const [, tag, attr] = mAttr;
-        return (!tag || el.tagName === tag.toUpperCase()) && el.hasAttribute(attr);
-      }
-      return el.tagName === simple.toUpperCase();
-    };
     const collect = (root, simple, directOnly, out) => {
       for (const c of root.childNodes) {
         if (c.nodeType !== 1) continue;
-        if (matchOne(c, simple)) out.push(c);
+        if (matchSimple(c, simple)) out.push(c);
         if (!directOnly) collect(c, simple, false, out);
       }
       return out;
@@ -189,6 +177,24 @@ export class Element {
     return current;
   }
   querySelector(sel) { return this.querySelectorAll(sel)[0] || null; }
+  matches(sel) { return sel.split(',').some((p) => matchSimple(this, p.trim())); }
+}
+
+// one simple selector (no combinators/commas) against one element
+function matchSimple(el, simple) {
+  const mClass = simple.match(/^\.([\w-]+)$/);
+  if (mClass) return (el.getAttribute('class') || '').split(/\s+/).includes(mClass[1]);
+  const mAttrV = simple.match(/^(\w+)?\[([\w-]+)="([^"]*)"\]$/);
+  if (mAttrV) {
+    const [, tag, attr, v] = mAttrV;
+    return (!tag || el.tagName === tag.toUpperCase()) && el.getAttribute(attr) === v;
+  }
+  const mAttr = simple.match(/^(\w+)?\[([\w-]+)\]$/);
+  if (mAttr) {
+    const [, tag, attr] = mAttr;
+    return (!tag || el.tagName === tag.toUpperCase()) && el.hasAttribute(attr);
+  }
+  return el.tagName === simple.toUpperCase();
 }
 
 const VOID = new Set(['input', 'br', 'hr', 'img', 'meta', 'link']);
@@ -256,6 +262,9 @@ doc.appendChild(documentBody);
 globalThis.window = { event: undefined };
 globalThis.Node = { TEXT_NODE: 3, ELEMENT_NODE: 1 };
 globalThis.requestAnimationFrame = (fn) => setTimeout(fn, 0);
+// Real listener registry (was a no-op): the core's internal event delegation
+// wires stamped loop-row handlers on document, so tests must reach them.
+const documentListeners = {};
 globalThis.document = {
   readyState: 'complete',
   head: documentHead,
@@ -263,7 +272,8 @@ globalThis.document = {
   createElement: (t) => new Element(t),
   querySelector: (s) => doc.querySelector(s),
   querySelectorAll: (s) => doc.querySelectorAll(s),
-  addEventListener: () => {},
+  addEventListener: (t, fn) => { (documentListeners[t] ??= []).push(fn); },
+  _listeners: documentListeners,
 };
 
 export { documentBody as body, documentHead as head };

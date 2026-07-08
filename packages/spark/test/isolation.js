@@ -17,8 +17,9 @@ async function test(name, fn) {
 }
 const tick = () => new Promise((r) => setTimeout(r, 5));
 const fire = (el, type) => {
+  const e = { type, target: el };
   let n = el;
-  while (n) { (n._listeners?.[type] || []).forEach((f) => f({ type, target: el })); n = n.parentNode; }
+  while (n) { e.currentTarget = n; (n._listeners?.[type] || []).forEach((f) => f(e)); n = n.parentNode; }
 };
 const txt = (el) => (el ? el.textContent : '');
 

@@ -19,7 +19,7 @@ async function test(name, fn) {
 }
 const tick = (ms = 10) => new Promise((r) => setTimeout(r, ms));
 function fire(el, type) {
-  const e = { type, target: el };
+  const e = { type, target: el, currentTarget: el };
   (el._listeners[type] || []).forEach((fn) => fn(e));
 }
 const text = (sel) => body.querySelectorAll(sel).map((n) => n.textContent.trim()).join('|');

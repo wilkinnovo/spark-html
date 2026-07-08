@@ -20,7 +20,7 @@ async function test(name, fn) {
 }
 const tick = () => new Promise((r) => setTimeout(r, 5));
 function fire(el, type) {
-  const e = { type, target: el };
+  const e = { type, target: el, currentTarget: el };
   (el._listeners[type] || []).forEach((fn) => fn(e));
 }
 
@@ -54,7 +54,7 @@ await test('the dynamic node is NOT marked static', () => {
   assert.notEqual(dynP.__sparkStatic, true);
 });
 await test('an element with only an event handler stays live (not static)', () => {
-  assert.equal(incBtn.__sparkLive, true);
+  assert.ok(incBtn.__sparkLive, 'live flag set');
   assert.notEqual(incBtn.__sparkStatic, true);
 });
 await test('the component root is never marked static', () => {
@@ -119,7 +119,7 @@ await test('dynamic cell tracks the item; static label is skippable', async () =
 
   // The static label cell inside a reused row is marked static.
   const label = list.querySelector('.label');
-  assert.equal(label.__sparkStatic, true);
+  assert.ok(label.__sparkStatic, 'static flag set');
 
   fire(list.querySelector('.bump'), 'click');
   await tick();

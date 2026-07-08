@@ -11,7 +11,7 @@ async function test(name, fn) {
   catch (e) { fail++; console.log(`  ❌ ${name}\n     ${e.message}`); }
 }
 const tick = () => new Promise((r) => setTimeout(r, 5));
-const fire = (el, type) => (el._listeners[type] || []).forEach((f) => f({ type, target: el }));
+const fire = (el, type) => (el._listeners[type] || []).forEach((f) => f({ type, target: el, currentTarget: el }));
 const txt = (el) => (el ? el.textContent : '');
 
 // ── radio group ──

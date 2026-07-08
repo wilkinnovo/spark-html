@@ -332,7 +332,7 @@ function makeScope(rawCode, componentEl, props = {}) {
       // flash of unimported state. Until it settles, the component's state is
       // still the seeded `undefined`s — flag that so a CHILD component's patch
       // doesn't evaluate slot content lent by this component too early.
-      componentEl.__sparkScopePending = true;
+      componentEl.__sparkScopePending = 1;
       const p = fn(scope, makeImporter(componentEl)).then(finish).catch(reportScriptError);
       componentEl.__sparkScriptReady = p;
       // Prerender: the settle loop waits for the modules + post-import render.
@@ -371,14 +371,14 @@ export function isSparkComponent(el) {
   // A form field's native name= never becomes a component; don't re-scan its
   // children on every patch. (A genuine component acquires one of the markers
   // above BEFORE it's ever walked, so caching the negative is safe.)
-  el.__sparkNotComp = true;
+  el.__sparkNotComp = 1;
   return false;
 }
 
 export function bootComponent(el) {
   if (el.__sparkBooted) return;
   if (!isSparkComponent(el)) return; // a bare native `name=` (form field) — skip
-  el.__sparkBooted = true;
+  el.__sparkBooted = 1;
 
   const tag = el.getAttribute('name');
 
