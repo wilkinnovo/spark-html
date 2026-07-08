@@ -60,7 +60,11 @@ tree-wide before components boot; fixed via retry-after-ancestor-ready.
   `import="/components/url-card"` — ABSOLUTE paths bypass the base rule by
   design, so it still 404'd at the origin root after 1.0.1; the demo now
   imports the jsdelivr URL it advertises (which prerenderFetch also matches
-  at build).** (3+4) spark-ssr auth CREATE enforces unique
+  at build). Third episode (1.0.2): the base was captured lazily at the
+  FIRST relative import — an app whose entry page imports nothing captured
+  it only after a router navigation, resurrecting the "/dash/" 404 for
+  lazily-routed content; the base is now frozen at the first mount() call
+  (import-base.js case 6, verified failing against 1.0.1).** (3+4) spark-ssr auth CREATE enforces unique
   identity (409) and non-blank identity + non-empty password (422)
   server-side — the synthesized /signup screen is never form-scanned;
   PATCH refuses identity collisions too (`test/security.js`, now 13 cases).

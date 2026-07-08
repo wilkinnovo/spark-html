@@ -105,5 +105,26 @@ await test('an authored <base href> wins over the captured page URL', async () =
     `expected /myapp/components/widget.html, fetched: ${JSON.stringify(fetched)}`);
 });
 
+await test('LAZY FIRST IMPORT: the base is frozen at the first mount(), even when the first relative import happens only after navigation', async () => {
+  // The app boots at the root with NO relative imports on the entry page —
+  // they live inside a lazily activated route. The router then navigates
+  // deep, and the route content mounts the app's FIRST relative import. It
+  // must resolve against the boot URL, not the navigated one.
+  globalThis.location.href = 'http://app.test/';
+  const fresh = await import('../src/index.js?lazy-first-import');
+  body.childNodes = [];
+  await fresh.mount();                    // boot: zero imports on the page
+  globalThis.location.href = 'http://app.test/dash/settings';
+  fetched.length = 0;
+  body.childNodes = [];
+  parseHTML('<div import="components/late"></div>', body);
+  await fresh.mount();                    // route activation → first import
+  await tick();
+  assert.ok(fetched.includes('/components/late.html'),
+    `expected /components/late.html, fetched: ${JSON.stringify(fetched)}`);
+  assert.ok(!fetched.some((u) => u.includes('/dash/')),
+    'must not resolve under the navigated route path');
+});
+
 console.log(`\nimport-base: ${pass} passed, ${fail} failed`);
 if (fail) process.exit(1);

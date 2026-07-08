@@ -1232,6 +1232,9 @@ import { scopeCss } from './css.js';
  * Returns a promise that resolves when everything is booted.
  */
 async function mount(root = document.body, options = {}) {
+  // Freeze the app base at boot — the first mount() always runs before any
+  // client-side router navigation can mutate location (see componentURL).
+  if (typeof location !== 'undefined') appBase ||= location.href;
   if (options.devOverlay || (globalThis.__SPARK_DEV_OVERLAY__)) {
     devOverlay = true;
   }
@@ -1292,19 +1295,21 @@ function component(name, source) {
 // as it settles, so dev edits (HMR re-mounts) always re-fetch fresh.
 const inflightComponents = new Map();
 // A relative import path ("components/x.html") resolves against the APP
-// BASE: an authored <base href> when present, otherwise the page URL as
-// FIRST loaded — captured here before any client-side router navigation can
-// mutate location (fetch()'s own base is the live location.href, which is
-// how "/dash/settings" used to 404 every relative import). Never the origin
-// root: forcing "/" broke subdirectory deployments (GitHub Pages) in 1.0.0.
-// Hard-loading a deep client-routed URL on a history-fallback server still
-// needs <base href="/"> or absolute import paths. Absolute paths, full URLs,
-// prerender, and non-browser harnesses pass through untouched.
+// BASE: an authored <base href> when present (read live, so it always wins),
+// otherwise the page URL as FIRST loaded — frozen at the first mount() call
+// (see mount), NOT at first use: an app whose entry page has no relative
+// imports would otherwise capture a base only after a router navigation,
+// inside the navigated path (fetch()'s own base is the live location.href,
+// which is how "/dash/settings" used to 404 every relative import). Never
+// the origin root: forcing "/" broke subdirectory deployments (GitHub Pages)
+// in 1.0.0. Hard-loading a deep client-routed URL on a history-fallback
+// server still needs <base href="/"> or absolute import paths. Absolute
+// paths, full URLs, prerender, and non-browser harnesses pass through
+// untouched.
 let appBase;
 const componentURL = (path) => {
   if (isPrerender() || typeof location === 'undefined' || /^(\/|[a-z]+:)/i.test(path)) return path;
-  appBase ||= document.querySelector('base[href]') ? document.baseURI : location.href;
-  const u = new URL(path, appBase);
+  const u = new URL(path, document.querySelector('base[href]') ? document.baseURI : (appBase ||= location.href));
   return u.pathname + u.search;
 };
 const _origFetchComponent = (path) => {
