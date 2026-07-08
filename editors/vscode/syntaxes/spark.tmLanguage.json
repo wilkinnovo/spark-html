@@ -1,26 +1,95 @@
 {
-  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
-  "name": "Spark",
-  "scopeName": "spark.injection",
-  "injectionSelector": "L:text.html -comment -(meta.embedded | source)",
-  "patterns": [
-    { "include": "#interpolation" }
-  ],
-  "repository": {
-    "interpolation": {
-      "comment": "Spark {expression} — escaped \\{ is ignored; the body is highlighted as JS.",
-      "name": "meta.embedded.expression.spark",
-      "begin": "(?<!\\\\)\\{",
-      "end": "\\}",
-      "beginCaptures": {
-        "0": { "name": "punctuation.definition.template-expression.begin.spark" }
-      },
-      "endCaptures": {
-        "0": { "name": "punctuation.definition.template-expression.end.spark" }
-      },
-      "patterns": [
-        { "include": "source.js" }
-      ]
-    }
+ "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+ "name": "Spark",
+ "scopeName": "spark.injection",
+ "injectionSelector": "L:text.html -comment -(meta.embedded | source)",
+ "patterns": [
+  {
+   "include": "#sparkSsr"
+  },
+  {
+   "include": "#interpolation"
   }
+ ],
+ "repository": {
+  "interpolation": {
+   "comment": "Spark {expression} — escaped \\{ is ignored; the body is highlighted as JS.",
+   "name": "meta.embedded.expression.spark",
+   "begin": "(?<!\\\\)\\{",
+   "end": "\\}",
+   "beginCaptures": {
+    "0": {
+     "name": "punctuation.definition.template-expression.begin.spark"
+    }
+   },
+   "endCaptures": {
+    "0": {
+     "name": "punctuation.definition.template-expression.end.spark"
+    }
+   },
+   "patterns": [
+    {
+     "include": "source.js"
+    }
+   ]
+  },
+  "sparkSsr": {
+   "comment": "<spark-ssr> block bodies — SQL + :params + binding names + endpoint lines. Same line grammar as spark-ssr parseBody / prettier-plugin-spark formatSsrBody / the LSP's semantic tokens; keep the four in sync.",
+   "begin": "(?i)(?<=<spark-ssr)(?=[\\s>])[^>]*(?<!/)>",
+   "end": "(?i)(?=</spark-ssr)",
+   "name": "meta.embedded.block.spark-ssr",
+   "patterns": [
+    {
+     "comment": "METHOD /path → …",
+     "match": "^\\s*(GET|POST|PUT|PATCH|DELETE)\\s*(/\\S*)?\\s*(→|->)",
+     "captures": {
+      "1": {
+       "name": "keyword.other.http-method.spark-ssr"
+      },
+      "2": {
+       "name": "string.unquoted.path.spark-ssr"
+      },
+      "3": {
+       "name": "keyword.operator.arrow.spark-ssr"
+      }
+     }
+    },
+    {
+     "comment": "var = URL/glob/module source (single token, non-SQL)",
+     "match": "^\\s*([A-Za-z_$][\\w$]*)\\s*(=)\\s*((?:https?://|\\.{0,2}/)\\S*)\\s*$",
+     "captures": {
+      "1": {
+       "name": "variable.other.readwrite.spark-ssr"
+      },
+      "2": {
+       "name": "keyword.operator.assignment.spark-ssr"
+      },
+      "3": {
+       "name": "string.unquoted.source.spark-ssr"
+      }
+     }
+    },
+    {
+     "comment": "var = (SQL follows on this or later lines)",
+     "match": "^\\s*([A-Za-z_$][\\w$]*)\\s*(=)",
+     "captures": {
+      "1": {
+       "name": "variable.other.readwrite.spark-ssr"
+      },
+      "2": {
+       "name": "keyword.operator.assignment.spark-ssr"
+      }
+     }
+    },
+    {
+     "comment": ":param — keeps dots and dashes (:session.id, :body.title)",
+     "match": "(?<![\\w$]):[\\w$][\\w$.-]*",
+     "name": "variable.parameter.spark-ssr"
+    },
+    {
+     "include": "source.sql"
+    }
+   ]
+  }
+ }
 }

@@ -448,5 +448,62 @@ await test('formatting: delegates to prettier-plugin-spark when resolvable', asy
   assert.ok(res[0].newText.includes('me       = SELECT'), '= aligned across the block');
 });
 
+await test('ssr scope: tag-less pages under pages/ get ambient globals + hints, never warnings', () => {
+  const dir2 = mkdtempSync(join(tmpdir(), 'spark-ssr-app-'));
+  writeFileSync(join(dir2, 'spark.json'), '{}');
+  mkdirSync(join(dir2, 'pages'));
+  mkdirSync(join(dir2, 'api'));
+  // No <spark-ssr> tag at all — like a real login page.
+  const login = `<form action="/api/users?auth" method="post" redirect="{next ?? '/'}">
+  <p class="err">{errors.email}</p>
+  <input name="email" :value="values.email">
+</form>`;
+  writeFileSync(join(dir2, 'pages/login.html'), login);
+  const { request, notify, lastDiagnostics } = makeServer();
+  request('initialize', {});
+  notify('textDocument/didOpen', {
+    textDocument: { uri: pathToFileURL(join(dir2, 'pages/login.html')).href, text: login },
+  });
+  const ds = lastDiagnostics().diagnostics.filter((d) => d.code === 'undefined-binding');
+  // errors/values are ambient (no diagnostic); next is a possible query param → hint, not warning
+  assert.deepEqual(ds.filter((d) => d.severity <= 2), [], 'no warnings on an SSR page');
+  assert.equal(ds.length, 1, 'only the query-param candidate remains');
+  assert.equal(ds[0].severity, 4, 'downgraded to hint');
+  assert.match(ds[0].message, /query\/route param/, 'hint explains the query-param case');
+  // The same file OUTSIDE a spark.json project warns as before.
+  const a = analyze(login);
+  assert.ok(a.diagnostics.filter((d) => d.code === 'undefined-binding' && d.severity === 2).length >= 3,
+    'plain component still warns for errors/values/next');
+});
+
+await test('ssr scope: [id].html route params + bare bind: targets are declared', () => {
+  const dir2 = mkdtempSync(join(tmpdir(), 'spark-ssr-app-'));
+  writeFileSync(join(dir2, 'spark.json'), '{}');
+  mkdirSync(join(dir2, 'pages'));
+  mkdirSync(join(dir2, 'pages/pin'));
+  const page = `<spark-ssr table="pins" />
+<h1>{pin.title} — {id}</h1>
+<input bind:value="draft">
+<button :disabled="!draft.trim()">Send</button>`;
+  writeFileSync(join(dir2, 'pages/pin/[id].html'), page);
+  const { request, notify, lastDiagnostics } = makeServer();
+  request('initialize', {});
+  notify('textDocument/didOpen', {
+    textDocument: { uri: pathToFileURL(join(dir2, 'pages/pin/[id].html')).href, text: page },
+  });
+  assert.deepEqual(lastDiagnostics().diagnostics.filter((d) => d.code === 'undefined-binding'), [],
+    'id (route param) and draft (framework-declared bind target) are in scope');
+});
+
+await test('template refs are not scanned inside HTML comments or <spark-ssr> bodies', () => {
+  const a = analyze(`<!-- {expr} in a comment would parse as … -->
+<spark-ssr>
+  x = SELECT a FROM t WHERE b = :q
+</spark-ssr>
+<p>{x.a}</p>`);
+  assert.deepEqual(a.diagnostics.filter((d) => d.code === 'undefined-binding'), [],
+    'comment {expr} and SQL braces are never refs; x is a block var');
+});
+
 console.log(`\n${pass} passed, ${fail} failed`);
 if (fail) process.exit(1);

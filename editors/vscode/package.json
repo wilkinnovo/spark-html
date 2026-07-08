@@ -2,7 +2,7 @@
   "name": "spark-html",
   "displayName": "Spark (spark-html)",
   "description": "Spark single-file components — syntax highlighting for {interpolations}, bind:, $:, and template directives, plus IDE features (diagnostics, go-to-definition, prop autocomplete, hover docs) via spark-html-language-server.",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "publisher": "wilkinnovo",
   "engines": { "vscode": "^1.70.0" },
   "categories": ["Programming Languages", "Linters"],

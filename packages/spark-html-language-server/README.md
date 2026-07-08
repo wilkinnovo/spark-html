@@ -46,7 +46,9 @@ Language server (LSP) for [Spark](https://github.com/wilkinnovo/spark-html) sing
 
 ## spark-ssr
 
-Any file with a `<spark-ssr>` tag is treated as an SSR page — the analyzer
+Any file with a `<spark-ssr>` tag — or living under `pages/` / `api/`
+(or `middleware.html`) of a project with a `spark.json` — is treated as an
+SSR page, tag or no tag — the analyzer
 picks up spark-ssr's inferred backend so it doesn't false-flag things the
 runtime supplies for you:
 
@@ -57,9 +59,15 @@ runtime supplies for you:
 - **Ambient identifiers** — `session`, `path`, `flash`, `errors`, `values`,
   and the client-side helpers `api_create`, `api_update`, `api_delete`,
   `refresh` are always in scope, with hover docs and autocomplete.
-- **Synthesized handlers** — an undeclared `onclick={remove}`-style handler
-  is assumed auto-synthesized by spark-ssr, not flagged as undefined (a
-  plain spark-html component without `<spark-ssr>` still flags it).
+- **Synthesized handlers & bind targets** — an undeclared
+  `onclick={remove}`-style handler is assumed auto-synthesized by spark-ssr,
+  and a bare `bind:value="draft"` target is framework-declared state — neither
+  is flagged as undefined (a plain spark-html component still flags both).
+- **Route params** — `pages/pin/[id].html` puts `id` in scope.
+- **Query params, honestly** — spark-ssr spreads `?next=…`-style query params
+  into page scope at request time, so an undeclared name on an SSR page is
+  *never* a warning: it's downgraded to an unobtrusive hint explaining the
+  query-param case (a plain component keeps the real warning).
 - **Directive docs** for `table`, `live`, `seed`, `limit`, `search`, `cache`,
   `guard`, `redirect`, `status`, `flash`, `job`, `every`, `on`, `auto`, and
   the `<spark-pager>`/`<spark-search>`/`<spark-flash>` elements.

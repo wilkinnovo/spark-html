@@ -178,6 +178,16 @@ function blankRange(chars, start, end) {
 function templateMask(text, script) {
   const chars = [...text];
   if (script) blankRange(chars, script.start - 8, script.end); // include "<script>" tag itself
+  // HTML comments are never template: the runtime doesn't interpolate comment
+  // nodes, so `{expr}` inside a doc comment must not be scanned for refs
+  // (a comment SAYING "…{expr} would parse as…" used to false-flag `expr`).
+  const commentRe = /<!--[\s\S]*?-->/g;
+  let cm;
+  while ((cm = commentRe.exec(text)) !== null) blankRange(chars, cm.index, cm.index + cm[0].length);
+  // <spark-ssr> block bodies are server declarations (SQL, sources), stripped
+  // before render — nothing in them is a template ref either.
+  const ssrRe = /(?:<spark-ssr\b[^>]*[^/>]>|<spark-ssr>)[\s\S]*?<\/spark-ssr\s*>/gi;
+  while ((cm = ssrRe.exec(text)) !== null) blankRange(chars, cm.index, cm.index + cm[0].length);
   const styleRe = /<style\b[^>]*>/gi;
   let m;
   while ((m = styleRe.exec(text)) !== null) {
@@ -507,12 +517,29 @@ function analyzeTemplate(text, tpl) {
 
 // ── entry point ────────────────────────────────────────────────────────────
 
-export function analyze(text) {
+export function analyze(text, { ssrPage = false, routeParams = [] } = {}) {
   const script = findScript(text);
   const tpl = templateMask(text, script);
   const s = analyzeScript(text, script);
   const t = analyzeTemplate(text, tpl);
   const ssr = analyzeSSR(text);
+  // A page can be an SSR page WITHOUT a <spark-ssr> tag — spark-ssr's real
+  // rule is "the file lives under pages/ (or api/) of a spark.json project",
+  // and such pages still get ambient globals (session, errors, values, …)
+  // and synthesized handlers. The server passes ssrPage from the file path.
+  if (ssrPage) ssr.isSSRPage = true;
+  // Route params from the file path ([id].html → id) are page vars —
+  // spark-ssr spreads ...req.params into every page's scope.
+  for (const p of routeParams) ssr.vars.add(p);
+  // spark-ssr's clientScript() DECLARES every top-level bare bind target
+  // (`bind:value="draft"` with no `let draft` — hydrate.js stripDeclarations
+  // "the plan vars and top-level binds"), so on an SSR page those names are
+  // real state, not undefined bindings.
+  if (ssr.isSSRPage) {
+    for (const bm of tpl.matchAll(/\bbind:[a-zA-Z]+\s*=\s*"([A-Za-z_$][\w$]*)"/g)) {
+      ssr.vars.add(bm[1]);
+    }
+  }
   const diagnostics = [...s.diagnostics];
 
   const declared = (name, offset) => {
@@ -536,15 +563,20 @@ export function analyze(text) {
     return false;
   };
 
-  // Undefined template bindings.
+  // Undefined template bindings. On an SSR page this can never be a warning:
+  // spark-ssr spreads ...req.query and ...req.params into the page scope, so
+  // ANY name may legitimately arrive at request time (`{next ?? '/'}` from
+  // `?next=…`). Downgrade to a hint that says so instead of crying wolf.
   for (const ref of t.refs) {
     if (ssr.isSSRPage && ref.inHandler) continue; // spark-ssr synthesizes it
     if (!declared(ref.name, ref.offset)) {
       diagnostics.push({
         start: ref.offset,
         end: ref.offset + ref.name.length,
-        severity: 2,
-        message: `'${ref.name}' is not declared in this component's <script> (no let/function/$:/export let matches).`,
+        severity: ssr.isSSRPage ? 4 : 2,
+        message: ssr.isSSRPage
+          ? `'${ref.name}' isn't declared on this page — fine if it arrives as a query/route param (spark-ssr puts ?${ref.name}=… in scope at request time), otherwise declare it in <script> or a <spark-ssr> block.`
+          : `'${ref.name}' is not declared in this component's <script> (no let/function/$:/export let matches).`,
         code: 'undefined-binding',
       });
     }

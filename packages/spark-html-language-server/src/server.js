@@ -18,7 +18,7 @@
  */
 
 import { existsSync, readFileSync } from 'node:fs';
-import { dirname, resolve } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { createRequire } from 'node:module';
 import { analyze } from './analyze.js';
@@ -137,8 +137,36 @@ export class SparkLanguageServer {
     }
   }
 
+  // spark-ssr serves every file under <root>/pages and <root>/api (plus
+  // middleware.html) where <root> holds a spark.json — those are SSR pages
+  // even without a <spark-ssr> tag (ambient globals, synthesized handlers,
+  // framework-declared bind targets all apply). Cached per directory.
+  isSsrPagePath(uri) {
+    let file;
+    try { file = fileURLToPath(uri); } catch { return false; }
+    this._ssrRoots ??= new Map(); // dir -> root path | null
+    let dir = dirname(file);
+    const seen = [];
+    let root = null;
+    for (let d = dir; ; d = dirname(d)) {
+      if (this._ssrRoots.has(d)) { root = this._ssrRoots.get(d); break; }
+      seen.push(d);
+      if (existsSync(join(d, 'spark.json'))) { root = d; break; }
+      if (dirname(d) === d) break; // filesystem root
+    }
+    for (const d of seen) this._ssrRoots.set(d, root);
+    if (!root) return false;
+    const rel = file.slice(root.length + 1);
+    return rel.startsWith('pages/') || rel.startsWith('api/') || rel === 'middleware.html';
+  }
+
   open(uri, text) {
-    const analysis = analyze(text);
+    // [id].html-style path segments are route params — in scope on the page.
+    let routeParams = [];
+    try {
+      routeParams = [...fileURLToPath(uri).matchAll(/\[([A-Za-z_$][\w$]*)\]/g)].map((m) => m[1]);
+    } catch { /* non-file uri */ }
+    const analysis = analyze(text, { ssrPage: this.isSsrPagePath(uri), routeParams });
     this.docs.set(uri, { text, analysis });
     const diagnostics = analysis.diagnostics.map((d) => ({
       range: range(text, d.start, d.end),
