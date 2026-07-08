@@ -1291,15 +1291,20 @@ function component(name, source) {
 // imports in one mount wave) share ONE fetch — the entry is dropped as soon
 // as it settles, so dev edits (HMR re-mounts) always re-fetch fresh.
 const inflightComponents = new Map();
-// A relative import path ("components/x.html") must resolve against the APP
-// root, not the page's current URL — fetch()'s base is location.href, so on
-// any client-routed URL 2+ segments deep ("/dash/settings") it would wrongly
-// resolve under "/dash/". An authored <base href> wins (subdirectory
-// deployments); otherwise the origin root is the app root. Absolute paths,
-// full URLs, prerender, and non-browser harnesses pass through untouched.
+// A relative import path ("components/x.html") resolves against the APP
+// BASE: an authored <base href> when present, otherwise the page URL as
+// FIRST loaded — captured here before any client-side router navigation can
+// mutate location (fetch()'s own base is the live location.href, which is
+// how "/dash/settings" used to 404 every relative import). Never the origin
+// root: forcing "/" broke subdirectory deployments (GitHub Pages) in 1.0.0.
+// Hard-loading a deep client-routed URL on a history-fallback server still
+// needs <base href="/"> or absolute import paths. Absolute paths, full URLs,
+// prerender, and non-browser harnesses pass through untouched.
+let appBase;
 const componentURL = (path) => {
   if (isPrerender() || typeof location === 'undefined' || /^(\/|[a-z]+:)/i.test(path)) return path;
-  const u = new URL(path, document.querySelector('base[href]') ? document.baseURI : location.origin + '/');
+  appBase ||= document.querySelector('base[href]') ? document.baseURI : location.href;
+  const u = new URL(path, appBase);
   return u.pathname + u.search;
 };
 const _origFetchComponent = (path) => {

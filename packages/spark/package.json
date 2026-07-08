@@ -1,6 +1,6 @@
 {
   "name": "spark-html",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Get your spark back. HTML that reacts!.",
   "homepage": "https://wilkinnovo.github.io/spark-html",
   "type": "module",

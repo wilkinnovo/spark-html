@@ -1,20 +1,29 @@
 /**
- * Regression: a relative import="components/x" must fetch against the APP
- * root, not the page's current URL. fetch()'s default base is location.href,
- * so on a client-routed URL 2+ segments deep ("/dash/settings") a relative
- * path used to resolve to "/dash/components/x.html" → 404 for every
- * relatively-imported component on the page (bugs.md Open #2).
+ * Relative import="components/x" resolution — two regressions, one rule.
  *
- * The dom-shim has no `location`; defining one here flips the runtime into
- * its browser-path base resolution. An authored <base href> must win
- * (subdirectory deployments), and absolute paths pass through untouched.
+ * The rule: a relative import path resolves against the APP BASE — an
+ * authored <base href> when present, otherwise the page URL as FIRST loaded,
+ * captured before any client-side router navigation can mutate location.
+ *
+ * Regression A (bugs.md #2, fixed in rc.3): after a router navigation to a
+ * 2+-segment URL ("/dash/settings"), fetch()'s default base is the mutated
+ * location.href, so "components/x" resolved under "/dash/" → 404.
+ *
+ * Regression B (1.0.0 → broke the production website): the rc.3 fix forced
+ * the ORIGIN ROOT instead, which 404'd every relative import on any
+ * subdirectory deployment (GitHub Pages serves the site at /spark-html/).
+ * The base must be where the app was loaded from, not "/".
+ *
+ * The dom-shim has no `location`; defining one flips the runtime into its
+ * browser-path base resolution. Absolute paths pass through untouched.
  */
 import './dom-shim.js';
 import { body, head, parseHTML } from './dom-shim.js';
 import { strict as assert } from 'node:assert';
 
-// Simulate a browser sitting on a deep client-routed URL.
-globalThis.location = { origin: 'http://app.test', href: 'http://app.test/dash/settings' };
+// The app loads at the site root first; imports later in this file happen
+// after a simulated router navigation.
+globalThis.location = { origin: 'http://app.test', href: 'http://app.test/' };
 
 const fetched = [];
 globalThis.fetch = async (url) => {
@@ -31,7 +40,19 @@ async function test(name, fn) {
 }
 const tick = () => new Promise((r) => setTimeout(r, 10));
 
-await test('relative import resolves against the origin root, not the current URL', async () => {
+await test('the base is captured at first mount, before router navigation', async () => {
+  body.childNodes = [];
+  parseHTML('<div import="components/first"></div>', body);
+  await mount();            // first resolution captures the base (site root)
+  await tick();
+  assert.ok(fetched.includes('/components/first.html'),
+    `expected /components/first.html, fetched: ${JSON.stringify(fetched)}`);
+});
+
+await test('after a client-side navigation to a deep URL, relative imports still use the captured base', async () => {
+  // The router mutates location without a reload — the app base must not move.
+  globalThis.location.href = 'http://app.test/dash/settings';
+  fetched.length = 0;
   body.childNodes = [];
   parseHTML('<div import="components/widget"></div>', body);
   await mount();
@@ -39,7 +60,7 @@ await test('relative import resolves against the origin root, not the current UR
   assert.ok(fetched.includes('/components/widget.html'),
     `expected /components/widget.html, fetched: ${JSON.stringify(fetched)}`);
   assert.ok(!fetched.some((u) => u.includes('/dash/')),
-    'must not resolve under the current route path');
+    'must not resolve under the navigated route path');
 });
 
 await test('an absolute import path passes through untouched', async () => {
@@ -52,13 +73,31 @@ await test('an absolute import path passes through untouched', async () => {
     `absolute path (with query) must be untouched, fetched: ${JSON.stringify(fetched)}`);
 });
 
-await test('an authored <base href> wins over the origin root', async () => {
+await test('SUBDIRECTORY DEPLOYMENT (the 1.0.0 production regression): a site served at /spark-html/ resolves relative imports under /spark-html/', async () => {
+  // Fresh runtime instance (Node honors the query string) loading as GitHub
+  // Pages does: the document URL is inside a subdirectory, no <base> tag.
+  globalThis.location.href = 'http://app.test/spark-html/';
+  const fresh = await import('../src/index.js?subdir-instance');
   fetched.length = 0;
+  body.childNodes = [];
+  parseHTML('<div import="components/sidebar"></div>', body);
+  await fresh.mount();
+  await tick();
+  assert.ok(fetched.includes('/spark-html/components/sidebar.html'),
+    `expected /spark-html/components/sidebar.html, fetched: ${JSON.stringify(fetched)}`);
+  assert.ok(!fetched.includes('/components/sidebar.html'),
+    'must NOT resolve at the origin root — that 404s on subdirectory hosts');
+});
+
+await test('an authored <base href> wins over the captured page URL', async () => {
+  globalThis.location.href = 'http://app.test/anywhere/deep';
+  const fresh = await import('../src/index.js?base-instance');
   parseHTML('<base href="http://app.test/myapp/">', head);
   globalThis.document.baseURI = 'http://app.test/myapp/';
+  fetched.length = 0;
   body.childNodes = [];
   parseHTML('<div import="components/widget"></div>', body);
-  await mount();
+  await fresh.mount();
   await tick();
   head.childNodes = [];
   delete globalThis.document.baseURI;
