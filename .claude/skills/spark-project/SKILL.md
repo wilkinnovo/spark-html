@@ -12,14 +12,26 @@ compilation step is out of scope by definition.** The stated mission (Wilkin,
 2026-07-06): be the *simplest* way to write SSR, prerender, and client-only
 apps while staying fast — "built for humans who want to code themselves."
 
-Knowledge here is accurate as of 2026-07-07 — **1.0.0 FINAL SHIPPED**: all 21
-packages at latest=1.0.0 on npm (registry-verified; release commit 4b26738).
-The gzip budget is FROZEN at 15.0 KB for the life of 1.x (14.63 used; margin
-spends blessed by Wilkin). V1-API-FREEZE.md governs semver (stable
-surface = fixes only; experimental surfaces may move in minors) per
-spark-brain section 8. The long-held docs#limits audit SHIPPED post-1.0
-(7ba0986, 2026-07-07). Function names are stable anchors;
-line numbers drift.
+Knowledge here is accurate as of 2026-07-08 — **1.1.0 "the speed release"
+SHIPPED** (the krausest speed program, spark-speed-up.md, closed same day):
+CPU geomean **1.53× vanilla** (paired windowed count=15; was 3.46× at
+1.0.0). The core now has: LIS keyed reconciler, per-row identity/ext-key
+skip gates, fast no-`with` expression variants (capture-derived destructure
+prelude + ReferenceError self-heal), clone recipes (`stampTree` — analysis
+cached on the template, static marking at stamp time), **live-node row
+recipes** (shallow keyed rows patch a collected dynamic-node list, no tree
+descent — `block.live`/`patchLive`), and **shared per-template listeners**
+(handler attrs stripped from the template; one listener fn per handler via
+`e.currentTarget`; zero per-clone closures). Full document-level event
+delegation was REJECTED: +0.232 KB didn't fit the budget (plan ledger §9).
+The gzip budget was raised ONCE, 15.0 → 16.0 KB (Wilkin, 2026-07-08,
+itemized), to fund the program — now 15.97 used and RE-FROZEN for the life
+of 1.x. Internal boolean `__spark*` flags are set as `1`/truthy, never
+compared `=== true`. V1-API-FREEZE.md governs semver (stable surface =
+fixes only; experimental surfaces may move in minors) per spark-brain
+section 8. 1.0.0 shipped 2026-07-07 (all 21 packages, commit 4b26738); the
+docs#limits audit shipped post-1.0 (7ba0986). Function names are stable
+anchors; line numbers drift.
 
 **M3 complete (0.30.0 / 0.8.0).** spark-ssr `serve()` decomposed into
 `src/{session,jobs,static,screens,request,crud,page,cache,routes}.js` (server.js

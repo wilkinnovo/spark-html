@@ -19,6 +19,7 @@
     <a href="#build">Dev server &amp; build</a>
     <a href="#editors">Editor support</a>
     <a href="#how">How it works</a>
+    <a href="#perf">Performance</a>
     <a href="#debugging">Debugging</a>
     <a href="#errors">Error handling</a>
     <a href="#prerender">Prerender / SEO</a>
@@ -337,6 +338,26 @@ export default {
     <p><strong>3 — In-place patching.</strong> Text nodes and attributes cache their original template (and parsed bindings) on first visit, then diff against the interpolated result on every patch. Loops keep one block of nodes per item and reconcile them — reusing nodes in place (by index, or by <code>key</code> when given), creating only what's new and removing only what's gone. No virtual DOM and no full-tree diff — just direct, scoped writes against the real nodes, batched onto a single microtask flush.</p>
     <p><strong>4 — Only what changed.</strong> A patch does work proportional to the <em>changed</em> state, not the size of the component. Static subtrees (no bindings, loops, conditionals, or nested components) are walked once and then skipped entirely. And while each binding and <code>$:</code> statement is evaluated, the proxy records which scope keys it read — so a plain <code>count++</code> re-evaluates only the bindings and reactive statements that read <code>count</code>. That precision reaches into loops: mutating one row's data (<code>todos[i].done = true</code>) re-walks <em>just that row</em>, not the whole list — a 1,000-row table where one cell changes does one row's work, not a thousand, while a <code>$:</code> aggregate over the list and any direct out-of-loop read stay correct. Changes that still can't be pinned to a row or key — a structural array change (<code>todos.push</code>), a non-loop deep mutation, store notifications, and member-path two-way writes — fall back to a full (still cheap) pass, so the UI is never stale.</p>
     <p><strong>5 — No flash on load.</strong> A cloak style hides Spark-managed elements until each component is booted, styled, and patched — so the raw <code>{braces}</code> and unstyled markup never flash before the runtime catches up.</p>
+
+    <h2 id="perf">Performance</h2>
+    <p>Measured, not claimed. Spark runs the <a href="https://github.com/krausest/js-framework-benchmark" target="_blank" rel="noopener">krausest js-framework-benchmark</a> — the industry-standard table every major framework is measured on — against the hand-written <code>vanillajs</code> reference implementation. Spark 1.1.0's numbers, from a paired run in one session (15 iterations, windowed Chrome 150, official webdriver-ts harness, same machine for both frameworks):</p>
+    <table>
+      <thead><tr><th>Benchmark</th><th>vanilla (ms)</th><th>spark (ms)</th><th>ratio</th></tr></thead>
+      <tbody>
+        <tr><td>create 1,000 rows</td><td>122.2</td><td>197.3</td><td>1.61×</td></tr>
+        <tr><td>replace 1,000 rows</td><td>140.8</td><td>205.2</td><td>1.46×</td></tr>
+        <tr><td>update every 10th row (×16)</td><td>78.9</td><td>105.7</td><td>1.34×</td></tr>
+        <tr><td>select row</td><td>18.1</td><td>42.9</td><td>2.37×</td></tr>
+        <tr><td>swap rows</td><td>87.5</td><td>131.5</td><td>1.50×</td></tr>
+        <tr><td>remove one row</td><td>77.4</td><td>93.4</td><td>1.21×</td></tr>
+        <tr><td>create 10,000 rows</td><td>1,343.6</td><td>1,942.1</td><td>1.45×</td></tr>
+        <tr><td>append 1,000 rows</td><td>136.9</td><td>215.6</td><td>1.57×</td></tr>
+        <tr><td>clear 1,000 rows (×8)</td><td>47.9</td><td>71.6</td><td>1.49×</td></tr>
+        <tr><td>first paint</td><td>399.5</td><td>415.6</td><td>1.04×</td></tr>
+      </tbody>
+    </table>
+    <p><strong>CPU geomean: 1.53× vanilla.</strong> On the scale solidjs.com publishes from the same benchmark, that sits between Angular (1.45) and React Hooks (1.61) — and Spark is the only framework in that neighborhood that ships your HTML untouched: no compiler, no build step, nothing generated. (Honesty note: this is our local paired run against vanilla on one machine; the upstream submission to the official table is in progress. Method and raw medians live in the repo's <code>benchmarks.md</code>.)</p>
+    <p>Where the speed comes from: keyed reconciliation with a longest-increasing-subsequence diff (a swap is 2 DOM moves, not 997), loop rows cloned from a stamped recipe so template analysis runs once — never per row, row event handlers sharing one listener function per template (creating 1,000 rows allocates zero handler closures), and expressions recompiled into engine-optimizable functions once their dependencies are known. All of it internal: the speed program added zero new concepts, zero API surface, and stayed inside the frozen 16 KB gzip budget (15.97 used).</p>
 
     <h2 id="debugging">Debugging</h2>
     <p>When something doesn't render, check the console — Spark warns (prefixed <code>[spark]</code>) instead of failing silently:</p>

@@ -297,6 +297,16 @@ on a reused dev port. Zero config; exits non-zero when something needs a look.
 
 ## Performance
 
+**Measured, not claimed.** On the [krausest js-framework-benchmark](https://github.com/krausest/js-framework-benchmark), spark-html 1.1.0 lands a **CPU geomean of 1.53× hand-written vanilla JS** (paired run vs the `vanillajs` reference, 15 iterations, windowed Chrome, official webdriver-ts harness; local run, upstream submission in progress). On the published solidjs.com scale that sits between Angular (1.45) and React Hooks (1.61) — with no build step at all:
+
+| Benchmark | ratio vs vanilla | | Benchmark | ratio vs vanilla |
+|---|---:|---|---|---:|
+| create 1,000 rows | 1.61× | | remove one | 1.21× |
+| replace 1,000 rows | 1.46× | | create 10,000 rows | 1.45× |
+| update every 10th | 1.34× | | append 1,000 | 1.57× |
+| select row | 2.37× | | clear | 1.49× |
+| swap rows | 1.50× | | first paint | 1.04× |
+
 - **Components ship as authored HTML** — no compiler generates code from your template, so there is nothing to parse or evaluate at startup. The file you write is the component that runs.
 - **Text-level extraction of `<script>`/`<style>`** — browsers strip `<script>` tags injected via `innerHTML` (the only way most client-only frameworks can parse a fetched HTML fragment). Spark extracts script and style from the raw text with a tokenizer before the markup ever touches the DOM — sidestepping the entire class of bugs that every other runtime-only framework has to work around.
 - **No virtual DOM** — patches mutate the DOM directly. No intermediate tree to allocate, diff, or discard per frame.
@@ -326,6 +336,7 @@ on a reused dev port. Zero config; exits non-zero when something needs a look.
 
   `toggle()` re-walks only row index 3 — the other 999 rows are untouched. A structural change (push, splice, re-sort) still re-reconciles the list shape but skips rows whose identity (key) didn't move. Deep mutations not pinned to a row fall back to a full (still cheap) pass — never stale.
 - **Tracked `Map`/`Set` mutations** — `map.set(key, val)`, `set.add(item)`, and `delete`/`clear` trigger re-renders, just like array push and object property assignment. No special API or immutability discipline required.
+- **Keyed reconciliation with minimal moves** — a longest-increasing-subsequence diff moves only the rows that actually moved (a swap is 2 DOM moves), loop rows clone from a stamped recipe (template analysis runs once, never per row), and row handlers share one listener function per template — creating 1,000 rows allocates zero handler closures.
 
 ## Limits
 

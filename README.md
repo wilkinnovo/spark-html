@@ -59,8 +59,10 @@ promotion commit:**
 - **Bench above the 0.7.0 baseline** (big page 7.3–7.5k req/s vs the 6.9k
   baseline we defend) — performance is measured, never assumed.
 - **e2e 7/7, full `npm test` green, size gate at 14.63 / 15.0 kB** — and the
-  budget is now **frozen for the life of 1.x**. If a feature doesn't fit, the
+  budget is **frozen for the life of 1.x**. If a feature doesn't fit, the
   answer is a sibling package, not a bigger core. That rule is the pitch.
+  (One deliberate exception since: the budget was raised once, 15.0 → 16.0 kB,
+  itemized line-by-line, to fund the 1.1.0 speed release — then re-frozen.)
 - **21 release tags pushed in seven batches of ≤3, publish workflows verified
   per batch** (the >3-tag trap where GitHub silently skips every tag-triggered
   workflow never got a chance), then every package **confirmed on the npm
@@ -110,12 +112,41 @@ just files at a URL, so you can even `import` one straight from a CDN. See
 
 ## Performance
 
+**Measured, not claimed.** On the [krausest js-framework-benchmark](https://github.com/krausest/js-framework-benchmark)
+(the industry-standard table), spark-html 1.1.0 lands a **CPU geomean of
+1.53× hand-written vanilla JS** — paired run against the `vanillajs`
+reference, 15 iterations, windowed Chrome 150, same machine, official
+webdriver-ts harness. On the published solidjs.com scale that sits between
+Angular (1.45) and React Hooks (1.61) — **while being the only framework in
+that neighborhood with no build step at all.** Local run, upstream
+submission in progress; numbers below are medians:
+
+| Benchmark | vanilla (ms) | spark (ms) | ratio |
+|---|---:|---:|---:|
+| create 1,000 rows | 122.2 | 197.3 | 1.61× |
+| replace 1,000 rows | 140.8 | 205.2 | 1.46× |
+| update every 10th (×16) | 78.9 | 105.7 | 1.34× |
+| select row | 18.1 | 42.9 | 2.37× |
+| swap rows | 87.5 | 131.5 | 1.50× |
+| remove one | 77.4 | 93.4 | 1.21× |
+| create 10,000 rows | 1343.6 | 1942.1 | 1.45× |
+| append 1,000 | 136.9 | 215.6 | 1.57× |
+| clear (×8) | 47.9 | 71.6 | 1.49× |
+| first paint | 399.5 | 415.6 | 1.04× |
+
+How it stays fast:
+
 - **Components ship as authored HTML** — no compiler generates code from your
   template. The file you write is what runs.
 - **No virtual DOM** — patches mutate the DOM directly. No intermediate tree to
   allocate, diff, or discard per frame.
-- **~14.6 kB gzipped, zero dependencies** — parses, mounts, and patches in a single
+- **~16 kB gzipped, zero dependencies** — parses, mounts, and patches in a single
   microtask.
+- **Keyed reconciliation with minimal moves** — a longest-increasing-subsequence
+  diff moves only the rows that actually moved (a swap is 2 DOM moves, not 997),
+  loop rows clone from a stamped recipe (analysis runs once per template, never
+  per row), and row event handlers share one listener function per template —
+  creating 1,000 rows allocates zero handler closures.
 - **O(changed) dependency tracking** — each binding records which scope keys it
   reads. A write re-evaluates only the bindings that actually changed.
 
