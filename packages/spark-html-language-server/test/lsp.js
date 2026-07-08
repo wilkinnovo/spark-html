@@ -389,5 +389,64 @@ await test('server: didChange re-publishes; didClose clears; unknown requests an
   assert.equal(sent.length, before + 1, 'unknown request got a response');
 });
 
+await test('semantic tokens: <spark-ssr> SQL, params, sources, routes', async () => {
+  const { request, notify } = makeServer();
+  request('initialize', {});
+  const uri = 'file:///ssr.html';
+  const text = `<spark-ssr guard="session" redirect="/login" />
+<spark-ssr>
+  me = SELECT id, name FROM users WHERE id = :session.id
+  posts = ./content/*.md
+  GET /api/x → found = SELECT 'a FROM b' AS s, 42 FROM t
+    WHERE t.n > 10 -- keep top
+</spark-ssr>
+<p>{me.name}</p>`;
+  notify('textDocument/didOpen', { textDocument: { uri, text } });
+  const res = request('textDocument/semanticTokens/full', { textDocument: { uri } });
+  assert.ok(res && Array.isArray(res.data) && res.data.length > 0, 'tokens returned');
+  assert.equal(res.data.length % 5, 0, 'wire format is 5-tuples');
+  // Decode back to absolute {line,char,len,type} for assertions.
+  const { TOKEN_TYPES } = await import('../src/semantic.js');
+  const toks = [];
+  for (let i = 0, line = 0, char = 0; i < res.data.length; i += 5) {
+    line += res.data[i];
+    char = res.data[i] === 0 ? char + res.data[i + 1] : res.data[i + 1];
+    toks.push({ line, char, len: res.data[i + 2], type: TOKEN_TYPES[res.data[i + 3]] });
+  }
+  const lines = text.split('\n');
+  const at = (t) => lines[t.line].slice(t.char, t.char + t.len);
+  const of = (type) => toks.filter((t) => t.type === type).map(at);
+  assert.ok(of('keyword').includes('SELECT') && of('keyword').includes('FROM') && of('keyword').includes('WHERE'), 'SQL keywords');
+  assert.ok(of('keyword').includes('GET'), 'HTTP method is a keyword');
+  assert.ok(of('parameter').includes(':session.id'), ':param token');
+  assert.ok(of('variable').includes('me') && of('variable').includes('posts') && of('variable').includes('found'), 'binding names');
+  assert.ok(of('string').includes('./content/*.md'), 'glob source is a string');
+  assert.ok(of('string').includes('/api/x'), 'route path is a string');
+  assert.ok(of('string').includes(`'a FROM b'`), 'SQL string literal (keyword inside NOT tokenized)');
+  assert.ok(of('number').includes('42') && of('number').includes('10'), 'numbers, incl. on a continuation line');
+  assert.ok(of('comment').includes('-- keep top'), 'SQL -- comment');
+  // no token overlaps the self-closing tag's line (line 0)
+  assert.ok(toks.every((t) => t.line !== 0), 'self-closing tag produces no tokens');
+});
+
+await test('formatting: delegates to prettier-plugin-spark when resolvable', async () => {
+  const { server, request, notify, sent } = makeServer();
+  request('initialize', { rootUri: pathToFileURL(join(process.cwd())).href });
+  const uri = 'file:///fmt.html';
+  const text = `<spark-ssr>\n  me = SELECT id FROM users WHERE id = :session.id\n  contacts = SELECT id FROM users\n</spark-ssr>\n`;
+  notify('textDocument/didOpen', { textDocument: { uri, text } });
+  const id = 777;
+  server.handle({ jsonrpc: '2.0', id, method: 'textDocument/formatting', params: {
+    textDocument: { uri }, options: { tabSize: 2, insertSpaces: true },
+  } });
+  await new Promise((r) => setTimeout(r, 300)); // async respond
+  const res = sent.find((m) => m.id === id)?.result;
+  // In this monorepo the plugin resolves from the workspace root, so the
+  // aligned `=` column must come back; if the resolver ever breaks, res is
+  // null and this fails loudly rather than silently skipping.
+  assert.ok(Array.isArray(res) && res.length === 1, 'one whole-document edit');
+  assert.ok(res[0].newText.includes('me       = SELECT'), '= aligned across the block');
+});
+
 console.log(`\n${pass} passed, ${fail} failed`);
 if (fail) process.exit(1);

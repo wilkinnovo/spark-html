@@ -20,8 +20,10 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import { createRequire } from 'node:module';
 import { analyze } from './analyze.js';
 import { directiveDoc, directiveCompletions, SCRIPT_BUILTINS, SSR_BUILTINS } from './docs.js';
+import { TOKEN_TYPES, ssrBlockTokens, encodeSemanticTokens } from './semantic.js';
 
 // ── position mapping ───────────────────────────────────────────────────────
 
@@ -83,6 +85,17 @@ export class SparkLanguageServer {
               completionProvider: { triggerCharacters: ['{', ':', '"', ' ', '.'] },
               hoverProvider: true,
               definitionProvider: true,
+              // <spark-ssr> block bodies (SQL, URL/glob/module sources,
+              // endpoint lines) are plain text to HTML grammars — semantic
+              // tokens give them real highlighting in any LSP client.
+              semanticTokensProvider: {
+                legend: { tokenTypes: TOKEN_TYPES, tokenModifiers: [] },
+                full: true,
+              },
+              // Whole-document formatting, delegated to prettier-plugin-spark
+              // when it (and prettier) can be resolved from the workspace or
+              // alongside this server. No-op otherwise — never a hard error.
+              documentFormattingProvider: true,
             },
             serverInfo: { name: 'spark-html-language-server' },
           });
@@ -108,6 +121,11 @@ export class SparkLanguageServer {
           return respond(this.hover(params));
         case 'textDocument/definition':
           return respond(this.definition(params));
+        case 'textDocument/semanticTokens/full':
+          return respond(this.semanticTokens(params));
+        case 'textDocument/formatting':
+          // async — respond() is a closure over the request id, safe to defer
+          return this.formatting(params).then(respond);
         default:
           // Respond to unknown requests (they have an id) so clients don't hang.
           if (id !== undefined) respond(null);
@@ -301,6 +319,58 @@ export class SparkLanguageServer {
       }
     }
     return null;
+  }
+
+  // ── semantic tokens ──────────────────────────────────────────────────────
+
+  semanticTokens({ textDocument }) {
+    const doc = this.docs.get(textDocument.uri);
+    if (!doc) return null;
+    return { data: encodeSemanticTokens(ssrBlockTokens(doc.text)) };
+  }
+
+  // ── formatting (via prettier-plugin-spark, when available) ───────────────
+
+  // Resolve prettier-plugin-spark's formatSpark: from the workspace root
+  // first (the project's own install), then from wherever this server is
+  // installed. Cached after the first attempt, including a failed one.
+  async loadFormatter() {
+    if (this._formatSpark !== undefined) return this._formatSpark;
+    this._formatSpark = null;
+    const bases = [
+      this.rootPath && resolve(this.rootPath, 'package.json'),
+      import.meta.url,
+    ].filter(Boolean);
+    for (const base of bases) {
+      try {
+        const req = createRequire(base);
+        const mod = await import(pathToFileURL(req.resolve('prettier-plugin-spark')).href);
+        if (typeof mod.formatSpark === 'function') { this._formatSpark = mod.formatSpark; break; }
+      } catch { /* not installed here — try the next base */ }
+    }
+    return this._formatSpark;
+  }
+
+  async formatting({ textDocument, options }) {
+    const doc = this.docs.get(textDocument.uri);
+    if (!doc) return null;
+    const formatSpark = await this.loadFormatter();
+    if (!formatSpark) return null; // plugin not installed — decline quietly
+    let formatted;
+    try {
+      formatted = await formatSpark(doc.text, {
+        tabWidth: options?.tabSize ?? 2,
+        useTabs: options?.insertSpaces === false,
+      });
+    } catch { return null; } // never break the buffer on a formatter error
+    if (formatted === doc.text) return [];
+    return [{
+      range: {
+        start: { line: 0, character: 0 },
+        end: offsetToPosition(doc.text, doc.text.length + 1),
+      },
+      newText: formatted,
+    }];
   }
 
   // ── definition ───────────────────────────────────────────────────────────

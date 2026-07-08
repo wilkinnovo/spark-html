@@ -85,6 +85,11 @@ function analyzeSSR(text) {
       if (!l) continue;
       const lm = l.match(/^(?:[A-Z]+\s+(?:\S+\s+)?(?:→|->)\s*)?([A-Za-z_$][\w$]*)\s*=\s*.+$/);
       if (lm) add(lm[1]);
+      // Reflow-tolerant chains (spark-ssr parse.js parseChain): a formatter
+      // may pack several single-token bindings onto one line
+      // (`a = ./x.js b = ./y.js`) — every name whose value is URL/path-shaped
+      // is a page var too, not just the first.
+      for (const cm of l.matchAll(/([A-Za-z_$][\w$]*)\s*=\s*(?=https?:\/\/|\.{0,2}\/)/g)) add(cm[1]);
     }
   }
   return { isSSRPage, vars };

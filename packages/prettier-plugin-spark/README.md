@@ -23,6 +23,15 @@ formatting only what's safe to format:
 
 - **`<script>`** → formatted as JavaScript (Prettier `babel`).
 - **`<style>`** → formatted as CSS (Prettier `css`).
+- **`<spark-ssr>` block bodies** → one binding per line with the `=` column
+  aligned; SQL that exceeds the print width is broken before its top-level
+  clauses (`FROM`, `WHERE`, `ORDER BY`, …) with continuations indented — the
+  scanner is quote-aware, so keywords inside `'strings'` never cause a break,
+  and a statement containing a `--` comment keeps its authored line structure.
+  `METHOD /path → …` endpoint lines and URL/glob/module sources are handled
+  too; any line the grammar doesn't recognize passes through byte-identical.
+  (spark-ssr itself is reflow-tolerant — this is purely for humans reading
+  the page.)
 - **Everything else (your markup)** → left **byte-for-byte untouched**.
 
 So `{interpolations}`, `onclick="{handlers}"`, `:bindings`, `<template if/each>`

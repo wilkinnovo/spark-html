@@ -1,7 +1,7 @@
 {
   "name": "prettier-plugin-spark",
-  "version": "1.0.0",
-  "description": "Prettier plugin for spark-html single-file components — formats the <script> and <style> blocks and leaves your markup byte-for-byte untouched (so {interpolations} and onclick={handlers} are never corrupted).",
+  "version": "1.1.0",
+  "description": "Prettier plugin for spark-html single-file components — formats <script> (JS), <style> (CSS), and <spark-ssr> block bodies (aligned bindings, SQL broken at top-level clauses, string- and comment-aware) — and leaves the rest of your markup byte-for-byte untouched (so {interpolations} and onclick={handlers} are never corrupted).",
   "type": "module",
   "main": "index.js",
   "exports": "./index.js",

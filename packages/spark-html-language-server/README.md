@@ -31,6 +31,18 @@ Language server (LSP) for [Spark](https://github.com/wilkinnovo/spark-html) sing
   - script symbols and Spark builtins (`useStore`, `onMount`, `props`) inside
     `{…}` and `<script>`
 - **Hover docs** for every directive and declaration.
+- **Semantic highlighting for `<spark-ssr>` block bodies** — SQL keywords,
+  `'strings'`, numbers, `:params` (`:session.id`, `:q`), binding names,
+  `METHOD /path →` endpoint lines, and URL/glob/module sources all get real
+  token colors via `textDocument/semanticTokens/full`. HTML grammars see these
+  blocks as plain text; the LSP is what makes them readable.
+- **Document formatting** (`textDocument/formatting`) — delegated to
+  [`prettier-plugin-spark`](https://www.npmjs.com/package/prettier-plugin-spark)
+  when it (and prettier) are installed in your project: `<script>`/`<style>`
+  formatted as JS/CSS, `<spark-ssr>` bodies laid out one binding per line with
+  the `=` column aligned and long SQL broken before its top-level clauses.
+  If the plugin isn't installed the request is declined quietly — nothing
+  breaks.
 
 ## spark-ssr
 

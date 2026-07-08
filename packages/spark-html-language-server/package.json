@@ -1,7 +1,7 @@
 {
   "name": "spark-html-language-server",
-  "version": "1.0.0",
-  "description": "Language server (LSP) for spark-html single-file components, including spark-ssr pages — diagnostics (undefined bindings, unused imports, script errors, missing key), spark-ssr-aware inferred page data & ambient helpers, go-to-definition for component imports and symbols, prop autocomplete from export let, and hover docs for every directive. Zero dependencies.",
+  "version": "1.1.0",
+  "description": "Language server (LSP) for spark-html single-file components, including spark-ssr pages — diagnostics (undefined bindings, unused imports, script errors, missing key), spark-ssr-aware inferred page data & ambient helpers, semantic highlighting + formatting for <spark-ssr> blocks (SQL, :params, URL/glob/module sources), go-to-definition, prop autocomplete from export let, and hover docs for every directive. Zero runtime dependencies.",
   "type": "module",
   "main": "./src/index.js",
   "types": "./src/index.d.ts",
@@ -17,6 +17,10 @@
   },
   "scripts": {
     "test": "node test/lsp.js"
+  },
+  "devDependencies": {
+    "prettier": "^3.3.3",
+    "prettier-plugin-spark": "*"
   },
   "files": [
     "src",
