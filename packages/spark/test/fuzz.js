@@ -275,6 +275,81 @@ templates.push({
   },
 });
 
+// 13: KEYED each over object rows — reorders (swap/reverse/shuffle), remove,
+// insert, immutable single-row replacement, deep in-place mutation, an outer
+// key (sel) read inside every row via :class, and a mixed same-tick write.
+// Pins the keyed reconciler (LIS placement + identity-skip): the patched DOM
+// after any permutation sequence must converge with a fresh mount.
+templates.push({
+  gen(rng, id) {
+    const name = `fz${id}`;
+    let nid = 1;
+    const mk = () => ({ id: nid++, label: pick(rng, ['aa', 'bb', 'cc', 'dd']) });
+    const rows = Array.from({ length: Math.floor(rng() * 6) + 2 }, mk);
+    const src = (rowsJson, selVal) => `<template each="r in rows" key="r.id"><span :class="r.id === sel ? 'on' : 'off'">{r.id}:{r.label}</span></template><p class="kl">{rows.length}</p><script>let rows = ${rowsJson}; let sel = ${selVal};</script>`;
+    // Reorders reuse the SAME live row values (identity-preserving, like app
+    // code doing rows.slice() + swap) — the raw items round-trip through the
+    // scope proxy so patchEach sees stable identities.
+    const live = (el) => [...el.__sparkScope.rows];
+    return { name, source: src(JSON.stringify(rows), 0), mutators: [
+      { desc: 'swap extremes', apply: (el) => { const rs = live(el); if (rs.length > 1) { const t = rs[0]; rs[0] = rs[rs.length - 1]; rs[rs.length - 1] = t; } setScopeVar(el, 'rows', rs); return { rows: rs }; } },
+      { desc: 'reverse', apply: (el) => { const rs = live(el).reverse(); setScopeVar(el, 'rows', rs); return { rows: rs }; } },
+      { desc: 'shuffle', apply: (el) => { const rs = live(el); for (let j = rs.length - 1; j > 0; j--) { const k = Math.floor(rng() * (j + 1)); const t = rs[j]; rs[j] = rs[k]; rs[k] = t; } setScopeVar(el, 'rows', rs); return { rows: rs }; } },
+      { desc: 'remove one', apply: (el) => { const rs = live(el); if (rs.length) rs.splice(Math.floor(rng() * rs.length), 1); setScopeVar(el, 'rows', rs); return { rows: rs }; } },
+      { desc: 'insert one', apply: (el) => { const rs = live(el); rs.splice(Math.floor(rng() * (rs.length + 1)), 0, mk()); setScopeVar(el, 'rows', rs); return { rows: rs }; } },
+      { desc: 'replace one immutably', apply: (el) => { const rs = live(el); if (rs.length) { const j = Math.floor(rng() * rs.length); rs[j] = { id: rs[j].id, label: pick(rng, ['zz', 'ww']) }; } setScopeVar(el, 'rows', rs); return { rows: rs }; } },
+      { desc: 'deep-mutate one', apply: (el) => { const rows = el.__sparkScope.rows; if (rows.length) rows[Math.floor(rng() * rows.length)].label = pick(rng, ['mm', 'nn']); return { rows: [...el.__sparkScope.rows] }; } },
+      { desc: 'set sel', apply: (el) => { const rows = el.__sparkScope.rows; const nv = rows.length ? rows[Math.floor(rng() * rows.length)].id : 0; setScopeVar(el, 'sel', nv); return { sel: nv }; } },
+      { desc: 'mixed same tick', apply: (el) => { const rows = el.__sparkScope.rows; let nv = 0; if (rows.length) { rows[0].label = pick(rng, ['qq', 'rr']); nv = rows[rows.length - 1].id; } setScopeVar(el, 'sel', nv); return { rows: [...el.__sparkScope.rows], sel: nv }; } },
+    ], schema: { rows, sel: 0 } };
+  },
+  rebuild(state, name) {
+    return { name, source: `<template each="r in rows" key="r.id"><span :class="r.id === sel ? 'on' : 'off'">{r.id}:{r.label}</span></template><p class="kl">{rows.length}</p><script>let rows = ${JSON.stringify(state.rows)}; let sel = ${state.sel};</script>` };
+  },
+});
+
+// 14: KEYED each rendering the INDEX — any reorder/remove must re-render the
+// index text of every displaced row (pins the index-sensitivity guard: a row
+// whose item is identity-unchanged still re-walks when its index moved).
+templates.push({
+  gen(rng, id) {
+    const name = `fz${id}`;
+    let nid = 1;
+    const mk = () => ({ id: nid++ });
+    const rows = Array.from({ length: Math.floor(rng() * 5) + 2 }, mk);
+    const live = (el) => [...el.__sparkScope.rows];
+    return { name, source: `<template each="r, i in rows" key="r.id"><span class="ix">{i}={r.id}</span></template><script>let rows = ${JSON.stringify(rows)};</script>`, mutators: [
+      { desc: 'rotate', apply: (el) => { const rs = live(el); if (rs.length) rs.push(rs.shift()); setScopeVar(el, 'rows', rs); return { rows: rs }; } },
+      { desc: 'remove first', apply: (el) => { const rs = live(el); rs.shift(); setScopeVar(el, 'rows', rs); return { rows: rs }; } },
+      { desc: 'swap extremes', apply: (el) => { const rs = live(el); if (rs.length > 1) { const t = rs[0]; rs[0] = rs[rs.length - 1]; rs[rs.length - 1] = t; } setScopeVar(el, 'rows', rs); return { rows: rs }; } },
+      { desc: 'insert front', apply: (el) => { const rs = live(el); rs.unshift(mk()); setScopeVar(el, 'rows', rs); return { rows: rs }; } },
+    ], schema: { rows } };
+  },
+  rebuild(state, name) {
+    return { name, source: `<template each="r, i in rows" key="r.id"><span class="ix">{i}={r.id}</span></template><script>let rows = ${JSON.stringify(state.rows)};</script>` };
+  },
+});
+
+// 15: Branch-divergent scope reads — {p ? a : b} only captures the taken
+// branch's key on first eval. Pins the fast-expression self-heal (expr.js):
+// switching branches must ReferenceError-fallback, relearn, and stay correct.
+templates.push({
+  gen(rng, id) {
+    const name = `fz${id}`;
+    const p = rng() > 0.5;
+    const a = Math.floor(rng() * 50);
+    const b = Math.floor(rng() * 50);
+    return { name, source: `<p class="br">{p ? a : b}</p><script>let p = ${p}; let a = ${a}; let b = ${b};</script>`, mutators: [
+      { desc: 'toggle p', apply: (el) => { const nv = !el.__sparkScope?.p; setScopeVar(el, 'p', nv); return { p: nv }; } },
+      { desc: 'set a', apply: (el) => { const nv = Math.floor(rng() * 100); setScopeVar(el, 'a', nv); return { a: nv }; } },
+      { desc: 'set b', apply: (el) => { const nv = Math.floor(rng() * 100); setScopeVar(el, 'b', nv); return { b: nv }; } },
+    ], schema: { p, a, b } };
+  },
+  rebuild(state, name) {
+    return { name, source: `<p class="br">{p ? a : b}</p><script>let p = ${state.p}; let a = ${state.a}; let b = ${state.b};</script>` };
+  },
+});
+
 // ── Run one scenario ───────────────────────────────────────────────────
 async function runScenario(rng, seed, id) {
   const tpl = pick(rng, templates);

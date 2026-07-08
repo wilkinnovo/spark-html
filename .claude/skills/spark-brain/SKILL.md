@@ -75,11 +75,15 @@ When goods conflict, this is the tie-breaker order. Higher always beats lower:
    they sit above it, not below.
 4. **The gzip budget** — law, but fourth: we raised it once (13.5 → 15.0,
    itemized) precisely because correctness and loud failure were worth more
-   than 1.5 KB. It will not be raised again in 1.x; after the M1/M2 spends
-   land, it freezes.
-5. **Performance** — *defend, don't chase.* Keep the bench numbers flat;
-   don't buy speed with concepts, bytes, or risk. The headline perf work
-   already shipped.
+   than 1.5 KB. [OVERRIDE 2026-07-08, Wilkin: raised a second and final time,
+   15.0 → 16.0, itemized in scripts/size-check.mjs, to fund the krausest
+   speed program (spark-speed-up.md) — "fastest" was declared part of the
+   mission. RE-FROZEN at 16.0 for the remaining life of 1.x.]
+5. **Performance** — *defend, don't chase* was the 1.0 posture. [OVERRIDE
+   2026-07-08, Wilkin: for the speed program, performance is actively chased
+   — target is the top of the krausest js-framework-benchmark table — but
+   never above correctness or loud failure, and never with new user-facing
+   concepts. Outside that program, defend-don't-chase still applies.]
 6. **Internal elegance** — last, always, and only under a green harness. A
    3,200-line file that works outranks a beautiful module split that ships a
    silent reconciliation bug. This is not a license for permanent mess — M3

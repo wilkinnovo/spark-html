@@ -570,13 +570,17 @@ import {
 //    dirtyKeys  — keys changed this flush (gating set, live)
 //    dirtyItems — raw loop-row objects deep-mutated this flush — lets a
 //                  `rows[i].x = y` re-walk only row i, not all rows
-export const capture = { set: null, sink: null, dirtyMode: false, dirtyKeys: null, dirtyItems: null };
+//    rowForce   — inside a row walk forced by an item-identity/index change
+//                  (walkBlock): the row's inputs changed wholesale, so
+//                  per-node key gating is suspended for the walk, exactly
+//                  like a full pass scoped to one row
+export const capture = { set: null, sink: null, dirtyMode: false, dirtyKeys: null, dirtyItems: null, rowForce: false };
 
-// A node should re-evaluate this pass if we're in full mode, it has no
-// recorded deps yet (first sight), it's untracked (deps === null), or one of
-// its deps changed.
+// A node should re-evaluate this pass if we're in full mode, inside a forced
+// row walk, it has no recorded deps yet (first sight), it's untracked
+// (deps === null), or one of its deps changed.
 export function shouldEval(node) {
-  if (!capture.dirtyMode) return true;
+  if (!capture.dirtyMode || capture.rowForce) return true;
   const deps = node.__sparkReadKeys;
   if (deps === undefined || deps === null) return true;
   return setsIntersect(deps, capture.dirtyKeys);
@@ -934,10 +938,14 @@ export function walkNode(node, scope, isRoot = false) {
 
   // A node is static only if it has no live binding of its own AND every
   // child is static. Computed bottom-up here and cached on the node.
+  // Live sibling-chain iteration (no [...childNodes] snapshot — that
+  // allocated an array per element per pass): the only mid-loop structural
+  // changes are an anchor child inserting/removing its OWN managed siblings
+  // — insertions are visited and skipped by the managed check below, and a
+  // removed node simply drops out of the chain (an anchor never detaches
+  // itself, so child.nextSibling is always live and attached).
   let allStatic = !node.__sparkLive;
-  for (const child of [...node.childNodes]) {
-    // A child may have been detached during this loop; skip stragglers.
-    if (child.parentNode !== node) continue;
+  for (let child = node.firstChild; child; child = child.nextSibling) {
     // Nodes rendered by a sibling each/if are "managed" by that block and
     // get walked with the correct loop/branch scope there. Walking them
     // here with the parent scope would evaluate loop bindings against the

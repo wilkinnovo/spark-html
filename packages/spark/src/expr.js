@@ -15,9 +15,24 @@
  * runtime, well after all modules have loaded.
  */
 import { skipString } from './script.js';
-import { warnOnce, reportError } from './index.js';
+import { warnOnce, reportError, capture } from './index.js';
 
 // ─── Expression evaluation ─────────────────────────────────────────────
+// `with(){}` functions are never optimized by the engine, so the hot path
+// gets a SECOND compilation: once an expression's scope keys are known (from
+// dependency capture), it's recompiled as a plain optimizable function whose
+// prelude destructures exactly those keys — `const {selected} = __scope__;
+// return (…)`. Reads still go through the scope proxy's get trap (the
+// destructure IS a property read), so dependency capture keeps working
+// unchanged. Two safety valves keep the semantics byte-identical to `with`:
+//   • Expressions containing an assignment / ++ / -- / delete never get a
+//     fast variant (a destructured const would break the write) — the scan
+//     below is deliberately over-eager (an `=` inside a string disables the
+//     fast path too; that only costs speed, never correctness).
+//   • A ternary/short-circuit branch can read a key the first capture never
+//     saw — the fast fn throws ReferenceError, we drop it, re-run the with
+//     version (which re-captures the union), and rebuild. Self-healing.
+const NO_FAST = /(?:^|[^=!<>+\-*/%&|^])=(?![=>])|[+\-*/%&|^]=(?!=)|\+\+|--|\bdelete\s/;
 const exprCache = new Map();
 export function compileExpr(code) {
   let fn = exprCache.get(code);
@@ -26,6 +41,11 @@ export function compileExpr(code) {
       // The closing brace MUST be on its own line: if `code` ends with a
       // `//` line comment, putting `}` on the same line would comment it out.
       fn = new Function('__scope__', `with(__scope__) {\nreturn (${code})\n}`);
+      fn.__fastable = !NO_FAST.test(code);
+      // The true compile source. runExpr's `code` argument is display-only
+      // (patchIf passes null for a bare else compiled from 'true') — the
+      // fast variant must be built from what was actually compiled.
+      fn.__src = code;
     } catch (e) {
       warnOnce(`c:${code}`, `[spark] Syntax error in expression {${code}} — ${e.message}`);
       fn = () => '';
@@ -33,6 +53,23 @@ export function compileExpr(code) {
     exprCache.set(code, fn);
   }
   return fn;
+}
+
+// Build the optimizable variant from the captured key set. Any oddity (a key
+// that isn't a valid identifier, a reserved word, a name colliding with
+// __scope__) makes `new Function` throw — that expression is then pinned to
+// the with-version forever. An empty key set still builds (globals-only
+// expressions like {Math.random()} get an optimizable body too).
+function buildFast(fn, keys) {
+  let names = '';
+  for (const k of keys) names += (names ? ',' : '') + k;
+  try {
+    fn.__fast = new Function('__scope__',
+      `${names ? `const {${names}} = __scope__;\n` : ''}return (${fn.__src})\n`);
+  } catch {
+    fn.__fastable = false;
+    fn.__fast = undefined;
+  }
 }
 
 const stmtCache = new Map();
@@ -51,17 +88,59 @@ export function compileStmt(code) {
   return fn;
 }
 
+// A thrown evaluation (e.g. reading a property of undefined) renders as
+// empty — tell the consumer which expression and why, once.
+function exprError(code, e) {
+  warnOnce(`e:${code}`, `[spark] Error evaluating {${code}} — ${e.message}. (Rendered as empty. Use {a?.b} for values that may be missing.)`);
+  return '';
+}
+
 // Run an already-compiled expression. Split from evaluate() so hot callers
 // (bindings, loop/if/await anchors) can compile ONCE at parse time and skip
 // the cache lookup on every patch.
+//
+// Three tiers, fastest first:
+//   1. fn.__fast — the destructure-prelude variant (engine-optimizable). A
+//      ReferenceError means the first capture missed a branch's key: drop
+//      the fast fn and fall through to the with-version, whose run below
+//      re-learns the key union and rebuilds. Any other throw is the user's
+//      (same as the with-version would produce) — same warnOnce path.
+//   2. The with-version under an active capture/sink — reads are routed into
+//      the per-expression key-union (fn.__keys, grow-only across all nodes
+//      sharing this code) and forwarded to the enclosing capture set, then
+//      the fast variant is (re)built from the union.
+//   3. The plain with-version (no capture context, or expression pinned by
+//      the assignment scan).
 export function runExpr(fn, code, scope) {
+  const fast = fn.__fast;
+  if (fast) {
+    try {
+      return fast(scope);
+    } catch (e) {
+      if (!(e instanceof ReferenceError)) return exprError(code, e);
+      fn.__fast = null; // missed-branch key — relearn below, rebuild after
+    }
+  }
+  if (fn.__fastable && (capture.set !== null || capture.sink !== null)) {
+    const prev = capture.set;
+    const mine = fn.__keys || (fn.__keys = new Set());
+    capture.set = mine;
+    let out;
+    try {
+      out = fn(scope);
+    } catch (e) {
+      out = exprError(code, e);
+    } finally {
+      capture.set = prev;
+      if (prev) for (const k of mine) prev.add(k);
+      if (fn.__fast == null) buildFast(fn, mine);
+    }
+    return out;
+  }
   try {
     return fn(scope);
   } catch (e) {
-    // A thrown evaluation (e.g. reading a property of undefined) renders as
-    // empty — tell the consumer which expression and why, once.
-    warnOnce(`e:${code}`, `[spark] Error evaluating {${code}} — ${e.message}. (Rendered as empty. Use {a?.b} for values that may be missing.)`);
-    return '';
+    return exprError(code, e);
   }
 }
 

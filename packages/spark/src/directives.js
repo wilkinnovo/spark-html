@@ -372,29 +372,32 @@ export function patchAwait(el, scope) {
 //   <template each="todo in todos" key="todo.id"> … </template>
 
 // A loop scope: the loop variable (`box.v`) and index (`box.iv`) resolve from
-// a mutable box, everything else forwards to the enclosing scope proxy (so
-// dependency capture still sees those reads). One proxy is created per block
-// and REUSED across patches — reconciliation just rewrites box.item / box.i /
-// box.scope — instead of allocating a proxy per row on every patch.
+// a mutable box via own accessors; everything else falls through the native
+// prototype chain to the enclosing scope proxy (so dependency capture still
+// sees those reads, one proxy trap instead of two). One scope object is
+// created per block and REUSED across patches — reconciliation just rewrites
+// box.item / box.i. The prototype is fixed at creation, so the callers that
+// rewrite box.scope must rebuild the scope object when its identity changes
+// (they compare first; a component's scope proxy is stable, so in practice
+// this never fires after creation).
+// The loop-var setter is a silent no-op — an assignment must never clobber
+// the loop variable or leak it onto the shared parent scope.
+// The getters DO record their own name into the capture sets (like a scope
+// read): the fast expression variant (expr.js buildFast) destructures every
+// captured key from the scope object, and the loop var must be in that key
+// set to resolve through this accessor instead of falling to a global
+// lookup. Row nodes therefore carry the loop-var name in their readKeys —
+// walkBlock's rowForce is what keeps item-driven row walks un-gated.
 function makeLoopScope(box) {
-  return new Proxy(box, {
-    get(b, k) {
-      if (k === b.v) return b.item;
-      if (b.iv && k === b.iv) return b.i;
-      if (k === Symbol.unscopables) return undefined;
-      return b.scope[k];
-    },
-    has(b, k) {
-      return k === b.v || (b.iv && k === b.iv) || k in b.scope;
-    },
-    set(b, k, v) {
-      // Never let an assignment clobber the loop variable/index on the
-      // shared parent scope; everything else writes through normally.
-      if (k === b.v || (b.iv && k === b.iv)) return true;
-      b.scope[k] = v;
-      return true;
-    },
-  });
+  const record = (name) => {
+    if (capture.set !== null) capture.set.add(name);
+    if (capture.sink !== null) capture.sink.add(name);
+  };
+  const desc = {
+    [box.v]: { get: () => (record(box.v), box.item), set: () => {}, configurable: true },
+  };
+  if (box.iv) desc[box.iv] = { get: () => (record(box.iv), box.i), set: () => {}, configurable: true };
+  return Object.create(box.scope, desc);
 }
 
 // Siblings OWNED by an anchor node — the rendered output of an if/else
@@ -435,6 +438,58 @@ function placeWithRendered(cursor, n) {
     }
   }
   return cursor;
+}
+
+// Longest-increasing-subsequence membership (patience sorting, O(n log n)):
+// returns the positions of `seq` forming one LIS. Rows on it are already in
+// relative order and never move — a swap displaces 2 rows and a remove 0,
+// instead of a forward cursor cascading ~n moves.
+function lisMembers(seq) {
+  const tails = []; // tails[d] = seq position of the smallest tail among increasing runs of length d+1
+  const prev = new Array(seq.length);
+  for (let i = 0; i < seq.length; i++) {
+    const x = seq[i];
+    let lo = 0, hi = tails.length;
+    while (lo < hi) {
+      const mid = (lo + hi) >> 1;
+      if (seq[tails[mid]] < x) lo = mid + 1; else hi = mid;
+    }
+    prev[i] = lo > 0 ? tails[lo - 1] : -1;
+    tails[lo] = i;
+  }
+  const members = [];
+  let k = tails.length ? tails[tails.length - 1] : -1;
+  while (k >= 0) { members.push(k); k = prev[k]; }
+  return members;
+}
+
+// Walk a block's nodes with its loop scope, accumulating every key the row
+// reads (outer-scope keys AND loop-var names) into block.ext (grow-only,
+// exactly withSink's contract) and propagating to the enclosing sink so the
+// anchor's own gating set still sees everything. block.ext is what lets a
+// dirty pass skip rows whose external reads are untouched.
+//
+// `force` = the walk was triggered by the row's own inputs changing (item
+// identity/index) rather than by an external key: suspend per-node key
+// gating for its duration — the row's loop-var-derived bindings carry only
+// the loop-var name in readKeys, which never appears in dirtyKeys. Without
+// force, an item-replacement walk would skip exactly the nodes that need
+// re-rendering. An external-key walk (force=false) keeps gating, so e.g. a
+// `sel` change re-evaluates only the one :class binding per row that reads
+// it, not every text node.
+function walkBlock(block, force) {
+  const prevSink = capture.sink;
+  const prevForce = capture.rowForce;
+  const ext = block.ext || (block.ext = new Set());
+  capture.sink = ext;
+  if (force) capture.rowForce = true;
+  try {
+    for (const nd of block.nodes) walkNode(nd, block.scope, false);
+  } finally {
+    capture.sink = prevSink;
+    capture.rowForce = prevForce;
+    if (prevSink) for (const k of ext) prevSink.add(k);
+  }
 }
 
 export function patchEach(el, scope) {
@@ -494,17 +549,23 @@ export function patchEach(el, scope) {
   // new Proxy per row per patch (see makeLoopScope).
   const keyFn = el.__sparkEachKeyFn;
   let keyBox = el.__sparkEachKeyBox;
-  if (keyFn && !keyBox) {
-    keyBox = el.__sparkEachKeyBox = { v: varName, iv: idxName, item: null, i: 0, scope: null };
-    el.__sparkEachKeyScope = makeLoopScope(keyBox);
+  if (keyFn) {
+    if (!keyBox) {
+      keyBox = el.__sparkEachKeyBox = { v: varName, iv: idxName, item: null, i: 0, scope };
+      el.__sparkEachKeyScope = makeLoopScope(keyBox);
+    } else if (keyBox.scope !== scope) {
+      keyBox.scope = scope;
+      el.__sparkEachKeyScope = makeLoopScope(keyBox);
+    }
   }
 
   const oldBlocks = el.__sparkEachBlocks || [];
   const oldByKey = new Map();
-  for (const b of oldBlocks) oldByKey.set(b.key, b);
-
-  const newBlocks = [];
-  let insertAfter = el;
+  for (let j = 0; j < oldBlocks.length; j++) {
+    const b = oldBlocks[j];
+    b.oldIdx = j;
+    oldByKey.set(b.key, b);
+  }
 
   // Track each row's raw item on the owning component, so a deep mutation
   // (`todos[i].done = …`) can re-walk just that row instead of the whole
@@ -512,48 +573,108 @@ export function patchEach(el, scope) {
   const comp = el.__sparkEachComp || (el.__sparkEachComp = closestComponent(el));
   const items = comp && (comp.__sparkItems || (comp.__sparkItems = new WeakSet()));
 
-  for (let i = 0; i < arr.length; i++) {
+  // ── Phase 1: match rows to blocks by key (no DOM writes yet) ──
+  const count = arr.length;
+  const entries = new Array(count);
+  const seq = [];   // reused blocks' old positions, in new order
+  const seqAt = []; // entry index of each seq member
+  let increasing = true; // reused rows already in relative order → zero moves
+  let prevOld = -1;
+  for (let i = 0; i < count; i++) {
     const item = arr[i];
-    const rawItem = (item && item[REACTIVE_RAW]) || item;
-    if (items && rawItem && typeof rawItem === 'object') items.add(rawItem);
+    const raw = (item && item[REACTIVE_RAW]) || item;
+    if (items && raw && typeof raw === 'object') items.add(raw);
     let key = i;
     if (keyFn) {
-      keyBox.item = item; keyBox.i = i; keyBox.scope = scope;
+      keyBox.item = item; keyBox.i = i;
       key = runExpr(keyFn, keyExpr, el.__sparkEachKeyScope);
     }
-    let block = oldByKey.get(key);
-
+    const block = oldByKey.get(key);
+    let walk = true;
+    let force = false;
     if (block) {
       oldByKey.delete(key);
-      // Point the block's persistent scope at this patch's item/index/scope.
       const box = block.box;
-      box.item = item; box.i = i; box.scope = scope;
-      // Reuse the existing nodes — only move them if they're not already in
-      // the right spot, so a focused input is left untouched. An anchor's
-      // OWN rendered content (an if/else chain, await branch, or nested
-      // each inside this row) lives as siblings after it — reposition it
-      // along with the anchor, or reordering rows would strand it.
-      let cursor = insertAfter;
-      for (const n of block.nodes) {
-        cursor = placeWithRendered(cursor, n);
+      // Decide BEFORE overwriting the block's bookkeeping. In a dirty-key
+      // pass: a row whose item identity, index, and read keys are all
+      // untouched this tick renders byte-identically — skip its whole walk
+      // (this is what turns an immutable array update into O(changed
+      // rows)). A row whose own inputs changed (identity/index, or no
+      // recorded key set yet) walks with rowForce — per-node gating off,
+      // like a one-row full pass. A row walked only because an external
+      // key it reads changed keeps per-node gating, so just the bindings
+      // reading that key re-evaluate. Full passes walk everything;
+      // pure-row passes keep the dirtyItems gate; a deep mutation mixed
+      // with a key write in one tick forces a full pass (flush
+      // classification), so the identity test can't go stale.
+      if (capture.dirtyMode) {
+        force = !block.ext || block.raw !== raw || (idxName && box.i !== i);
+        walk = force || setsIntersect(block.ext, capture.dirtyKeys);
+      } else {
+        walk = !capture.dirtyItems || capture.dirtyItems.has(raw);
       }
-      // Pure-row pass (capture.dirtyItems set): only re-walk a row whose item was
-      // mutated this tick. Otherwise nothing it reads changed, so skip it —
-      // this is what turns O(rows) into O(changed rows).
-      if (!capture.dirtyItems || capture.dirtyItems.has(rawItem)) {
-        for (const n of block.nodes) walkNode(n, block.scope, false);
+      box.item = item; box.i = i;
+      if (box.scope !== scope) {
+        // Enclosing scope identity changed (never for a stable component
+        // proxy) — the loop scope's prototype is fixed, so rebuild it.
+        box.scope = scope;
+        block.scope = makeLoopScope(box);
+        walk = true;
+        force = true;
       }
+      block.raw = raw;
+      if (increasing) {
+        if (block.oldIdx < prevOld) increasing = false;
+        else prevOld = block.oldIdx;
+      }
+      seqAt.push(i);
+      seq.push(block.oldIdx);
+    }
+    entries[i] = { block, item, raw, key, walk, force, stay: false };
+  }
+
+  // ── Phase 2: rows on a longest increasing subsequence of old positions
+  // keep their DOM position; every other reused row moves exactly once.
+  if (increasing) {
+    for (const e of entries) if (e.block) e.stay = true;
+  } else {
+    for (const k of lisMembers(seq)) entries[seqAt[k]].stay = true;
+  }
+
+  // ── Phase 3: place / create / walk, forward with a moving cursor ──
+  const newBlocks = new Array(count);
+  let insertAfter = el;
+  for (let i = 0; i < count; i++) {
+    const e = entries[i];
+    let block = e.block;
+    if (block) {
+      if (!e.stay) {
+        // Move the whole row right after the cursor. An anchor's OWN
+        // rendered content (an if/else chain, await branch, or nested each
+        // inside this row) lives as siblings after it — reposition it along
+        // with the anchor, or reordering rows would strand it. Rows still
+        // in place are never touched, so a focused <input> keeps focus.
+        let cursor = insertAfter;
+        for (const nd of block.nodes) cursor = placeWithRendered(cursor, nd);
+      }
+      if (e.walk) walkBlock(block, e.force);
     } else {
-      const box = { v: varName, iv: idxName, item, i, scope };
+      const box = { v: varName, iv: idxName, item: e.item, i, scope };
       const loopScope = makeLoopScope(box);
       // hydrateBlockImports (inside renderClones) mutates `nodes` in place,
       // swapping placeholders for booted hosts so reconciliation tracks them.
       const nodes = [];
-      renderClones(templateNodes, insertAfter, nodes, loopScope);
-      block = { key, nodes, box, scope: loopScope };
+      block = { key: e.key, nodes, box, scope: loopScope, raw: e.raw, ext: new Set() };
+      const prevSink = capture.sink;
+      capture.sink = block.ext;
+      try {
+        renderClones(templateNodes, insertAfter, nodes, loopScope);
+      } finally {
+        capture.sink = prevSink;
+        if (prevSink) for (const k of block.ext) prevSink.add(k);
+      }
     }
-
-    newBlocks.push(block);
+    newBlocks[i] = block;
     const last = block.nodes[block.nodes.length - 1];
     // The next block starts after this row's LAST node — including any
     // content its trailing anchor rendered (if/await/nested-each output).

@@ -11,19 +11,21 @@ import { gzipSync } from 'node:zlib';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
-const LIMIT_KB = 15.0; // budget raised once at M1 (v1 plan §2). Allocation:
-//   Fail-loud dev invariants + inspect API (M1.2/1.3)  ~0.4 KB
-//   Reactive props (M2.1, actual ~0.29)                 ~0.7 KB
-//   Frozen 1.0 margin                                    ~0.5 KB
-//   Total: 1.6 KB added to 13.42 → 15.0 KB
-// Past bumps: ~11.2KB after 0.22.x; +0.1KB for top-level-import prop fix; +0.1KB for import query-string survival; +0.1KB for leaveNode() recursive teardown; +0.1KB for braceDepths(); +0.1KB for evalPropValue() real-type preservation; +0.29KB for reactive whole-value {expr} props (M2.1, 0.29.0).
-// FROZEN AT 1.0.0 (2026-07-07) for the life of 1.x — "it doesn't fit" now has
-// exactly one answer: a sibling package. Margin spends into the last 0.5 KB
-// (arrow-handler warn +0.14, app-root import fix +0.10, app-base 1.0.2 fix
-// +0.01, each-cloned-import-prop coercion fix (buildElementPlan `[import]`
-// guard + buildProps whole-expr coerce fix) +0.02 → ~14.66 used, ~0.34
-// headroom) — all correctness/loud-failure, the exact category the margin
-// existed for.
+const LIMIT_KB = 16.0; // raised 15.0 → 16.0 on 2026-07-08 (Wilkin, one-time,
+// itemized, RE-FROZEN for the remaining life of 1.x) to fund the speed
+// program (spark-speed-up.md): making spark competitive on the krausest
+// js-framework-benchmark is part of the mission ("simplest AND fastest").
+// Speed-program ledger (measured per gate):
+//   G1 loop-scope proto-chain + live walker      −0.02 KB (14.66 → 14.64)
+//   G2 keyed LIS reconciler + row identity-skip  +0.41 KB (14.64 → 15.05)
+// Previous era (13.42 → 15.0, M1, v1 plan §2): fail-loud invariants ~0.4,
+// reactive props ~0.7, frozen margin ~0.5 (spent on arrow-handler warn,
+// app-root/app-base fixes, import-prop coercion → 14.66 at 1.0.0).
+// Older bumps: ~11.2KB after 0.22.x; +0.1 top-level-import prop fix; +0.1
+// import query-string survival; +0.1 leaveNode() recursive teardown; +0.1
+// braceDepths(); +0.1 evalPropValue() type preservation; +0.29 reactive
+// whole-value {expr} props (M2.1, 0.29.0).
+// "It doesn't fit" still has exactly one answer: a sibling package.
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const entry = join(root, 'packages/spark/src/index.js');
