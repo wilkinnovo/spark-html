@@ -27,11 +27,11 @@
            local copy); re-fetched cross-origin from a CDN in the browser. -->
       <div :hidden="tab !== 'url'">
 <pre class="code" spark-ignore>&lt;div import=<span class="k">"https://cdn.jsdelivr.net/gh/wilkinnovo/
-  spark/website/public/components/url-card.html"</span>&gt;
+  spark-html/website/public/components/url-card.html"</span>&gt;
 &lt;/div&gt;</pre>
         <div class="live">
           <p class="live-label">● live — fetched from a CDN, no bundler</p>
-          <div import="/components/url-card"></div>
+          <div import="https://cdn.jsdelivr.net/gh/wilkinnovo/spark-html/website/public/components/url-card.html"></div>
         </div>
       </div>
       <!-- Tab 2: the classic single-file component -->
