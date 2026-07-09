@@ -17,6 +17,7 @@ export default defineConfig({
   projects: [
     { name: 'chromium', testMatch: 'spark.spec.js', use: { ...devices['Desktop Chrome'] } },
     { name: 'templates', testMatch: 'templates.spec.js', use: { ...devices['Desktop Chrome'] } },
+    { name: 'relocation', testMatch: 'relocation.spec.js', use: { ...devices['Desktop Chrome'] } },
   ],
   webServer: {
     command: `bun run site:build && cd website && bunx spark preview --port ${PORT} --strict-port`,

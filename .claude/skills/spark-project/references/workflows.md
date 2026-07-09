@@ -7,8 +7,50 @@
   prerender, router, every companion, `scripts/test-bun.mjs`, and ends with
   `scripts/size-check.mjs`. A suite is a plain Node script with asserts; add
   new suites to the root `test` script chain or they never run.
-- `npm run e2e` — Playwright (`e2e/spark.spec.js`, currently only 3 tests;
-  browser config in `playwright.config.js`).
+- `npm run e2e` — Playwright (`playwright.config.js` projects: `chromium` =
+  `e2e/spark.spec.js`, `templates` = the 4 create-spark-html-app templates,
+  `relocation` = the I2a relocation gate below).
+
+## The relocation gate (I2a, improvements.md)
+
+The identity's gate 3 ("a page relocates across client/SSR/prerender by
+relocation, not rewrite") is mechanically enforced by
+`e2e/relocation.spec.js`: ONE page
+(`e2e/fixtures/relocation/shared/page.html`) is served three ways via
+`scripts/serve-relocation-fixture.mjs <client|ssr|prerender> <port>` (a
+throwaway Bun-workspace project per mode, same pattern as
+`scripts/serve-template-for-e2e.mjs`), driven through an identical scripted
+interaction (click/toggle/add/remove/bind), and the post-interaction DOM is
+diffed after normalization (`normalizeInPage` in the spec — strips
+`<script>` tags, `<spark-ssr>` bookkeeping, hydration-marker attributes, and
+HTML comments; any new normalization rule needs its own justification, per
+never-weaken-the-oracle). Verified to actually catch a regression: injecting
+a one-line mode-only DOM mutation into the spec makes the gate fail with a
+readable diff; removing the injection makes it pass again — confirmed
+2026-07-09 before trusting it as a gate rather than decoration.
+
+Two real findings surfaced building this (both intentionally NOT worked
+around — recorded in `page.html`'s own NOTE comments and here, not silently
+routed around):
+- **`store()`/`derived()` (`import { store, derived } from 'spark-html'`
+  inside a component's own `<script>`) work in dev and in spark-ssr's
+  hydration path, but break in a PRODUCTION `spark build`** (client or
+  prerender — same `spark-html-bun` build pipeline): the entry script's bare
+  `'spark-html'` specifier gets bundled/rewritten for itself only; components
+  `mount()` fetches and evaluates at runtime get no import map in the built
+  HTML, so their own bare `from 'spark-html'` 404s in the browser. The
+  fixture uses component-local reactive state (`let` + `$:`) instead, which
+  needs no import and is unaffected. Not yet triaged into improvements.md as
+  its own item — flag it if you're touching `spark-html-bun`'s build path.
+- **`<template await>` on a plain script-local `Promise` (not a real
+  spark-ssr data source) never updates post-hydration on an SSR page**:
+  spark-ssr's server-side renderer statically flattens the block to its
+  resolved (`then`) branch's inner content only, discarding the
+  `<template await/then/catch>` wrapper structure the client needs to
+  reactively track the real promise — so the client-run script's actual
+  resolution has nothing left to patch into. `<template await>` tied to a
+  real spark-ssr data source is unaffected. Dropped from the shared fixture
+  page rather than worked around.
 - spark-ssr: `packages/spark-ssr/test/ssr.js` (~2k lines, prints
   "N passed, M failed") and `test/bench.js` (NOT in npm test — run manually
   around any render-path change; compares renderFragment 1/100/1000 rows +

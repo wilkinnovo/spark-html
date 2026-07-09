@@ -1,0 +1,101 @@
+<!--
+  I2a relocation fixture (improvements.md) — ONE page file, run unmodified
+  in three server/build shapes (client / SSR / prerender). Exercises every
+  core concept once: component-local reactive state + a `$:` derivation,
+  {expr} interpolation, :attr, @handler, :if/:else, keyed :each, bind, a
+  component import with a {expr} prop, onMount. (store()/derived() and
+  `<template await>` on a bare script Promise were tried and dropped — see
+  the NOTE comments below; both are real findings, not gate workarounds.)
+  The oracle (e2e/relocation.spec.js via
+  scripts/serve-relocation-fixture.mjs) mounts each mode, drives the same
+  interaction script, and diffs normalized DOM after settle — never edit
+  this file to make one mode pass; that defeats the point.
+-->
+<script>
+  // Absolute path: spark-ssr serves the client hydration component at a
+  // synthetic /__spark/page/<key> URL with no adjacent files, so a page
+  // script's JS imports must be absolute (served from public/ in every
+  // mode), not relative — same convention the templates use for CSS.
+  //
+  // NOTE (finding, recorded in improvements.md's I2 status): store()/
+  // derived() need `import { store, derived } from 'spark-html'` inside a
+  // component script, which works in dev and in spark-ssr's hydration
+  // component, but NOT in a production `spark build` (client or prerender —
+  // same pipeline): the built entry bundles/rewrites that bare specifier for
+  // itself only, and ships no import map for components mount() fetches at
+  // runtime, so their own bare `from 'spark-html'` 404s in the browser. This
+  // fixture uses component-local reactive state (`$:`) instead, which needs
+  // no import and is unaffected — store/derived relocation across a
+  // PRODUCTION client/prerender build is a real, separate gap to track, not
+  // this gate's job to work around invisibly.
+  import { double } from '/helpers.js';
+
+  let counter = 0;
+  $: doubled = counter * 2;
+
+  let items = [
+    { id: 1, name: 'alpha' },
+    { id: 2, name: 'beta' },
+  ];
+  let nextId = 3;
+  let show = true;
+  let inputVal = '';
+  let mounted = false;
+
+  function inc() { counter++; }
+  function toggle() { show = !show; }
+  function addItem() { items = [...items, { id: nextId, name: 'item-' + nextId }]; nextId++; }
+  function removeFirst() { items = items.slice(1); }
+
+  onMount(() => { mounted = true; });
+</script>
+
+<!-- SSR-only data source, see reloc-source.js — inert custom element in
+     client/prerender modes. -->
+<spark-ssr>
+  relocMarker = ./lib/reloc-source.js
+</spark-ssr>
+<!-- referencing {relocMarker} is what makes spark-ssr's data-source plan
+     non-empty, so the page hydrates instead of running its script on the
+     server; the value itself is plumbing, stripped by the oracle's
+     normalization, never part of the real comparison. -->
+<span class="ssr-plumbing" hidden>{relocMarker}</span>
+
+<h1>Relocation fixture</h1>
+
+<p class="count" :data-count="counter">count: {counter} · doubled: {doubled} · fn: {double(counter)}</p>
+<button class="inc" @click="inc()">+1</button>
+
+<template if="show">
+  <p class="shown">visible</p>
+</template>
+<template else>
+  <p class="hidden-branch">hidden</p>
+</template>
+<button class="toggle" @click="toggle()">toggle</button>
+
+<ul class="list">
+  <template each="item in items" key="item.id">
+    <li class="item">{item.name}</li>
+  </template>
+</ul>
+<button class="add" @click="addItem()">add</button>
+<button class="remove" @click="removeFirst()">remove</button>
+
+<input class="bound" bind:value="inputVal">
+<p class="bound-echo">{inputVal}</p>
+
+<div import="components/child" label="{'relocated-' + counter}"></div>
+
+<!-- NOTE (finding, recorded in improvements.md's I2 status): this fixture
+     originally exercised `<template await>` on a plain script-local
+     Promise. spark-ssr statically flattens that block's server render to
+     the resolved (`then`) branch's inner content ONLY — discarding the
+     `<template await/then/catch>` wrapper structure the client needs to
+     reactively track the real promise post-hydration — so the block never
+     updates once the client script actually runs. `<template await>` tied
+     to a real spark-ssr data source is unaffected (only a bare script
+     Promise hits this); dropped from this shared page pending that fix
+     rather than working around it invisibly.-->
+
+<p class="mounted-flag" :data-mounted="mounted">mounted: {mounted}</p>
