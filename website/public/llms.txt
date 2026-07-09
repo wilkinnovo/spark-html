@@ -16,6 +16,139 @@ blocks declare data (SQL, a table, a URL, a markdown glob, or a JS module) and
 the server infers schema, REST endpoints, and hydration from how the template
 reads it.
 
+## Template syntax reference
+
+A component is one `.html` file: markup, then an optional `<script>` (top-level
+`let`/`const` = reactive state — nothing to import, nothing to call), then an
+optional scoped `<style>`.
+
+- Text binding: `<p>Hello {name}</p>`
+- Expressions: `{price * qty}`, `{ok ? 'yes' : 'no'}`
+- Events: `<button onclick={add}>` — handler receives the DOM event
+- Dynamic attributes: `<button :disabled="count >= 10">` — booleans toggle, others set
+- Attribute interpolation: `<input value="{draft}">`
+- Loops: `<template each="todo in todos">…</template>` (must be on `<template>`
+  so it's valid HTML anywhere, including inside `<ul>`/`<table>`)
+- Loop with index: `<template each="todo, i in todos">`
+- Keyed loops: `<template each="row in rows" key="row.id">` — reuse nodes by
+  identity across reorders (add this whenever items reorder)
+- Conditional display (element stays, toggles a property): `<div :hidden="!show">`
+- Dynamic class: `<li :class="done ? 'item done' : 'item'">`
+- Two-way binding: `bind:value` (text/number/`<select>`/contenteditable),
+  `bind:checked` (checkbox), `bind:group` (radio)
+- Conditional blocks (nodes enter/leave the DOM): `<template if="show">…</template>`,
+  chained `<template else-if="…">` / `<template else>` directly after — exactly
+  one branch renders, short-circuit like real if/else
+- Async blocks: `<template await="loadUser(id)" as="user">…<template then>{user.name}</template>
+  <template catch>{user.message}</template></template>` — reactive, re-fires on
+  state change and cancels the prior promise; `await="once(expr)"` fires once
+- Slots: `<slot></slot>`, `<slot name="title"></slot>` — project caller content
+- Escape hatch: `<pre spark-ignore>` — subtree never patched, literal `{braces}`
+  survive (also the fix for code samples in markup)
+- Literal brace outside spark-ignore: backslash-escape it, `\{`/`\}` (HTML
+  entities like `&#123;` do NOT work — the browser decodes them first)
+- Reactive statements: `$: total = price * qty` (Svelte-style, re-runs when
+  its dependencies change); lifecycle via `onMount(() => { ... return cleanup; })`
+- Components: `<div import="/components/card" title="{t}"></div>` — props are
+  plain attributes, frozen at mount (not reactive after — pass state that must
+  stay live via a store, or inline the UI in the parent instead)
+- Stores: `store('name', initialValue)` creates/gets a shared reactive store;
+  `useStore('name')` subscribes a component to it; `derived(fn, [stores])` for
+  memoized computed values across stores
+
+## spark-ssr — full-stack quick reference
+
+A page is an HTML file under `pages/`. A `<spark-ssr>` block is the entire
+backend for that page — no separate server file, no ORM, no migrations:
+
+    <template each="todo in todos">
+      <input type="checkbox" bind:checked="todo.done" onchange={toggle}>
+      {todo.title}
+      <button onclick={remove}>x</button>
+    </template>
+    <input bind:value="draft"><button onclick={add}>Add</button>
+    <spark-ssr table="todos" live />
+
+That one line infers a `todos` table from how the template reads it (columns +
+types), creates it, generates `GET/POST/PATCH/DELETE /api/todos`, renders rows
+server-side, and hydrates the page. `live` pings every open tab over SSE on
+every write. A page's data doesn't have to be a table — name a variable and
+point it at SQL (`posts = SELECT * FROM posts WHERE published = 1`), a URL
+(server-fetched), a markdown glob (`docs = ./content/*.md` — zero database),
+or a JS module (`weather = ./lib/weather.js`, `export default (req, db) => value`).
+
+Any handler your template references but doesn't define is **synthesized**
+for you (`onclick={add}` outside a loop → insert; inside a loop next to a
+`bind:*` → update; inside a loop alone → delete). Write only the handlers with
+custom logic; `<spark-ssr auto="none">` turns synthesis off entirely.
+
+Ambient helpers — in scope on a hydrating page with zero imports:
+- `api_create(body)` / `api_update(id, body)` / `api_delete(id)` — REST calls
+  to the page's inferred table (pass the table name first if the page has more
+  than one: `api_create('posts', {…})`)
+- `refresh()` — re-runs every declared source through the per-request JSON
+  mirror and reassigns the page's vars; source-agnostic (table/SQL/URL/glob/module)
+- `navigate` — wire as `<nav onclick={navigate}>`: intercepts same-origin,
+  same-path `<a href="?with=2">` clicks, swaps the URL via `history.pushState`,
+  and refetches via `refresh()` instead of a full reload. Cross-page links fall
+  through untouched. Also wires `popstate` so back/forward reloads correctly.
+  Page-scoped like the other four — an imported `<div import="/components/…">`
+  component cannot call it (see Limitations).
+
+Batteries included, declared in markup, not code: auth (email/password
+sessions inferred from a `user_id` column; built-in `/login`/`/signup`/`/logout`;
+`guard="session"` protects a page; a `user_id` column auto-scopes a table to
+its owner); no-JS forms (`<form action="/api/posts" method="post" redirect="/admin">`
+works with JavaScript off, 303 back on success, constraint attributes
+validated server-side); relations (`each="c in post.comments"` infers a
+`comments` table with a `post_id` FK and joins it); jobs & mail
+(`<spark-ssr job="digest" every="1d" />` or `on="insert:orders"`, `mail()`
+ambient from config); free extras (`sitemap.xml`, `robots.txt`,
+`/__spark/openapi.json` + a typed client, all generated from the inferred
+backend).
+
+## Limitations (read before assuming a gap is a bug)
+
+- **One scope per component.** All top-level declarations share the component
+  scope. JS `import` statements work (transformed to dynamic imports);
+  `import.meta` is not available inside component scripts.
+- **Block scoping.** Only top-level `let`/`const` become component state.
+  Inside a function body they're true block-scoped locals; destructured
+  declarations stay local everywhere.
+- **Reactivity depth.** Plain objects/arrays are deeply reactive; `Map`/`Set`
+  mutations (`set`/`add`/`delete`/`clear`) are tracked too. Class instances and
+  `Date` are NOT — reassign the variable to update.
+- **Loop reconciliation.** Reuse is positional by default; reordering a list
+  without `key` keeps nodes in place and rewrites their contents. Add
+  `key="…"` for identity-stable moves.
+- **The rewriter is a scanner, not a parser.** String- and comment-aware —
+  code-shaped text inside string literals stays byte-intact. The one construct
+  it can't parse: a regex literal containing a quote character (warns loudly,
+  names the fix — move the regex to an imported `.js` module).
+- **Coarse store updates.** Stores are deeply reactive but each notification
+  re-renders subscribers with a full (cheap) pass — not tracked per key like
+  component-local state. Use `derived()` for memoized computed values.
+- **Hydrating SSR pages never run their `<script>` on the server.** On an
+  interactive `spark-ssr` page (handlers or binds), the script becomes the
+  CLIENT component only. Compute display fields (formatted dates, counts,
+  derived text) in the data source (SQL expression or module), not the page
+  script, or the first paint won't have them. A non-interactive page keeps the
+  escape hatch: its plain script runs server-side. Permanent, by design.
+- **SSR response cache and writes outside the server.** In production, the
+  full-page cache invalidates on writes THROUGH the server (its API/SQL
+  routes). A row changed directly in the database by another process stays
+  invisible on cached pages until the TTL lapses (60s default; `"responseCache"`
+  in spark.json, or `false` to disable).
+- **Component-import scope isolation.** A component brought in via
+  `<div import="/components/foo">` has its own isolated scope — it cannot call
+  ambient helpers (`refresh`/`navigate`/`api_*`) or reactive state declared in
+  the page that imports it, and props are frozen at mount (not reactive
+  after). A layout (`pages/_layout.html`) is the one exception — its vars
+  merge into the page's own scope before compilation, so it CAN use ambient
+  helpers. Pattern for components that need live ambient state: re-derive it
+  from real global browser state directly (e.g. read `location.search`
+  yourself) rather than expecting it to flow in.
+
 ## Docs
 
 - [Full documentation](https://spark-html.dev/docs): concept, installation,
