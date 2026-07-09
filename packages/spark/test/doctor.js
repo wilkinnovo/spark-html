@@ -102,5 +102,26 @@ test('a satisfied companion range passes (exit 0)', () => {
   rmSync(root, { recursive: true, force: true });
 });
 
+test('a "latest" pin on a spark package is flagged with the concrete range to use (exit 1)', () => {
+  const root = mkdtempSync(join(tmpdir(), 'doctor-latest-'));
+  writeFileSync(join(root, 'package.json'), JSON.stringify({ name: 'app', dependencies: { 'spark-html': 'latest' } }));
+  pkg(join(root, 'node_modules', 'spark-html'), 'spark-html', '1.2.1');
+  const { code, out } = run(root);
+  assert.equal(code, 1, out);
+  assert.match(out, /pinned to "latest"/);
+  assert.match(out, /\^1\.2\.1/, 'suggests the concrete installed version as the range');
+  rmSync(root, { recursive: true, force: true });
+});
+
+test('ranged pins pass the latest-pin check (exit 0)', () => {
+  const root = mkdtempSync(join(tmpdir(), 'doctor-ranged-'));
+  writeFileSync(join(root, 'package.json'), JSON.stringify({ name: 'app', dependencies: { 'spark-html': '^1.2.0' } }));
+  pkg(join(root, 'node_modules', 'spark-html'), 'spark-html', '1.2.1');
+  const { code, out } = run(root);
+  assert.equal(code, 0, out);
+  assert.match(out, /no "latest" pins/);
+  rmSync(root, { recursive: true, force: true });
+});
+
 console.log(`\n${pass} passed, ${fail} failed`);
 if (fail) process.exit(1);

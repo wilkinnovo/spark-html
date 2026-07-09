@@ -49,6 +49,7 @@
 import { join, resolve, dirname, extname, basename, sep } from 'node:path';
 import { existsSync, watch, readdirSync, statSync, readFileSync } from 'node:fs';
 import { rm, mkdir, cp, readFile } from 'node:fs/promises';
+import { fileURLToPath } from 'node:url';
 
 // Resolve `rel` under `base` and refuse anything that escapes it — a static
 // server must never serve outside its root. `..` is normalized away by the URL
@@ -385,7 +386,18 @@ async function transformPage(html, config, { dev }) {
   const importMap = JSON.stringify({ imports: buildImportMap(config.projectRoot) });
   return injectHead(out,
     `<script type="importmap">${importMap}</script>\n` +
-    `<script type="module">${HMR_CLIENT}</script>\n`);
+    `<script type="module">${HMR_CLIENT}</script>\n` +
+    // The fail-loud dev diagnostics (spark-html-devtools/diagnose): directive
+    // typos, hydration drift, duplicate-core banner. Dev serve only — build()
+    // never injects it, so production output is untouched.
+    `<script type="module" src="/@spark/diagnose.js"></script>\n`);
+}
+
+// Resolve the diagnose module from THIS package's own dependency (the app
+// doesn't need spark-html-devtools installed itself).
+function diagnoseFile() {
+  try { return Bun.resolveSync('spark-html-devtools/diagnose', dirname(fileURLToPath(import.meta.url))); }
+  catch { return null; }
 }
 
 /**
@@ -419,6 +431,13 @@ export async function dev(overrides = {}) {
       const route = stepRoutes[path];
       if (route) {
         return new Response(await route.body(), { headers: { 'Content-Type': route.type } });
+      }
+
+      // The injected diagnostics module (see transformPage).
+      if (path === '/@spark/diagnose.js') {
+        const f = diagnoseFile();
+        return new Response(f ? Bun.file(f) : '/* spark-html-devtools not resolvable — diagnostics off */',
+          { headers: { 'Content-Type': 'text/javascript' } });
       }
 
       // Bare-specifier modules: /@modules/<name>/<file> → the package's entry

@@ -97,6 +97,15 @@ export function makePage(app) {
     const mountJs = mount
       ? `<script type="module">import { mount } from 'spark-html'; mount();</script>\n`
       : '';
+    // Fail-loud dev layer (live mode ONLY — production responses ship none
+    // of this): server-side warnings mirrored into the browser console, and
+    // the spark-html-devtools diagnose module (typos, hydration drift,
+    // duplicate-core banner). `<` is escaped so no event string can close
+    // the script tag early.
+    const devDiag = live
+      ? `<script type="application/json" id="__spark-dev-events">${JSON.stringify(app.devEvents || []).replace(/</g, '\\u003c')}</script>\n`
+        + `<script type="module" src="/__spark/diagnose.js"></script>\n`
+      : '';
     const head =
       '<meta charset="utf-8">\n' +
       '<meta name="viewport" content="width=device-width, initial-scale=1">\n' +
@@ -107,6 +116,7 @@ export function makePage(app) {
       importmap +
       (scripts ? scripts + '\n' : '') +
       mountJs +
+      devDiag +
       (hasCss ? `<link rel="stylesheet" href="/${cssRel}">\n` : '');
     // A hydrating page host carries BOTH `import` and `name` — that is the
     // runtime's flash-free hydrate contract (same as spark-prerender's

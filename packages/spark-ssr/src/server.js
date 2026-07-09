@@ -344,9 +344,18 @@ export async function serve(options = {}) {
   // Fixed fields are startup constants; `broadcast` is bound above and
   // `makeAppFetch` below (the request plumbing) — modules read late-bound
   // slots at call time, never at import time.
+  // Fail-loud dev layer (improvements.md I3): server-side startup warnings
+  // are collected so live mode can mirror them into the BROWSER console (a
+  // warning only in server stdout is a warning half of us never see);
+  // page.js's shell() injects them + the spark-html-devtools diagnose
+  // module in live mode only — production responses ship none of it.
+  const devEvents = [];
+  const devWarn = (msg) => { devEvents.push(msg); if (!quiet) console.warn(`[spark-ssr] ${msg}`); };
+
   const app = {
     root, config, db, secret, quiet, live, log, ctx,
     pages, cache, liveTables, RELOAD_CLIENT, uploadsDir, sourceCache, sseEnc,
+    devEvents, devWarn,
     broadcast, makeAppFetch: null, uploadWebp: false,
     pageData: (page) => pageData(page, cache, pagesDir),
     // Mutable serve() state, exposed as getters so the modules always read
@@ -531,7 +540,7 @@ export async function serve(options = {}) {
     const schema = inferSchema(pds, config, root);
     for (const [table, t] of Object.entries(schema)) {
       for (const col of t.allNullSeedCols || []) {
-        if (!quiet) console.warn(`[spark-ssr] schema: seed column "${table}.${col}" is null in every row — created as TEXT (nullable); seed a non-null value if it should infer a stricter type.`);
+        devWarn(`schema: seed column "${table}.${col}" is null in every row — created as TEXT (nullable); seed a non-null value if it should infer a stricter type.`);
       }
     }
     try {
@@ -649,6 +658,15 @@ export async function serve(options = {}) {
             }
           }
           return finish(mod || errorPage(404));
+        }
+
+        // The fail-loud diagnostics module, served from spark-ssr's OWN
+        // spark-html-devtools dependency (the app needn't install it).
+        // Live mode only — shell() only injects it there.
+        if (live && pathname === '/__spark/diagnose.js') {
+          let body = '/* spark-html-devtools not resolvable — diagnostics off */';
+          try { body = readFileSync(Bun.resolveSync('spark-html-devtools/diagnose', import.meta.dir), 'utf8'); } catch { /* keep stub */ }
+          return finish(new Response(body, { headers: { 'content-type': 'text/javascript', 'cache-control': 'no-cache' } }));
         }
 
         if (pathname.startsWith('/__spark/page/')) {

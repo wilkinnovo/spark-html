@@ -88,6 +88,10 @@ await test('dev: the page gets an import map + the HMR client', async () => {
   assert.ok(html.includes('"spark-html":"/@modules/spark-html/'), 'bare specifier mapped to its entry file');
   assert.ok(html.includes('/__spark_hmr'), 'HMR client injected');
   assert.ok(html.includes('<div import="components/hello">'), 'markup untouched');
+  // Fail-loud dev layer (I3): the diagnose module rides every dev page…
+  assert.ok(html.includes('src="/@spark/diagnose.js"'), 'diagnose module injected in dev');
+  const diag = await fetch(`${D}/@spark/diagnose.js`);
+  assert.ok((await diag.text()).includes('RULES'), 'diagnose served from spark-html-bun\'s own devtools dep');
 });
 
 await test('dev: /@modules/spark-html serves the resolved runtime as JS', async () => {
@@ -376,6 +380,7 @@ await test('build: no bare component imports → no import map, output shape unc
   const html = readFileSync(join(r, 'dist', 'index.html'), 'utf8');
   assert.ok(!html.includes('importmap'), 'no map when nothing needs one');
   assert.ok(!existsSync(join(r, 'dist', 'assets', 'modules')), 'no modules dir when nothing needs one');
+  assert.ok(!html.includes('diagnose'), 'the dev diagnostics layer never ships in a build');
 });
 
 // ── preview ─────────────────────────────────────────────────────────────

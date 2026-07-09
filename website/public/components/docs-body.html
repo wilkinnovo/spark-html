@@ -368,6 +368,16 @@ export default {
     </ul>
     <p class="note">Warnings are <strong>deduplicated</strong> — each distinct problem is reported once, so a broken binding won't flood the console on every keystroke.</p>
 
+    <h3 id="diagnostics">When something goes wrong — the dev diagnostics layer</h3>
+    <p>In dev mode (<code>spark dev</code>, or a spark-ssr server in watch mode) the page is automatically given a diagnostics module from <code>spark-html-devtools</code>. It never ships in production output, costs the core zero bytes, and each message names its fix — paste any of these into a search and you land here:</p>
+    <ul>
+      <li><strong>unknown directive <code>`:clas`</code> — did you mean <code>`:class`</code>?</strong> A static scan flags attributes one edit away from a known directive (<code>:attr</code> / <code>@event</code> / <code>bind:value</code> / template <code>each·if·else-if·else·await·then·catch·key·as</code>). Anything else — a custom event, an arbitrary <code>:data-*</code> bind — is deliberately never flagged. (If it's intentional, ignore this; only near-misses of known names are flagged.) Your editor shows the same check via <code>spark-html-language-server</code>.</li>
+      <li><strong>duplicate spark-html detected</strong> — two runtimes each own a private store registry, which surfaces as "store not created". The console error is escalated to an in-page banner. Fix: run <code>npx spark-html doctor</code>, then delete node_modules + the lockfile and reinstall so one copy remains.</li>
+      <li><strong>hydration mismatch at <code>&lt;path&gt;</code></strong> — the server-rendered HTML and the settled client DOM disagree at that node. If the value there is computed in the page's own <code>&lt;script&gt;</code>: SSR never runs a page's own &lt;script&gt; — compute this field in the MODULE data source instead. (Content the client legitimately <em>adds</em> — an <code>await</code> block resolving — is never flagged; changed or lost content is.)</li>
+      <li><strong>[spark-ssr] …</strong> server-side startup warnings (schema inference notes, config problems) are mirrored into the browser console in dev, so a warning that only printed to server stdout is no longer invisible.</li>
+    </ul>
+    <p class="note">The production escape hatch is <code>npx spark-html doctor</code>: duplicate-install scan, companion range checks, <code>"latest"</code>-pin detection, and the stale-service-worker heuristic. The diagnose module is the dev-time half; doctor is the anytime half.</p>
+
     <h2 id="errors">Error handling</h2>
     <p>Failures are <strong>isolated to the component</strong> that caused them — a broken component never blanks the page or stops a sibling from rendering. Broken expressions, <code>$:</code> statements, event handlers, a <code>&lt;script&gt;</code> that throws, boot, and patch are all caught and logged (deduped) with the component named.</p>
     <p>For development, opt into a full-screen <strong>error overlay</strong> (message, failing component, and stack) — off by default:</p>

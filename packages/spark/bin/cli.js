@@ -146,7 +146,23 @@ if (!coreVersion || !companions.length) {
   if (!mismatch) ok(`all ${companions.length} companion(s) agree with spark-html ${coreVersion}`);
 }
 
-// ── 3. Stale service-worker heuristic (the documented dev-hang). We can't see
+// ── 3. "latest" pins. Apps scaffolded by create-spark-html-app < 1.1.0 while
+// offline kept the literal "latest" placeholder forever — every install
+// re-resolves it, and one day that silently installs a 2.x under the app.
+// (The scaffolder itself was fixed to stamp ^<major>; this catches the
+// projects it already left behind.) ──
+const latestPins = Object.entries(projectDeps)
+  .filter(([n, v]) => /^(spark-html|spark-ssr|spark-prerender|create-spark-html-app|prettier-plugin-spark)/.test(n) && String(v).trim() === 'latest');
+if (latestPins.length) {
+  for (const [n] of latestPins) {
+    const v = installedVersion(n);
+    fail(`${n} is pinned to "latest" — every install re-resolves it and will one day install a new major under you. Pin a range instead${v ? `: "^${v}"` : ' (e.g. "^1.0.0")'}.`);
+  }
+} else {
+  ok('no "latest" pins on spark packages');
+}
+
+// ── 4. Stale service-worker heuristic (the documented dev-hang). We can't see
 // the browser from here, so this is advisory: if the project ships a service
 // worker, remind the reader that a leftover one on a reused localhost port
 // hangs the dev server and no file edit clears it. ──

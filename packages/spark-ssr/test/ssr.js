@@ -529,6 +529,14 @@ await test('script-local <template await> on a hydrating page passes through, bo
   assert.ok(comp.includes('const stats = Promise.resolve'), "the page's own script still ships");
 });
 
+await test('fail-loud dev layer (I3): live pages carry dev events + the diagnose module; the module serves', async () => {
+  const page = await (await fetch(`${T}/`)).text();
+  assert.ok(page.includes('id="__spark-dev-events"'), 'server-side warnings are mirrored into the page in live mode');
+  assert.ok(page.includes('src="/__spark/diagnose.js"'), 'the diagnose module is injected in live mode');
+  const diag = await (await fetch(`${T}/__spark/diagnose.js`)).text();
+  assert.ok(diag.includes('RULES'), "diagnose served from spark-ssr's own devtools dep");
+});
+
 // Boot the real spark-html runtime against a hydrating page and return the
 // mounted component's scope — the shared harness for the e2e mount tests.
 async function mountHydratedPage(base, path) {
@@ -673,6 +681,8 @@ await test('watch: false serves without the reload client or SSE channel', async
     const html = await (await fetch(`${P}/`)).text();
     assert.ok(!html.includes('/__spark/reload'), 'no reload client in production HTML');
     assert.equal((await fetch(`${P}/__spark/reload`)).status, 404, 'no SSE channel');
+    assert.ok(!html.includes('diagnose'), 'no dev diagnostics layer in production HTML (I3 hard rule)');
+    assert.ok(!html.includes('__spark-dev-events'), 'no dev-events blob in production HTML');
   } finally {
     await prod.stop(true);
   }

@@ -1,7 +1,7 @@
 {
   "name": "spark-html-bun",
-  "version": "1.0.0",
-  "description": "Dev server, build, and preview for spark-html apps — built entirely on Bun. Scoped component HMR over a plain WebSocket, import-map dev serving (no bundling in dev), Bun.build for the app shell, and an explicit post-build pipeline (prerender, image, font, manifest, offline, sri). Zero dependencies.",
+  "version": "1.1.0",
+  "description": "Dev server, build, and preview for spark-html apps \u2014 built entirely on Bun. Scoped component HMR over a plain WebSocket, import-map dev serving (no bundling in dev), Bun.build for the app shell, and an explicit post-build pipeline (prerender, image, font, manifest, offline, sri). Zero dependencies.",
   "homepage": "https://wilkinnovo.github.io/spark-html",
   "type": "module",
   "main": "./src/index.js",
@@ -33,5 +33,8 @@
     "spark-html",
     "no-build"
   ],
-  "license": "MIT"
+  "license": "MIT",
+  "dependencies": {
+    "spark-html-devtools": "^1.1.0"
+  }
 }

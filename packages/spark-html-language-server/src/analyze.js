@@ -633,6 +633,69 @@ export function analyze(text, { ssrPage = false, routeParams = [] } = {}) {
     }
   }
 
+  // Directive typos — editor-time parity with the in-browser dev check in
+  // spark-html-devtools (packages/spark-html-devtools/src/diagnose.js runs
+  // the identical rule at runtime; that file cross-references this one).
+  // Tables are COPIED, not imported (the core exports nothing new — the
+  // zero-core-bytes rule); keep the three copies in sync by hand.
+  // Conservative on purpose: `:foo` is a legal dynamic bind of ANY attribute
+  // and `@party` a legal custom event — only edit-distance-1 near-misses of
+  // known names are flagged.
+  const TYPO_TEMPLATE_DIRECTIVES = ['each', 'if', 'else-if', 'else', 'await', 'then', 'catch', 'key', 'as'];
+  const TYPO_COMMON_ATTRS = ['class', 'style', 'value', 'checked', 'disabled', 'hidden', 'selected', 'href', 'src', 'title', 'id', 'type', 'placeholder'];
+  const TYPO_BINDABLE = ['value', 'checked'];
+  const TYPO_COMMON_EVENTS = ['click', 'input', 'change', 'submit', 'keydown', 'keyup', 'focus', 'blur', 'dblclick', 'mouseover', 'mouseout', 'pointerdown', 'pointerup', 'scroll', 'load'];
+  const dist1 = (a, b) => {
+    if (a === b || Math.abs(a.length - b.length) > 1) return false;
+    if (a.length === b.length) {
+      let diff = 0, swap = false;
+      for (let i = 0; i < a.length; i++) {
+        if (a[i] !== b[i]) {
+          diff++;
+          if (diff === 2 && a[i] === b[i - 1] && a[i - 1] === b[i]) swap = true;
+          if (diff > 2) return false;
+        }
+      }
+      return diff === 1 || (diff === 2 && swap);
+    }
+    const [sh, lo] = a.length < b.length ? [a, b] : [b, a];
+    let i = 0, j = 0, skipped = false;
+    while (i < sh.length && j < lo.length) {
+      if (sh[i] === lo[j]) { i++; j++; continue; }
+      if (skipped) return false;
+      skipped = true; j++;
+    }
+    return true;
+  };
+  const suggestTypo = (name, table) => (table.includes(name) ? null : table.find((k) => dist1(name, k)) || null);
+  const pushTypo = (start, attr, sug) => diagnostics.push({
+    start, end: start + attr.length, severity: 2,
+    message: `unknown directive '${attr}' — did you mean '${sug}'? (If it's intentional, ignore this; only near-misses of known names are flagged.)`,
+    code: 'directive-typo',
+  });
+  for (const m of tpl.matchAll(/[\s"']((?::|@)[\w-]+|bind:[\w-]+)\s*=/g)) {
+    const attr = m[1];
+    const at = m.index + 1;
+    let sug = null;
+    if (attr.startsWith(':')) {
+      if (!attr.startsWith(':data-')) { const c = suggestTypo(attr.slice(1), TYPO_COMMON_ATTRS); sug = c && ':' + c; }
+    } else if (attr.startsWith('@')) {
+      const c = suggestTypo(attr.slice(1), TYPO_COMMON_EVENTS); sug = c && '@' + c;
+    } else {
+      const c = suggestTypo(attr.slice(5), TYPO_BINDABLE); sug = c && 'bind:' + c;
+    }
+    if (sug) pushTypo(at, attr, sug);
+  }
+  for (const tm of tpl.matchAll(/<template\s([^>]*)>/gi)) {
+    const attrsAt = tm.index + tm[0].indexOf(tm[1]);
+    // blank out quoted values so words inside them never look like attrs
+    const masked = tm[1].replace(/"[^"]*"|'[^']*'/g, (q) => ' '.repeat(q.length));
+    for (const am of masked.matchAll(/(?:^|\s)([a-z][a-z-]+)(?=[\s=>]|$)/g)) {
+      const sug = suggestTypo(am[1], TYPO_TEMPLATE_DIRECTIVES);
+      if (sug) pushTypo(attrsAt + am.index + am[0].indexOf(am[1]), am[1], sug);
+    }
+  }
+
   // Unused JS imports: local never referenced in script or template.
   const usedNames = new Set([...s.refs.map((r) => r.name), ...t.refs.map((r) => r.name)]);
   for (const imp of s.imports) {

@@ -1,7 +1,7 @@
 {
   "name": "spark-html-language-server",
-  "version": "1.3.0",
-  "description": "Language server (LSP) for spark-html single-file components, including spark-ssr pages — diagnostics (undefined bindings, unused imports, script errors, missing key), spark-ssr-aware inferred page data & ambient helpers, semantic highlighting + formatting for <spark-ssr> blocks (SQL, :params, URL/glob/module sources), go-to-definition, prop autocomplete from export let, filesystem path autocomplete inside import=\"…\", and hover docs for every directive. Zero runtime dependencies.",
+  "version": "1.4.0",
+  "description": "Language server (LSP) for spark-html single-file components, including spark-ssr pages \u2014 diagnostics (undefined bindings, unused imports, script errors, missing key), spark-ssr-aware inferred page data & ambient helpers, semantic highlighting + formatting for <spark-ssr> blocks (SQL, :params, URL/glob/module sources), go-to-definition, prop autocomplete from export let, filesystem path autocomplete inside import=\"\u2026\", and hover docs for every directive. Zero runtime dependencies.",
   "type": "module",
   "main": "./src/index.js",
   "types": "./src/index.d.ts",

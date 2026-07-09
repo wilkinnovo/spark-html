@@ -538,5 +538,28 @@ await test('template refs are not scanned inside HTML comments or <spark-ssr> bo
     'comment {expr} and SQL braces are never refs; x is a block var');
 });
 
+await test('directive typos: near-misses flagged with the suggestion; legal customs are not', () => {
+  const a = analyze(`<p :clas="c">x</p>
+<button @clcik="{go}">go</button>
+<input bind:vlaue="draft">
+<template esle><p>fallback</p></template>
+<p :data-anything="c">fine</p>
+<p :glow="c">custom attr, fine</p>
+<button @party="{go}">custom event, fine</button>
+<script>
+  let c = 'x', draft = '';
+  function go() {}
+</script>`);
+  const typos = a.diagnostics.filter((d) => d.code === 'directive-typo');
+  const msgs = typos.map((d) => d.message).join('\n');
+  assert.equal(typos.length, 4, msgs || 'expected 4 typo findings');
+  assert.match(msgs, /':clas'.*':class'/);
+  assert.match(msgs, /'@clcik'.*'@click'/);
+  assert.match(msgs, /'bind:vlaue'.*'bind:value'/);
+  assert.match(msgs, /'esle'.*'else'/);
+  // offsets land on the attribute itself
+  for (const d of typos) assert.ok(d.start >= 0 && d.end > d.start);
+});
+
 console.log(`\n${pass} passed, ${fail} failed`);
 if (fail) process.exit(1);

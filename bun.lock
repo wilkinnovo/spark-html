@@ -81,7 +81,7 @@
     },
     "packages/create-spark-html-app": {
       "name": "create-spark-html-app",
-      "version": "1.0.0",
+      "version": "1.1.0",
       "bin": {
         "create-spark-html-app": "bin/index.js",
       },
@@ -95,23 +95,26 @@
     },
     "packages/spark": {
       "name": "spark-html",
-      "version": "1.0.3",
+      "version": "1.2.1",
       "bin": {
         "spark-html": "./bin/cli.js",
       },
     },
     "packages/spark-html-bun": {
       "name": "spark-html-bun",
-      "version": "1.0.0",
+      "version": "1.1.0",
       "bin": {
         "spark": "./bin/cli.js",
+      },
+      "dependencies": {
+        "spark-html-devtools": "^1.1.0",
       },
     },
     "packages/spark-html-devtools": {
       "name": "spark-html-devtools",
-      "version": "1.0.0",
+      "version": "1.1.0",
       "peerDependencies": {
-        "spark-html": ">=1.0.0-rc.1 <2",
+        "spark-html": ">=1.0.0 <2",
       },
     },
     "packages/spark-html-font": {
@@ -226,12 +229,13 @@
     },
     "packages/spark-ssr": {
       "name": "spark-ssr",
-      "version": "1.0.0",
+      "version": "1.2.0",
       "bin": {
         "spark-ssr": "./bin/cli.js",
       },
       "dependencies": {
         "linkedom": "^0.18.12",
+        "spark-html-devtools": "^1.1.0",
         "spark-html-head": "^1.0.0",
       },
       "peerDependencies": {

@@ -1,7 +1,7 @@
 {
   "name": "spark-html-devtools",
-  "version": "1.0.0",
-  "description": "A tiny in-page devtools panel for spark-html — live store state, component tree, and patch activity.",
+  "version": "1.1.0",
+  "description": "A tiny in-page devtools panel for spark-html \u2014 live store state, component tree, and patch activity.",
   "type": "module",
   "main": "./src/index.js",
   "types": "./src/index.d.ts",
@@ -10,6 +10,9 @@
     ".": {
       "types": "./src/index.d.ts",
       "default": "./src/index.js"
+    },
+    "./diagnose": {
+      "default": "./src/diagnose.js"
     }
   },
   "scripts": {
