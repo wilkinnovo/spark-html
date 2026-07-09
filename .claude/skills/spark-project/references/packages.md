@@ -9,7 +9,7 @@ npm. Every package README carries a family compatibility table (added in the
 | Package | Version | Role |
 |---|---|---|
 | `spark-html` | 0.27.14 | The core runtime. Single file, 0 deps, ships `src/` directly. Gzip-budgeted (scripts/size-check.mjs). |
-| `spark-ssr` | 1.0.1 | Bun-first SSR server. Deps: linkedom, spark-html, spark-html-head. 1.0.1: auth-table auto-CRUD GET is own-account only (anon 401, admin all) — closed the email-enumeration leak (bugs.md #7); pinned in test/security.js. |
+| `spark-ssr` | 1.1.0 | Bun-first SSR server. Deps: linkedom, spark-html, spark-html-head. 1.0.1: auth-table auto-CRUD GET is own-account only (anon 401, admin all) — closed the email-enumeration leak (bugs.md #7); pinned in test/security.js. 1.1.0: ambient `navigate()` helper (hydrate.js) — click-delegates same-path `<a>` links through pushState + refresh() instead of a full reload; docs at #ssr-navigate. Fixed alongside it: the auto-CRUD synthesizer no longer clobbers ambient names (refresh/navigate/api_*) with a synthesized duplicate handler if a bare template handler happens to share the name (found dogfooding spark-chat); pinned in test/ssr.js. |
 | `spark-prerender` | 0.7.4 | Static prerendering + hydration. Reads `__spark*` internals. |
 | `spark-html-bun` | 0.1.5 | Dev/build/preview (replaced Vite entirely, 2026-07-03). `spark.config.js`. Dev serves bare deps via `/@modules/<pkg>/<entry>` import maps; prod `Bun.build` with a resolve plugin that dedupes nested spark-html copies (0.1.5). Dev and prod resolution semantics differ — audit item. |
 | `spark-html-router` | 0.9.3 | Client router (`router()`, `setRoute`, `renderChain`, nested routes, notfound). ⚠ declares spark-html as hard `dependency` — should be peerDependency (v1 plan M3.4). |

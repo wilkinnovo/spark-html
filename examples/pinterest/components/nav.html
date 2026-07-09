@@ -8,7 +8,20 @@
      bugs.md #5 — an EMPTY-STRING prop value, not just a missing one, is
      coerced to boolean `true` by the client runtime on a non-hydrating
      page's kept import host). `q` is intentionally NOT a prop for that
-     same reason — it's read from location.search client-side instead. -->
+     same reason — it's read from location.search client-side instead.
+
+     The search form below does a full page reload on every submit — not
+     wired to spark-ssr's ambient `navigate()` helper (see docs #ssr-navigate),
+     and deliberately so, for two independent reasons: (1) this component is
+     imported separately from pages/index.html, and an imported component's
+     script is scope-isolated from the page that imports it — it cannot call
+     `navigate`/`refresh` declared in the host page's generated script, only
+     the page itself (or a layout, which DOES share page scope) can; (2) even
+     if the search box lived in index.html directly, that page is deliberately
+     NON-hydrating today ("a pure function of (path, query) ... a response-
+     cache candidate" — see its own top comment) — wiring navigate() would
+     force it to hydrate and give up that cache eligibility. A full reload on
+     search is the correct tradeoff here, not an oversight. -->
 <nav class="nav">
   <a class="brand" href="/"><span class="mark">📌</span> Pinspire</a>
   <form class="search" action="/" method="get">

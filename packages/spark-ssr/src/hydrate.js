@@ -25,6 +25,15 @@ import { parseHTML } from 'linkedom';
 import { templateKids } from './render.js';
 import { definedNames } from './parse.js';
 
+// Names the framework itself may inject into client scope (see clientScript
+// below: refresh, navigate, api_*). A template handler sharing one of these
+// names is never a synthesis candidate — the author's `onclick={navigate}`
+// means "call the ambient helper", not "generate me an insert handler named
+// navigate". Without this, any page happening to name a bare handler after
+// one of these words gets a synthesized duplicate that clobbers the ambient
+// one (found via spark-chat, which wires the ambient navigate() this way).
+export const AMBIENT_NAMES = new Set(['refresh', 'navigate', 'api_create', 'api_update', 'api_delete']);
+
 // Structural roles from the analysis (names are the author's own).
 export function handlerRoles(analysis, defined = new Set()) {
   // "update" (bind:* on a loop member) and "delete" (plain in-loop call) are
@@ -35,8 +44,8 @@ export function handlerRoles(analysis, defined = new Set()) {
   // NOT-yet-defined candidate for each role: that's the one synthesis
   // actually has to fill in. Falls back to the first structural match when
   // every candidate is already defined (nothing to synthesize either way).
-  const pick = (pred) => analysis.handlers.find((h) => pred(h) && !defined.has(h.name))
-    || analysis.handlers.find(pred) || null;
+  const pick = (pred) => analysis.handlers.find((h) => pred(h) && !defined.has(h.name) && !AMBIENT_NAMES.has(h.name))
+    || analysis.handlers.find((h) => pred(h) && !AMBIENT_NAMES.has(h.name)) || null;
   const insert = pick((h) => !h.inEach);
   const update = pick((h) => h.inEach && h.withMemberBind);
   const del = pick((h) => h.inEach && !h.withMemberBind && h.name !== (update && update.name));
@@ -220,6 +229,24 @@ export function clientScript({ analysis, plan, tables = [], colsByTable = {}, ke
       L.push(`  ${p.var} = __d.${p.var};`);
     }
     L.push(`}`);
+  }
+
+  // navigate(e) — click-delegate same-page links so query-string-only nav
+  // (list/detail selection, filters, pagination — anything driven by
+  // ?param=) refetches through refresh() instead of a full document reload.
+  // Wire it once on a container: onclick={navigate}. Cross-origin and
+  // cross-path links (a different route) are ignored and fall through to a
+  // normal navigation, so this is opt-in sugar on top of refresh(), not a
+  // router — no route table, no new concept for pages that don't use it.
+  if (plan.length && !defined.has('navigate')) {
+    L.push(`function navigate(e) {`);
+    L.push(`  const __a = e.target.closest ? e.target.closest('a') : null;`);
+    L.push(`  if (!__a || __a.origin !== location.origin || __a.pathname !== location.pathname) return;`);
+    L.push(`  e.preventDefault();`);
+    L.push(`  history.pushState({}, '', __a.href);`);
+    L.push(`  refresh();`);
+    L.push(`}`);
+    L.push(`addEventListener('popstate', refresh);`);
   }
 
   const H = { 'content-type': 'application/json' };

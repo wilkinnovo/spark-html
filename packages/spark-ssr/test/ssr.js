@@ -445,6 +445,27 @@ await test('ambient helpers (§1): a page <script> gets api_* + refresh, auto-fi
   assert.ok(comp.includes('api_update(t.id'), 'author toggle body preserved');
 });
 
+await test('ambient navigate (§1): a bare onclick={navigate} calls the framework helper, not a synthesized insert handler', async () => {
+  // Regression: `navigate` is an ambient click-delegate the framework itself
+  // injects (pushState + refresh() for same-page ?query links). Before the
+  // fix, any bare non-loop handler literally named `navigate` was picked as
+  // the page's "insert" role by handlerRoles() and got a SECOND, synthesized
+  // `async function navigate()` appended — a duplicate declaration that
+  // clobbered the ambient one. Found dogfooding spark-chat's own contact-nav.
+  writeFileSync(join(todoRoot, 'nav.html'), `<div onclick={navigate}>
+  <a href="/nav?with=1">one</a>
+  <input bind:value="draft" placeholder="New">
+  <button onclick={add}>Add</button>
+  <template each="t in todos"><span>{t.title}</span></template>
+</div>
+<spark-ssr table="todos" />
+`);
+  const comp = await (await fetch(`${T}/__spark/page/nav.html`)).text();
+  assert.equal((comp.match(/function navigate\b/g) || []).length, 1, 'only the ambient navigate() is emitted, not a synthesized duplicate');
+  assert.ok(comp.includes("history.pushState({}, '', __a.href);"), 'the ambient implementation survives, unclobbered');
+  assert.ok(/async function add\(\)/.test(comp), 'the real insert handler (add) is still synthesized normally');
+});
+
 await test('auto="none" (§1): suppresses synthesized handlers, keeps ambient helpers', async () => {
   writeFileSync(join(todoRoot, 'manual.html'), `<button onclick={add}>Add</button>
 <template each="t in todos"><button onclick={remove}>x</button></template>

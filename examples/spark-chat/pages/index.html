@@ -21,7 +21,7 @@
 
 <spark-ssr guard="session" redirect="/login" />
 
-<div :class="peer ? 'app has-peer' : 'app'">
+<div :class="peer ? 'app has-peer' : 'app'" onclick={navigate}>
   <aside class="sidebar">
     <header class="sidebar-head">
       <a class="me" href="/profile" title="Your profile">
@@ -141,7 +141,6 @@
     if (!body) return;
     draft = "";
     await api_create({ sender_id: me.id, recipient_id: peer.id, body });
-    refresh();
     autoReply();
   }
 
@@ -161,7 +160,6 @@
           body,
           auto_reply: 1,
         });
-        refresh();
       },
       900 + Math.random() * 1600,
     );
@@ -191,7 +189,6 @@
     fd.append("attachment_type", type);
     fd.append("attachment_name", file.name);
     await fetch("/api/messages", { method: "POST", body: fd });
-    refresh();
     autoReply();
   }
 </script>

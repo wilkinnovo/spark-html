@@ -438,6 +438,15 @@ cd myapp &amp;&amp; bun install &amp;&amp; bun dev</pre>
 &lt;spark-ssr table="posts" /&gt;</pre>
     <p>The helpers are <code>api_create(body)</code>, <code>api_update(id, body)</code>, <code>api_delete(id)</code>, and <code>refresh()</code>. More than one table on a page? Pass it explicitly: <code>api_create('posts', {…})</code>. Want none of it — write your own <code>fetch</code> and don't set <code>table=</code>; that's the classic escape hatch.</p>
 
+    <h3 id="ssr-navigate">Same-page links — <code>navigate()</code></h3>
+    <p>A hydrating page often has links or buttons that only change its own query string — picking a row in a list, paging, switching a tab. A plain <code>&lt;a href="?with=2"&gt;</code> works with no JavaScript, but on a hydrated page it does a full document reload for a change <code>refresh()</code> could apply in place. Wire <code>navigate</code> as a click handler on a container and it takes over: same-origin, same-path clicks get intercepted, the URL updates via <code>history.pushState</code>, and <code>refresh()</code> reloads just the data — no navigation, no flash. Cross-page and cross-origin links fall through untouched, so it's additive, not a router.</p>
+    <pre spark-ignore>&lt;nav onclick={navigate}&gt;
+  &lt;template each="c in contacts"&gt;
+    &lt;a href="/?with={c.id}"&gt;{c.name}&lt;/a&gt;
+  &lt;/template&gt;
+&lt;/nav&gt;</pre>
+    <p>That's it — no <code>&lt;script&gt;</code> needed for the common case. <code>navigate</code> is ambient on any page with at least one data source, the same way <code>refresh</code> and the <code>api_*</code> helpers are; it also wires a <code>popstate</code> listener so browser back/forward reloads the right data. Two things worth knowing: it only fires for links whose <code>pathname</code> matches the current page — a link to a different route always does a real navigation, so <code>navigate</code> never risks masking an actual page change as a data refresh. And it's scoped to the page that declares the data — an imported <code>&lt;div import="/components/…"&gt;</code> has its own isolated scope and can't call the host page's <code>navigate</code>/<code>refresh</code>; keep query-driven nav in the page itself (or a layout, which shares page scope) rather than a shared component.</p>
+
     <h3 id="ssr-more">Batteries included</h3>
     <p>The rest of a real app is declared the same way — in the markup:</p>
     <ul>
