@@ -336,7 +336,8 @@ on a reused dev port. Zero config; exits non-zero when something needs a look.
 
   `toggle()` re-walks only row index 3 — the other 999 rows are untouched. A structural change (push, splice, re-sort) still re-reconciles the list shape but skips rows whose identity (key) didn't move. Deep mutations not pinned to a row fall back to a full (still cheap) pass — never stale.
 - **Tracked `Map`/`Set` mutations** — `map.set(key, val)`, `set.add(item)`, and `delete`/`clear` trigger re-renders, just like array push and object property assignment. No special API or immutability discipline required.
-- **Keyed reconciliation with minimal moves** — a longest-increasing-subsequence diff moves only the rows that actually moved (a swap is 2 DOM moves), loop rows clone from a stamped recipe (template analysis runs once, never per row), and row handlers share one listener function per template — creating 1,000 rows allocates zero handler closures.
+- **Keyed reconciliation with minimal moves** — the diff trims the unchanged prefix/suffix and runs a longest-increasing-subsequence pass on the rest (a swap is 2 DOM moves, not 997), rows are created 64 at a time from one native clone of a stamped recipe (template analysis runs once, never per row), and row events use document-level delegation — creating 1,000 rows allocates zero listeners and zero handler closures.
+- **Template-level dependency dispatch** — the template's observed dependency graph sends a changed key straight to the affected bindings in every row, with no per-row bookkeeping at all.
 
 ## Limits
 
