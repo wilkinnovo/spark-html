@@ -8,11 +8,14 @@ dist
 !packages/spark/dist/
 !packages/spark/dist/**
 
-# Root .md files (except README.md and benchmarks.md, the committed perf
-# ledger the website/docs cite) — design notes, not public docs
+# Root .md files (except README.md; benchmarks.md, the committed perf
+# ledger the website/docs cite; and V1-API-FREEZE.md, the API contract
+# ecosystem-check.mjs enforces — a clean checkout must carry both) —
+# design notes, not public docs
 /*.md
 !/README.md
 !/benchmarks.md
+!/V1-API-FREEZE.md
 
 # Playwright e2e artifacts
 test-results
