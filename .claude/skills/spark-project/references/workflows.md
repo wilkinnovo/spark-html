@@ -111,6 +111,14 @@ wire them as-is.
 
 ## Release (per spark-release-checklist)
 
+0. **Before tagging, run a CLEAN-INSTALL check** — a stale nested copy can
+   mask a real failure. 2026-07-07 (spark-html 0.30.0 / spark-ssr 0.8.0):
+   `npm test` was green locally but the publish workflow's clean install
+   failed, because a leftover nested `node_modules/spark-html` (stale from
+   an older `^range`) resolved locally and masked a real mismatch that a
+   fresh install exposed. `rm -rf` any nested `spark-html` under a sibling
+   and reinstall before tagging, or run `npx spark-html doctor` (flags this
+   exact hazard since 0.30.0).
 1. Bump version in the package's package.json; check sibling dependency
    ranges (companions pin spark-html ranges — a core bump may require range
    bumps + their own patch releases).
@@ -118,12 +126,20 @@ wire them as-is.
 3. Full `npm test` green (includes size gate).
 4. Commit; **tag one release per push, ≤3 tags max per `git push`** —
    pushing >3 tags at once makes GitHub silently start ZERO tag-triggered
-   publish workflows while other CI looks green.
+   publish workflows while other CI looks green. **Tag prefixes** (each
+   publish workflow verifies tag == package.json version): core `v*`,
+   `bun-v*`, `prerender-v*`, `create-v*`, `router-v*`, `theme-v*`,
+   `motion-v*`, `devtools-v*`, `head-v*`, `persist-v*`, `query-v*`,
+   `prettier-plugin-v*`, `image-v*`, `websocket-v*`, `font-v*`,
+   `manifest-v*`, `offline-v*`, `sri-v*`, `lsp-v*`, `ssr-v*` — note `ssr-v*`
+   and `sri-v*` are distinct packages, easy to typo one for the other.
 5. Verify the registry, not CI:
    `curl -s https://registry.npmjs.org/<pkg>/latest | head -c 300`.
 6. Recovery if tags didn't trigger publishes:
    `gh workflow run <publish>.yml --ref <tag>` (workflow_dispatch preserves
-   the tag-matches-version check).
+   the tag-matches-version check). If a publish failed and the fix landed
+   in a new commit, move the tag: `git tag -f <tag> <new-commit>` then
+   force-push it alone (a tag update re-triggers the workflow).
 7. No AI co-author trailers in commits, no "Generated with" lines in PRs
    (repo owner's global rule).
 
