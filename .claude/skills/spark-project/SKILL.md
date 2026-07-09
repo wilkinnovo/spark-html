@@ -24,9 +24,18 @@ descent — `block.live`/`patchLive`), and **shared per-template listeners**
 (handler attrs stripped from the template; one listener fn per handler via
 `e.currentTarget`; zero per-clone closures). Full document-level event
 delegation was REJECTED: +0.232 KB didn't fit the budget (plan ledger §9).
-The gzip budget was raised ONCE, 15.0 → 16.0 KB (Wilkin, 2026-07-08,
-itemized), to fund the program — now 15.97 used and RE-FROZEN for the life
-of 1.x. Internal boolean `__spark*` flags are set as `1`/truthy, never
+The gzip budget was raised at 2026-07-08 (15.0 → 16.0, speed program) and a
+FINAL time 2026-07-09 (16.0 → 16.5, Wilkin via spark-speed-up-max.md §6
+stop-rule, funding the F1 template-dependency dispatch) — now 16.26 used,
+RE-FROZEN at 16.5 for the life of 1.x. **Speed-max F1 landed (b229c2c,
+2026-07-09, unreleased):** shallow keyed rows now dispatch dirty keys as
+column sweeps over the live-recipe points (`sweepEach`/`patchPoint` — no
+per-row ext Sets, no per-node dep Sets, rows after the first render
+capture-free; heals re-learn capture-free via the runExpr tier-2
+`__fast === null` gate); absent attribute ≡ '' in runElementPlan compares;
+plan-op kinds are numeric (1 bind / 2 attr / 3 interp). Count=6 paired
+geomean 1.554 → 1.498; select/swap floors are F2's (cold-JIT per-row
+finding — see spark-speed-up-max.md §9). Internal boolean `__spark*` flags are set as `1`/truthy, never
 compared `=== true`. V1-API-FREEZE.md governs semver (stable surface =
 fixes only; experimental surfaces may move in minors) per spark-brain
 section 8. 1.0.0 shipped 2026-07-07 (all 21 packages, commit 4b26738); the

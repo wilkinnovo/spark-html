@@ -75,10 +75,15 @@ When goods conflict, this is the tie-breaker order. Higher always beats lower:
    they sit above it, not below.
 4. **The gzip budget** — law, but fourth: we raised it once (13.5 → 15.0,
    itemized) precisely because correctness and loud failure were worth more
-   than 1.5 KB. [OVERRIDE 2026-07-08, Wilkin: raised a second and final time,
+   than 1.5 KB. [OVERRIDE 2026-07-08, Wilkin: raised a second time,
    15.0 → 16.0, itemized in scripts/size-check.mjs, to fund the krausest
    speed program (spark-speed-up.md) — "fastest" was declared part of the
-   mission. RE-FROZEN at 16.0 for the remaining life of 1.x.]
+   mission.] [OVERRIDE 2026-07-09, Wilkin: raised a third time, 16.0 → 16.5,
+   via the spark-speed-up-max.md §6 stop-rule — the template-dependency
+   dispatch (F1) measured +0.26 KB of irreducible unique entropy after
+   exhaustive golf (three design iterations, 16.55→16.26), and the owner
+   chose the raise over degrading dispatch precision or stopping the
+   program. RE-FROZEN at 16.5 for the remaining life of 1.x.]
 5. **Performance** — *defend, don't chase* was the 1.0 posture. [OVERRIDE
    2026-07-08, Wilkin: for the speed program, performance is actively chased
    — target is the top of the krausest js-framework-benchmark table — but
