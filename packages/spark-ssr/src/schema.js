@@ -145,17 +145,32 @@ export function inferSchema(pagesData, config, root) {
     }
   }
 
-  // Seed rows are the strongest signal: real keys, real value types.
+  // Seed rows are the strongest signal: real keys, real value types. Scan
+  // EVERY row, not just the first — a key absent from row 0 but present
+  // later used to be silently dropped from the schema entirely (a key that
+  // is `null` everywhere is still a column the seed *mentioned*: TEXT,
+  // nullable, plus a startup warning — never silently omitted;
+  // post-v1-bugs.md #4).
   for (const [name, t] of Object.entries(tables)) {
     if (!t.seed) continue;
     try {
       const file = resolve(root, t.seed.replace(/^\.\//, ''));
       if (!file.startsWith(root) || !existsSync(file)) continue;
       const rows = JSON.parse(readFileSync(file, 'utf8'));
-      for (const row of Array.isArray(rows) ? rows.slice(0, 1) : []) {
-        for (const [k, v] of Object.entries(row)) setCol(t, k, valueType(v), true);
+      if (Array.isArray(rows)) {
+        const seen = new Map(); // key -> inferred type, or null while every value seen so far is null
+        for (const row of rows) {
+          for (const [k, v] of Object.entries(row)) {
+            if (v === null) { if (!seen.has(k)) seen.set(k, null); continue; }
+            seen.set(k, valueType(v));
+          }
+        }
+        for (const [k, type] of seen) {
+          if (type === null) (t.allNullSeedCols ||= []).push(k);
+          setCol(t, k, type || 'TEXT', true);
+        }
+        if (rows.some((r) => 'user_id' in r)) t.scoped = true;
       }
-      if (Array.isArray(rows) && rows.some((r) => 'user_id' in r)) t.scoped = true;
     } catch { /* unreadable seed — diff will say so */ }
   }
 

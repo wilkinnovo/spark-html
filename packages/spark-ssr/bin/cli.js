@@ -122,6 +122,11 @@ async function dbCmd(root, { push, force }) {
     process.exit(1);
   }
   const names = Object.keys(schema);
+  for (const [table, t] of Object.entries(schema)) {
+    for (const col of t.allNullSeedCols || []) {
+      console.warn(`⚠ seed column "${table}.${col}" is null in every row — created as TEXT (nullable); seed a non-null value if it should infer a stricter type.`);
+    }
+  }
   if (!names.length) {
     console.log('No tables declared — add <spark-ssr table="…"> to a page.');
     await db.close();

@@ -27,6 +27,7 @@ import { createInterface } from 'node:readline/promises';
 import { stdin, stdout, argv, exit } from 'node:process';
 
 const here = dirname(fileURLToPath(import.meta.url));
+const cliVersion = JSON.parse(readFileSync(resolve(here, '..', 'package.json'), 'utf8')).version;
 
 // ── tiny ANSI palette (no chalk; one less thing to install) ───────────
 const supportsColor = stdout.isTTY && process.env.NO_COLOR === undefined;
@@ -286,8 +287,11 @@ async function main() {
     writeFileSync(cfgPath, readFileSync(cfgPath, 'utf8').replace("name: 'Spark App'", `name: '${projectName}'`), 'utf8');
   }
   // Always start on the newest published versions of the spark packages. If the
-  // registry can't be reached (or a package isn't published yet), the template's
-  // "latest" default still resolves on install.
+  // registry can't be reached (or a package isn't published yet), fall back to
+  // "^<major of this CLI>" instead of leaving the "latest" dist-tag placeholder
+  // — a scaffolded app must never carry a floating range that silently jumps
+  // majors on its next `npm install` (post-v1-bugs.md #1).
+  const cliMajorRange = `^${cliVersion.split('.')[0]}.0.0`;
   for (const group of ['dependencies', 'devDependencies']) {
     const deps = pkg[group];
     if (!deps) continue;
@@ -295,10 +299,11 @@ async function main() {
       if (name !== 'spark-html' && !name.startsWith('spark-html-')
         && name !== 'spark-prerender' && name !== 'spark-ssr') continue;
       const range = await latestRange(name);
-      if (range) {
-        deps[name] = range;
-        stdout.write(`${c.dim(`   using ${name} ${range}`)}\n`);
-      }
+      const finalRange = range || cliMajorRange;
+      deps[name] = finalRange;
+      stdout.write(range
+        ? `${c.dim(`   using ${name} ${range}`)}\n`
+        : `${c.dim(`   registry unreachable — pinning ${name} ${finalRange}`)}\n`);
     }
   }
   writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + '\n');

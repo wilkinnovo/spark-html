@@ -529,6 +529,11 @@ export async function serve(options = {}) {
       try { pds.push(pageData(p, cache, pagesDir)); } catch { /* skip */ }
     }
     const schema = inferSchema(pds, config, root);
+    for (const [table, t] of Object.entries(schema)) {
+      for (const col of t.allNullSeedCols || []) {
+        if (!quiet) console.warn(`[spark-ssr] schema: seed column "${table}.${col}" is null in every row — created as TEXT (nullable); seed a non-null value if it should infer a stricter type.`);
+      }
+    }
     try {
       await pushSchema(db, schema, { createOnly: true, log: (m) => log(`db: ${m}`) });
       await seedTables(db, schema, config, root, (m) => log(`db: ${m}`));

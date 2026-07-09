@@ -1,6 +1,16 @@
 /**
  * Minimal DOM shim — just enough to run Spark end-to-end in Node.
  */
+// Suite-wide noise sweep (post-v1-bugs.md #3): most test mounts don't pass
+// `quiet: true`, so the "⚡ ready" boot line prints dozens of times per run
+// and scrolls a real console.warn out of view. Filter only that one known
+// line here (every test file imports this shim first) — zero behavior
+// change, but a warn is visible again.
+const realConsoleLog = console.log.bind(console);
+console.log = (...args) => {
+  if (typeof args[0] === 'string' && args[0].includes('⚡ ready')) return;
+  realConsoleLog(...args);
+};
 export class TextNode {
   constructor(text) { this.nodeType = 3; this.textContent = text; this.parentNode = null; }
   cloneNode() { return new TextNode(this.textContent); }

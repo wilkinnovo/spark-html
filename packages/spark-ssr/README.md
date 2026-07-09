@@ -405,7 +405,10 @@ scope; the return value becomes the JSON response).
   no SQL join in the template.
 - **Flash messages** — `flash="Saved"` on a form sets a one-shot message that
   survives the redirect; render it with `{flash}` or the default `<spark-flash>`
-  toast. `{session}` and `{path}` are ambient on every page too.
+  toast. `{session}` and `{path}` are ambient in server-rendered template
+  expressions and server-only `<script>`s — **not** in a hydrating page's
+  client component script; there, read the user's id from a declared data
+  source (e.g. `me.id`), not `session`.
 - **List UI** — `<spark-pager for="posts"/>` and `<spark-search/>` are drop-in,
   no-JS `?page`/`?sort`/`?q` controls over the list conventions below.
 - **Middleware** — `middleware.html` runs on every request (`req`, `res`,

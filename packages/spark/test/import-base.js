@@ -31,6 +31,18 @@ globalThis.fetch = async (url) => {
   return { ok: true, status: 200, text: async () => '<p class="inner">hi</p>' };
 };
 
+// Bun's module loader ignores the query string on `import()` and returns the
+// SAME cached instance every time (unlike Node) — the fresh-instance trick
+// below (tests 4-6) would silently share one stale module and false-pass/fail.
+// The root chain runs this suite under `node`; bail loud if that ever changes
+// instead of producing a silent no-op (post-v1-bugs.md #2).
+if (typeof Bun !== 'undefined') {
+  console.error('❌ import-base.js must run under `node`, not `bun` — Bun ignores the'
+    + ' "?tag" query string on import() and reuses one cached module instance,'
+    + ' which silently breaks the fresh-instance tests in this file.');
+  process.exit(1);
+}
+
 const { mount } = await import('../src/index.js');
 
 let pass = 0, fail = 0;

@@ -108,7 +108,7 @@ bun spark-ssr</pre>
 &lt;link rel="stylesheet" href="/style.css"&gt;
 &lt;div import="/components/nav"&gt;&lt;/div&gt;
 &lt;slot&gt;&lt;/slot&gt;</pre>
-    <p><code>{session}</code> and <code>{path}</code> are ambient on every page — the nav component branches logged-in/logged-out on <code>session</code> without declaring anything.</p>
+    <p><code>{session}</code> and <code>{path}</code> are ambient in server-rendered template expressions and server-only <code>&lt;script&gt;</code>s — the nav component branches logged-in/logged-out on <code>session</code> without declaring anything. A hydrating page's <em>client</em> component script doesn't get <code>session</code>; read the user's id from a declared data source (e.g. <code>me.id</code>) there instead.</p>
     <h3>3 · The home feed is a query and a loop</h3>
     <pre spark-ignore>&lt;!-- pages/index.html --&gt;
 &lt;title&gt;{q ? 'Search: ' + q : 'Pinspire'}&lt;/title&gt;
