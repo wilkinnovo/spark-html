@@ -1,0 +1,11 @@
+<button class="toggle" @click="theme.toggle()">theme: {theme.resolved}</button>
+
+<script>
+  const theme = useStore('theme');   // { mode, resolved, toggle, set }
+</script>
+
+<style>
+  :root { --bg: #fff; --text: #111; }
+  :root[data-theme="dark"] { --bg: #111; --text: #eee; }
+  .toggle { background: var(--bg); color: var(--text); }
+</style>

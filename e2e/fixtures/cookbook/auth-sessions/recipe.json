@@ -1,0 +1,11 @@
+{
+  "title": "Auth + sessions",
+  "modes": [
+    "ssr"
+  ],
+  "description": "Email/password sessions with zero config: one auth line in spark.json, plain HTML forms for sign-up/in/out, and the ambient {session} in server templates. Works with JavaScript disabled.",
+  "check": {
+    "type": "ssr",
+    "expect": "Sign in"
+  }
+}

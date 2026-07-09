@@ -1,0 +1,16 @@
+<h1>Upload a photo</h1>
+<form action="/api/photos" method="post" enctype="multipart/form-data">
+  <input name="caption" required placeholder="Caption">
+  <input type="file" name="file" accept="image/*" required>
+  <button>Upload</button>
+</form>
+<ul>
+  <template each="p in photos" key="p.id">
+    <li><img :src="p.url" :alt="p.caption" width="160"> {p.caption}</li>
+  </template>
+</ul>
+<spark-ssr table="photos" />
+<spark-ssr>
+  photos = SELECT * FROM photos ORDER BY id DESC
+  POST /api/photos → INSERT INTO photos (caption, url) VALUES (:body.caption, :file.url)
+</spark-ssr>

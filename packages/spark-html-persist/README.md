@@ -27,7 +27,7 @@ bun add spark-html-persist
 
 ## API
 
-```js
+```
 persist(name, initial?, options?)
 ```
 

@@ -1,0 +1,10 @@
+{
+  "title": "SEO + social cards",
+  "modes": [
+    "prerender"
+  ],
+  "description": "spark-prerender writes fully-rendered HTML at build time (crawlers see content, not placeholders); spark-html-head keeps <title>/<meta> \u2014 including og: cards \u2014 in sync per route from one map.",
+  "check": {
+    "type": "parse"
+  }
+}

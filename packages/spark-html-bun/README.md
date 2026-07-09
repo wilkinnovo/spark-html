@@ -6,10 +6,12 @@ replaces the old Vite setup: `spark dev` / `spark build` / `spark preview`.
 
 ```jsonc
 // package.json
-"scripts": {
-  "dev":     "spark dev",
-  "build":   "spark build",
-  "preview": "spark preview"
+{
+  "scripts": {
+    "dev":     "spark dev",
+    "build":   "spark build",
+    "preview": "spark preview"
+  }
 }
 ```
 

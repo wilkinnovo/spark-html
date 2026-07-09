@@ -42,7 +42,7 @@ export default {};
 
 ```jsonc
 // package.json
-"scripts": { "dev": "spark dev", "build": "spark build", "preview": "spark preview" }
+{ "scripts": { "dev": "spark dev", "build": "spark build", "preview": "spark preview" } }
 ```
 
 ---

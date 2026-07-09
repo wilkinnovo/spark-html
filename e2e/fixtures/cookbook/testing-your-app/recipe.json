@@ -1,0 +1,13 @@
+{
+  "title": "Testing your app",
+  "modes": [
+    "client",
+    "ssr",
+    "prerender"
+  ],
+  "description": "spark-html-test-utils mounts real components in linkedom \u2014 no browser: mount a fixture, fire events, settle, assert on the DOM. This recipe IS a runnable test.",
+  "check": {
+    "type": "bun-test",
+    "file": "counter.test.js"
+  }
+}

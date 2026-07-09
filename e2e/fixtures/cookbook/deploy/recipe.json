@@ -1,0 +1,15 @@
+{
+  "title": "Deploy",
+  "modes": [
+    "client",
+    "ssr",
+    "prerender"
+  ],
+  "description": "Client/prerender apps are static files (any host: GitHub Pages, Netlify, nginx). spark-ssr is one Bun process: the Dockerfile below runs on Fly.io/Railway/any container host; set SESSION_SECRET and mount a volume for sqlite + uploads.",
+  "check": {
+    "type": "files",
+    "files": [
+      "Dockerfile"
+    ]
+  }
+}

@@ -1,0 +1,14 @@
+<template ws="wss://stream.example.com/prices" store="prices"></template>
+
+<p :hidden="prices.status !== 'open'">● live</p>
+<h1>BTC {prices.data?.btc ?? '…'}</h1>
+<button @click="prices.send({ subscribe: 'btc' })">Subscribe</button>
+
+<script>
+  const prices = useStore('prices');
+</script>
+
+<script type="module">
+  import { sockets } from 'spark-html-websocket';
+  sockets(); // boots every <template ws> on the page
+</script>

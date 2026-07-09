@@ -58,7 +58,7 @@ manifest({
   icons: [{ src: '…' }],       // OR: explicit icons — skips generation
   filename: 'manifest.webmanifest',
   offline: { shell: ['./'], version: '1' }, // or just `true`
-  extra: { shortcuts: [...] }, // merged verbatim into the manifest
+  extra: { shortcuts: [] },    // merged verbatim into the manifest
 });
 ```
 

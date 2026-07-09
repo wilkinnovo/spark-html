@@ -1,0 +1,11 @@
+{
+  "title": "Offline + PWA",
+  "modes": [
+    "client",
+    "prerender"
+  ],
+  "description": "spark-html-manifest emits the webmanifest + icons and (offline: true) an app-shell service worker into every built page; spark-html-offline additionally caches CDN component imports so they work on a plane.",
+  "check": {
+    "type": "parse"
+  }
+}

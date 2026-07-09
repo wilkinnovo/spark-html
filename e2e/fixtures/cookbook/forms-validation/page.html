@@ -1,0 +1,23 @@
+<form @submit="save()">
+  <label>Name <input bind:value="name" required maxlength="40"></label>
+  <label>Email <input bind:value="email" type="email"></label>
+  <template if="emailError">
+    <p class="error">{emailError}</p>
+  </template>
+  <button :disabled="!valid">Save</button>
+</form>
+<p class="saved" :hidden="!savedAt">Saved at {savedAt}</p>
+
+<script>
+  let name = '';
+  let email = '';
+  let savedAt = '';
+
+  $: emailError = email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)
+    ? 'That does not look like an email address.' : '';
+  $: valid = name.trim() && email && !emailError;
+
+  function save() {
+    savedAt = new Date().toLocaleTimeString();
+  }
+</script>

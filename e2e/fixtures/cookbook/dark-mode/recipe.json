@@ -1,0 +1,18 @@
+{
+  "title": "Dark mode / theming",
+  "modes": [
+    "client",
+    "ssr",
+    "prerender"
+  ],
+  "description": "theme() (one call in main.js) owns the mode: system-preference default, localStorage persistence, [data-theme] on <html>. Components read the ambient store; CSS does the rest.",
+  "check": {
+    "type": "mount",
+    "expect": ".toggle",
+    "setup": "setup.js",
+    "links": [
+      "spark-html-theme",
+      "spark-html"
+    ]
+  }
+}

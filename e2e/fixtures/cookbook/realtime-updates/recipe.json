@@ -1,0 +1,12 @@
+{
+  "title": "Realtime updates",
+  "modes": [
+    "client",
+    "ssr",
+    "prerender"
+  ],
+  "description": "spark-html-websocket turns a socket into a store: declare it like a route, read {prices.data} like any state, prices.send() to publish. Reconnects with backoff; status rides the store.",
+  "check": {
+    "type": "parse"
+  }
+}

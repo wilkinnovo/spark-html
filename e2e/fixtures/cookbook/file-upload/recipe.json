@@ -1,0 +1,11 @@
+{
+  "title": "File upload",
+  "modes": [
+    "ssr"
+  ],
+  "description": "A multipart form posts to a declared api route; the file streams to uploads/ and :file.url binds its served URL into the INSERT. maxBodyMb (default 10) rejects oversized bodies with 413 before they buffer.",
+  "check": {
+    "type": "ssr",
+    "expect": "Upload"
+  }
+}

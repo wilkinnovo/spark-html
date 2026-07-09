@@ -1,0 +1,11 @@
+{
+  "title": "CRUD table with search",
+  "modes": [
+    "ssr"
+  ],
+  "description": "One table block gives you schema, seed, and synthesized add/remove handlers. Search uses the ambient {q}: ?q= filters the server render, the same expression live-filters after hydration. Params are always bound \u2014 never interpolate ORDER BY.",
+  "check": {
+    "type": "ssr",
+    "expect": "Buy milk"
+  }
+}

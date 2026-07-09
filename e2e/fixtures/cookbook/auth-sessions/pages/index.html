@@ -1,0 +1,25 @@
+<template if="session.id">
+  <h1>Welcome back, {me.email}</h1>
+  <form action="/api/logout" method="post"><button>Sign out</button></form>
+</template>
+<template else>
+  <h1>Sign in</h1>
+  <form action="/api/users?auth" method="post">
+    <input type="email" name="email" required placeholder="you@example.com">
+    <input type="password" name="password" required>
+    <button>Sign in</button>
+  </form>
+  <h2>New here?</h2>
+  <!-- a plain create on the auth table IS sign-up; the password hashes on the way in -->
+  <form action="/api/users" method="post">
+    <input type="email" name="email" required placeholder="you@example.com">
+    <input type="password" name="password" required minlength="8">
+    <button>Create account</button>
+  </form>
+</template>
+<!-- declaring the auth table creates it — the template is the schema; the
+     seed gives you a demo login (passwords hash on the way in) -->
+<spark-ssr table="users" seed="./seed/users.json" />
+<spark-ssr>
+  me = SELECT id, email FROM users WHERE id = :session.id
+</spark-ssr>

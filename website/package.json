@@ -4,8 +4,8 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "bun scripts/gen-stats.js && spark dev",
-    "build": "bun scripts/gen-stats.js && spark build",
+    "dev": "bun scripts/gen-stats.js && bun scripts/gen-cookbook.mjs && spark dev",
+    "build": "bun scripts/gen-stats.js && bun scripts/gen-cookbook.mjs && spark build",
     "preview": "spark preview"
   },
   "dependencies": {

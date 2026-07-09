@@ -185,6 +185,19 @@ backend).
 - [Playground](https://spark-html.dev/playground): live in-browser editor,
   no install.
 - [Tutorials](https://spark-html.dev/tutorials): guided walkthroughs.
+- [Cookbook](https://spark-html.dev/cookbook): ten task-shaped recipes, each a
+  complete runnable page whose exact source runs in the repo's CI on every
+  commit (e2e/fixtures/cookbook/ + scripts/cookbook-check.mjs):
+  - Auth + sessions (ssr): Email/password sessions with zero config: one auth line in spark.json, plain HTML forms for sign-up/in/out, and the ambient {session} in server templates. Works with JavaScript disabled.
+  - CRUD table with search (ssr): One table block gives you schema, seed, and synthesized add/remove handlers. Search uses the ambient {q}: ?q= filters the server render, the same expression live-filters after hydration. Params are always bound — never interpolate ORDER BY.
+  - Dark mode / theming (client, ssr, prerender): theme() (one call in main.js) owns the mode: system-preference default, localStorage persistence, [data-theme] on <html>. Components read the ambient store; CSS does the rest.
+  - Deploy (client, ssr, prerender): Client/prerender apps are static files (any host: GitHub Pages, Netlify, nginx). spark-ssr is one Bun process: the Dockerfile below runs on Fly.io/Railway/any container host; set SESSION_SECRET and mount a volume for sqlite + uploads.
+  - File upload (ssr): A multipart form posts to a declared api route; the file streams to uploads/ and :file.url binds its served URL into the INSERT. maxBodyMb (default 10) rejects oversized bodies with 413 before they buffer.
+  - Forms + validation (client, ssr, prerender): bind: for two-way state, a $: derivation for live validation, and a disabled submit until the form is valid. On spark-ssr the same constraint attributes run again on the server (422 + {errors.field}).
+  - Offline + PWA (client, prerender): spark-html-manifest emits the webmanifest + icons and (offline: true) an app-shell service worker into every built page; spark-html-offline additionally caches CDN component imports so they work on a plane.
+  - Realtime updates (client, ssr, prerender): spark-html-websocket turns a socket into a store: declare it like a route, read {prices.data} like any state, prices.send() to publish. Reconnects with backoff; status rides the store.
+  - SEO + social cards (prerender): spark-prerender writes fully-rendered HTML at build time (crawlers see content, not placeholders); spark-html-head keeps <title>/<meta> — including og: cards — in sync per route from one map.
+  - Testing your app (client, ssr, prerender): spark-html-test-utils mounts real components in linkedom — no browser: mount a fixture, fire events, settle, assert on the DOM. This recipe IS a runnable test.
 - [Showcase](https://spark-html.dev/showcase): real apps built with Spark.
 
 ## Source

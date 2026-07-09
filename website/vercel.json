@@ -17,6 +17,10 @@
       "destination": "/tutorials.html"
     },
     {
+      "source": "/cookbook",
+      "destination": "/cookbook.html"
+    },
+    {
       "source": "/showcase",
       "destination": "/showcase.html"
     },

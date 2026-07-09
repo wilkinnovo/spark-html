@@ -1,0 +1,13 @@
+{
+  "title": "Forms + validation",
+  "modes": [
+    "client",
+    "ssr",
+    "prerender"
+  ],
+  "description": "bind: for two-way state, a $: derivation for live validation, and a disabled submit until the form is valid. On spark-ssr the same constraint attributes run again on the server (422 + {errors.field}).",
+  "check": {
+    "type": "mount",
+    "expect": "button"
+  }
+}

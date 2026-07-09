@@ -300,10 +300,12 @@ query('user', () =&gt; fetch('/api/user').then((r) =&gt; r.json()));</pre>
 
     <h2 id="build">Dev server &amp; build</h2>
     <pre spark-ignore>// package.json
-"scripts": {
-  "dev":     "spark dev",      // Bun dev server + scoped component HMR
-  "build":   "spark build",    // bundle the app shell + run the pipeline
-  "preview": "spark preview"   // serve dist/ like the deploy targets do
+{
+  "scripts": {
+    "dev":     "spark dev",     // Bun dev server + scoped component HMR
+    "build":   "spark build",   // bundle the app shell + run the pipeline
+    "preview": "spark preview"  // serve dist/ like the deploy targets do
+  }
 }</pre>
     <pre spark-ignore>// spark.config.js — optional; every field has a default
 import prerender from 'spark-prerender/bun';

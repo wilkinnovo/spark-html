@@ -1,0 +1,8 @@
+{
+  "db": "sqlite::memory:",
+  "auth": {
+    "table": "users",
+    "identity": "email",
+    "secret": "ENV.SPARK_TEST_SECRET"
+  }
+}

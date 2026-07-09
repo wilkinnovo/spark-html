@@ -1,0 +1,18 @@
+<h1>Todos</h1>
+<!-- {q} is ambient: ?q=milk filters the SERVER render; the bind live-filters
+     on the client — one expression, both worlds. Params stay bound (never
+     string-interpolate ORDER BY). -->
+<input bind:value="q" placeholder="Search…">
+
+<input bind:value="draft" placeholder="New todo">
+<button onclick={add}>Add</button>
+
+<ul>
+  <template each="t in todos" key="t.id">
+    <li :hidden="q && !t.title.toLowerCase().includes(q.toLowerCase())">
+      {t.title} <button onclick={remove}>×</button>
+    </li>
+  </template>
+</ul>
+
+<spark-ssr table="todos" seed="./seed/todos.json" />
