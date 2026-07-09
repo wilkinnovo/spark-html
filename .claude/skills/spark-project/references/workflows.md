@@ -139,6 +139,13 @@ red-then-green 2026-07-09 before being trusted:
   Iteration count is fuzz.js's existing argv knob — improvements.md I2c
   suggested a `FUZZ_N` env var, but argv already existed; trust the tree.
 
+Single-source rule for SPEED numbers (I2d, mirrors the size rule above):
+`benchmarks.md` at repo root is the committed perf ledger (definitive 1.2.0
++ 1.1.0 paired count=15 windowed tables, method, caveats) — it is the ONE
+root .md besides README that is tracked, because README/website/docs cite
+it. Any re-measure updates benchmarks.md first, prose second; no hand-typed
+perf number anywhere the ledger can be the source.
+
 ## Release (per spark-release-checklist)
 
 0. **Before tagging, run a CLEAN-INSTALL check** — a stale nested copy can

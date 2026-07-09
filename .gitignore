@@ -8,9 +8,11 @@ dist
 !packages/spark/dist/
 !packages/spark/dist/**
 
-# Root .md files (except README.md) — design notes, not public docs
+# Root .md files (except README.md and benchmarks.md, the committed perf
+# ledger the website/docs cite) — design notes, not public docs
 /*.md
 !/README.md
+!/benchmarks.md
 
 # Playwright e2e artifacts
 test-results

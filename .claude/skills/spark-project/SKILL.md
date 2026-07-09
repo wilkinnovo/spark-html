@@ -111,10 +111,12 @@ website/                     spark-html.dev site; docs live in website/public/co
 e2e/                         Playwright (thin — 2 spec files / 7 tests)
 scripts/size-check.mjs       THE gzip budget gate (part of npm test)
 graphify-out/                knowledge graph of this repo — `graphify query "<question>"` works
+benchmarks.md                the committed perf ledger (definitive krausest tables + method) —
+                             the ONE root .md besides README that is tracked; website/docs cite it
 improvements.md              the ACTIVE program: "easiest AND fastest", 5 items (written 2026-07-09;
-                             untracked like every root .md except README — items re-enter spark-brain
-                             §5 gates at execution. Predecessors v1 plan + spark-improvements.md:
-                             each completed, deleted)
+                             untracked like every root .md except README/benchmarks.md — items
+                             re-enter spark-brain §5 gates at execution. Predecessors v1 plan +
+                             spark-improvements.md: each completed, deleted)
 ```
 
 ## Hard invariants — violating any of these has caused real shipped bugs
