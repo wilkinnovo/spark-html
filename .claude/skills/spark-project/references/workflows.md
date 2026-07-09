@@ -183,7 +183,7 @@ perf number anywhere the ledger can be the source.
    `bun-v*`, `prerender-v*`, `create-v*`, `router-v*`, `theme-v*`,
    `motion-v*`, `devtools-v*`, `head-v*`, `persist-v*`, `query-v*`,
    `prettier-plugin-v*`, `image-v*`, `websocket-v*`, `font-v*`,
-   `manifest-v*`, `offline-v*`, `sri-v*`, `lsp-v*`, `ssr-v*` — note `ssr-v*`
+   `manifest-v*`, `offline-v*`, `sri-v*`, `lsp-v*`, `test-utils-v*`, `ssr-v*` — note `ssr-v*`
    and `sri-v*` are distinct packages, easy to typo one for the other.
 5. Verify the registry, not CI:
    `curl -s https://registry.npmjs.org/<pkg>/latest | head -c 300`.
