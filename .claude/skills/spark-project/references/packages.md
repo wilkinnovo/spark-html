@@ -68,3 +68,21 @@ delete node_modules + lockfile, reinstall.
 invariant 7). Deployed to Vercel (vercel.json). NOTE: the repo was renamed
 spark → spark-html on GitHub; never recreate a repo named `spark` (kills
 redirects).
+
+## Companion audit (improvements.md I5b, 2026-07-09)
+
+One-time audit; rows die per the row-lifecycle rule as gaps close. Columns:
+website docs mention · cookbook recipe (I4b) · example/template usage ·
+tests wired (ecosystem-check enforces) · ships .d.ts. Result: **every
+companion is documented, exercised, and tested — nothing to deprecate.**
+Gaps found and CLOSED in the same pass: spark-html-test-utils was invisible
+on the website (ecosystem row added, cookbook recipe 9 covers it);
+spark-ssr and spark-html-test-utils shipped no types (minimal honest .d.ts
+added — serve()/mount() surfaces typed, internal re-exports loose on
+purpose). Companions without a dedicated cookbook recipe (router, persist,
+query, motion, devtools, image, font, sri, prettier-plugin, LSP, create)
+are each used by the website itself, an example app, a scaffold template,
+or the docs — verified by the mechanical scan (grep over examples/,
+website/, create-spark-html-app/); the cookbook covers task shapes, not
+one-recipe-per-package. create-spark-html-app and prettier-plugin-spark
+ship no .d.ts by design (CLI bin / prettier plugin — nothing to type).

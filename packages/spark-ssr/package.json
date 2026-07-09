@@ -10,6 +10,7 @@
   },
   "exports": {
     ".": {
+      "types": "./src/index.d.ts",
       "default": "./src/index.js"
     }
   },
@@ -45,5 +46,6 @@
   "license": "MIT",
   "peerDependencies": {
     "spark-html": ">=1.0.0 <2"
-  }
+  },
+  "types": "./src/index.d.ts"
 }
