@@ -33,6 +33,17 @@ section 8. 1.0.0 shipped 2026-07-07 (all 21 packages, commit 4b26738); the
 docs#limits audit shipped post-1.0 (7ba0986). Function names are stable
 anchors; line numbers drift.
 
+**spark-ssr 1.1.0 shipped 2026-07-09** (registry-verified, tag `ssr-v1.1.0`,
+commit 6e65be6) — unrelated to the core's own 1.1.0 speed release (different
+package, same version number, don't conflate). Adds an ambient `navigate()`
+helper (hydrate.js): click-delegates same-path `<a>` links through
+`history.pushState` + `refresh()` instead of a full reload — docs at
+website `#ssr-navigate`. Shipped with a real bug fix found dogfooding it in
+examples/spark-chat: `handlerRoles()` was picking ambient names (`refresh`,
+`navigate`, `api_*`) as auto-CRUD synthesis candidates and clobbering them
+with a duplicate synthesized handler; see pitfalls.md "Generated-code rules"
+for the fix and the component-scope-isolation finding that came with it.
+
 **M3 complete (0.30.0 / 0.8.0).** spark-ssr `serve()` decomposed into
 `src/{session,jobs,static,screens,request,crud,page,cache,routes}.js` (server.js
 807 lines, was 1,870) under byte-parity. Release-gating security pass:

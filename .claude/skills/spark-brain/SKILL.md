@@ -121,6 +121,19 @@ compressed into behavior:
   cheapest first pass for "what calls/depends on X" questions — it found the
   website playground consuming core internals when no doc mentioned it — but
   its INFERRED edges are hypotheses: confirm in source before acting.
+- **A new ambient client helper isn't done at the design stage — wire it into
+  a real page before calling it done.** Adding `navigate()` to spark-ssr
+  (2026-07-09) looked complete after the implementation and unit tests; it
+  wasn't until it was actually wired into examples/spark-chat that a real
+  bug surfaced — `handlerRoles()`'s auto-CRUD synthesis is name-blind and
+  happily generated a duplicate `navigate()` that clobbered the ambient one,
+  because the only thing distinguishing "author's own handler" from "calls
+  the ambient helper" was a name the synthesizer didn't know to protect. No
+  amount of reading the diff would have caught this; only exercising it did.
+  Same lesson as the "exercise the change end-to-end" order below, but worth
+  its own line because *helpers that inject names into someone else's scope*
+  are a distinct risk shape from ordinary runtime changes — the collision
+  is with code you didn't write and won't see in your diff.
 - **Check the known-unfixed list before debugging.** Frozen props, the SSR
   loop-prop gap, SSR-never-runs-page-script, detached-host rebuild, the
   dual-package hazard — these are *documented*. Rediscovering one from
@@ -234,6 +247,28 @@ Hold your own proposals to the standard the v1 plan set: grounded in the
 actual tree with symbol references, claims verified against code, and an
 explicit "what I'm dropping and why" section. A plan that only adds is a
 wishlist.
+
+**Worked example (2026-07-09, `navigate()` rollout):** after shipping the
+ambient `navigate()` helper, the instruction was to "use it immediately" on
+the chat app and on both create-spark-html-app SSR templates. Investigation
+found neither template actually has a same-page query-link pattern today —
+applying it there would mean inventing UI just to exercise a helper, which
+is scope creep with a demo as its excuse. Declined, with the reasoning
+stated once (concept-count gate: don't add template surface the shape
+doesn't need), and Wilkin agreed to leave both untouched. A second push to
+apply it to the pinterest example surfaced a *real* constraint, not just a
+"nothing to attach it to" case: pinterest's home page is deliberately
+non-hydrating (a response-cache candidate, by its own top-of-file comment),
+and wiring `navigate()` there would force it to hydrate and forfeit that
+property — a genuine tradeoff, not a style preference. That one went back
+to Wilkin as a concrete cost ("this changes what the page IS"), not a
+pre-decided no, and he chose to skip it too, with a note left in the code
+explaining why (so a future reader doesn't reintroduce the search box as a
+"missing feature"). The distinction that mattered: gate 2 (could existing
+concepts / the current design do this?) kills speculative uses without a
+Wilkin round-trip; a proposal that changes a page's actual architecture
+(hydrating vs. not) always goes back as a stated cost, even when "just
+demo it everywhere" was the literal instruction.
 
 ## 6. The quality bar for everything we ship
 

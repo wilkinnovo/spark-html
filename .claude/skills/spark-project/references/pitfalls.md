@@ -129,6 +129,35 @@ tree-wide before components boot; fixed via retry-after-ancestor-ready.
   (0.6.1, "[object Object] in a textarea").
 - `SHELL_MARK` is built from escape sequences on purpose — a literal NUL byte
   in source once made git treat server.js as binary.
+- **Any name the framework injects ambiently (`refresh`, `navigate`,
+  `api_create/update/delete`) must be excluded from `handlerRoles()`'s
+  synthesis candidates.** Before 1.1.0 it wasn't: `handlerRoles` picks the
+  first not-yet-`defined` bare non-loop handler as the page's "insert" role
+  and synthesizes `async function <name>() {...}` for it — purely structural,
+  name-blind. A template wiring `onclick={navigate}` to call the new ambient
+  helper got a SECOND, synthesized `navigate()` appended right after it
+  (same name, different body) — a duplicate declaration that silently
+  clobbered the real one. `defined` only tracks names the AUTHOR's own
+  `<script>` text declares, so an ambient name is invisible to it. Fixed via
+  `AMBIENT_NAMES` (hydrate.js) excluded from the `pick()` candidate pool;
+  regression pinned in test/ssr.js ("ambient navigate"). Lesson: any new
+  ambient helper name must be added to `AMBIENT_NAMES`, and is only safe to
+  pick if it's implausible as an author's own bare handler name — found by
+  dogfooding immediately (spark-chat), not by design review; adding a
+  helper is not done until it's actually wired into a real page.
+- **An imported component's script scope is fully isolated from the page
+  that imports it — ambient helpers do NOT leak across `<div import>`
+  boundaries.** `makeScope` (packages/spark/src/component.js) builds a
+  fresh `raw` per component from its own declared names + explicit
+  `prop="value"` attributes only; there is no parent-scope fallback. A
+  layout DOES share the page's scope (its vars merge into the page before
+  compilation — see "layouts (§2)" in ssr.js), but a `<div import="/components/…">`
+  never does. Practical effect: `refresh()`/`navigate()`/any page-ambient
+  name is unreachable from a separately-imported component; either move the
+  interactive bit into the page/layout itself, or have the component
+  re-derive what it needs from real global state (the established idiom —
+  see pinterest's `nav.html`, which reads `location.search` directly rather
+  than accepting `q` as a prop, precisely to avoid this boundary).
 
 ## Environment / packaging
 
