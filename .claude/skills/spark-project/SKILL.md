@@ -97,9 +97,11 @@ verified in the tree). M4 and the 1.0.0 release are complete.
 
 This skill holds the **facts**. The judgment layer — value ordering, decision
 gates, change protocols — is the `spark-brain` skill; load it alongside this
-one. There is no open program doc (improvements.md completed in full
-2026-07-09 and was deleted, like each predecessor); the standing state is
-maintenance under the brain's §6/§8 obligations.
+one. The ACTIVE program is `spark-speed-up-max-pro.md` (the third speed
+program, commissioned 2026-07-09 late: staged targets ship ≤1.30 / stretch
+≤1.20 / moonshot ≤1.15, ceiling 18.00 ALL-IN; phases P0 profile → P1 F4
+revive → P2 keyed-equality index → P3 idle self-warmup → checkpoint → P4
+lazy rows → P5 template JIT → P6 hot/cold split → P7 memory receipt).
 
 ## Repo map
 
@@ -217,6 +219,6 @@ See pitfalls.md "Fixed at v1-prep".)
 - `references/pitfalls.md` — the full bug history with root causes; what each
   one taught; browser-testing setup on this machine.
 
-For the roadmap: none open — the "easiest AND fastest" program
-(improvements.md) completed 2026-07-09; see the repo-map note above for
-what it shipped. New work re-enters through spark-brain §5.
+For the roadmap: read `spark-speed-up-max-pro.md` at repo root — the
+active (third) speed program. Its §0 records which two prior denials
+Wilkin's mandate reverses; its §9 ledger is the only admissible number.

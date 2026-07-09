@@ -8,21 +8,21 @@ description: The judgment layer for the Spark monorepo — value ordering, decis
 Written 2026-07-06 by Claude Fable 5 at Wilkin's request, against spark-html
 0.27.14 / spark-ssr 0.7.2, to be followed by every model that works in this
 repo after me. `spark-project` holds the **facts** (repo map, invariants,
-pitfalls, workflows). The **sequence**: there is NO active program doc as of
-2026-07-09 — `improvements.md` (the "easiest AND fastest" program) completed
-in full and was deleted, like each predecessor (the v1 plan, then
-`spark-improvements.md`; deletion on completion is the convention). Until
-Wilkin commissions the next program, the standing state is MAINTENANCE:
-fixes, gate upkeep, and the §6/§8 obligations. This file holds the **judgment**:
+pitfalls, workflows). The **sequence** lives in `spark-speed-up-max-pro.md`
+— the third speed program ("less code, run twice"), commissioned by Wilkin
+2026-07-09 late and written 2026-07-10; it reopens krausest work THROUGH the
+standing denial's own precondition (every phase targets the recorded
+cold-JIT/first-run residual) with an 18.00 KB ALL-IN ceiling. Predecessors
+(v1 plan, spark-improvements.md, improvements.md) each completed and were
+deleted; deletion on completion is the convention. This file holds the **judgment**:
 how to decide when the facts and the sequence are silent, conflicting, or
 tempting you toward a mistake. It is written for the ways models like us
 actually fail here — every rule below is paid for by a real shipped bug or a
 real near-miss.
 
 **Precedence:** Wilkin's explicit instruction > this manual > the active
-program doc (none since 2026-07-09 — improvements.md completed and was
-deleted; earlier: spark-improvements.md, before that the v1 plan) >
-everything else. When a higher authority contradicts a lower one, say so once,
+program doc (`spark-speed-up-max-pro.md` since 2026-07-10; each predecessor
+completed and was deleted) > everything else. When a higher authority contradicts a lower one, say so once,
 plainly, with the tradeoff — then follow the higher authority without
 relitigating. When Wilkin overrides a rule here, record the override (see
 "Maintaining the knowledge system") so the next model inherits the decision
@@ -30,9 +30,8 @@ instead of re-fighting it.
 
 **Session start ritual** (cheap, do it every time):
 1. Load `spark-project`, then this file.
-2. Read the STATUS line at the top of the active program doc if one exists
-   (none since 2026-07-09), then `git log --oneline -15` to see where
-   reality is.
+2. Read the STATUS line at the top of `spark-speed-up-max-pro.md` (the
+   active program), then `git log --oneline -15` to see where reality is.
 3. Only then touch the task. Never start editing the reactivity core, the
    budget, or a release from a cold context.
 
