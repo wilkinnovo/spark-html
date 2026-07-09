@@ -29,19 +29,25 @@ a one-line mode-only DOM mutation into the spec makes the gate fail with a
 readable diff; removing the injection makes it pass again — confirmed
 2026-07-09 before trusting it as a gate rather than decoration.
 
+Fixture/serve-script trap, found 2026-07-09: a tmp project at the repo root
+is NOT a workspace member, so `bun install` with `'*'` versions resolves
+spark packages from the REGISTRY, not the tree — the gate looked local while
+exercising published copies. Both `serve-relocation-fixture.mjs` and
+`serve-template-for-e2e.mjs` now pin `file:` paths to `packages/*`; keep it
+that way in any new e2e serve script.
+
 Two real findings surfaced building this (both intentionally NOT worked
-around — recorded in `page.html`'s own NOTE comments and here, not silently
-routed around):
-- **`store()`/`derived()` (`import { store, derived } from 'spark-html'`
-  inside a component's own `<script>`) work in dev and in spark-ssr's
-  hydration path, but break in a PRODUCTION `spark build`** (client or
-  prerender — same `spark-html-bun` build pipeline): the entry script's bare
-  `'spark-html'` specifier gets bundled/rewritten for itself only; components
-  `mount()` fetches and evaluates at runtime get no import map in the built
-  HTML, so their own bare `from 'spark-html'` 404s in the browser. The
-  fixture uses component-local reactive state (`let` + `$:`) instead, which
-  needs no import and is unaffected. Not yet triaged into improvements.md as
-  its own item — flag it if you're touching `spark-html-bun`'s build path.
+around — recorded, then FIXED 2026-07-09):
+- **`store()`/`derived()` inside a component's own `<script>` broke in a
+  PRODUCTION `spark build`** (client or prerender): the built HTML shipped
+  no import map for the bare `'spark-html'` specifier inside components
+  `mount()` fetches at runtime. FIXED in spark-html-bun 1.1.0: `spark build`
+  scans shipped .html for bare imports, copies each used package to
+  `assets/modules/<pkg>@<version>/`, emits the dev-parity import map (+
+  modulepreload for the core), and marks mapped packages `external` in
+  Bun.build so the entry imports the same URL — one module instance, never
+  a second inlined core. The relocation fixture now imports store/derived
+  in its script, so this gate guards the fix permanently.
 - **`<template await>` on a plain script-local `Promise` (not a real
   spark-ssr data source) never updates post-hydration on an SSR page**:
   spark-ssr's server-side renderer statically flattens the block to its

@@ -347,6 +347,37 @@ await test("build: a companion package's own nested spark-html copy is deduped t
     "the companion package's own nested copy must NOT be separately bundled — both must share one module instance");
 });
 
+await test('build: component bare imports → import map + external core (prod/dev parity)', async () => {
+  const r = makeProject();
+  writeFileSync(join(r, 'public', 'components', 'counter.html'),
+    '<button @click="{add}">n {n}</button>\n' +
+    '<script>import { store } from "spark-html";\nconst s = store("s", { n: 0 });\nlet n = 0;\nfunction add() { s.n++; }</script>');
+  writeFileSync(join(r, 'src', 'main.js'), "import { mount } from 'spark-html';\nexport default mount;\n");
+  await build({ root: r, quiet: true });
+  const html = readFileSync(join(r, 'dist', 'index.html'), 'utf8');
+  const m = html.match(/<script type="importmap">([\s\S]*?)<\/script>/);
+  assert.ok(m, 'import map injected into the built page');
+  const map = JSON.parse(m[1]).imports;
+  assert.ok(map['spark-html'] && map['spark-html'].startsWith('/assets/modules/spark-html@'),
+    'spark-html mapped to a version-suffixed copied module');
+  assert.ok(existsSync(join(r, 'dist', map['spark-html'].slice(1))), 'core file copied into assets/modules');
+  assert.ok(html.indexOf('importmap') < html.indexOf('type="module"'), 'map precedes the first module script');
+  assert.ok(html.includes('rel="modulepreload"'), 'mapped core is modulepreloaded');
+  // One instance everywhere: the entry bundle must import the SAME mapped URL
+  // (external), never inline a second copy of the core next to the mapped one.
+  const jsFile = readdirSync(join(r, 'dist', 'assets')).find((f) => f.startsWith('main-') && f.endsWith('.js'));
+  const bundled = readFileSync(join(r, 'dist', 'assets', jsFile), 'utf8');
+  assert.ok(/["']spark-html["']/.test(bundled), 'core stays external in the entry bundle');
+});
+
+await test('build: no bare component imports → no import map, output shape unchanged', async () => {
+  const r = makeProject(); // hello.html has no imports; main.js has none either
+  await build({ root: r, quiet: true });
+  const html = readFileSync(join(r, 'dist', 'index.html'), 'utf8');
+  assert.ok(!html.includes('importmap'), 'no map when nothing needs one');
+  assert.ok(!existsSync(join(r, 'dist', 'assets', 'modules')), 'no modules dir when nothing needs one');
+});
+
 // ── preview ─────────────────────────────────────────────────────────────
 writeFileSync(join(buildRoot, 'dist', 'about.html'), '<h1>about</h1>');
 writeFileSync(join(buildRoot, 'dist', '404.html'), '<h1>nope</h1>');

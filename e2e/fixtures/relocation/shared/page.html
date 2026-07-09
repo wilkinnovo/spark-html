@@ -1,12 +1,12 @@
 <!--
   I2a relocation fixture (improvements.md) — ONE page file, run unmodified
   in three server/build shapes (client / SSR / prerender). Exercises every
-  core concept once: component-local reactive state + a `$:` derivation,
-  {expr} interpolation, :attr, @handler, :if/:else, keyed :each, bind, a
-  component import with a {expr} prop, onMount. (store()/derived() and
-  `<template await>` on a bare script Promise were tried and dropped — see
-  the NOTE comments below; both are real findings, not gate workarounds.)
-  The oracle (e2e/relocation.spec.js via
+  core concept once: store() + derived() imported in the component script,
+  component-local reactive state + a `$:` derivation, {expr} interpolation,
+  :attr, @handler, :if/:else, keyed :each, bind, a component import with a
+  {expr} prop, onMount. (`<template await>` on a bare script Promise was
+  tried and dropped — see the NOTE comment below; a real finding, not a
+  gate workaround.) The oracle (e2e/relocation.spec.js via
   scripts/serve-relocation-fixture.mjs) mounts each mode, drives the same
   interaction script, and diffs normalized DOM after settle — never edit
   this file to make one mode pass; that defeats the point.
@@ -16,19 +16,15 @@
   // synthetic /__spark/page/<key> URL with no adjacent files, so a page
   // script's JS imports must be absolute (served from public/ in every
   // mode), not relative — same convention the templates use for CSS.
-  //
-  // NOTE (finding, recorded in improvements.md's I2 status): store()/
-  // derived() need `import { store, derived } from 'spark-html'` inside a
-  // component script, which works in dev and in spark-ssr's hydration
-  // component, but NOT in a production `spark build` (client or prerender —
-  // same pipeline): the built entry bundles/rewrites that bare specifier for
-  // itself only, and ships no import map for components mount() fetches at
-  // runtime, so their own bare `from 'spark-html'` 404s in the browser. This
-  // fixture uses component-local reactive state (`$:`) instead, which needs
-  // no import and is unaffected — store/derived relocation across a
-  // PRODUCTION client/prerender build is a real, separate gap to track, not
-  // this gate's job to work around invisibly.
   import { double } from '/helpers.js';
+  // A bare specifier inside a component script: works in dev via the dev
+  // import map, and in a PRODUCTION `spark build` via the build-time import
+  // map spark-html-bun 1.1.0 ships (before that it 404'd — the I2a finding,
+  // closed). This usage keeps the gate on that fix in every mode, forever.
+  import { store, derived } from 'spark-html';
+
+  const shared = store('reloc', { clicks: 0 });
+  const relocView = derived('relocView', ['reloc'], (r) => ({ label: r.clicks * 2 }));
 
   let counter = 0;
   $: doubled = counter * 2;
@@ -42,7 +38,7 @@
   let inputVal = '';
   let mounted = false;
 
-  function inc() { counter++; }
+  function inc() { counter++; shared.clicks++; }
   function toggle() { show = !show; }
   function addItem() { items = [...items, { id: nextId, name: 'item-' + nextId }]; nextId++; }
   function removeFirst() { items = items.slice(1); }
@@ -63,7 +59,7 @@
 
 <h1>Relocation fixture</h1>
 
-<p class="count" :data-count="counter">count: {counter} · doubled: {doubled} · fn: {double(counter)}</p>
+<p class="count" :data-count="counter">count: {counter} · doubled: {doubled} · fn: {double(counter)} · store: {shared.clicks}/{relocView.label}</p>
 <button class="inc" @click="inc()">+1</button>
 
 <template if="show">

@@ -239,6 +239,11 @@ function moduleEntry(pkg, projectRoot) {
 // nested duplicates and all) if the app has no top-level `spark-html` of
 // its own to canonicalize onto — never a regression, only a fix when it
 // can confirm there's one true copy to point everyone at.
+//
+// (Only used when the build emits NO import map: once `spark-html` is
+// import-mapped it is also marked `external`, and a plugin-resolved path
+// would defeat the external and inline a second copy — the exact hazard
+// this plugin exists to prevent.)
 function dedupeSparkHtmlPlugin(projectRoot) {
   let canonical; // undefined = not yet resolved; null = resolution failed
   return {
@@ -275,6 +280,81 @@ function buildImportMap(projectRoot) {
   return imports;
 }
 
+// ── build-time import map (production parity with dev's /@modules) ──────
+//
+// Component fragments (and any non-entry HTML page) ship as authored and are
+// fetched + evaluated at RUNTIME — their bare `import { store } from
+// 'spark-html'` resolves through the page's import map in dev, but a built
+// page had no map, so the exact same component worked in dev and 404'd in
+// production (`spark build`, client or prerender). Build parity: scan every
+// shipped .html for bare specifiers, copy each used package's entry
+// directory (the same tree dev serves under /@modules/<pkg>/) into
+// assets/modules/<pkg>@<version>/, and emit the same import map into the
+// built page. Every mapped package is ALSO marked `external` in Bun.build,
+// so the entry bundle imports the identical URL — one module instance
+// everywhere (two copies = two `stores` Maps = "store not created").
+//
+// Scanner posture matches the core's script rewriter: regex, not a parser.
+// A code-looking string inside a <script> can false-positive — that copies
+// an unused package into assets/modules/ (dead bytes), never breaks the
+// build. Only plain package names (optionally @scoped) are mapped; subpath
+// specifiers ('pkg/sub') pass through untouched, exactly as they do today.
+const SCRIPT_BLOCK_RE = /<script\b[^>]*>([\s\S]*?)<\/script>/gi;
+const BARE_SPEC_RE = /\bimport\s*(?:\(\s*['"]([^'"]+)['"]|(?:[^'"()]*?\bfrom\s*)?['"]([^'"]+)['"])/g;
+const isBarePkg = (s) => /^(?:@[\w.-]+\/)?[\w.-]+$/.test(s);
+function bareSpecs(code, into) {
+  for (const m of code.matchAll(BARE_SPEC_RE)) {
+    const spec = m[1] || m[2];
+    if (spec && isBarePkg(spec)) into.add(spec);
+  }
+}
+function bareSpecsInHtml(html, into) {
+  for (const s of html.matchAll(SCRIPT_BLOCK_RE)) bareSpecs(s[1], into);
+}
+
+// Copy each package (plus, transitively, the bare packages ITS files import —
+// a companion's own `import 'spark-html'`) into assets/modules/ and return
+// the { specifier → URL } import map. The copied files are not content-
+// hashed (relative sibling imports must keep their names), so the package
+// version goes into the directory name to keep deploys cache-safe.
+async function materializeModules(seed, projectRoot, outDir, base) {
+  const imports = {};
+  const queue = [...seed];
+  const seen = new Set();
+  while (queue.length) {
+    const pkg = queue.shift();
+    if (seen.has(pkg)) continue;
+    seen.add(pkg);
+    const info = moduleEntry(pkg, projectRoot);
+    if (!info) continue; // not installed — leave it; the browser error names the specifier
+    let version = '';
+    for (const p of [join(info.dir, 'package.json'), join(info.dir, '..', 'package.json')]) {
+      try { version = JSON.parse(readFileSync(p, 'utf8')).version || ''; break; } catch { /* keep looking */ }
+    }
+    const slug = pkg.replace('/', '__') + (version ? '@' + version : '');
+    const dest = join(outDir, 'assets', 'modules', slug);
+    await cp(info.dir, dest, { recursive: true, filter: (src) => !/(^|\/)(node_modules|\.git)(\/|$)/.test(src) });
+    imports[pkg] = `${base}assets/modules/${slug}/${info.entry}`;
+    for (const f of readdirSync(dest, { recursive: true })) {
+      if (!/\.(js|mjs)$/.test(String(f))) continue;
+      try {
+        const specs = new Set();
+        bareSpecs(readFileSync(join(dest, String(f)), 'utf8'), specs);
+        for (const s of specs) if (!seen.has(s)) queue.push(s);
+      } catch { /* unreadable — skip */ }
+    }
+  }
+  return imports;
+}
+
+// Inject markup at the very start of <head> (before every module script —
+// import maps must precede the first import). `<head(\s…)?>` never matches
+// a page's <header> element.
+function injectHead(html, inject) {
+  if (/<head(\s[^>]*)?>/i.test(html)) return html.replace(/<head(\s[^>]*)?>/i, (m) => `${m}\n${inject}`);
+  return inject + html;
+}
+
 // Watch a directory tree for component edits. fs.watch({recursive}) works on
 // Bun/Linux, but fall back to per-directory watchers if it ever throws.
 function watchTree(dir, onChange) {
@@ -303,13 +383,9 @@ async function transformPage(html, config, { dev }) {
   }
   if (!dev) return out;
   const importMap = JSON.stringify({ imports: buildImportMap(config.projectRoot) });
-  // The import map must precede every module script — inject at head start.
-  const inject =
+  return injectHead(out,
     `<script type="importmap">${importMap}</script>\n` +
-    `<script type="module">${HMR_CLIENT}</script>\n`;
-  // `<head(\s…)?>` — never match a page's <header> element.
-  if (/<head(\s[^>]*)?>/i.test(out)) return out.replace(/<head(\s[^>]*)?>/i, (m) => `${m}\n${inject}`);
-  return inject + out;
+    `<script type="module">${HMR_CLIENT}</script>\n`);
 }
 
 /**
@@ -482,14 +558,31 @@ export async function build(overrides = {}) {
   // Components (and everything else in public/) ship exactly as authored.
   if (existsSync(pub)) await cp(pub, outDir, { recursive: true });
 
+  // Production import map: scan everything that ships as authored (public/
+  // fragments and pages, plus the entry's inline scripts) for bare import
+  // specifiers, and materialize the used packages under assets/modules/ —
+  // see the block comment above materializeModules for why.
+  const bare = new Set();
+  for (const f of readdirSync(outDir, { recursive: true })) {
+    if (!String(f).endsWith('.html')) continue;
+    try { bareSpecsInHtml(readFileSync(join(outDir, String(f)), 'utf8'), bare); } catch { /* unreadable */ }
+  }
+  let entryHtml = existsSync(entry) ? await readFile(entry, 'utf8') : null;
+  if (entryHtml !== null) bareSpecsInHtml(entryHtml, bare);
+  const mappedImports = await materializeModules(bare, projectRoot, outDir, base);
+  const mapSnippet = Object.keys(mappedImports).length
+    ? `<script type="importmap">${JSON.stringify({ imports: mappedImports })}</script>\n`
+      + (mappedImports['spark-html'] ? `<link rel="modulepreload" href="${mappedImports['spark-html']}">\n` : '')
+    : '';
+
   // Bundle the app shell — but never hand Bun the HTML itself (it hard-fails
   // on refs it can't resolve, and pages legitimately reference public/ files
   // that only exist in the output). Instead: find the module scripts and
   // stylesheet links that resolve to PROJECT files, bundle those, splice the
   // hashed asset URLs back in, and ship every other byte of HTML as authored.
-  if (existsSync(entry)) {
+  if (entryHtml !== null) {
     const entryDir = join(entry, '..');
-    let html = await readFile(entry, 'utf8');
+    let html = entryHtml;
 
     const tagRe = /<script\b[^>]*\btype\s*=\s*["']module["'][^>]*\bsrc\s*=\s*["']([^"']+)["'][^>]*><\/script>|<link\b[^>]*\brel\s*=\s*["']stylesheet["'][^>]*\bhref\s*=\s*["']([^"']+)["'][^>]*>/gi;
     const found = []; // { url, file }
@@ -518,7 +611,11 @@ export async function build(overrides = {}) {
         publicPath: `${base}assets/`,
         define: { 'import.meta.env': envLiteral(config, false) },
         naming: { entry: '[name]-[hash].[ext]', chunk: '[name]-[hash].[ext]', asset: '[name]-[hash].[ext]' },
-        plugins: [dedupeSparkHtmlPlugin(projectRoot)],
+        // Mapped packages stay external so the entry imports the same URL the
+        // component scripts do (one instance). The dedupe plugin only runs
+        // when there is no map — a plugin-resolved path would defeat external.
+        external: Object.keys(mappedImports),
+        plugins: mappedImports['spark-html'] ? [] : [dedupeSparkHtmlPlugin(projectRoot)],
       });
       if (!result.success) {
         const msgs = (result.logs || []).map((l) => l.message || String(l)).join('\n');
@@ -560,7 +657,23 @@ export async function build(overrides = {}) {
         for (const q of ['"', "'"]) html = html.split(`${q}${f.url}${q}`).join(`${q}${to}${q}`);
       }
     }
+    if (mapSnippet) html = injectHead(html, mapSnippet);
     await Bun.write(join(outDir, config.entry.split('/').pop()), html);
+  }
+
+  // Non-entry pages (multi-page apps) need the same map — dev injects it
+  // into every served page; fragments (componentsDir) are consumed by
+  // mount() and never get page-level injection.
+  if (mapSnippet) {
+    const compSeg = sep + config.componentsDir + sep;
+    const entryOut = join(outDir, config.entry.split('/').pop());
+    for (const f of readdirSync(outDir, { recursive: true })) {
+      const rel = String(f);
+      if (!rel.endsWith('.html') || (sep + rel).includes(compSeg)) continue;
+      const abs = join(outDir, rel);
+      if (abs === entryOut || !isFile(abs)) continue; // entry already injected above
+      await Bun.write(abs, injectHead(readFileSync(abs, 'utf8'), mapSnippet));
+    }
   }
 
   for (const step of config.pipeline) {
