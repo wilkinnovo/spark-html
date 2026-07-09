@@ -1,0 +1,69 @@
+# spark-html
+
+> Spark is a no-build reactive HTML framework: the file you write is the file
+> that runs. No compiler, no virtual DOM, no build step for the user. HTML +
+> `{expr}` + a handful of directives + stores — one runtime (~16 KB gzip, 0
+> deps) that works the same as a plain client app, a build-time-prerendered
+> static site, or a full-stack server-rendered app via the spark-ssr sibling
+> package (inferred database, REST API, auth, jobs — the HTML template is the
+> spec). A page written for one mode runs in the other two by relocation, not
+> rewrite.
+
+Core ideas worth knowing before reading further: components are plain `.html`
+files (markup + `<script>` + `<style>`, scoped by default); reactivity is
+plain `let`/assignment — no signals, no hooks, no dependency arrays; `<spark-ssr>`
+blocks declare data (SQL, a table, a URL, a markdown glob, or a JS module) and
+the server infers schema, REST endpoints, and hydration from how the template
+reads it.
+
+## Docs
+
+- [Full documentation](https://spark-html.dev/docs): concept, installation,
+  components, template syntax (if/else-if/else, `<template await>`, literal
+  braces), slots, reactive statements & lifecycle, JS imports, props, stores
+  (incl. derived), forms, async data, JavaScript API, dev server & build,
+  editor support, how it works, performance, debugging, error handling,
+  prerender for SEO, and the full spark-ssr section (below).
+- [spark-ssr guide](https://spark-html.dev/docs#ssr): the template is the
+  backend, any data source (SQL/URL/markdown/module), ambient helpers
+  (`api_create`/`api_update`/`api_delete`/`refresh`/`navigate` — ambient
+  client-side helpers a hydrating page gets with zero imports; `navigate`
+  intercepts same-page `<a href="?…">` clicks and swaps data via
+  `history.pushState` + `refresh()` instead of a full reload), batteries
+  included (auth, guards, no-JS forms, relations, jobs & mail, sitemap/robots/OpenAPI),
+  fast by default (precompiled render, response cache, streaming).
+- [spark-ssr full guide](https://spark-html.dev/ssr): quick start, what gets
+  inferred, config, routing & layouts, data sources, a full Pinterest-style
+  SQL-driven walkthrough, a markdown/module (no-database) walkthrough,
+  interactive pages, auth & sessions, forms without JavaScript, the template
+  as schema, background jobs & mail, performance, security, deploy.
+- [Ecosystem](https://spark-html.dev/docs#ecosystem): every sibling package
+  and what it does — spark-html-bun (dev server/bundler), spark-html-router,
+  spark-html-theme, spark-html-head, spark-html-motion, spark-html-devtools,
+  spark-html-query, spark-html-persist, spark-html-websocket, spark-prerender,
+  spark-ssr, spark-html-image, spark-html-font, spark-html-manifest,
+  spark-html-offline, spark-html-sri, create-spark-html-app,
+  prettier-plugin-spark, spark-html-language-server.
+- [Limitations](https://spark-html.dev/docs#limits): the honestly-documented
+  edges of the framework — read before assuming a gap is a bug.
+
+## Try it
+
+- [Playground](https://spark-html.dev/playground): live in-browser editor,
+  no install.
+- [Tutorials](https://spark-html.dev/tutorials): guided walkthroughs.
+- [Showcase](https://spark-html.dev/showcase): real apps built with Spark.
+
+## Source
+
+- [GitHub](https://github.com/wilkinnovo/spark-html): monorepo — all
+  packages, examples (basic, jsimports, no-build, pinterest, spark-chat,
+  spark-share, tabtube), and the website itself.
+- [npm: spark-html](https://www.npmjs.com/package/spark-html) — the core
+  runtime. Sibling packages are `spark-html-<name>` or `spark-<name>` on npm;
+  see Ecosystem above for the full list.
+
+## Optional
+
+- [og.png](https://spark-html.dev/og.png): social preview image, not
+  documentation content.
