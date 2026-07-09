@@ -36,6 +36,12 @@ byte-for-byte — reactive, scoped, untouched.
 No compiler generates code from your template. No virtual DOM allocates and diffs
 a tree per frame. The file you write is what runs — ~17 kB gzipped, zero dependencies.
 
+> ⚡ **Spark beats hand-written vanilla JS to first paint.**
+> On the krausest js-framework-benchmark, spark-html 1.2 reaches first paint at
+> **0.86× vanilla (291 ms vs 337 ms)** — no VDOM to build, no component graph to
+> initialize, no template compilation: the runtime walks the HTML it was handed and
+> patches it in place. *(Paired local run; [method & full table](#performance).)*
+
 ## Built for humans
 
 AI writes more of the web every day — and that's exactly why Spark exists. Some

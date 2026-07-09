@@ -13,6 +13,24 @@
       <a class="btn primary" href="{app.base}/docs">Get started</a>
       <a class="btn" href="{app.base}/playground">Playground</a>
     </div>
+
+    <!-- First paint race — real numbers from the paired krausest run
+         (benchmarks.md, count=15 windowed): spark 291 ms vs vanilla 337 ms.
+         Bar durations are proportional to the measured times. -->
+    <div class="fp" aria-label="First paint: spark-html 291 milliseconds, hand-written vanilla JS 337 milliseconds — spark paints first at 0.86 times vanilla">
+      <p class="fp-title">First paint <span class="fp-vs">— spark beats <b>hand-written vanilla JS</b> to the screen</span></p>
+      <div class="fp-row">
+        <span class="fp-name fp-name-spark">spark-html</span>
+        <span class="fp-track"><span class="fp-bar fp-bar-spark"></span></span>
+        <span class="fp-ms fp-ms-spark">291 ms <em>⚡ 0.86×</em></span>
+      </div>
+      <div class="fp-row">
+        <span class="fp-name">vanilla js</span>
+        <span class="fp-track"><span class="fp-bar fp-bar-van"></span></span>
+        <span class="fp-ms fp-ms-van">337 ms</span>
+      </div>
+      <p class="fp-note">krausest js-framework-benchmark, paired local run, spark-html 1.2 — <a href="{app.base}/docs#perf">method &amp; full table</a></p>
+    </div>
   </div>
 
   <div class="demo">
@@ -210,6 +228,34 @@
 
 <style>
   .hero { display: grid; grid-template-columns: 1.25fr 1fr; gap: 48px; align-items: center; padding: 88px 0 56px; }
+
+  /* ── First-paint race ─────────────────────────────────────────────── */
+  .fp { margin-top: 28px; padding: 16px 18px 12px; border: 1px solid var(--surface-2); border-radius: 12px; background: var(--surface); max-width: 560px; }
+  .fp-title { font-size: 13px; font-weight: 700; letter-spacing: .02em; margin: 0 0 12px; color: var(--text); }
+  .fp-title .fp-vs { font-weight: 400; color: var(--muted); }
+  .fp-title .fp-vs b { color: var(--text); font-weight: 600; }
+  .fp-row { display: grid; grid-template-columns: 82px 1fr 110px; gap: 10px; align-items: center; margin: 7px 0; }
+  .fp-name { font-size: 12px; color: var(--muted); font-family: var(--mono, ui-monospace, monospace); }
+  .fp-name-spark { color: var(--spark-ink); font-weight: 700; }
+  .fp-track { position: relative; height: 10px; border-radius: 5px; background: var(--surface-2); overflow: hidden; }
+  .fp-bar { position: absolute; inset: 0 auto 0 0; border-radius: 5px; transform-origin: left; transform: scaleX(1); }
+  .fp-bar-spark { width: 86.4%; background: linear-gradient(90deg, var(--spark-ink), #ffe28a); box-shadow: 0 0 12px rgba(255, 210, 74, .45); animation: fp-grow 1.16s cubic-bezier(.2,.7,.3,1) both; }
+  .fp-bar-spark::after { content: ""; position: absolute; inset: 0; background: linear-gradient(100deg, transparent 30%, rgba(255,255,255,.55) 50%, transparent 70%); transform: translateX(-100%); animation: fp-shine 1.8s ease-out 1.3s 2; }
+  .fp-bar-van { width: 100%; background: var(--muted-dim); animation: fp-grow 1.35s cubic-bezier(.2,.7,.3,1) both; }
+  .fp-ms { font-size: 12px; color: var(--muted); font-family: var(--mono, ui-monospace, monospace); white-space: nowrap; opacity: 0; animation: fp-in .4s ease-out forwards; }
+  .fp-ms-spark { animation-delay: 1.1s; color: var(--text); }
+  .fp-ms-van { animation-delay: 1.3s; }
+  .fp-ms-spark em { font-style: normal; display: inline-block; margin-left: 4px; padding: 1px 7px; border-radius: 99px; font-size: 11px; font-weight: 800; color: #000; background: var(--spark-ink); transform: scale(0); animation: fp-pop .45s cubic-bezier(.34,1.56,.64,1) 1.25s forwards; }
+  .fp-note { margin: 10px 0 0; font-size: 11.5px; color: var(--muted-dim); }
+  .fp-note a { color: var(--muted); text-decoration: underline; text-underline-offset: 2px; }
+  @keyframes fp-grow { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+  @keyframes fp-in { from { opacity: 0; transform: translateX(-4px); } to { opacity: 1; transform: none; } }
+  @keyframes fp-pop { from { transform: scale(0); } 70% { transform: scale(1.15); } to { transform: scale(1); } }
+  @keyframes fp-shine { to { transform: translateX(100%); } }
+  @media (prefers-reduced-motion: reduce) {
+    .fp-bar, .fp-ms, .fp-ms-spark em, .fp-bar-spark::after { animation: none; }
+    .fp-ms { opacity: 1; } .fp-ms-spark em { transform: none; }
+  }
   .hero-copy, .demo { min-width: 0; }
   .eyebrow { font-size: 12px; letter-spacing: .16em; text-transform: uppercase; color: var(--spark-ink); margin-bottom: 18px; }
   .eyebrow span { display: inline-block; margin: 0 3px; opacity: 0; animation: fadeUp .55s cubic-bezier(.2,.7,.2,1) forwards; }
