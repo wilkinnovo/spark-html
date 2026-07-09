@@ -34,11 +34,18 @@ jobs:
       - name: Install root dependencies (build-dist needs esbuild)
         run: bun install
 
-      - name: Paired krausest run (count=8) + ratio gate
+      - name: Install xvfb
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq xvfb
+
+      # WINDOWED under xvfb, not --headless: headless Chrome skips paints,
+      # which makes 43_first-paint lie (measured 1.97x headless on this
+      # runner vs 0.86x windowed on the ledger box — the first dispatch run
+      # proved it). Windowed-under-xvfb is the ledger's method.
+      - name: Paired krausest run (count=8, windowed) + ratio gate
         env:
           JFB_DIR: ${{ runner.temp }}/jfb
           CHROME: /usr/bin/google-chrome
-        run: ./bench/krausest/run.sh --count 8 --gate 1.65 1.00
+        run: xvfb-run -a -s "-screen 0 1280x1024x24" ./bench/krausest/run.sh --count 8 --windowed --gate 1.65 1.00
 
       - name: Upload raw results
         if: always()
