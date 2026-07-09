@@ -107,6 +107,26 @@ ambient from config); free extras (`sitemap.xml`, `robots.txt`,
 `/__spark/openapi.json` + a typed client, all generated from the inferred
 backend).
 
+## Dev diagnostics (dev mode only — never in production output)
+
+`spark dev` and a spark-ssr server in watch mode inject a diagnostics module
+from spark-html-devtools: directive-typo detection ("unknown directive
+`:clas` — did you mean `:class`?" — only edit-distance-1 near-misses of
+known names; custom :attr/@event are never flagged), a hydration-mismatch
+diff (changed/lost content flagged with a selector path; content the client
+legitimately adds — an await block resolving — is not), a duplicate-runtime
+banner ("duplicate spark-html detected — run `npx spark-html doctor`"), and
+spark-ssr server warnings mirrored into the browser console. The editor
+shows the typo check too (spark-html-language-server 1.4.0). The anytime
+half is `npx spark-html doctor`: duplicate installs, companion ranges,
+"latest" pins, stale service workers. Production builds and watch:false
+servers ship none of this.
+
+Production builds keep bare component imports working: `spark build` scans
+shipped .html for bare specifiers, copies used packages to
+assets/modules/<pkg>@<version>/, and emits the dev-parity import map
+(mapped packages stay external — one module instance per page).
+
 ## Limitations (read before assuming a gap is a bug)
 
 - **One scope per component.** All top-level declarations share the component

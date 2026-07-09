@@ -48,6 +48,7 @@
 &lt;/template&gt;
 
 &lt;spark-ssr table="todos" live /&gt;</pre>
+    <p class="note">An <code>await</code> over a promise declared in the page's <em>own</em> <code>&lt;script&gt;</code> (not a data source) passes through untouched on a hydrating page — the server leaves the authored block in place and the client's await machinery resolves it after hydration, exactly like client-only mode (spark-ssr 1.2.0).</p>
     <pre spark-ignore>bun add spark-ssr
 bun spark-ssr</pre>
     <p>That's the whole app. The <code>todos</code> table is <strong>created for you</strong>, the CRUD API exists at <code>/api/todos</code>, the page is server-rendered and hydrated, and <code>live</code> keeps every open tab in sync over SSE. No <code>&lt;script&gt;</code>, no SQL, no server file, no build step.</p>
