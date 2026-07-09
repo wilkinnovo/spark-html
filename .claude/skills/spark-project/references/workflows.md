@@ -28,6 +28,21 @@
   gzip-neutral or negative. Measure each candidate edit; keep ≥25 bytes
   headroom minimum. Companion packages have no budget gate; features that
   don't fit core go to a sibling package.
+- **The gate is the single source of truth for the size number quoted
+  anywhere** (fixed 2026-07-09 after three different figures shipped at
+  once). Two measurement traps, both hit: `Bun.build` minifies looser than
+  esbuild, AND Bun's `gzipSync` compresses the *identical* bundle
+  differently than Node's (17.4 vs 17.24 KB) — so any size computed under
+  Bun disagrees with the gate. `website/scripts/gen-stats.js` therefore
+  spawns `node scripts/size-check.mjs` and parses its output for the
+  website's stats chip; never "reimplement the same metric" there.
+- The exact figure (e.g. `17.24 kB`) is also hand-quoted in prose: root
+  README (static shields badge + 3 mentions), packages/spark/README (2),
+  website `banner.svg`, `llms.txt`, docs-body ecosystem row. When the gate
+  number changes at a release, re-sync all of them (`grep -rn` the old
+  number finds the set). The README badge is a static shields.io badge by
+  design — the bundlephobia badge it replaced measures with its own
+  bundler and showed 14.2k; don't reintroduce it.
 
 ## Release (per spark-release-checklist)
 
