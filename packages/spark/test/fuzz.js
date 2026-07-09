@@ -503,6 +503,36 @@ templates.push({
   },
 });
 
+// 23: chunk-boundary keyed creates — row counts straddling the chunked
+// stamping size (64): initial mounts and grow-from-zero at G−1/G/G+1/2G+1,
+// clear (the one-wipe path must preserve the anchor and its neighboring
+// whitespace text nodes exactly), append past a boundary, and permutations
+// over chunk-built rows. Chunked create ≡ single create is THE oracle here.
+// The row template carries top-level whitespace text nodes on purpose —
+// the krausest/tbody shape — so multi-node rows ride the chunk path too.
+templates.push({
+  gen(rng, id) {
+    const name = `fz${id}`;
+    let nid = 1;
+    const mk = () => ({ id: nid++, t: pick(rng, ['aa', 'bb', 'cc']) });
+    const grow = (n) => Array.from({ length: n }, mk);
+    const rows = grow(pick(rng, [3, 15, 63, 64, 65, 129]));
+    const src = (rowsJson, selVal) => `<template each="r in rows" key="r.id"> <b :class="r.id === sel ? 'x' : ''">{r.id}:{r.t}</b> </template><p class="cl">{rows.length}</p><script>let rows = ${rowsJson}; let sel = ${selVal};</script>`;
+    const live = (el) => [...el.__sparkScope.rows];
+    return { name, source: src(JSON.stringify(rows), 0), mutators: [
+      { desc: 'clear', apply: (el) => { setScopeVar(el, 'rows', []); return { rows: [] }; } },
+      { desc: 'grow fresh', apply: (el) => { const rs = grow(pick(rng, [15, 63, 64, 65, 129])); setScopeVar(el, 'rows', rs); return { rows: rs }; } },
+      { desc: 'append 17', apply: (el) => { const rs = live(el).concat(grow(17)); setScopeVar(el, 'rows', rs); return { rows: rs }; } },
+      { desc: 'truncate to 5', apply: (el) => { const rs = live(el).slice(0, 5); setScopeVar(el, 'rows', rs); return { rows: rs }; } },
+      { desc: 'swap extremes', apply: (el) => { const rs = live(el); if (rs.length > 1) { const t = rs[0]; rs[0] = rs[rs.length - 1]; rs[rs.length - 1] = t; } setScopeVar(el, 'rows', rs); return { rows: rs }; } },
+      { desc: 'select', apply: (el) => { const rows = el.__sparkScope.rows; const nv = rows.length ? rows[Math.floor(rng() * rows.length)].id : 0; setScopeVar(el, 'sel', nv); return { sel: nv }; } },
+    ], schema: { rows, sel: 0 } };
+  },
+  rebuild(state, name) {
+    return { name, source: `<template each="r in rows" key="r.id"> <b :class="r.id === sel ? 'x' : ''">{r.id}:{r.t}</b> </template><p class="cl">{rows.length}</p><script>let rows = ${JSON.stringify(state.rows)}; let sel = ${state.sel};</script>` };
+  },
+});
+
 // ── Run one scenario ───────────────────────────────────────────────────
 async function runScenario(rng, seed, id) {
   const tpl = pick(rng, templates);
@@ -565,7 +595,7 @@ try {
     try {
       const rng = mulberry32(data.seed || SEED);
       const r = await runScenario(rng, data.seed || SEED, `corp_${cf}`);
-      if (r.ok) cpass++; else { failed++; console.log(`  ❌ corpus ${cf}`); }
+      if (r.ok) cpass++; else { failed++; console.log(`  ❌ corpus ${cf}`); if (process.env.FUZZ_DEBUG) { console.log('  PATCHED:', r.patched); console.log('  FRESH  :', r.fresh); console.log('  LOG:', (r.log || []).join(' | ')); } }
     } catch (e) { failed++; console.log(`  ❌ corpus ${cf}: ${e.message}`); }
   }
 } catch (e) { /* empty */ }

@@ -32,7 +32,7 @@ import {
   warnOnce,
   closestComponent,
   ELEMENT_NODE, TEXT_NODE,
-  cloneTemplateNodes, insertClones, renderClones,
+  cloneTemplateNodes, insertClones, insertChunk, renderClones,
   walkNode, patchLive, patchPoint, spill, hydrateBlockImports, pushPrerenderWait,
 } from './index.js';
 
@@ -741,23 +741,27 @@ export function patchEach(el, scope) {
   // time; the anchor's very first row EVER renders capturing (seeding
   // fn.__keys + the anchor's key set), every later row replays capture-free.
   let seeded = oldLen > 0;
-  const make = (i, cur) => {
-    const item = arr[i];
+  // Row-state constructor shared by the single and chunked create paths —
+  // registers the block in newBlocks itself (single-path callers of make()
+  // also assign, harmlessly).
+  const build = (i, nodes, live) => {
     const raw = rawOf(rawArr[i]);
     if (items && raw && typeof raw === 'object') items.add(raw);
-    const box = { v: varName, iv: idxName, item, i, scope };
-    const loopScope = makeLoopScope(box);
+    const box = { v: varName, iv: idxName, item: arr[i], i, scope };
+    return newBlocks[i] = { key: keys[i], nodes, box, scope: makeLoopScope(box), raw, ext: live ? 0 : new Set(), live };
+  };
+  const make = (i, cur) => {
     const nodes = [];
     const live = el.__sparkEachDeepRows ? 0 : [];
-    const block = { key: keys[i], nodes, box, scope: loopScope, raw, ext: live ? 0 : new Set(), live };
+    const block = build(i, nodes, live);
     if (live) {
-      renderClones(templateNodes, cur, nodes, loopScope, live, seeded);
+      renderClones(templateNodes, cur, nodes, block.scope, live, seeded);
       seeded = 1;
     } else {
       const prevSink = capture.sink;
       capture.sink = block.ext;
       try {
-        renderClones(templateNodes, cur, nodes, loopScope, live);
+        renderClones(templateNodes, cur, nodes, block.scope, live);
       } finally {
         capture.sink = prevSink;
         spill(block.ext, prevSink);
@@ -765,12 +769,9 @@ export function patchEach(el, scope) {
     }
     return block;
   };
+  // Shallow rows (no components/anchors, no leave hook) need no teardown
+  // machinery on drop: just detach.
   const shallow = !el.__sparkEachDeepRows && !leaveHook;
-  const drop = (b) => {
-    // Shallow rows (no components/anchors, no leave hook) need no teardown
-    // machinery: just detach.
-    for (const n of b.nodes) shallow ? n.remove() : leaveNode(n);
-  };
   // The span end of block i-1 (or the anchor itself) — where row i inserts.
   const endOf = (blocks, i) => {
     if (i < 0) return el;
@@ -790,6 +791,14 @@ export function patchEach(el, scope) {
   let sn = count - 1;
   while (so >= p && sn >= p && oldBlocks[so].key === keys[sn]) { so--; sn--; }
 
+  // (V4 — clear-as-one-wipe — was built here and DESCOPED at the 17.25
+  // ALL-IN ceiling: +0.08 KB of unique entropy after golf. Clears stay
+  // per-row removes. The verified design if bytes ever free up: collect the
+  // parent's non-__sparkManaged children, require managed count ===
+  // oldLen × templateNodes.length (a sibling anchor's rows must never be
+  // wiped) and keep.length ≤ oldLen, then parent.textContent = '' and
+  // re-append the kept nodes in order — byte-identical to a fresh mount.)
+
   const newBlocks = new Array(count);
   for (let i = 0; i < p; i++) reuse(newBlocks[i] = oldBlocks[i], i);
   for (let i = sn + 1, j = so + 1; i < count; i++, j++) reuse(newBlocks[i] = oldBlocks[j], i);
@@ -798,10 +807,22 @@ export function patchEach(el, scope) {
   if (p > so && p > sn) {
     // nothing structural changed
   } else if (p > so) {
-    // pure insert (create 1k/10k, append): no reconcile bookkeeping at all
+    // Pure insert (create 1k/10k, append): no reconcile bookkeeping at all.
+    // Shallow runs after the seed row go CHUNKED (F3): stamp CHUNK rows out
+    // of one fragment clone and land them in one insert. Remainder rows —
+    // and deep rows, and the capturing seed row — take the single path.
     let cur = endOf(newBlocks, p - 1);
-    for (let i = p; i <= sn; i++) {
-      const b = newBlocks[i] = make(i, cur);
+    let i = p;
+    if (!seeded && i <= sn) { newBlocks[i] = make(i, cur); cur = endOf(newBlocks, i); i++; }
+    if (!el.__sparkEachDeepRows) {
+      // 64 = the chunk size (one clone + one insert per group; G swept 8/16/32/64/128 at F3 — 64 won creates).
+      while (sn - i > 62) {
+        insertChunk(templateNodes, cur, el, 64, (nodes, live) => build(i++, nodes, live));
+        cur = endOf(newBlocks, i - 1);
+      }
+    }
+    for (; i <= sn; i++) {
+      newBlocks[i] = make(i, cur);
       cur = endOf(newBlocks, i);
     }
   } else {
@@ -881,7 +902,9 @@ export function patchEach(el, scope) {
         if (last) insertAfter = blockEnd(last);
       }
       // Anything left in the map was dropped from the array.
-      for (const b of oldByKey.values()) drop(b);
+      for (const b of oldByKey.values()) {
+        for (const n of b.nodes) shallow ? n.remove() : leaveNode(n);
+      }
     }
   }
 

@@ -858,6 +858,40 @@ export function insertClones(templateNodes, cursor, out, live) {
   }
 }
 
+// Chunked sibling of insertClones (F3, shallow keyed rows only): stamp `n`
+// rows out of ONE deep clone of a cached pristine ×n fragment and land them
+// with ONE insert — the per-row clone + per-node after() crossings collapse
+// ~n×. `host` (the each anchor) caches the fragment; it is built from the
+// template AFTER row 0 stamped (analysis done, handler attrs stripped), so
+// every chunk clone is born clean. `mk(nodes, live)` builds the caller's
+// block (returning it); initial values run through patchPoint while still
+// in the fragment — legal exactly because shallow rows are position-
+// independent (no anchors, no if/else followers) — and the enter hook
+// fires only after attachment, like the single path.
+export function insertChunk(templateNodes, cursor, host, n, mk) {
+  let cf = host.__sparkEachChunkTpl;
+  if (!cf) {
+    cf = host.__sparkEachChunkTpl = document.createDocumentFragment();
+    for (let g = 0; g < n; g++) for (const t of templateNodes) cf.appendChild(t.cloneNode(true));
+  }
+  const frag = cf.cloneNode(true);
+  let c = frag.firstChild;
+  let m = n * templateNodes.length;
+  for (let g = 0; g < n; g++) {
+    const nodes = [], live = [];
+    for (const t of templateNodes) {
+      const nx = c.nextSibling;
+      c.__sparkManaged = 1;
+      stampTree(c, t, live);
+      nodes.push(c);
+      c = nx;
+    }
+    patchLive(live, mk(nodes, live).scope, 1);
+  }
+  cursor.after(frag);
+  for (let nd = cursor.nextSibling; m--; nd = nd.nextSibling) enterNode(nd);
+}
+
 // Full first render of an if/each block: insert the clones, THEN walk them
 // (a nested if/else chain needs its followers present when its head first
 // runs), fire the enter hook, and resolve any [import] placeholders (async).
@@ -1224,7 +1258,7 @@ export function patchPoint(nd, scope) {
 // so the page doesn't navigate (long-standing papercut). Escape hatch: call
 // nothing / use a real <a> for navigation.
 function fireHandler(h, t, e) {
-  if (h.evt === 'submit' && e.preventDefault) e.preventDefault();
+  if (h.evt === 'submit') e.preventDefault?.();
   execute(h.code, t.__sparkScopeRef, e, undefined, () => ({
     phase: 'handler', component: componentNameFor(t), detail: h.name + '={' + h.fnExpr + '}',
   }));
@@ -1240,11 +1274,11 @@ function fireHandler(h, t, e) {
 // event types keep direct listeners; so do input/change — bind: write-backs
 // are direct, and a delegated row handler would otherwise run BEFORE the
 // write-back that updates the bound state it reads.
-const NO_BUBBLE = /^(?:focus|blur|mouseenter|mouseleave|load|error|scroll|input|change)$/;
+const NO_BUBBLE = /^(?:focus|blur|mouse(?:enter|leave)|load|error|scroll|input|change)$/;
 const gDelegated = {};
 function delegate(e) {
   for (let n = e.target; n; n = n.parentNode) {
-    const h = n.__sparkH && n.__sparkH[e.type];
+    const h = n.__sparkH?.[e.type];
     if (h) {
       // User code must see the handling element, exactly as a direct
       // listener would. Shadow the getter only for this dispatch — a
@@ -1266,10 +1300,8 @@ function wireElement(el, a, del) {
   for (const h of a.handlers) {
     if (del && !NO_BUBBLE.test(h.evt)) {
       (el.__sparkH ||= {})[h.evt] = h;
-      if (!gDelegated[h.evt]) {
-        gDelegated[h.evt] = 1;
-        document.addEventListener(h.evt, delegate, true);
-      }
+      // The assignment doubles as capture:true — one delegate per type, ever.
+      if (!gDelegated[h.evt]) document.addEventListener(h.evt, delegate, gDelegated[h.evt] = true);
     } else {
       // One SHARED listener per handler descriptor (h.l, built lazily) —
       // the element comes back out of e.currentTarget.

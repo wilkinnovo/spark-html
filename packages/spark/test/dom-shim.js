@@ -96,10 +96,19 @@ export class Element {
   remove() { if (this.parentNode) this.parentNode.removeChild(this); }
   after(node) {
     if (!this.parentNode) return;
-    if (node.parentNode) node.parentNode.removeChild(node);
-    const i = this.parentNode.childNodes.indexOf(this);
-    node.parentNode = this.parentNode;
-    this.parentNode.childNodes.splice(i + 1, 0, node);
+    // Real DOM semantics: inserting a DocumentFragment splices its CHILDREN
+    // in (in order) and leaves the fragment empty. Each node is REMOVED
+    // before its insertion index is computed — a same-parent move from
+    // before the cursor must not land one slot late.
+    const kids = node.tagName === '#FRAGMENT' ? [...node.childNodes] : [node];
+    let cur = this;
+    for (const n of kids) {
+      if (n.parentNode) n.parentNode.removeChild(n);
+      const at = cur.parentNode.childNodes.indexOf(cur);
+      n.parentNode = cur.parentNode;
+      cur.parentNode.childNodes.splice(at + 1, 0, n);
+      cur = n;
+    }
   }
   replaceWith(node) {
     if (!this.parentNode) return;
@@ -133,7 +142,12 @@ export class Element {
     parseHTML(html, target);
   }
   get innerHTML() { return serialize(this.childNodes); }
-  set textContent(t) { this.childNodes = [new TextNode(t)]; }
+  set textContent(t) {
+    // Real DOM: children are DETACHED (parentNode nulled) and '' leaves the
+    // element empty rather than holding an empty text node.
+    for (const c of this.childNodes) c.parentNode = null;
+    this.childNodes = t === '' ? [] : [new TextNode(String(t))];
+  }
   get textContent() {
     return this.childNodes.map((n) => (n.nodeType === 3 ? n.textContent : n.textContent)).join('');
   }
@@ -273,6 +287,7 @@ globalThis.document = {
   querySelector: (s) => doc.querySelector(s),
   querySelectorAll: (s) => doc.querySelectorAll(s),
   addEventListener: (t, fn) => { (documentListeners[t] ??= []).push(fn); },
+  createDocumentFragment: () => new Element('#fragment'),
   __listeners: documentListeners, // test seam: capture-phase delegate dispatch in fire()
   _listeners: documentListeners,
 };

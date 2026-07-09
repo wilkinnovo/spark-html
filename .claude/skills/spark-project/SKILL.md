@@ -25,9 +25,11 @@ descent — `block.live`/`patchLive`), and **shared per-template listeners**
 `e.currentTarget`; zero per-clone closures). The gzip budget was raised
 2026-07-08 (15.0 → 16.0, speed program), 2026-07-09 (16.0 → 16.5, F1 stop
 rule), and finally to an **ALL-IN 17.25 ceiling covering the whole speed-max
-program** (Wilkin, 2026-07-09; exceed ⇒ descope, never fund) — now 17.05
-used; frozen for the life of 1.x. **Speed-max F1+F2 landed (b229c2c + the
-F2 commit, 2026-07-09, unreleased):** F1 = template dependency dispatch —
+program** (Wilkin, 2026-07-09; exceed ⇒ descope, never fund) — now 17.24
+used; frozen for the life of 1.x. **Speed-max F1+F2+F3 landed (b229c2c,
+99b53f5 + the F3 commit, 2026-07-09, unreleased); F4 clear-wipe DESCOPED
+(+0.08 KB didn't fit — design recorded in patchEach at the descope site):**
+F1 = template dependency dispatch —
 shallow keyed rows dispatch dirty keys as column sweeps over live-recipe
 points (`sweepEach`/`patchPoint`; no per-row ext Sets, no per-node dep Sets,
 rows after the first capture-free; heals re-learn via the runExpr tier-2
@@ -40,9 +42,13 @@ params) + **document delegation for stamped rows** (supersedes the G5
 +0.232 rejection, under the ALL-IN budget): row clones carry `__sparkH` +
 ONE document capture listener per event type — zero per-row listeners;
 `e.currentTarget` is patched per dispatch; input/change stay direct so
-bind write-back ordering is preserved. Count=8 paired headless geomean
-**1.469** (F0 baseline 1.531); swap/remove/update floors are cold-JIT
-(fresh page per iteration), not scan work — see spark-speed-up-max.md §9.
+bind write-back ordering is preserved. F3 = chunked creates
+(`insertChunk`: pristine ×64 fragment cached per anchor, one clone + one
+insert per group; G=64 won the profiler sweep; create1k scripted 68→53 ms).
+Count=8 paired headless geomean ~1.47–1.54 (run wobble; F0 baseline
+1.531); creates moved −5..−9% absolute; swap/remove/update floors are
+cold-JIT (fresh page per iteration), not scan work — see
+spark-speed-up-max.md §9.
 Internal boolean `__spark*` flags are set as `1`/truthy, never
 compared `=== true`. V1-API-FREEZE.md governs semver (stable surface =
 fixes only; experimental surfaces may move in minors) per spark-brain
