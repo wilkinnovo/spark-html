@@ -198,15 +198,55 @@ tree-wide before components boot; fixed via retry-after-ancestor-ready.
   before analysis is stripped in stampTree. If a row inexplicably keeps a
   raw `onclick="{…}"` attr, that pipeline broke.
 - **Full document-level event delegation was REJECTED at +0.232 KB gzip**
-  (budget outranks perf, spark-brain §2). If it ever returns, it is a
-  budget conversation first — see spark-speed-up.md ledger G5.
+  (budget outranks perf, spark-brain §2) — and later SUPERSEDED: it landed
+  in 1.2.0 for stamped row clones under the 17.25 ALL-IN ceiling (owner
+  decision, 2026-07-09). See the 1.2.0 section below for its invariants.
+
+## 1.2.0 speed-max invariants (2026-07-09)
+
+- **Stamped row clones own NO listeners.** Bubbling handlers ride
+  `el.__sparkH` + ONE document-level CAPTURE delegate per event type
+  (wireElement `del` param; `gDelegated`). Three rules keep it correct —
+  each is load-bearing:
+  (a) `delegate()` shadows `e.currentTarget` per dispatch via a
+  configurable own property and DELETES it after the walk — removing that
+  delete corrupts currentTarget for every later listener in the same
+  propagation (the own property would shadow the prototype getter).
+  (b) `input`/`change` are NEVER delegated (they're in NO_BUBBLE despite
+  bubbling): `bind:` write-backs are direct listeners, and a delegated
+  ancestor handler would otherwise run BEFORE the write-back that updates
+  the bound state it reads.
+  (c) DevTools `getEventListeners(row)` now shows nothing — look at the
+  document. The dom-shim's `fire()` dispatches `document.__listeners`
+  capture delegates FIRST; keep that seam or delegated handlers silently
+  never fire in tests.
+- **The ≤4-mismatch direct-permutation path must never assign one block to
+  two slots** — duplicate new-side keys (user error) are consumption-guarded
+  and degrade to the windowed map+LIS path (reuse once + create). Weakening
+  the guard turns a user mistake into shared-DOM corruption.
+- **The reconcile scans the RAW array** (`arr[REACTIVE_RAW]`), and
+  `block.raw` identity is always `rawOf(...)` of the item — users can store
+  previously-wrapped values back into state, so the backing array may hold
+  proxies. Rows still receive WRAPPED values (`box.item`); raw is for the
+  scan only.
+- **Chunked creates (`insertChunk`, G=64)** stamp rows inside a cached
+  pristine fragment and patch initial values BEFORE insertion — legal only
+  because shallow rows are position-independent. Anything that makes a
+  chunked row position-DEPENDENT (an anchor, an if/else follower) must
+  keep it off the chunk path (the `__sparkEachDeepRows` guard does today).
+  The seed row (anchor's first ever) always renders capturing via the
+  single path.
+- **Fuzz-corpus seeds replay by seed number through the CURRENT template
+  library** — adding a template shifts what every historical seed
+  generates, so corpus files' recorded state/mutations are documentation of
+  what they caught, not what they now replay. A future improvement: pin the
+  template index in the file. Never let a failing run's writeFileSync
+  clobber tracked seeds without checking what it overwrote.
 
 ## Meta
 
-- `spark-improvements.md` (repo root) is a decent diagnosis doc but its §7 is
-  stale (claims streaming/response-cache unshipped; they're in 0.7.0). The
-  trusted plan is `spark-from-here-to-v1.md`.
-- The website docs#limits table has an outdated Block-scoping row (pre-0.27.12
-  behavior) and is missing frozen-props + SSR-page-script rows — audited in
-  the v1 plan appendix. **Do not update it until v1 ships** (owner's call,
-  2026-07-06).
+- The v1 plan (`spark-from-here-to-v1.md`) completed and was DELETED
+  2026-07-07; the trusted program doc is `spark-improvements.md` (rewritten
+  2026-07-07) plus, for the speed program, `spark-speed-up-max.md`.
+- The docs#limits audit SHIPPED post-1.0 (7ba0986) — the old "don't touch
+  until v1" deferral is over; the row lifecycle in spark-brain §6 governs.
