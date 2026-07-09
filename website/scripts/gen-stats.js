@@ -5,25 +5,26 @@
  *
  *   bun scripts/gen-stats.js   # writes website/src/stats.js
  *
- * Uses Bun.build (not esbuild) to bundle + minify the runtime for the gzip
- * metric — the same measure as scripts/size-check.mjs — so the website has no
- * bundler dependency of its own.
+ * The gzip metric comes from running scripts/size-check.mjs itself (under
+ * node) and parsing its output — the budget gate is the single source of
+ * truth for the runtime size, everywhere it is quoted.
  */
 import { existsSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { gzipSync } from 'node:zlib';
+
 
 const ROOT = resolve(import.meta.dir, '..', '..');
 
 export async function computeStats() {
-  // runtime: gzip of the minified runtime — the same metric as size-check.
-  const out = await Bun.build({
-    entrypoints: [resolve(ROOT, 'packages/spark/src/index.js')],
-    minify: true,
-    format: 'esm',
-  });
-  const code = await out.outputs[0].text();
-  const runtimeKb = Math.round(gzipSync(Buffer.from(code)).length / 1024);
+  // runtime: THE number from scripts/size-check.mjs — the budget gate is the
+  // single source of truth, so the website chip, the READMEs, and the gate
+  // can never disagree. (Bun.build minifies worse than esbuild and Bun's
+  // gzipSync compresses differently than Node's — both skewed the chip:
+  // 18 and 17.4 vs the gate's 17.24 — so we run the gate itself under node.)
+  const gate = Bun.spawnSync(['node', resolve(ROOT, 'scripts/size-check.mjs')]);
+  const m = gate.stdout.toString().match(/([\d.]+) KB gzip/);
+  if (!m) throw new Error('gen-stats: could not read the gzip size from scripts/size-check.mjs output');
+  const runtimeKb = +m[1];
 
   const pkg = JSON.parse(readFileSync(resolve(ROOT, 'packages/spark/package.json'), 'utf8'));
   const deps = Object.keys(pkg.dependencies || {}).length;

@@ -4,7 +4,7 @@
 
 <p align="center">
   <a href="https://www.npmjs.com/package/spark-html"><img alt="npm" src="https://img.shields.io/npm/v/spark-html?color=ffd24a&amp;label=spark-html" /></a>
-  <img alt="size" src="https://img.shields.io/bundlephobia/minzip/spark-html?color=ffd24a&amp;label=gzip" />
+  <img alt="size" src="https://img.shields.io/badge/gzip-17.24%20kB-ffd24a" />
   <img alt="deps" src="https://img.shields.io/badge/dependencies-0-ffd24a" />
   <a href="https://github.com/wilkinnovo/spark-html/blob/main/LICENSE"><img alt="license" src="https://img.shields.io/npm/l/spark-html?color=ffd24a" /></a>
   &middot; <a href="https://spark-html.dev">site</a>
@@ -34,7 +34,7 @@ byte-for-byte — reactive, scoped, untouched.
 ```
 
 No compiler generates code from your template. No virtual DOM allocates and diffs
-a tree per frame. The file you write is what runs — ~17 kB gzipped, zero dependencies.
+a tree per frame. The file you write is what runs — 17.24 kB gzipped, zero dependencies.
 
 > ⚡ **Spark beats hand-written vanilla JS to first paint.**
 > On the krausest js-framework-benchmark, spark-html 1.2 reaches first paint at
@@ -147,7 +147,7 @@ How it stays fast:
   template. The file you write is what runs.
 - **No virtual DOM** — patches mutate the DOM directly. No intermediate tree to
   allocate, diff, or discard per frame.
-- **~17 kB gzipped, zero dependencies** — parses, mounts, and patches in a single
+- **17.24 kB gzipped, zero dependencies** — parses, mounts, and patches in a single
   microtask.
 - **Keyed reconciliation with minimal moves** — the diff trims the unchanged
   prefix/suffix and runs a longest-increasing-subsequence pass on the rest (a
@@ -231,7 +231,7 @@ Spark trades completeness for simplicity — these are deliberate edges, not roa
 
 | Package                                  | What it does                                                                                                        |
 | ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
-| [`spark-html`](packages/spark/README.md) | The runtime — `mount()`, components, reactivity, `store`/`derived`, `bind:form`, scoped styles, plus `npx spark-html doctor`. ~17 kB gzip, 0 deps. |
+| [`spark-html`](packages/spark/README.md) | The runtime — `mount()`, components, reactivity, `store`/`derived`, `bind:form`, scoped styles, plus `npx spark-html doctor`. 17.24 kB gzip, 0 deps. |
 
 **UI &amp; UX siblings** (add only what you use)
 
