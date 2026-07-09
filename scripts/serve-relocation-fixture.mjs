@@ -13,6 +13,13 @@
  * pages/ for ssr) at the SAME relative paths the page's own `./helpers.js`
  * and `./components/child.html` imports expect — the page file itself is
  * never rewritten.
+ *
+ * Spark packages are pinned as `file:` paths to the workspace sources —
+ * NOT '*'. A tmp dir at the repo root is not a workspace MEMBER (workspaces
+ * are packages/* etc.), so `bun install` resolves '*' from the REGISTRY:
+ * the gate looked like it exercised the tree while actually exercising
+ * whatever was published (found 2026-07-09 when a local spark-html-bun fix
+ * didn't show up in the gate; serve-template-for-e2e.mjs had the same gap).
  */
 import { cpSync, existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
@@ -72,10 +79,10 @@ if (MODE === 'client' || MODE === 'prerender') {
   mkdirSync(join(tmp, 'src'), { recursive: true });
   writeFileSync(join(tmp, 'src/main.js'), `import { mount } from 'spark-html';\nmount();\n`);
 
-  const deps = { 'spark-html': '*' };
-  const devDeps = { 'spark-html-bun': '*' };
+  const deps = { 'spark-html': 'file:' + join(ROOT, 'packages/spark') };
+  const devDeps = { 'spark-html-bun': 'file:' + join(ROOT, 'packages/spark-html-bun') };
   if (MODE === 'prerender') {
-    devDeps['spark-prerender'] = '*';
+    devDeps['spark-prerender'] = 'file:' + join(ROOT, 'packages/spark-prerender');
     writeFileSync(join(tmp, 'spark.config.js'), `import prerender from 'spark-prerender/bun';\nexport default { pipeline: [prerender({ pages: ['index.html'] })] };\n`);
   }
   writeFileSync(join(tmp, 'package.json'), JSON.stringify({
@@ -106,7 +113,10 @@ if (MODE === 'client' || MODE === 'prerender') {
   writeFileSync(join(tmp, 'spark.json'), JSON.stringify({}, null, 2) + '\n');
   writeFileSync(join(tmp, 'package.json'), JSON.stringify({
     name: 'relocation-fixture-ssr', private: true, version: '0.0.0', type: 'module',
-    dependencies: { 'spark-html': '*', 'spark-ssr': '*' },
+    dependencies: {
+      'spark-html': 'file:' + join(ROOT, 'packages/spark'),
+      'spark-ssr': 'file:' + join(ROOT, 'packages/spark-ssr'),
+    },
   }, null, 2) + '\n');
 
   await $async('bun', ['install', '--no-save'], { cwd: tmp });

@@ -53,13 +53,19 @@ if (existsSync(join(tmp, '_gitignore'))) {
   rmSync(join(tmp, '_gitignore'));
 }
 
-// 3. Rewrite spark-* dependency versions to "*" for workspace linking.
+// 3. Rewrite spark-* dependency versions to file: paths at the workspace
+//    sources. NOT '*': the tmp dir is not a workspace MEMBER, so bun
+//    resolves '*' from the REGISTRY — the e2e looked like it exercised the
+//    tree while actually exercising the published packages (found
+//    2026-07-09; serve-relocation-fixture.mjs had the same gap).
 const pkgPath = join(tmp, 'package.json');
 const pkg = JSON.parse(readFileSync(pkgPath, 'utf-8'));
 for (const depKey of ['dependencies', 'devDependencies']) {
   if (pkg[depKey]) {
     for (const key of Object.keys(pkg[depKey])) {
-      if (key.startsWith('spark-')) pkg[depKey][key] = '*';
+      if (!key.startsWith('spark-')) continue;
+      const dir = join(ROOT, 'packages', key === 'spark-html' ? 'spark' : key);
+      if (existsSync(dir)) pkg[depKey][key] = 'file:' + dir;
     }
   }
 }
