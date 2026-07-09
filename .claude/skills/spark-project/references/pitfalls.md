@@ -245,8 +245,10 @@ tree-wide before components boot; fixed via retry-after-ancestor-ready.
 
 ## Meta
 
-- The v1 plan (`spark-from-here-to-v1.md`) completed and was DELETED
-  2026-07-07; the trusted program doc is `spark-improvements.md` (rewritten
-  2026-07-07) plus, for the speed program, `spark-speed-up-max.md`.
+- Program-doc lineage (deletion on completion is the convention): the v1
+  plan (deleted 2026-07-07) → `spark-improvements.md` (completed, deleted)
+  → **`improvements.md`** (written 2026-07-09, the trusted program doc).
+  Speed history stays in `spark-speed-up.md` + `spark-speed-up-max.md`,
+  both CLOSED at 1.2.0.
 - The docs#limits audit SHIPPED post-1.0 (7ba0986) — the old "don't touch
   until v1" deferral is over; the row lifecycle in spark-brain §6 governs.

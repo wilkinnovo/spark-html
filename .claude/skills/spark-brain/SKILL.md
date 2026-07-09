@@ -8,16 +8,18 @@ description: The judgment layer for the Spark monorepo — value ordering, decis
 Written 2026-07-06 by Claude Fable 5 at Wilkin's request, against spark-html
 0.27.14 / spark-ssr 0.7.2, to be followed by every model that works in this
 repo after me. `spark-project` holds the **facts** (repo map, invariants,
-pitfalls, workflows). The **sequence** lives in `spark-improvements.md` — the
-post-1.0 program (its predecessor, the v1 plan `spark-from-here-to-v1.md`,
-completed and was deleted 2026-07-07). This file holds the **judgment**:
+pitfalls, workflows). The **sequence** lives in `improvements.md` — the
+"easiest AND fastest" program, written 2026-07-09 (each predecessor — the v1
+plan, then `spark-improvements.md` — completed and was deleted; deletion on
+completion is the convention). This file holds the **judgment**:
 how to decide when the facts and the sequence are silent, conflicting, or
 tempting you toward a mistake. It is written for the ways models like us
 actually fail here — every rule below is paid for by a real shipped bug or a
 real near-miss.
 
 **Precedence:** Wilkin's explicit instruction > this manual > the active
-program doc (`spark-improvements.md`; before 2026-07-07, the v1 plan) >
+program doc (`improvements.md` since 2026-07-09; earlier
+`spark-improvements.md`, and before 2026-07-07 the v1 plan) >
 everything else. When a higher authority contradicts a lower one, say so once,
 plainly, with the tradeoff — then follow the higher authority without
 relitigating. When Wilkin overrides a rule here, record the override (see
@@ -26,7 +28,7 @@ instead of re-fighting it.
 
 **Session start ritual** (cheap, do it every time):
 1. Load `spark-project`, then this file.
-2. Read the STATUS line at the top of `spark-improvements.md`, then
+2. Read the STATUS line at the top of `improvements.md`, then
    `git log --oneline -15` to see where reality is vs. the program.
 3. Only then touch the task. Never start editing the reactivity core, the
    budget, or a release from a cold context.
@@ -200,7 +202,9 @@ directive patchers) — the single riskiest code in the org:
 - Bump `LIMIT_KB` only in the same commit as the feature it pays for, with
   the reason appended to the ledger comment. At 1.0-rc the number freezes for
   the life of 1.x; from then on, "it doesn't fit" has exactly one answer: a
-  sibling package. That rule is the pitch — defend it.
+  sibling package. That rule is the pitch — defend it. [2026-07-09: after
+  the §2 overrides the ceiling is 17.25 ALL-IN with 17.24 used — in
+  practice, core byte spends are over; new work must be core-byte-neutral.]
 
 **spark-ssr render path and refactors:**
 - `test/bench.js` before and after any render-path change; the 0.7.0 numbers
@@ -231,10 +235,11 @@ trailers, ever.
 ## 5. Scope defense
 
 Saying no is most of the job — before 1.0 and after. Standing denials (now
-recorded with their gates in `spark-improvements.md` §6), enforced by
-default: no new spark-ssr feature domains, no parser rewrite, no
-partial hydration/islands, no gestures package, no budget creep, no user-side
-build step ever.
+recorded in `improvements.md` §6), enforced by default: no new spark-ssr
+feature domains, no parser rewrite, no partial hydration/islands, no
+gestures package, no budget creep (17.25 ALL-IN — descope, never fund), no
+user-side build step ever, and the speed programs stay closed absent a
+cold-JIT lever.
 
 When a feature idea arrives — including from Wilkin, including from *you*:
 1. Run the four identity gates (§1). Report which gate it hits, if any.
@@ -312,8 +317,8 @@ skills, and the tree disagreeing until none is trusted. Future models inherit
 only what's written; judgment that stays in a context window dies with it.
 
 - **Ownership:** facts → `spark-project` (map/invariants in SKILL.md, depth
-  in references/) · sequence and status → `spark-improvements.md` (since
-  2026-07-07; the v1 plan before that) ·
+  in references/) · sequence and status → `improvements.md` (since
+  2026-07-09; before that `spark-improvements.md`, then the v1 plan) ·
   judgment and policy → this file · machine quirks and user prefs →
   `~/.claude` memory. One home per fact; the others point to it.
 - **Update in the same commit that invalidates.** Landed M1? Add a dated
@@ -338,8 +343,9 @@ only what's written; judgment that stays in a context window dies with it.
 
 The plan ends at 1.0.0. The job doesn't:
 
-- **The budget stays frozen at 15.0 KB for the life of 1.x.** Every "it's
-  only 200 bytes" is answered with a sibling package. The day the core needs
+- **The budget stays frozen — at 17.25 KB ALL-IN since the 2026-07-09
+  overrides in §2 (17.24 used: zero headroom) — for the life of 1.x.**
+  Every "it's only 200 bytes" is answered with a sibling package. The day the core needs
   a bigger budget is the day to ask whether the identity changed — that's a
   Wilkin conversation, not a version bump.
 - **Semver is the whole promise.** Everything documented is API. `__spark*`

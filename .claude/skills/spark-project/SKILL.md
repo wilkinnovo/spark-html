@@ -12,10 +12,13 @@ compilation step is out of scope by definition.** The stated mission (Wilkin,
 2026-07-06): be the *simplest* way to write SSR, prerender, and client-only
 apps while staying fast — "built for humans who want to code themselves."
 
-Knowledge here is accurate as of 2026-07-08 — **1.1.0 "the speed release"
-SHIPPED** (the krausest speed program, spark-speed-up.md, closed same day):
-CPU geomean **1.53× vanilla** (paired windowed count=15; was 3.46× at
-1.0.0). The core now has: LIS keyed reconciler, per-row identity/ext-key
+Knowledge here is accurate as of 2026-07-09 — **1.2.1 current** (a
+README-only republish of **1.2.0 "the dispatch release"**). BOTH speed
+programs are CLOSED: round 1 (spark-speed-up.md → 1.1.0) took CPU geomean
+3.46× → 1.53× vanilla; round 2 (spark-speed-up-max.md → 1.2.0, definitive
+paired count=15) landed **1.496× with first-paint 0.86× — beats vanilla**.
+The residual is cold-JIT first-run cost — do not reopen without a lever for
+that (spark-speed-up-max.md §9). The core now has: LIS keyed reconciler, per-row identity/ext-key
 skip gates, fast no-`with` expression variants (capture-derived destructure
 prelude + ReferenceError self-heal), clone recipes (`stampTree` — analysis
 cached on the template, static marking at stamp time), **live-node row
@@ -26,8 +29,8 @@ descent — `block.live`/`patchLive`), and **shared per-template listeners**
 2026-07-08 (15.0 → 16.0, speed program), 2026-07-09 (16.0 → 16.5, F1 stop
 rule), and finally to an **ALL-IN 17.25 ceiling covering the whole speed-max
 program** (Wilkin, 2026-07-09; exceed ⇒ descope, never fund) — now 17.24
-used; frozen for the life of 1.x. **Speed-max F1+F2+F3 landed (b229c2c,
-99b53f5 + the F3 commit, 2026-07-09, unreleased); F4 clear-wipe DESCOPED
+used; frozen for the life of 1.x. **Speed-max F1+F2+F3 shipped in 1.2.0
+(6f12dd1, 2026-07-09, registry-verified); F4 clear-wipe DESCOPED
 (+0.08 KB didn't fit — design recorded in patchEach at the descope site):**
 F1 = template dependency dispatch —
 shallow keyed rows dispatch dirty keys as column sweeps over live-recipe
@@ -86,8 +89,9 @@ verified in the tree). M4 and the 1.0.0 release are complete.
 
 This skill holds the **facts**. The judgment layer — value ordering, decision
 gates, change protocols — is the `spark-brain` skill; load it alongside this
-one. The open work sequence is `spark-improvements.md` at repo root (the v1
-plan file served its purpose and was deleted 2026-07-07).
+one. The open work sequence is `improvements.md` at repo root (the
+"easiest AND fastest" program, written 2026-07-09; its predecessors — the
+v1 plan, then `spark-improvements.md` — each completed and were deleted).
 
 ## Repo map
 
@@ -103,19 +107,22 @@ packages/prettier-plugin-spark/
 examples/                    basic, jsimports, no-build, pinterest, tabtube (tabtube = the big real-world one)
 website/                     spark-html.dev site; docs live in website/public/components/docs-body.html
                              (concept/API reference) and components/ssr.html (spark-ssr guide).
-                             website/public/llms.txt status/plan: spark-improvements.md §2 E3.
+                             website/public/llms.txt is comprehensive by design (0345dd9).
 e2e/                         Playwright (thin — 2 spec files / 7 tests)
 scripts/size-check.mjs       THE gzip budget gate (part of npm test)
 graphify-out/                knowledge graph of this repo — `graphify query "<question>"` works
-spark-improvements.md        the post-1.0 improvement program (rewritten 2026-07-07, trusted; untracked
-                             like every root .md except README — items re-enter spark-brain §5 gates at
-                             execution. The v1 plan spark-from-here-to-v1.md is done and deleted)
+improvements.md              the ACTIVE program: "easiest AND fastest", 5 items (written 2026-07-09;
+                             untracked like every root .md except README — items re-enter spark-brain
+                             §5 gates at execution. Predecessors v1 plan + spark-improvements.md:
+                             each completed, deleted)
 ```
 
 ## Hard invariants — violating any of these has caused real shipped bugs
 
 1. **Gzip budget is law.** `scripts/size-check.mjs` gates the core at
-   15.0 KB (raised once at M1, now frozen for the life of 1.x).
+   **17.25 KB ALL-IN** (history 13.5 → 15.0 → 16.0 → 16.5 → 17.25, each
+   step Wilkin-itemized; 17.24 used — effectively ZERO headroom, frozen for
+   the life of 1.x: doesn't fit ⇒ descope or sibling package, never fund).
    Dedup is gzip-neutral; *unique entropy* (new identifiers, strings, logic)
    is what costs. Measure every candidate edit empirically (esbuild
    bundle+minify+gzipSync) — intuition is unreliable.
@@ -183,5 +190,6 @@ See pitfalls.md "Fixed at v1-prep".)
 - `references/pitfalls.md` — the full bug history with root causes; what each
   one taught; browser-testing setup on this machine.
 
-For the roadmap: read `spark-improvements.md` at repo root — the post-1.0
-improvement program (untracked design note, like all root .md except README).
+For the roadmap: read `improvements.md` at repo root — the active
+"easiest AND fastest" program (untracked design note, like all root .md
+except README).
