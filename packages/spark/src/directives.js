@@ -25,7 +25,7 @@
  * Internal-but-exported (called from index.js): patchIf, patchEach,
  * patchAwait, enterNode. M4.1 freeze review will bucket each.
  */
-import { compileExpr, runExpr } from './expr.js';
+import { compileExpr, runExpr, parseTemplate } from './expr.js';
 import { REACTIVE_RAW, setsIntersect } from './reactivity.js';
 import {
   capture,
@@ -33,8 +33,11 @@ import {
   closestComponent,
   ELEMENT_NODE, TEXT_NODE,
   cloneTemplateNodes, insertClones, renderClones,
-  walkNode, patchLive, hydrateBlockImports, pushPrerenderWait,
+  walkNode, patchLive, patchPoint, spill, hydrateBlockImports, pushPrerenderWait,
 } from './index.js';
+
+// Anything that makes an each-row "deep" (own machinery in the subtree).
+const DEEP_SEL = '[name],[import],[each],[if],[else-if],[else],[await]';
 // destroyComponent moved with the rest of the component lifecycle (M3.1).
 // Imported directly from component.js so index.js doesn't have to re-export
 // it: this is the only directives.js consumer of destroyComponent.
@@ -390,8 +393,8 @@ export function patchAwait(el, scope) {
 // walkBlock's rowForce is what keeps item-driven row walks un-gated.
 function makeLoopScope(box) {
   const record = (name) => {
-    if (capture.set !== null) capture.set.add(name);
-    if (capture.sink !== null) capture.sink.add(name);
+    if (capture.set) capture.set.add(name);
+    if (capture.sink) capture.sink.add(name);
   };
   const desc = {
     [box.v]: { get: () => (record(box.v), box.item), set: () => {}, configurable: true },
@@ -478,20 +481,73 @@ function lisMembers(seq) {
 // `sel` change re-evaluates only the one :class binding per row that reads
 // it, not every text node.
 function walkBlock(block, force) {
+  // Graph mode (shallow live rows): rows carry NO per-row dep state — any
+  // walk that reaches a live row is ungated by definition (item-driven,
+  // forced, or a full pass); external-key gating happens at the anchor via
+  // the dependency masks (sweepEach). So: patch the recipe points directly,
+  // no sink, no per-node capture, no per-row Sets.
+  if (block.live) return patchLive(block.live, block.scope, 1);
   const prevSink = capture.sink;
   const prevForce = capture.rowForce;
   const ext = block.ext || (block.ext = new Set());
   capture.sink = ext;
   if (force) capture.rowForce = 1;
   try {
-    // Shallow row with a stamp-time recipe: patch its dynamic nodes directly
-    // (rowForce lifts per-node dep gating when the row's own item changed).
-    if (block.live) patchLive(block.live, block.scope);
-    else for (const nd of block.nodes) walkNode(nd, block.scope);
+    for (const nd of block.nodes) walkNode(nd, block.scope);
   } finally {
     capture.sink = prevSink;
     capture.rowForce = prevForce;
-    if (prevSink) for (const k of ext) prevSink.add(k);
+    spill(ext, prevSink);
+  }
+}
+
+// ── Template dependency dispatch — column sweeps for shallow keyed rows ──
+// The capture system already LEARNS every binding's key set (fn.__keys,
+// global per expression source string); all rows of one keyed each share
+// one template, so those are TEMPLATE-level facts — there is nothing
+// per-row to store or intersect. A dirty pass asks each dynamic point of
+// the template ONCE (via any block's stamped plan/tpl, all shared) whether
+// its observed keys intersect the dirty set — pinned/unobserved
+// expressions are always hot — then dispatches straight to that point in
+// every row: no tree walk, no per-row Sets, no per-node set algebra. This
+// is the compiler's precomputed binding graph, recovered by observation at
+// runtime (spark-speed-up-max.md §0/V1). Freshness is structural: __keys
+// is read live, so a heal (missed ternary branch → union re-capture) is
+// honored by the very next sweep; the healed key reaches the anchor's own
+// gate through the still-active sink (every sweep runs inside the anchor's
+// withSink). Loop-var names are recorded in __keys but never appear as
+// scope dirty keys except by user-level shadowing — where a spurious
+// re-eval is safe, same as today's per-node gating.
+const gHot = []; // scratch — sweeps never nest (shallow rows can't contain anchors)
+function sweepEach(el) {
+  const blocks = el.__sparkEachBlocks;
+  if (!blocks.length) return;
+  const dk = capture.dirtyKeys;
+  const hit = (fn) => {
+    const ks = fn.__fastable === false ? null : fn.__keys;
+    if (!ks) return 1;
+    for (const k of dk) if (ks.has(k)) return 1;
+    return 0;
+  };
+  const live0 = blocks[0].live;
+  gHot.length = 0;
+  for (let j = 0; j < live0.length; j++) {
+    const nd = live0[j];
+    let hot = 0;
+    if (nd.nodeType === TEXT_NODE) {
+      for (const seg of parseTemplate(nd.__sparkTpl)) if (typeof seg === 'object' && hit(seg.fn)) { hot = 1; break; }
+    } else {
+      for (const op of nd.__sparkPlan) {
+        if (op.kind === 3) { for (const seg of parseTemplate(op.tpl)) if (typeof seg === 'object') { if (hit(seg.fn)) { hot = 1; break; } } }
+        else if (hit(op.fn)) hot = 1;
+        if (hot) break;
+      }
+    }
+    if (hot) gHot.push(j);
+  }
+  for (const b of blocks) {
+    const live = b.live, scope = b.scope;
+    for (let x = 0; x < gHot.length; x++) patchPoint(live[gHot[x]], scope);
   }
 }
 
@@ -512,10 +568,8 @@ export function patchEach(el, scope) {
     el.__sparkEachIndexVar = match[2] || null;
     el.__sparkEachArrayExpr = match[3].trim();
     el.__sparkEachArrayFn = compileExpr(el.__sparkEachArrayExpr);
-    el.__sparkEachKeyExpr = el.getAttribute('key')
-      ? el.getAttribute('key').trim()
-      : null;
-    el.__sparkEachKeyFn = el.__sparkEachKeyExpr ? compileExpr(el.__sparkEachKeyExpr) : null;
+    const ke = el.__sparkEachKeyExpr = (el.getAttribute('key') || '').trim() || null;
+    el.__sparkEachKeyFn = ke && compileExpr(ke);
 
     el.__sparkEachTemplate = cloneTemplateNodes(el);
     // Template-level teardown fact, computed once: a row with no component
@@ -526,8 +580,7 @@ export function patchEach(el, scope) {
     let deep = 0;
     for (const t of el.__sparkEachTemplate) {
       if (t.nodeType !== ELEMENT_NODE) continue;
-      if ((t.matches && t.matches('[name],[import],[each],[if],[else-if],[else],[await]'))
-        || (t.querySelector && t.querySelector('[name],[import],[each],[if],[else-if],[else],[await]'))) {
+      if ((t.matches && t.matches(DEEP_SEL)) || (t.querySelector && t.querySelector(DEEP_SEL))) {
         deep = 1;
         break;
       }
@@ -560,6 +613,10 @@ export function patchEach(el, scope) {
   const arrKeysPrior = el.__sparkEachArrKeys;
   if (capture.dirtyMode && !capture.rowForce && arrKeysPrior
     && !setsIntersect(arrKeysPrior, capture.dirtyKeys)) {
+    // Shallow live rows: column dispatch through the template dependency
+    // graph — no per-block set algebra, no row walks. Deep rows keep the
+    // per-block ext gating.
+    if (!el.__sparkEachDeepRows) { sweepEach(el); return; }
     for (const b of el.__sparkEachBlocks) {
       if (b.ext && setsIntersect(b.ext, capture.dirtyKeys)) walkBlock(b);
     }
@@ -577,7 +634,7 @@ export function patchEach(el, scope) {
     arr = runExpr(el.__sparkEachArrayFn, arrayExpr, scope);
   } finally {
     capture.set = prevArrSet;
-    if (prevArrSet) for (const k of arrKeys) prevArrSet.add(k);
+    spill(arrKeys, prevArrSet);
   }
   if (!Array.isArray(arr)) {
     // null/undefined is a normal "loading" state; warn only for a real
@@ -652,8 +709,10 @@ export function patchEach(el, scope) {
       // with a key write in one tick forces a full pass (flush
       // classification), so the identity test can't go stale.
       if (capture.dirtyMode) {
-        force = !block.ext || block.raw !== raw || (idxName && box.i !== i);
-        walk = force || setsIntersect(block.ext, capture.dirtyKeys);
+        // Live rows have no ext set: identity/index decide the walk, and
+        // external-key refreshes ride the post-reconcile sweep instead.
+        force = block.raw !== raw || (idxName && box.i !== i) || !(block.live || block.ext);
+        walk = force || (!block.live && setsIntersect(block.ext, capture.dirtyKeys));
       } else {
         walk = !capture.dirtyItems || capture.dirtyItems.has(raw);
       }
@@ -712,14 +771,24 @@ export function patchEach(el, scope) {
       // template) collect their dynamic nodes at stamp time; walkBlock then
       // patches that list instead of walking the row's DOM.
       const live = el.__sparkEachDeepRows ? 0 : [];
-      block = { key: e.key, nodes, box, scope: loopScope, raw: e.raw, ext: new Set(), live };
-      const prevSink = capture.sink;
-      capture.sink = block.ext;
-      try {
-        renderClones(templateNodes, insertAfter, nodes, loopScope, live);
-      } finally {
-        capture.sink = prevSink;
-        if (prevSink) for (const k of block.ext) prevSink.add(k);
+      block = { key: e.key, nodes, box, scope: loopScope, raw: e.raw, ext: live ? 0 : new Set(), live };
+      if (live) {
+        // Graph mode: no per-block ext Set. The anchor's very first row
+        // (nothing rendered before it, this pass or ever) renders capturing
+        // under the anchor's own sink — seeding fn.__keys and the anchor's
+        // key set; every later row replays through patchPoint (renderClones
+        // fast path) — the capture tax is paid once per TEMPLATE, not per
+        // row.
+        renderClones(templateNodes, insertAfter, nodes, loopScope, live, i || oldBlocks.length);
+      } else {
+        const prevSink = capture.sink;
+        capture.sink = block.ext;
+        try {
+          renderClones(templateNodes, insertAfter, nodes, loopScope, live);
+        } finally {
+          capture.sink = prevSink;
+          spill(block.ext, prevSink);
+        }
       }
     }
     newBlocks[i] = block;
@@ -739,4 +808,11 @@ export function patchEach(el, scope) {
   }
 
   el.__sparkEachBlocks = newBlocks;
+
+  // A reconcile tick can carry external-key writes too (rows = next AND
+  // selected = id in one microtask). Identity-skipped rows never walked, so
+  // dispatch the external keys over the graph; it exits for free when no
+  // registered key is dirty, and re-evaluating just-created rows is an
+  // idempotent compare-gated no-op.
+  if (capture.dirtyMode && !el.__sparkEachDeepRows) sweepEach(el);
 }

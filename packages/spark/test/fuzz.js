@@ -406,6 +406,103 @@ templates.push({
   },
 });
 
+// 19: branch-divergent row deps — :class reads `theme` ONLY while its row is
+// selected, so the first capture never sees it; selecting later heals the
+// fast fn (ReferenceError → union re-capture → mask/dep growth), and a theme
+// change after that must still re-render the selected row. Never staleness.
+templates.push({
+  gen(rng, id) {
+    const name = `fz${id}`;
+    let nid = 1;
+    const mk = () => ({ id: nid++, label: pick(rng, ['aa', 'bb', 'cc']) });
+    const rows = Array.from({ length: Math.floor(rng() * 5) + 2 }, mk);
+    const src = (rowsJson, selVal, themeVal) => `<template each="r in rows" key="r.id"><div :class="r.id === sel ? theme : 'base'"><i>{r.label}</i></div></template><script>let rows = ${rowsJson}; let sel = ${selVal}; let theme = ${JSON.stringify(themeVal)};</script>`;
+    const live = (el) => [...el.__sparkScope.rows];
+    return { name, source: src(JSON.stringify(rows), 0, 'on'), mutators: [
+      { desc: 'select', apply: (el) => { const rows = el.__sparkScope.rows; const nv = rows.length ? rows[Math.floor(rng() * rows.length)].id : 0; setScopeVar(el, 'sel', nv); return { sel: nv }; } },
+      { desc: 'theme', apply: (el) => { const nv = pick(rng, ['t-a', 't-b', 't-c']); setScopeVar(el, 'theme', nv); return { theme: nv }; } },
+      { desc: 'swap extremes', apply: (el) => { const rs = live(el); if (rs.length > 1) { const t = rs[0]; rs[0] = rs[rs.length - 1]; rs[rs.length - 1] = t; } setScopeVar(el, 'rows', rs); return { rows: rs }; } },
+      { desc: 'replace one immutably', apply: (el) => { const rs = live(el); if (rs.length) { const j = Math.floor(rng() * rs.length); rs[j] = { id: rs[j].id, label: pick(rng, ['zz', 'ww']) }; } setScopeVar(el, 'rows', rs); return { rows: rs }; } },
+      { desc: 'remove one', apply: (el) => { const rs = live(el); if (rs.length) rs.splice(Math.floor(rng() * rs.length), 1); setScopeVar(el, 'rows', rs); return { rows: rs }; } },
+    ], schema: { rows, sel: 0, theme: 'on' } };
+  },
+  rebuild(state, name) {
+    return { name, source: `<template each="r in rows" key="r.id"><div :class="r.id === sel ? theme : 'base'"><i>{r.label}</i></div></template><script>let rows = ${JSON.stringify(state.rows)}; let sel = ${state.sel}; let theme = ${JSON.stringify(state.theme)};</script>` };
+  },
+});
+
+// 20: >30 external keys in one row template — the dependency-mask registry
+// overflows (wide) and the anchor falls back to full-row refresh. Results
+// must stay byte-identical; overflow may only cost speed, never an update.
+const wideSum = Array.from({ length: 32 }, (_, i) => `k${i}`).join('+');
+const wideSrc = (rowsJson, kdecl) => `<template each="r in rows" key="r.id"><div><b>{r.id}</b><i>{${wideSum}}</i></div></template><script>let rows = ${rowsJson}; ${kdecl}</script>`;
+templates.push({
+  gen(rng, id) {
+    const name = `fz${id}`;
+    let nid = 1;
+    const ks = Array.from({ length: 32 }, () => Math.floor(rng() * 9));
+    const mk = () => ({ id: nid++ });
+    const rows = Array.from({ length: Math.floor(rng() * 3) + 1 }, mk);
+    const live = (el) => [...el.__sparkScope.rows];
+    return { name, source: wideSrc(JSON.stringify(rows), ks.map((v, i) => `let k${i} = ${v};`).join(' ')), mutators: [
+      { desc: 'bump k', apply: (el) => { const i = Math.floor(rng() * 32); const nv = Math.floor(rng() * 9); setScopeVar(el, 'k' + i, nv); return { ['k' + i]: nv }; } },
+      { desc: 'insert row', apply: (el) => { const rs = live(el); rs.splice(Math.floor(rng() * (rs.length + 1)), 0, mk()); setScopeVar(el, 'rows', rs); return { rows: rs }; } },
+      { desc: 'remove row', apply: (el) => { const rs = live(el); if (rs.length) rs.splice(Math.floor(rng() * rs.length), 1); setScopeVar(el, 'rows', rs); return { rows: rs }; } },
+    ], schema: { rows, ...Object.fromEntries(ks.map((v, i) => ['k' + i, v])) } };
+  },
+  rebuild(state, name) {
+    return { name, source: wideSrc(JSON.stringify(state.rows), Array.from({ length: 32 }, (_, i) => `let k${i} = ${state['k' + i]};`).join(' ')) };
+  },
+});
+
+// 21: a PINNED expression in keyed rows ('=' inside a string defeats the
+// fast-variant scan by design, so it has no observed key set) — gated passes
+// must treat its point as always-hot; sel churn and reorders never strand it.
+templates.push({
+  gen(rng, id) {
+    const name = `fz${id}`;
+    let nid = 1;
+    const mk = () => ({ id: nid++, label: pick(rng, ['aa', 'bb', 'cc']) });
+    const rows = Array.from({ length: Math.floor(rng() * 5) + 2 }, mk);
+    const src = (rowsJson, selVal) => `<template each="r in rows" key="r.id"><div :class="r.id === sel ? 'on' : 'off'"><i>{r.label + '='}</i></div></template><p>{sel}</p><script>let rows = ${rowsJson}; let sel = ${selVal};</script>`;
+    const live = (el) => [...el.__sparkScope.rows];
+    return { name, source: src(JSON.stringify(rows), 0), mutators: [
+      { desc: 'select', apply: (el) => { const rows = el.__sparkScope.rows; const nv = rows.length ? rows[Math.floor(rng() * rows.length)].id : 0; setScopeVar(el, 'sel', nv); return { sel: nv }; } },
+      { desc: 'replace one immutably', apply: (el) => { const rs = live(el); if (rs.length) { const j = Math.floor(rng() * rs.length); rs[j] = { id: rs[j].id, label: pick(rng, ['zz', 'ww']) }; } setScopeVar(el, 'rows', rs); return { rows: rs }; } },
+      { desc: 'shuffle', apply: (el) => { const rs = live(el); for (let j = rs.length - 1; j > 0; j--) { const k = Math.floor(rng() * (j + 1)); const t = rs[j]; rs[j] = rs[k]; rs[k] = t; } setScopeVar(el, 'rows', rs); return { rows: rs }; } },
+      { desc: 'deep-mutate label', apply: (el) => { const rows = el.__sparkScope.rows; if (rows.length) rows[Math.floor(rng() * rows.length)].label = pick(rng, ['mm', 'nn']); return { rows: [...el.__sparkScope.rows] }; } },
+    ], schema: { rows, sel: 0 } };
+  },
+  rebuild(state, name) {
+    return { name, source: `<template each="r in rows" key="r.id"><div :class="r.id === sel ? 'on' : 'off'"><i>{r.label + '='}</i></div></template><p>{sel}</p><script>let rows = ${JSON.stringify(state.rows)}; let sel = ${state.sel};</script>` };
+  },
+});
+
+// 22: same-tick mixes — immutable replacement + external-key write in ONE
+// microtask (reconcile and gated dispatch in a single flush), and a deep
+// mutation + key write (classified as a full pass). The dispatch families
+// must compose without dropping either update. `theme` sits in BOTH :class
+// branches so every row tracks it unconditionally.
+templates.push({
+  gen(rng, id) {
+    const name = `fz${id}`;
+    let nid = 1;
+    const mk = () => ({ id: nid++, label: pick(rng, ['aa', 'bb', 'cc']) });
+    const rows = Array.from({ length: Math.floor(rng() * 5) + 2 }, mk);
+    const src = (rowsJson, selVal, themeVal) => `<template each="r in rows" key="r.id"><div :class="r.id === sel ? 'on ' + theme : theme"><i>{r.label}</i></div></template><script>let rows = ${rowsJson}; let sel = ${selVal}; let theme = ${JSON.stringify(themeVal)};</script>`;
+    const live = (el) => [...el.__sparkScope.rows];
+    return { name, source: src(JSON.stringify(rows), 0, 'th0'), mutators: [
+      { desc: 'replace+sel same tick', apply: (el) => { const rs = live(el); let nv = 0; if (rs.length) { const j = Math.floor(rng() * rs.length); rs[j] = { id: rs[j].id, label: pick(rng, ['zz', 'ww']) }; nv = rs[Math.floor(rng() * rs.length)].id; } setScopeVar(el, 'rows', rs); setScopeVar(el, 'sel', nv); return { rows: rs, sel: nv }; } },
+      { desc: 'deep+sel same tick', apply: (el) => { const rows = el.__sparkScope.rows; let nv = 0; if (rows.length) { rows[Math.floor(rng() * rows.length)].label = 'mx'; nv = rows[Math.floor(rng() * rows.length)].id; } setScopeVar(el, 'sel', nv); return { rows: [...el.__sparkScope.rows], sel: nv }; } },
+      { desc: 'reverse+theme same tick', apply: (el) => { const rs = live(el).reverse(); const nv = pick(rng, ['th1', 'th2']); setScopeVar(el, 'rows', rs); setScopeVar(el, 'theme', nv); return { rows: rs, theme: nv }; } },
+      { desc: 'select', apply: (el) => { const rows = el.__sparkScope.rows; const nv = rows.length ? rows[Math.floor(rng() * rows.length)].id : 0; setScopeVar(el, 'sel', nv); return { sel: nv }; } },
+    ], schema: { rows, sel: 0, theme: 'th0' } };
+  },
+  rebuild(state, name) {
+    return { name, source: `<template each="r in rows" key="r.id"><div :class="r.id === sel ? 'on ' + theme : theme"><i>{r.label}</i></div></template><script>let rows = ${JSON.stringify(state.rows)}; let sel = ${state.sel}; let theme = ${JSON.stringify(state.theme)};</script>` };
+  },
+});
+
 // ── Run one scenario ───────────────────────────────────────────────────
 async function runScenario(rng, seed, id) {
   const tpl = pick(rng, templates);

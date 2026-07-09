@@ -11,10 +11,14 @@ import { gzipSync } from 'node:zlib';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
-const LIMIT_KB = 16.0; // raised 15.0 → 16.0 on 2026-07-08 (Wilkin, one-time,
-// itemized, RE-FROZEN for the remaining life of 1.x) to fund the speed
-// program (spark-speed-up.md): making spark competitive on the krausest
-// js-framework-benchmark is part of the mission ("simplest AND fastest").
+const LIMIT_KB = 16.5; // raised 16.0 → 16.5 on 2026-07-09 (Wilkin, final,
+// re-frozen for the life of 1.x) to fund the spark-speed-up-max program's
+// template-dependency dispatch (F1–F3): the capture-observed binding graph
+// hoisted to template level — column sweeps instead of per-row Sets and
+// walks. +0.26 net at F1 after three design iterations of golf (ledger in
+// spark-speed-up-max.md §9); the raise buys the remaining F2/F3 headroom.
+// Previous raise: 15.0 → 16.0 on 2026-07-08 (Wilkin, itemized) funding the
+// first speed program (spark-speed-up.md) — "simplest AND fastest".
 // Speed-program ledger (measured per gate):
 //   G1 loop-scope proto-chain + live walker      −0.02 KB (14.66 → 14.64)
 //   G2 keyed LIS reconciler + row identity-skip  +0.41 KB (14.64 → 15.05)

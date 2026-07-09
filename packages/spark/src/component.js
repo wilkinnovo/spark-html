@@ -278,7 +278,6 @@ function makeScope(rawCode, componentEl, props = {}) {
           if (child.nodeType !== ELEMENT_NODE || !child.__sparkNamed || !child.__sparkScope) continue;
           const rps = child.__sparkReactiveProps;
           if (!rps) continue;
-          if (!rps) continue;
           for (const rp of rps) {
             if (!capture.dirtyMode || setsIntersect(rp.deps, capture.dirtyKeys)) {
               child.__sparkScope[rp.name] = runExpr(rp.fn, rp.code, scope);

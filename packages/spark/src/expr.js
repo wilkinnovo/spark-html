@@ -120,7 +120,11 @@ export function runExpr(fn, code, scope) {
       fn.__fast = null; // missed-branch key — relearn below, rebuild after
     }
   }
-  if (fn.__fastable && (capture.set !== null || capture.sink !== null)) {
+  // `__fast === null` = a heal in progress (tier 1 just dropped it): re-learn
+  // even with NO active capture context — graph-mode dispatch (sweepEach /
+  // patchPoint) evaluates capture-free, and without this the with-version
+  // would run forever and the key union the sweeps read would never grow.
+  if (fn.__fastable && (capture.set || capture.sink || fn.__fast === null)) {
     const prev = capture.set;
     const mine = fn.__keys || (fn.__keys = new Set());
     capture.set = mine;

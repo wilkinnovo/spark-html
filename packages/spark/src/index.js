@@ -580,10 +580,14 @@ export const capture = { set: null, sink: null, dirtyMode: false, dirtyKeys: nul
 // row walk, it has no recorded deps yet (first sight), it's untracked
 // (deps === null), or one of its deps changed.
 export function shouldEval(node) {
-  if (!capture.dirtyMode || capture.rowForce) return true;
-  const deps = node.__sparkReadKeys;
-  if (deps === undefined || deps === null) return true;
-  return setsIntersect(deps, capture.dirtyKeys);
+  return !capture.dirtyMode || capture.rowForce
+    || node.__sparkReadKeys == null || setsIntersect(node.__sparkReadKeys, capture.dirtyKeys);
+}
+
+// Merge a dep set upward (no-op without a destination) — the one-liner the
+// capture plumbing repeats at every propagation seam.
+export function spill(set, into) {
+  if (into) for (const k of set) into.add(k);
 }
 
 // Run `fn(a, b)` (which evaluates a binding), recording every scope key it
@@ -594,8 +598,7 @@ export function shouldEval(node) {
 export function withCapture(node, fn, a, b) {
   const prev = capture.set;
   let set = node.__sparkReadKeys;
-  if (set == null) set = new Set();
-  else set.clear();
+  set == null ? set = new Set() : set.clear();
   capture.set = set;
   try {
     return fn(a, b);
@@ -646,7 +649,7 @@ export function withSink(node, fn, a, b) {
     }
     // Propagate to an enclosing block so a nested loop's deps count for the
     // outer one too.
-    if (prev) for (const k of set) prev.add(k);
+    spill(set, prev);
     node.__sparkReadKeys = set.size ? set : null;
   }
 }
@@ -858,12 +861,17 @@ export function insertClones(templateNodes, cursor, out, live) {
 // Full first render of an if/each block: insert the clones, THEN walk them
 // (a nested if/else chain needs its followers present when its head first
 // runs), fire the enter hook, and resolve any [import] placeholders (async).
-export function renderClones(templateNodes, cursor, out, scope, live) {
+export function renderClones(templateNodes, cursor, out, scope, live, fast) {
   insertClones(templateNodes, cursor, out, live);
   // Shallow keyed rows arrive with a stamp-time recipe (live): patch those
   // nodes directly, skipping the tree descent — no anchors, components, or
-  // imports can exist there (the caller guarantees it).
-  if (live) patchLive(live, scope);
+  // imports can exist there (the caller guarantees it). `fast` = the anchor
+  // is seeded (graph mode): the template's dependency facts are already
+  // known from row 0, so initial values go through patchPoint — no per-node
+  // withCapture, no per-node dep Sets. Scope-trap recording into the active
+  // sink still happens on every read, keeping the anchor's own key set
+  // (the walkNode gate) a superset of everything its rows read.
+  if (live) patchLive(live, scope, fast);
   else for (const clone of out) walkNode(clone, scope);
   for (const clone of out) enterNode(clone);
   if (!live) hydrateBlockImports(out, scope);
@@ -937,19 +945,12 @@ export function walkNode(node, scope, isRoot = false) {
   // sink) changed — so an unrelated update no longer re-reconciles a 1000-row
   // loop. Deep mutations (todos.push) take the full-walk path, so they still
   // reconcile correctly.
-  if (kind === 3) {
+  // 4 = <template if="expr"> conditional chain head (content genuinely enters
+  // and leaves the DOM; else-if/else siblings are driven from here);
+  // 6 = <template await="promise"> async block (loading → then/catch).
+  if (kind === 3 || kind === 4 || kind === 6) {
     if (capture.dirtyMode && !shouldEval(node)) return;
-    withSink(node, patchEach, node, scope);
-    return;
-  }
-
-  // <template if="expr"> — conditional block. Content is inserted after
-  // the template when truthy, removed when falsy. Unlike :hidden, the
-  // nodes genuinely leave the DOM. May be followed by <template else-if>
-  // / <template else> siblings — the whole chain is driven from this head.
-  if (kind === 4) {
-    if (capture.dirtyMode && !shouldEval(node)) return;
-    withSink(node, patchIf, node, scope);
+    withSink(node, kind === 3 ? patchEach : kind === 4 ? patchIf : patchAwait, node, scope);
     return;
   }
 
@@ -964,16 +965,6 @@ export function walkNode(node, scope, isRoot = false) {
       );
     }
     if (!isRoot) node.__sparkStatic = 1;
-    return;
-  }
-
-  // <template await="promise"> — async block. Shows its loading content while
-  // the promise is pending, then swaps to <template then> (await = resolved
-  // value) or <template catch> (await = error). Like if/each, the anchor drives
-  // dynamic structure and is gated by the keys it reads in dirty mode.
-  if (kind === 6) {
-    if (capture.dirtyMode && !shouldEval(node)) return;
-    withSink(node, patchAwait, node, scope);
     return;
   }
 
@@ -1139,7 +1130,7 @@ function analyzeElement(el) {
       // change vs input: discrete controls fire `change`, text fires `input`.
       const eventName = mode === 'value' || mode === 'number' || mode === 'text' ? 'input' : 'change';
       binds.push({ name, expr, mode, eventName, writeStmt: `${expr} = __val__` });
-      plan.push({ kind: 'bind', mode, expr, fn: compileExpr(expr) });
+      plan.push({ kind: 1, mode, expr, fn: compileExpr(expr) });
       live = 1;
       continue;
     }
@@ -1170,7 +1161,7 @@ function analyzeElement(el) {
     // :disabled="count >= 10" — dynamic attribute, evaluated each patch.
     if (name.startsWith(':')) {
       const realAttr = name.slice(1);
-      const op = { kind: 'attr', name, realAttr, expr: value, fn: compileExpr(value) };
+      const op = { kind: 2, name, realAttr, expr: value, fn: compileExpr(value) };
       // `:class` MERGES with the static class instead of replacing it, so
       // `<div class="card" :class="state">` keeps `card`. Capture the static
       // class now (before the first :class run overwrites the attribute).
@@ -1184,7 +1175,7 @@ function analyzeElement(el) {
     // while the braces are still present (after the first interpolation the
     // live value has none, which is why this is cached, not re-read).
     if (value.includes('{')) {
-      plan.push({ kind: 'interp', name, tpl: value });
+      plan.push({ kind: 3, name, tpl: value });
       live = 1;
     }
   }
@@ -1202,8 +1193,30 @@ function analyzeElement(el) {
 // Patch a stamp-time live-node recipe: the row's dynamic nodes, directly —
 // no tree descent, no per-node static/kind checks. Per-node dep gating
 // still applies inside patchText/patchElement.
-export function patchLive(live, scope) {
-  for (const nd of live) (nd.nodeType === TEXT_NODE ? patchText : patchElement)(nd, scope);
+export function patchLive(live, scope, fast) {
+  for (const nd of live) {
+    if (fast) patchPoint(nd, scope);
+    else (nd.nodeType === TEXT_NODE ? patchText : patchElement)(nd, scope);
+  }
+}
+
+// Ungated, non-capturing single-point patch — the column-dispatch and
+// fast-create primitive (graph mode). Dependencies are TEMPLATE-level facts
+// here (the anchor's masks, built from fn.__keys); per-node gating and
+// recording would only re-derive what the template already knows.
+// Scope-ref invariant: handler/bind listeners read __sparkScopeRef at fire
+// time; a block's scope identity only changes on the box.scope rebuild,
+// which forces a FULL row pass through this same path — a masked sweep may
+// skip plan-less listener elements precisely because of that coupling.
+export function patchPoint(nd, scope) {
+  if (nd.nodeType === TEXT_NODE) {
+    const next = interpolate(nd.__sparkTpl, scope);
+    if (nd.textContent !== next) nd.textContent = next;
+  } else {
+    nd.__sparkScopeRef = scope;
+    const plan = nd.__sparkPlan;
+    if (plan && plan.length) runElementPlan(nd, scope);
+  }
 }
 
 // Wiring half — the per-INSTANCE side effects the analysis described:
@@ -1261,7 +1274,7 @@ function buildElementPlan(el) {
 
 function runElementPlan(el, scope) {
   for (const op of el.__sparkPlan) {
-    if (op.kind === 'bind') {
+    if (op.kind === 1) {
       const current = runExpr(op.fn, op.expr, scope);
       const str = current == null ? '' : String(current);
       if (op.mode === 'checked') {
@@ -1280,7 +1293,7 @@ function runElementPlan(el, scope) {
         // value / number / select
         if (el.value !== str) el.value = str;
       }
-    } else if (op.kind === 'attr') {
+    } else if (op.kind === 2) {
       let result;
       try {
         result = op.fn(scope);
@@ -1305,11 +1318,16 @@ function runElementPlan(el, scope) {
         if (sc !== undefined) {
           str = (sc + ' ' + str).trim();
         }
-        if (el.getAttribute(op.realAttr) !== str) el.setAttribute(op.realAttr, str);
+        // `?? ''`: an ABSENT attribute equals an empty result — writing
+        // class="" onto every row that evaluates to '' is a style
+        // invalidation storm (1,000 setAttribute per keyed sweep) and
+        // breaks markup parity with no-framework HTML. Never materialize
+        // an empty attribute that isn't there.
+        if ((el.getAttribute(op.realAttr) ?? '') !== str) el.setAttribute(op.realAttr, str);
       }
-    } else if (op.kind === 'interp') {
+    } else {
       const next = interpolate(op.tpl, scope);
-      if (el.getAttribute(op.name) !== next) el.setAttribute(op.name, next);
+      if ((el.getAttribute(op.name) ?? '') !== next) el.setAttribute(op.name, next);
       // The value PROPERTY diverges from the attribute once the user has
       // typed — sync it independently so programmatic clears reach the UI.
       if (op.name === 'value' && 'value' in el && el.value !== next) {
