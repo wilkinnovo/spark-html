@@ -1,0 +1,68 @@
+name: speed-gate
+
+# Nightly promise harness (improvements.md I2b/I2c): the published speed and
+# convergence claims, enforced red. Nightly, not per-PR — shared-runner
+# variance makes paired ratios the only trustworthy currency, and the paired
+# run is too slow for every push.
+#
+# Thresholds (rationale in .claude/skills/spark-project/references/workflows.md
+# "Nightly gates"): CPU geomean ≤ 1.65× vanilla (achieved 1.496, observed run
+# wobble ~1.47–1.54 — catches real regressions, not noise); first-paint ratio
+# ≤ 1.00× (achieved 0.86 — "beats vanilla" is a published claim). Tighten only
+# after ≥5 consecutive green nights establish this runner's own band.
+
+on:
+  schedule:
+    - cron: '17 3 * * *'
+  workflow_dispatch:
+
+jobs:
+  krausest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install root dependencies (build-dist needs esbuild)
+        run: bun install
+
+      - name: Paired krausest run (count=8) + ratio gate
+        env:
+          JFB_DIR: ${{ runner.temp }}/jfb
+          CHROME: /usr/bin/google-chrome
+        run: ./bench/krausest/run.sh --count 8 --gate 1.65 1.00
+
+      - name: Upload raw results
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: krausest-results
+          path: ${{ runner.temp }}/jfb/webdriver-ts/results/
+          retention-days: 30
+          if-no-files-found: ignore
+
+  fuzz-5000:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install
+
+      # Same convergence oracle as the per-PR fuzz.js 500 in npm test, at
+      # nightly scale. Iteration count is the script's argv knob.
+      - name: Convergence fuzz — 5,000 iterations
+        run: node packages/spark/test/fuzz.js 5000

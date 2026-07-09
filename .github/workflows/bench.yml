@@ -20,6 +20,12 @@ jobs:
       - name: Run spark-ssr benchmark
         working-directory: packages/spark-ssr
         run: bun test/bench.js | tee test/bench-output.txt
+
+      # I2b floor gate — catches 2× regressions; floors calibrated from the
+      # last 3 CI artifacts (see test/bench-gate.mjs header for the numbers).
+      - name: Floor gate
+        working-directory: packages/spark-ssr
+        run: bun test/bench-gate.mjs test/bench-output.txt
       - name: Upload bench output
         if: always()
         uses: actions/upload-artifact@v7

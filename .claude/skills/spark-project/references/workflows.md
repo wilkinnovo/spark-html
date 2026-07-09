@@ -109,6 +109,36 @@ directory are scratch debugging scripts (console.log dumps, no pass/fail)
 and are intentionally excluded from the "unwired test file" check; don't
 wire them as-is.
 
+## Nightly gates (I2b/I2c, improvements.md)
+
+Every published speed/convergence claim has a red gate; all verified
+red-then-green 2026-07-09 before being trusted:
+
+- **Krausest ratio gate** — `.github/workflows/speed-gate.yml` (nightly cron
+  + workflow_dispatch) runs `bench/krausest/run.sh --count 8 --gate 1.65
+  1.00` on ubuntu-latest (`CHROME=/usr/bin/google-chrome`,
+  `JFB_DIR=$RUNNER_TEMP/jfb`). `table.mjs --gate <cpuMax> <fpMax>` exits 1
+  if CPU geomean (01–09) > cpuMax, `43_first-paint` ratio > fpMax, or either
+  metric is missing/incomplete. Thresholds: 1.65 (achieved 1.496, wobble
+  ~1.47–1.54 — catches regressions, not noise) and 1.00 ("beats vanilla" is
+  published). Tighten only after ≥5 consecutive green nights establish the
+  CI runner's band. Red-verified against the real 1.2.0 ledger results with
+  inverted thresholds. `run.sh` now clears `webdriver-ts/results/` before
+  each run — table.mjs pools every json in the dir, so stale runs would
+  silently dilute ratios.
+- **SSR floor gate** — `bench.yml` (per-push) now ends with
+  `bun test/bench-gate.mjs test/bench-output.txt`
+  (`packages/spark-ssr/test/`). Floors calibrated from the last 3 CI
+  artifacts at ~half the worst observed (catch 2× regressions, not runner
+  wobble): 1000-row p50 ≤ 9 ms; todo ≥ 7,000 / big ≥ 4,400 / blog ≥ 5,300
+  req/s. The dev-box ledger (big ~6,900 req/s, ~4.4 ms) stays a local
+  `test/bench.js` discipline; the CI gate is the backstop. Missing metric =
+  fail. Red-verified on a doctored and an empty output file.
+- **Nightly fuzz** — `speed-gate.yml` job `fuzz-5000` runs
+  `node packages/spark/test/fuzz.js 5000` (the per-PR chain keeps 500).
+  Iteration count is fuzz.js's existing argv knob — improvements.md I2c
+  suggested a `FUZZ_N` env var, but argv already existed; trust the tree.
+
 ## Release (per spark-release-checklist)
 
 0. **Before tagging, run a CLEAN-INSTALL check** — a stale nested copy can

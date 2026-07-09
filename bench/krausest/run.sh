@@ -10,17 +10,20 @@
 # Env:
 #   JFB_DIR  work clone (default ~/.cache/spark-bench/jfb — NOT /tmp: tmpfs quota)
 #   SYMBOL   a symbol that must appear in the served bundle (stale-dist guard)
+#   CHROME   chrome binary (default /snap/bin/chromium; CI uses /usr/bin/google-chrome)
 set -euo pipefail
 HERE=$(cd "$(dirname "$0")" && pwd)
 ROOT=$(cd "$HERE/../.." && pwd)
 JFB=${JFB_DIR:-$HOME/.cache/spark-bench/jfb}
 PIN=$(cat "$HERE/jfb-pin.txt")
-COUNT=6 HEADLESS="--headless" BENCH="" SKIP_INSTALL=0
+CHROME=${CHROME:-/snap/bin/chromium}
+COUNT=6 HEADLESS="--headless" BENCH="" SKIP_INSTALL=0 GATE=""
 while [ $# -gt 0 ]; do case "$1" in
   --count) COUNT=$2; shift 2;;
   --windowed) HEADLESS=""; shift;;
   --benchmark) shift; BENCH="--benchmark"; while [ $# -gt 0 ] && [[ "$1" != --* ]]; do BENCH="$BENCH $1"; shift; done;;
   --skip-install) SKIP_INSTALL=1; shift;;
+  --gate) GATE="--gate $2 $3"; shift 3;;  # forwarded to table.mjs (speed-gate.yml)
   *) echo "unknown arg: $1"; exit 1;;
 esac; done
 
@@ -60,11 +63,14 @@ if ! curl -sf http://localhost:8080/ >/dev/null 2>&1; then
   curl -sf http://localhost:8080/ >/dev/null || { echo "FATAL: server did not start"; exit 1; }
 fi
 
-# 3. the paired run — vanilla + spark in ONE session (the only ratio we trust)
+# 3. the paired run — vanilla + spark in ONE session (the only ratio we trust).
+#    Clear stale results first: table.mjs pools every json in the dir, so a
+#    leftover older run would silently blend into (and dilute) the ratios.
+rm -rf "$JFB/webdriver-ts/results"
 (cd "$JFB/webdriver-ts" && npm run bench -- \
   --framework keyed/spark-html keyed/vanillajs \
   --count "$COUNT" $HEADLESS $BENCH \
-  --chromeBinary /snap/bin/chromium)
+  --chromeBinary "$CHROME")
 
-# 4. ratio table
-node "$HERE/table.mjs" "$JFB/webdriver-ts/results"
+# 4. ratio table (+ optional CI gate)
+node "$HERE/table.mjs" "$JFB/webdriver-ts/results" $GATE
