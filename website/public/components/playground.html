@@ -112,7 +112,8 @@
   function onEdit(event) {
     const f = files[current];
     if (!f) return;
-    f.source = event.target.value;
+    draft = event.target.value;
+    f.source = draft;
     saveState();
     paint();
     schedule();
