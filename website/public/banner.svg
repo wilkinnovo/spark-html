@@ -44,7 +44,7 @@
   <!-- stat chips -->
   <g font-size="12.5" font-weight="600">
     <rect x="56" y="272" width="104" height="32" rx="8" fill="#0b0b0b" stroke="#1c1c1c"/>
-    <text x="108" y="293" text-anchor="middle"><tspan fill="#ffd24a">~16 kB</tspan><tspan fill="#888888"> gzip</tspan></text>
+    <text x="108" y="293" text-anchor="middle"><tspan fill="#ffd24a">~17 kB</tspan><tspan fill="#888888"> gzip</tspan></text>
     <rect x="170" y="272" width="88" height="32" rx="8" fill="#0b0b0b" stroke="#1c1c1c"/>
     <text x="214" y="293" text-anchor="middle"><tspan fill="#ffd24a">0</tspan><tspan fill="#888888"> deps</tspan></text>
     <rect x="268" y="272" width="120" height="32" rx="8" fill="#0b0b0b" stroke="#1c1c1c"/>

@@ -34,7 +34,7 @@ byte-for-byte — reactive, scoped, untouched.
 ```
 
 No compiler generates code from your template. No virtual DOM allocates and diffs
-a tree per frame. The file you write is what runs — ~16 kB gzipped, zero dependencies.
+a tree per frame. The file you write is what runs — ~17 kB gzipped, zero dependencies.
 
 ## Built for humans
 
@@ -113,26 +113,27 @@ just files at a URL, so you can even `import` one straight from a CDN. See
 ## Performance
 
 **Measured, not claimed.** On the [krausest js-framework-benchmark](https://github.com/krausest/js-framework-benchmark)
-(the industry-standard table), spark-html 1.1.0 lands a **CPU geomean of
-1.53× hand-written vanilla JS** — paired run against the `vanillajs`
-reference, 15 iterations, windowed Chrome 150, same machine, official
-webdriver-ts harness. On the published solidjs.com scale that sits between
-Angular (1.45) and React Hooks (1.61) — **while being the only framework in
-that neighborhood with no build step at all.** Local run, upstream
-submission in progress; numbers below are medians:
+(the industry-standard table), spark-html 1.2.0 lands a **CPU geomean of
+1.496× hand-written vanilla JS — and reaches first paint *before* the
+vanilla reference** — paired run against the `vanillajs` reference, 15
+iterations, windowed Chrome 150, same machine, official webdriver-ts
+harness. On the published solidjs.com scale that sits between Angular
+(1.45) and React Hooks (1.61) — **while being the only framework in that
+neighborhood with no build step at all.** Local run, upstream submission
+open (PR #2048); numbers below are medians:
 
 | Benchmark | vanilla (ms) | spark (ms) | ratio |
 |---|---:|---:|---:|
-| create 1,000 rows | 122.2 | 197.3 | 1.61× |
-| replace 1,000 rows | 140.8 | 205.2 | 1.46× |
-| update every 10th (×16) | 78.9 | 105.7 | 1.34× |
-| select row | 18.1 | 42.9 | 2.37× |
-| swap rows | 87.5 | 131.5 | 1.50× |
-| remove one | 77.4 | 93.4 | 1.21× |
-| create 10,000 rows | 1343.6 | 1942.1 | 1.45× |
-| append 1,000 | 136.9 | 215.6 | 1.57× |
-| clear (×8) | 47.9 | 71.6 | 1.49× |
-| first paint | 399.5 | 415.6 | 1.04× |
+| create 1,000 rows | 98.2 | 138.0 | 1.41× |
+| replace 1,000 rows | 105.8 | 169.8 | 1.60× |
+| update every 10th (×16) | 48.5 | 74.7 | 1.54× |
+| select row | 11.6 | 23.4 | 2.02× |
+| swap rows | 57.3 | 92.5 | 1.61× |
+| remove one | 53.9 | 64.0 | 1.19× |
+| create 10,000 rows | 1105.8 | 1524.3 | 1.38× |
+| append 1,000 | 114.1 | 162.3 | 1.42× |
+| clear (×8) | 37.4 | 53.3 | 1.43× |
+| first paint | 337.2 | 291.3 | **0.86×** |
 
 How it stays fast:
 
@@ -140,15 +141,17 @@ How it stays fast:
   template. The file you write is what runs.
 - **No virtual DOM** — patches mutate the DOM directly. No intermediate tree to
   allocate, diff, or discard per frame.
-- **~16 kB gzipped, zero dependencies** — parses, mounts, and patches in a single
+- **~17 kB gzipped, zero dependencies** — parses, mounts, and patches in a single
   microtask.
-- **Keyed reconciliation with minimal moves** — a longest-increasing-subsequence
-  diff moves only the rows that actually moved (a swap is 2 DOM moves, not 997),
-  loop rows clone from a stamped recipe (analysis runs once per template, never
-  per row), and row event handlers share one listener function per template —
-  creating 1,000 rows allocates zero handler closures.
-- **O(changed) dependency tracking** — each binding records which scope keys it
-  reads. A write re-evaluates only the bindings that actually changed.
+- **Keyed reconciliation with minimal moves** — the diff trims the unchanged
+  prefix/suffix and runs a longest-increasing-subsequence pass on the rest (a
+  swap is 2 DOM moves, not 997), rows are created 64 at a time from one native
+  clone of a stamped recipe (analysis runs once per template, never per row),
+  and row events use document-level delegation — creating 1,000 rows allocates
+  zero listeners and zero handler closures.
+- **Template-level dependency dispatch** — the template's observed dependency
+  graph sends a changed key straight to the affected bindings in every row,
+  with no per-row bookkeeping at all.
 
   ```html
   <p>{a} + {b} = {a + b}</p>
@@ -222,7 +225,7 @@ Spark trades completeness for simplicity — these are deliberate edges, not roa
 
 | Package                                  | What it does                                                                                                        |
 | ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
-| [`spark-html`](packages/spark/README.md) | The runtime — `mount()`, components, reactivity, `store`/`derived`, `bind:form`, scoped styles, plus `npx spark-html doctor`. ~16 kB gzip, 0 deps. |
+| [`spark-html`](packages/spark/README.md) | The runtime — `mount()`, components, reactivity, `store`/`derived`, `bind:form`, scoped styles, plus `npx spark-html doctor`. ~17 kB gzip, 0 deps. |
 
 **UI &amp; UX siblings** (add only what you use)
 

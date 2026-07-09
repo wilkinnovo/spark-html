@@ -16,7 +16,7 @@ no build step — for people who love hand-writing their web apps.
 </style>
 ```
 
-**~14.6 kB gzipped**.
+**~17 kB gzipped**.
 
 ---
 
@@ -297,15 +297,15 @@ on a reused dev port. Zero config; exits non-zero when something needs a look.
 
 ## Performance
 
-**Measured, not claimed.** On the [krausest js-framework-benchmark](https://github.com/krausest/js-framework-benchmark), spark-html 1.1.0 lands a **CPU geomean of 1.53× hand-written vanilla JS** (paired run vs the `vanillajs` reference, 15 iterations, windowed Chrome, official webdriver-ts harness; local run, upstream submission in progress). On the published solidjs.com scale that sits between Angular (1.45) and React Hooks (1.61) — with no build step at all:
+**Measured, not claimed.** On the [krausest js-framework-benchmark](https://github.com/krausest/js-framework-benchmark), spark-html 1.2.0 lands a **CPU geomean of 1.496× hand-written vanilla JS — and reaches first paint *before* the vanilla reference** (paired run vs the `vanillajs` reference, 15 iterations, windowed Chrome, official webdriver-ts harness; local run, upstream submission open — PR #2048). On the published solidjs.com scale that sits between Angular (1.45) and React Hooks (1.61) — with no build step at all:
 
 | Benchmark | ratio vs vanilla | | Benchmark | ratio vs vanilla |
 |---|---:|---|---|---:|
-| create 1,000 rows | 1.61× | | remove one | 1.21× |
-| replace 1,000 rows | 1.46× | | create 10,000 rows | 1.45× |
-| update every 10th | 1.34× | | append 1,000 | 1.57× |
-| select row | 2.37× | | clear | 1.49× |
-| swap rows | 1.50× | | first paint | 1.04× |
+| create 1,000 rows | 1.41× | | remove one | 1.19× |
+| replace 1,000 rows | 1.60× | | create 10,000 rows | 1.38× |
+| update every 10th | 1.54× | | append 1,000 | 1.42× |
+| select row | 2.02× | | clear | 1.43× |
+| swap rows | 1.61× | | first paint | **0.86×** |
 
 - **Components ship as authored HTML** — no compiler generates code from your template, so there is nothing to parse or evaluate at startup. The file you write is the component that runs.
 - **Text-level extraction of `<script>`/`<style>`** — browsers strip `<script>` tags injected via `innerHTML` (the only way most client-only frameworks can parse a fetched HTML fragment). Spark extracts script and style from the raw text with a tokenizer before the markup ever touches the DOM — sidestepping the entire class of bugs that every other runtime-only framework has to work around.
@@ -356,7 +356,7 @@ their web apps. Add only what you use.
 
 | Package | What it does |
 |---|---|
-| [`spark-html`](https://www.npmjs.com/package/spark-html) | The runtime — components, reactivity, stores, forms, scoped styles. ~14.6 kB gzip, 0 deps. |
+| [`spark-html`](https://www.npmjs.com/package/spark-html) | The runtime — components, reactivity, stores, forms, scoped styles. ~17 kB gzip, 0 deps. |
 | [`spark-html-bun`](https://www.npmjs.com/package/spark-html-bun) | Dev server, bundler & preview on Bun — scoped HMR, no-build dev, post-build pipeline. |
 | [`spark-html-router`](https://www.npmjs.com/package/spark-html-router) | `<template route>` routing — nested routes/layouts, `route.query`, active links. |
 | [`spark-html-theme`](https://www.npmjs.com/package/spark-html-theme) | Dark/light/system theming in one line — persisted, no flash. |
