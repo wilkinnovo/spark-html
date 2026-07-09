@@ -185,6 +185,11 @@ function compileList(nodes) {
         ops.push({
           t: 'await', fn: compile(expr), as: node.getAttribute('as') || null,
           then: compileList(thenNodes), catch: compileList(catchNodes), direct: compileList(direct),
+          // The authored markup, kept verbatim: a hydrating page's script
+          // runs on the client only, so a promise declared THERE is
+          // invisible to this renderer — the run() await case emits this
+          // instead of flattening a block it cannot evaluate.
+          raw: node.outerHTML,
         });
         continue;
       }
@@ -434,6 +439,20 @@ async function run(ops, scope, ctx, out, depth, slotHtml) {
           value = evalFn(op.fn, scope);
           if (value && typeof value.then === 'function') value = await value;
         } catch (e) { failed = e; }
+        // Unresolvable on a HYDRATING page: the page's own <script> runs on
+        // the client only, so a promise declared there evaluates to
+        // undefined here. Flattening (the pre-1.2 behavior) shipped the
+        // then-branch with undefined bindings AND destroyed the
+        // <template await> structure the client needs to track the real
+        // promise — the block never updated post-hydration. Emit the
+        // authored block verbatim instead; the client component keeps it
+        // too (hydrate.js), and the client script's own resolution patches
+        // it. Non-hydrating pages run their script server-side and never
+        // hit this branch.
+        if (value === undefined && !failed && ctx.hydrating && op.raw) {
+          out.push(op.raw);
+          break;
+        }
         // Resolved: the then-branch when declared, otherwise the direct
         // content. Failed: the catch-branch if written, otherwise a default
         // inline error boundary — a throwing await degrades to a message,

@@ -48,15 +48,19 @@ around — recorded, then FIXED 2026-07-09):
   Bun.build so the entry imports the same URL — one module instance, never
   a second inlined core. The relocation fixture now imports store/derived
   in its script, so this gate guards the fix permanently.
-- **`<template await>` on a plain script-local `Promise` (not a real
-  spark-ssr data source) never updates post-hydration on an SSR page**:
-  spark-ssr's server-side renderer statically flattens the block to its
-  resolved (`then`) branch's inner content only, discarding the
-  `<template await/then/catch>` wrapper structure the client needs to
-  reactively track the real promise — so the client-run script's actual
-  resolution has nothing left to patch into. `<template await>` tied to a
-  real spark-ssr data source is unaffected. Dropped from the shared fixture
-  page rather than worked around.
+- **`<template await>` on a plain script-local `Promise` never updated
+  post-hydration on an SSR page**: the server flattened the block to
+  then-content with undefined bindings AND the client component unwrapped
+  the wrapper structure away. FIXED in spark-ssr 1.2.0, both halves: the
+  renderer emits the authored block verbatim when the awaited value is
+  undefined on a hydrating page (`op.raw` + `ctx.hydrating` in render.js);
+  the client component keeps a block whose root identifier is declared in
+  the page's own script (`scriptDeclared()` heuristic in hydrate.js —
+  biased to unwrap on a miss, which is the old behavior). Data-source
+  awaits keep the resolve-and-flatten path (flash-free hydrate).
+  Removal-sensitive test: ssr.js "script-local <template await> …" — each
+  half's revert fails its own assertion. Bench flat (before/after medians
+  within wobble). The relocation fixture exercises it in all three modes.
 - spark-ssr: `packages/spark-ssr/test/ssr.js` (~2k lines, prints
   "N passed, M failed") and `test/bench.js` (NOT in npm test — run manually
   around any render-path change; compares renderFragment 1/100/1000 rows +

@@ -60,11 +60,27 @@ export function primaryColumn(cols) {
   return (texty[0] || cols.find((c) => !skip.has(c.name)) || {}).name || null;
 }
 
+// Does the page's own <script> declare the root identifier of this await
+// expression? `const stats = fetch(…)` / `let x` / `function f` / a plain
+// `stats = …` assignment all count. Regex-level on purpose (the script
+// rewriter posture): a false negative just unwraps like before; a false
+// positive keeps a block the client can still resolve from init-data scope.
+function scriptDeclared(script, awaitExpr) {
+  // strip the once(...) wrapper first, same as render.js's await parse
+  const expr = String(awaitExpr).replace(/^once\(([\s\S]*)\)$/, '$1');
+  const root = (expr.match(/[\w$]+/) || [])[0];
+  if (!root || !script) return false;
+  return new RegExp('\\b(?:let|const|var|function|class)\\s+' + root + '\\b').test(script)
+    || new RegExp('(?:^|[\\n;{])\\s*' + root + '\\s*=[^=]').test(script);
+}
+
 /**
  * Transform the authored page into the client component served at
  * /__spark/page/<key>.html.
  *  - <template await="x"> unwraps to its resolved-branch content (state
- *    starts from the init module; no promise to wait on client-side).
+ *    starts from the init module; no promise to wait on client-side) —
+ *    UNLESS the awaited name is declared in the page's own script (a
+ *    client-only promise): that block stays authored, see scriptDeclared.
  *  - loop handlers get their row argument.
  *  - the synthesized <script> is appended.
  */
@@ -79,7 +95,16 @@ export function clientComponent({ html, analysis, plan, tables, colsByTable, key
     if (tag === 'template') {
       const each = node.getAttribute('each');
       const aw = node.getAttribute('await');
-      if (aw) {
+      // Unwrap only awaits the SERVER already resolved (data-source values
+      // arrive resolved via the init module — no promise to wait on, and
+      // unwrapping keeps hydration flash-free). An await whose root
+      // identifier is declared in the page's own <script> is a promise that
+      // exists ONLY client-side: keep the authored block so the client's
+      // await machinery tracks it (unwrapping severed post-hydration
+      // updates; render.js's hydrating pass-through is this rule's server
+      // half). The declaration check is a regex heuristic, biased to
+      // unwrap on a miss — that degrades to the old behavior, never worse.
+      if (aw && !scriptDeclared(authorScript, aw)) {
         // Prefer an explicit then-branch, else the direct children.
         const content = kids(node);
         const thenTpl = content.find((c) => c.nodeType === 1

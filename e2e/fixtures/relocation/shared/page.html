@@ -4,9 +4,10 @@
   core concept once: store() + derived() imported in the component script,
   component-local reactive state + a `$:` derivation, {expr} interpolation,
   :attr, @handler, :if/:else, keyed :each, bind, a component import with a
-  {expr} prop, onMount. (`<template await>` on a bare script Promise was
-  tried and dropped — see the NOTE comment below; a real finding, not a
-  gate workaround.) The oracle (e2e/relocation.spec.js via
+  {expr} prop, `<template await>` on a script-local Promise, onMount.
+  (Both the store/derived-in-production and the script-local-await-on-SSR
+  gaps this fixture originally had to dodge are FIXED and now exercised
+  here permanently.) The oracle (e2e/relocation.spec.js via
   scripts/serve-relocation-fixture.mjs) mounts each mode, drives the same
   interaction script, and diffs normalized DOM after settle — never edit
   this file to make one mode pass; that defeats the point.
@@ -25,6 +26,13 @@
 
   const shared = store('reloc', { clicks: 0 });
   const relocView = derived('relocView', ['reloc'], (r) => ({ label: r.clicks * 2 }));
+
+  // A script-local promise (NOT a spark-ssr data source) under
+  // <template await> — SSR used to flatten the block server-side and unwrap
+  // it in the client component, so it never updated post-hydration (the
+  // I2a finding, fixed in spark-ssr 1.2.0: unresolvable awaits on a
+  // hydrating page pass through authored, both sides).
+  const stats = Promise.resolve({ total: 42 });
 
   let counter = 0;
   $: doubled = counter * 2;
@@ -83,15 +91,8 @@
 
 <div import="components/child" label="{'relocated-' + counter}"></div>
 
-<!-- NOTE (finding, recorded in improvements.md's I2 status): this fixture
-     originally exercised `<template await>` on a plain script-local
-     Promise. spark-ssr statically flattens that block's server render to
-     the resolved (`then`) branch's inner content ONLY — discarding the
-     `<template await/then/catch>` wrapper structure the client needs to
-     reactively track the real promise post-hydration — so the block never
-     updates once the client script actually runs. `<template await>` tied
-     to a real spark-ssr data source is unaffected (only a bare script
-     Promise hits this); dropped from this shared page pending that fix
-     rather than working around it invisibly.-->
+<template await="stats"><p class="await-pending">loading</p>
+  <template then><p class="await-done">total: {await.total}</p></template>
+</template>
 
 <p class="mounted-flag" :data-mounted="mounted">mounted: {mounted}</p>

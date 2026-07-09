@@ -501,6 +501,34 @@ await test('§1 no state collision: generated locals never clobber page state (b
   assert.ok(comp.includes('__body') && comp.includes('__row.id'), 'helpers use __-prefixed internals');
 });
 
+await test('script-local <template await> on a hydrating page passes through, both sides', async () => {
+  // The promise lives in the page's OWN <script> — which never runs on the
+  // server. Pre-fix, the server flattened the block to then-content with
+  // undefined bindings AND the client component unwrapped the block away,
+  // so the client script's real resolution had nothing to patch (the I2a
+  // relocation finding). Both halves must hold: the SERVER emits the
+  // authored block verbatim; the CLIENT component keeps it. Data-source
+  // awaits (todos) keep the old resolve-and-flatten path — covered by the
+  // index.html assertions above.
+  writeFileSync(join(todoRoot, 'awaitlocal.html'), `<button onclick={add}>Add</button>
+<input bind:value="draft" placeholder="New">
+<template each="t in todos"><span>{t.title}</span></template>
+<template await="stats"><p class="pending">loading</p>
+  <template then><p id="stats">total: {await.total}</p></template>
+</template>
+<script>
+  const stats = Promise.resolve({ total: 42 });
+</script>
+<spark-ssr table="todos" />
+`);
+  const page = await (await fetch(`${T}/awaitlocal`)).text();
+  assert.ok(page.includes('<template await="stats">'), 'server emits the authored await block verbatim');
+  assert.ok(!/total: (?:42|<!--)/.test(page), 'server does not flatten the unresolvable block into then-content');
+  const comp = await (await fetch(`${T}/__spark/page/awaitlocal.html`)).text();
+  assert.ok(comp.includes('<template await="stats">'), 'client component keeps the block (script-declared promise)');
+  assert.ok(comp.includes('const stats = Promise.resolve'), "the page's own script still ships");
+});
+
 // Boot the real spark-html runtime against a hydrating page and return the
 // mounted component's scope — the shared harness for the e2e mount tests.
 async function mountHydratedPage(base, path) {

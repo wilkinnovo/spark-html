@@ -278,7 +278,7 @@ export function makePage(app) {
     // page host won't rebuild wholesale, so a client mount re-resolves them
     // and their own <script> comes alive (counters, demos, …).
     const hasComponents = /\bimport\s*=\s*"/.test(pd.html);
-    const rctx = { loadComponent: app.loadComponent, keepImports: !hydrate, dev: live };
+    const rctx = { loadComponent: app.loadComponent, keepImports: !hydrate, dev: live, hydrating: hydrate };
     let headExtra = pd.head ? renderHead(pd.head, (e) => evalExpr(e, scope)) : '';
     if (headExtra) headExtra = withOgTags(headExtra);
     // A [param] route's :id/:slug never appears in the URL's query string —
