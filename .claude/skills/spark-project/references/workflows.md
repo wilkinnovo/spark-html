@@ -86,6 +86,29 @@ routed around):
   design — the bundlephobia badge it replaced measures with its own
   bundler and showed 14.2k; don't reintroduce it.
 
+## Ecosystem coherence gate (I5a, improvements.md)
+
+`scripts/ecosystem-check.mjs`, last step of `npm test` before the size gate.
+For every `packages/*`: spark-html must be a peerDependency `">=1 <2"`
+(never a hard `dependency` — the dual-package hazard); README.md exists with
+≥1 fenced code block; ≥1 test file exists AND is wired into the root chain
+or `scripts/test-bun.mjs` (a test file sitting unwired never runs — this is
+the same invariant the awaiting-test-runner already relies on, mechanized);
+`license`/`repository` present in package.json; and the core's
+`export {...}` line in `packages/spark/src/index.js` matches exactly the
+names in `V1-API-FREEZE.md`'s Core table — a rename/removal fails this
+before it can ship as an accidental breaking change. Verified red-then-green
+2026-07-09 (renamed an export, confirmed the gate caught it, reverted).
+
+While building this, two real test files were found sitting in
+`packages/spark/test/` unwired and never running in CI:
+`await-as.js` (10 assertions, `<template await … as="name">`) and
+`loop-imports.js` (5 assertions, imports inside each/if blocks) — both now
+wired into the root chain. `repro.js` and `repro-debug.js` in the same
+directory are scratch debugging scripts (console.log dumps, no pass/fail)
+and are intentionally excluded from the "unwired test file" check; don't
+wire them as-is.
+
 ## Release (per spark-release-checklist)
 
 1. Bump version in the package's package.json; check sibling dependency
