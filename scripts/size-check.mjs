@@ -18,7 +18,10 @@ const LIMIT_KB = 17.25; // ALL-IN ceiling for the spark-speed-up-max program,
 // tracks the same shape. 17.25 covers F2–F5 entirely; any gate that would
 // exceed it is DESCOPED — no further budget conversations for the life of
 // 1.x. Interim: 16.0 → 16.5 (2026-07-09, F1). Program ledger:
-// spark-speed-up-max.md §9.
+// spark-speed-up-max.md §9. Final (program CLOSED, 1.2.0 shipped
+// 2026-07-09): F1 dispatch 15.97 → 16.26 · F2 reconcile+delegation
+// → 17.05 · F3 chunked creates → 17.24 · F4 clear-wipe DESCOPED
+// (+0.08 didn't fit) · F5 skipped. 17.24/17.25 used — frozen.
 // Previous raise: 15.0 → 16.0 on 2026-07-08 (Wilkin, itemized) funding the
 // first speed program (spark-speed-up.md) — "simplest AND fastest".
 // Speed-program ledger (measured per gate):
