@@ -1,0 +1,30 @@
+{
+  "seed": 990,
+  "state": {
+    "rows": [
+      {
+        "id": 2,
+        "label": "nn"
+      },
+      {
+        "id": 3,
+        "label": "bb"
+      },
+      {
+        "id": 4,
+        "label": "nn"
+      },
+      {
+        "id": 5,
+        "label": "bb"
+      }
+    ],
+    "sel": 5
+  },
+  "mutations": [
+    "deep-mutate one {\"rows\":[{\"id\":1,\"label\":\"aa\"},{\"id\":2,\"label\":\"aa\"},{\"id\":3,\"label\":\"bb\"},{\"id\":4,\"label\":\"nn\"},{\"id\":5,\"label\":\"bb\"}]}",
+    "remove one {\"rows\":[{\"id\":2,\"label\":\"aa\"},{\"id\":3,\"label\":\"bb\"},{\"id\":4,\"label\":\"nn\"},{\"id\":5,\"label\":\"bb\"}]}",
+    "set sel {\"sel\":5}",
+    "deep-mutate one {\"rows\":[{\"id\":2,\"label\":\"nn\"},{\"id\":3,\"label\":\"bb\"},{\"id\":4,\"label\":\"nn\"},{\"id\":5,\"label\":\"bb\"}]}"
+  ]
+}

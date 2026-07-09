@@ -1,0 +1,22 @@
+{
+  "seed": 930,
+  "state": {
+    "rows": [
+      {
+        "id": 3,
+        "label": "bb"
+      },
+      {
+        "id": 1,
+        "label": "nn"
+      }
+    ],
+    "sel": 0
+  },
+  "mutations": [
+    "remove one {\"rows\":[{\"id\":1,\"label\":\"cc\"}]}",
+    "deep-mutate one {\"rows\":[{\"id\":1,\"label\":\"nn\"}]}",
+    "shuffle {\"rows\":[{\"id\":1,\"label\":\"nn\"}]}",
+    "insert one {\"rows\":[{\"id\":3,\"label\":\"bb\"},{\"id\":1,\"label\":\"nn\"}]}"
+  ]
+}

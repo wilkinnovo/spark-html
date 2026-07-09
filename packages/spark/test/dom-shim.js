@@ -273,6 +273,7 @@ globalThis.document = {
   querySelector: (s) => doc.querySelector(s),
   querySelectorAll: (s) => doc.querySelectorAll(s),
   addEventListener: (t, fn) => { (documentListeners[t] ??= []).push(fn); },
+  __listeners: documentListeners, // test seam: capture-phase delegate dispatch in fire()
   _listeners: documentListeners,
 };
 

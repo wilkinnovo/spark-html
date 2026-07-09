@@ -16,6 +16,7 @@ async function test(name, fn) {
 const tick = () => new Promise((r) => setTimeout(r, 5));
 function fire(el, type) {
   const e = { type, target: el };
+  (document.__listeners?.[type] || []).forEach((fn) => fn(e)); // capture-phase delegates
   let n = el;
   while (n) { e.currentTarget = n; (n._listeners?.[type] || []).forEach((fn) => fn(e)); n = n.parentNode; }
 }

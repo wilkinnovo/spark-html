@@ -1,0 +1,23 @@
+{
+  "seed": 608,
+  "state": {
+    "rows": [
+      {
+        "id": 3,
+        "label": "mm"
+      },
+      {
+        "id": 2,
+        "label": "nn"
+      }
+    ],
+    "sel": 2
+  },
+  "mutations": [
+    "set sel {\"sel\":2}",
+    "insert one {\"rows\":[{\"id\":1,\"label\":\"bb\"},{\"id\":3,\"label\":\"aa\"},{\"id\":2,\"label\":\"bb\"}]}",
+    "remove one {\"rows\":[{\"id\":3,\"label\":\"aa\"},{\"id\":2,\"label\":\"bb\"}]}",
+    "deep-mutate one {\"rows\":[{\"id\":3,\"label\":\"mm\"},{\"id\":2,\"label\":\"bb\"}]}",
+    "deep-mutate one {\"rows\":[{\"id\":3,\"label\":\"mm\"},{\"id\":2,\"label\":\"nn\"}]}"
+  ]
+}

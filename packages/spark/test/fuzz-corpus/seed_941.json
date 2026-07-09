@@ -1,0 +1,23 @@
+{
+  "seed": 941,
+  "state": {
+    "rows": [
+      {
+        "id": 2,
+        "label": "zz"
+      },
+      {
+        "id": 1,
+        "label": "nn"
+      }
+    ],
+    "sel": 0
+  },
+  "mutations": [
+    "shuffle {\"rows\":[{\"id\":2,\"label\":\"dd\"},{\"id\":1,\"label\":\"cc\"}]}",
+    "shuffle {\"rows\":[{\"id\":2,\"label\":\"dd\"},{\"id\":1,\"label\":\"cc\"}]}",
+    "replace one immutably {\"rows\":[{\"id\":2,\"label\":\"dd\"},{\"id\":1,\"label\":\"zz\"}]}",
+    "replace one immutably {\"rows\":[{\"id\":2,\"label\":\"zz\"},{\"id\":1,\"label\":\"zz\"}]}",
+    "deep-mutate one {\"rows\":[{\"id\":2,\"label\":\"zz\"},{\"id\":1,\"label\":\"nn\"}]}"
+  ]
+}

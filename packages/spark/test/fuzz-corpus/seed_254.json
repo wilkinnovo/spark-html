@@ -1,0 +1,32 @@
+{
+  "seed": 254,
+  "state": {
+    "rows": [
+      {
+        "id": 5,
+        "label": "cc"
+      },
+      {
+        "id": 4,
+        "label": "bb"
+      },
+      {
+        "id": 3,
+        "label": "nn"
+      },
+      {
+        "id": 2,
+        "label": "aa"
+      },
+      {
+        "id": 1,
+        "label": "bb"
+      }
+    ],
+    "sel": 0
+  },
+  "mutations": [
+    "shuffle {\"rows\":[{\"id\":5,\"label\":\"cc\"},{\"id\":4,\"label\":\"bb\"},{\"id\":3,\"label\":\"cc\"},{\"id\":2,\"label\":\"aa\"},{\"id\":1,\"label\":\"bb\"}]}",
+    "deep-mutate label {\"rows\":[{\"id\":5,\"label\":\"cc\"},{\"id\":4,\"label\":\"bb\"},{\"id\":3,\"label\":\"nn\"},{\"id\":2,\"label\":\"aa\"},{\"id\":1,\"label\":\"bb\"}]}"
+  ]
+}

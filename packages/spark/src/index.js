@@ -828,7 +828,7 @@ function stampTree(clone, tpl, live) {
     for (const h of a.handlers) clone.removeAttribute(h.name);
   }
   clone.__sparkPlan = a.plan; // shared — ops are stateless descriptors
-  wireElement(clone, a);
+  wireElement(clone, a, 1);
   if (live && a.live) live.push(clone);
   let allStatic = !a.live;
   // Parallel descent — if the shapes ever diverge (they can't after a
@@ -1219,26 +1219,62 @@ export function patchPoint(nd, scope) {
   }
 }
 
+// Run one handler descriptor against its element. A plain onsubmit on a
+// <form> almost always means "handle it in JS" — preventDefault by default
+// so the page doesn't navigate (long-standing papercut). Escape hatch: call
+// nothing / use a real <a> for navigation.
+function fireHandler(h, t, e) {
+  if (h.evt === 'submit' && e.preventDefault) e.preventDefault();
+  execute(h.code, t.__sparkScopeRef, e, undefined, () => ({
+    phase: 'handler', component: componentNameFor(t), detail: h.name + '={' + h.fnExpr + '}',
+  }));
+}
+// Framework-internal event delegation for STAMPED row clones. Blink taxes
+// every per-element mouse listener in hit-test regions, commit, and
+// dispatch — trace-measured at ~45 ms per interaction op with 2×1,000 row
+// listeners, dwarfing the JS it dispatches to. Rows therefore own no
+// listeners at all: one document-level CAPTURE listener per event type
+// walks target→root through `__sparkH` entries. Capture keeps today's
+// ordering guarantees: row handlers still run before any ancestor's direct
+// (bubble) handler, and stopPropagation still suppresses them. Non-bubbling
+// event types keep direct listeners; so do input/change — bind: write-backs
+// are direct, and a delegated row handler would otherwise run BEFORE the
+// write-back that updates the bound state it reads.
+const NO_BUBBLE = /^(?:focus|blur|mouseenter|mouseleave|load|error|scroll|input|change)$/;
+const gDelegated = {};
+function delegate(e) {
+  for (let n = e.target; n; n = n.parentNode) {
+    const h = n.__sparkH && n.__sparkH[e.type];
+    if (h) {
+      // User code must see the handling element, exactly as a direct
+      // listener would. Shadow the getter only for this dispatch — a
+      // lingering own property would corrupt currentTarget for every
+      // later listener in the same propagation.
+      Object.defineProperty(e, 'currentTarget', { value: n, configurable: true });
+      fireHandler(h, n, e);
+      if (e.cancelBubble) break;
+    }
+  }
+  delete e.currentTarget;
+}
 // Wiring half — the per-INSTANCE side effects the analysis described:
 // attach event handlers (and strip their attributes), attach two-way bind
-// write-back listeners, set up bind:form. Every clone pays this (listeners
-// can't be shared), but never the attribute scan.
-function wireElement(el, a) {
-  // One SHARED listener per handler descriptor (h.l, built lazily): a loop
-  // template's analysis — and therefore its listener closures — is shared by
-  // every clone, so creating 1,000 rows allocates zero handler closures. The
-  // element comes back out of e.currentTarget. A plain onsubmit on a <form>
-  // almost always means "handle it in JS" — preventDefault by default so the
-  // page doesn't navigate (long-standing papercut). Escape hatch: call
-  // nothing / use a real <a> for navigation.
+// write-back listeners, set up bind:form. `del` = a stamped row clone:
+// bubbling handlers become one `__sparkH` property + the shared document
+// delegate instead of an addEventListener each.
+function wireElement(el, a, del) {
   for (const h of a.handlers) {
-    el.addEventListener(h.evt, h.l ??= (e) => {
-      const t = e.currentTarget;
-      if (h.evt === 'submit' && e.preventDefault) e.preventDefault();
-      execute(h.code, t.__sparkScopeRef, e, undefined, () => ({
-        phase: 'handler', component: componentNameFor(t), detail: h.name + '={' + h.fnExpr + '}',
-      }));
-    });
+    if (del && !NO_BUBBLE.test(h.evt)) {
+      (el.__sparkH ||= {})[h.evt] = h;
+      if (!gDelegated[h.evt]) {
+        gDelegated[h.evt] = 1;
+        document.addEventListener(h.evt, delegate, true);
+      }
+    } else {
+      // One SHARED listener per handler descriptor (h.l, built lazily) —
+      // the element comes back out of e.currentTarget.
+      el.addEventListener(h.evt, h.l ??= (e) => fireHandler(h, e.currentTarget, e));
+    }
   }
   for (const b of a.binds) {
     // Context is a factory: built only if the write actually throws.

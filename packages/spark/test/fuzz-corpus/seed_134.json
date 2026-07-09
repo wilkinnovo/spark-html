@@ -1,0 +1,35 @@
+{
+  "seed": 134,
+  "state": {
+    "rows": [
+      {
+        "id": 6,
+        "label": "aa"
+      },
+      {
+        "id": 4,
+        "label": "dd"
+      },
+      {
+        "id": 7,
+        "label": "nn"
+      },
+      {
+        "id": 5,
+        "label": "aa"
+      },
+      {
+        "id": 1,
+        "label": "cc"
+      }
+    ],
+    "sel": 0
+  },
+  "mutations": [
+    "insert one {\"rows\":[{\"id\":1,\"label\":\"cc\"},{\"id\":2,\"label\":\"dd\"},{\"id\":3,\"label\":\"aa\"},{\"id\":4,\"label\":\"dd\"},{\"id\":7,\"label\":\"dd\"},{\"id\":5,\"label\":\"aa\"},{\"id\":6,\"label\":\"aa\"}]}",
+    "remove one {\"rows\":[{\"id\":1,\"label\":\"cc\"},{\"id\":2,\"label\":\"dd\"},{\"id\":4,\"label\":\"dd\"},{\"id\":7,\"label\":\"dd\"},{\"id\":5,\"label\":\"aa\"},{\"id\":6,\"label\":\"aa\"}]}",
+    "swap extremes {\"rows\":[{\"id\":6,\"label\":\"aa\"},{\"id\":2,\"label\":\"dd\"},{\"id\":4,\"label\":\"dd\"},{\"id\":7,\"label\":\"dd\"},{\"id\":5,\"label\":\"aa\"},{\"id\":1,\"label\":\"cc\"}]}",
+    "deep-mutate one {\"rows\":[{\"id\":6,\"label\":\"aa\"},{\"id\":2,\"label\":\"dd\"},{\"id\":4,\"label\":\"dd\"},{\"id\":7,\"label\":\"nn\"},{\"id\":5,\"label\":\"aa\"},{\"id\":1,\"label\":\"cc\"}]}",
+    "remove one {\"rows\":[{\"id\":6,\"label\":\"aa\"},{\"id\":4,\"label\":\"dd\"},{\"id\":7,\"label\":\"nn\"},{\"id\":5,\"label\":\"aa\"},{\"id\":1,\"label\":\"cc\"}]}"
+  ]
+}

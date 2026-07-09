@@ -71,6 +71,26 @@ function buildFast(fn, keys) {
   }
 }
 
+// Row-parameter variant: the loop vars become REAL parameters and the
+// observed external keys a destructure prelude — for per-item evaluation
+// over raw items with no scope-box writes (patchEach's key scan). Built
+// from the same observed keys as __fast. Returns null when the expression
+// is pinned (not fast-able — cached) or simply not observed yet (NOT
+// cached, so it can build once the first capturing render seeds __keys).
+export function rowFn(fn, v, iv) {
+  const f = fn.__row;
+  if (f !== undefined) return f;
+  if (!fn.__fastable) return (fn.__row = null);
+  if (!fn.__keys) return null;
+  let built = null;
+  const names = [...fn.__keys].filter((k) => k !== v && k !== iv).join(',');
+  try {
+    built = new Function('__scope__', v, iv || '__iv__',
+      `${names ? `const {${names}} = __scope__;\n` : ''}return (${fn.__src})\n`);
+  } catch { /* pinned below */ }
+  return (fn.__row = built);
+}
+
 const stmtCache = new Map();
 export function compileStmt(code) {
   let fn = stmtCache.get(code);

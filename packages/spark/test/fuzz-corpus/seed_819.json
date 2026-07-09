@@ -1,0 +1,20 @@
+{
+  "seed": 819,
+  "state": {
+    "rows": [
+      {
+        "id": 1,
+        "label": "bb"
+      },
+      {
+        "id": 2,
+        "label": "nn"
+      }
+    ],
+    "sel": 0
+  },
+  "mutations": [
+    "shuffle {\"rows\":[{\"id\":1,\"label\":\"bb\"},{\"id\":2,\"label\":\"bb\"}]}",
+    "deep-mutate one {\"rows\":[{\"id\":1,\"label\":\"bb\"},{\"id\":2,\"label\":\"nn\"}]}"
+  ]
+}

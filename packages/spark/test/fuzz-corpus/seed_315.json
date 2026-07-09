@@ -1,0 +1,33 @@
+{
+  "seed": 315,
+  "state": {
+    "rows": [
+      {
+        "id": 1,
+        "label": "mm"
+      },
+      {
+        "id": 2,
+        "label": "aa"
+      },
+      {
+        "id": 3,
+        "label": "cc"
+      },
+      {
+        "id": 4,
+        "label": "zz"
+      },
+      {
+        "id": 5,
+        "label": "cc"
+      }
+    ],
+    "sel": 2
+  },
+  "mutations": [
+    "select {\"sel\":2}",
+    "replace one immutably {\"rows\":[{\"id\":1,\"label\":\"bb\"},{\"id\":2,\"label\":\"aa\"},{\"id\":3,\"label\":\"cc\"},{\"id\":4,\"label\":\"zz\"},{\"id\":5,\"label\":\"cc\"}]}",
+    "deep-mutate label {\"rows\":[{\"id\":1,\"label\":\"mm\"},{\"id\":2,\"label\":\"aa\"},{\"id\":3,\"label\":\"cc\"},{\"id\":4,\"label\":\"zz\"},{\"id\":5,\"label\":\"cc\"}]}"
+  ]
+}

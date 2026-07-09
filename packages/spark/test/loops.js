@@ -16,6 +16,7 @@ async function test(name, fn) {
 const tick = () => new Promise((r) => setTimeout(r, 5));
 function fire(el, type) {
   const e = { type, target: el };
+  (document.__listeners?.[type] || []).forEach((fn) => fn(e)); // capture-phase delegates
   let n = el;
   while (n) { e.currentTarget = n; (n._listeners?.[type] || []).forEach((fn) => fn(e)); n = n.parentNode; }
 }
@@ -234,11 +235,13 @@ await test('booted components are revealed (data-spark-ready)', () => {
   assert.equal(comp.hasAttribute('data-spark-cloak'), false);
 });
 
-// ── shared loop-row handlers + live-node recipes ──
-// Handlers inside stamped keyed rows share ONE listener function per
-// template (no per-clone closures; the element is read from
-// e.currentTarget). Clicking a row must run the handler with the ROW's
-// scope (loop var resolved per row), and external-key updates must
+// ── delegated loop-row handlers + live-node recipes ──
+// Handlers inside stamped row clones attach NO listener at all: the shared
+// analysis descriptor rides `el.__sparkH` and ONE document-level capture
+// delegate per event type dispatches to it (creating 1,000 rows registers
+// zero listeners). Clicking a row must run the handler with the ROW's
+// scope (loop var resolved per row), user code must still see
+// e.currentTarget = the handling element, and external-key updates must
 // re-render only through the row's recorded live-node recipe.
 component('dlgrows', `
   <template each="r in rows" key="r.id">
@@ -255,13 +258,15 @@ parseHTML('<div import="dlgrows"></div>', body);
 await mount();
 await tick();
 
-console.log('\nshared loop-row handlers');
-await test('row handlers share one listener function across clones', () => {
+console.log('\ndelegated loop-row handlers');
+await test('row handlers delegate: zero per-row listeners, one shared descriptor', () => {
   const spans = body.querySelectorAll('[name="dlgrows"] .dr');
   assert.equal(spans.length, 3);
-  assert.equal(spans[0]._listeners.click.length, 1);
-  assert.equal(spans[0]._listeners.click[0], spans[1]._listeners.click[0], 'same shared function, no per-clone closure');
-  assert.equal(spans[1]._listeners.click[0], spans[2]._listeners.click[0]);
+  assert.ok(!spans[0]._listeners?.click, 'stamped rows attach NO direct click listener');
+  assert.ok(spans[0].__sparkH.click, 'the handler rides __sparkH instead');
+  assert.equal(spans[0].__sparkH.click, spans[1].__sparkH.click, 'same shared descriptor, no per-clone state');
+  assert.equal(spans[1].__sparkH.click, spans[2].__sparkH.click);
+  assert.equal(document.__listeners.click.length, 1, 'exactly ONE document delegate for the type');
   assert.ok(!spans[0].getAttribute('onclick'), 'raw onclick attribute stripped from the clone');
 });
 await test('clicking a row runs the handler with that row\'s loop scope', async () => {
@@ -281,6 +286,50 @@ await test('a second click moves the selection (old row un-selects via its live 
   assert.equal(after[2].getAttribute('class').includes('hot'), true);
   assert.equal(after[1].getAttribute('class').includes('hot'), false, 'previously selected row cleared');
   assert.equal(body.querySelector('[name="dlgrows"] .dsel').textContent, '3');
+});
+
+// ── delegated dispatch semantics: e.currentTarget ──
+component('cturows', `
+  <template each="r in rs" key="r">
+    <b class="ct" onclick="{grab(event)}"><i class="inner">{r}</i></b>
+  </template>
+  <p class="cto">{tag}</p>
+  <script>
+    let rs = ['one', 'two'];
+    let tag = '';
+    function grab(e) { tag = e.currentTarget.getAttribute('class') + '/' + e.target.getAttribute('class'); }
+  </script>
+`);
+// ── duplicate keys hitting the bounded-mismatch path (user error, must degrade sanely) ──
+component('dupkeys', `
+  <ul><template each="t in ts" key="t.k">
+    <li class="dk">{t.k}:{t.v}</li>
+  </template></ul>
+  <button class="mut" onclick="{mut}">m</button>
+  <script>
+    let ts = [{ k: 'k', v: 1 }, { k: 'q', v: 2 }, { k: 'r', v: 3 }];
+    function mut() { ts = [{ k: 'q', v: 2 }, { k: 'k', v: 1 }, { k: 'k', v: 9 }]; }
+  </script>
+`);
+parseHTML('<div import="cturows"></div><div import="dupkeys"></div>', body);
+await mount();
+await tick();
+
+await test('delegated handler sees e.currentTarget = the handling element, not document', async () => {
+  const inner = body.querySelector('[name="cturows"] .inner');
+  fire(inner, 'click'); // target is the CHILD; the delegate walks up to the row <b>
+  await tick();
+  assert.equal(body.querySelector('[name="cturows"] .cto').textContent, 'ct/inner');
+});
+await test('duplicate new-side keys degrade to a correct render (no block lands in two slots)', async () => {
+  fire(body.querySelector('[name="dupkeys"] .mut'), 'click');
+  await tick();
+  const lis = body.querySelectorAll('[name="dupkeys"] .dk');
+  assert.equal(lis.length, 3, 'three rows rendered');
+  assert.equal(lis[0].textContent, 'q:2');
+  assert.equal(lis[1].textContent, 'k:1');
+  assert.equal(lis[2].textContent, 'k:9');
+  assert.notEqual(lis[1], lis[2], 'the two k-rows are distinct DOM nodes');
 });
 
 console.log(`\n${pass} passed, ${fail} failed`);

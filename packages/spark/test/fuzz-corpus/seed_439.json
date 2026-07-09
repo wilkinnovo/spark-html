@@ -1,0 +1,26 @@
+{
+  "seed": 439,
+  "state": {
+    "rows": [
+      {
+        "id": 2,
+        "label": "cc"
+      },
+      {
+        "id": 1,
+        "label": "mm"
+      },
+      {
+        "id": 3,
+        "label": "dd"
+      }
+    ],
+    "sel": 0
+  },
+  "mutations": [
+    "swap extremes {\"rows\":[{\"id\":2,\"label\":\"cc\"},{\"id\":1,\"label\":\"dd\"}]}",
+    "deep-mutate one {\"rows\":[{\"id\":2,\"label\":\"cc\"},{\"id\":1,\"label\":\"mm\"}]}",
+    "insert one {\"rows\":[{\"id\":2,\"label\":\"cc\"},{\"id\":1,\"label\":\"mm\"},{\"id\":3,\"label\":\"dd\"}]}",
+    "deep-mutate one {\"rows\":[{\"id\":2,\"label\":\"cc\"},{\"id\":1,\"label\":\"mm\"},{\"id\":3,\"label\":\"dd\"}]}"
+  ]
+}

@@ -1,0 +1,33 @@
+{
+  "seed": 335,
+  "state": {
+    "rows": [
+      {
+        "id": 5,
+        "label": "dd"
+      },
+      {
+        "id": 2,
+        "label": "mm"
+      },
+      {
+        "id": 3,
+        "label": "ww"
+      },
+      {
+        "id": 4,
+        "label": "dd"
+      },
+      {
+        "id": 1,
+        "label": "aa"
+      }
+    ],
+    "sel": 0
+  },
+  "mutations": [
+    "swap extremes {\"rows\":[{\"id\":5,\"label\":\"dd\"},{\"id\":2,\"label\":\"dd\"},{\"id\":3,\"label\":\"dd\"},{\"id\":4,\"label\":\"dd\"},{\"id\":1,\"label\":\"aa\"}]}",
+    "replace one immutably {\"rows\":[{\"id\":5,\"label\":\"dd\"},{\"id\":2,\"label\":\"dd\"},{\"id\":3,\"label\":\"ww\"},{\"id\":4,\"label\":\"dd\"},{\"id\":1,\"label\":\"aa\"}]}",
+    "deep-mutate one {\"rows\":[{\"id\":5,\"label\":\"dd\"},{\"id\":2,\"label\":\"mm\"},{\"id\":3,\"label\":\"ww\"},{\"id\":4,\"label\":\"dd\"},{\"id\":1,\"label\":\"aa\"}]}"
+  ]
+}

@@ -1,0 +1,38 @@
+{
+  "seed": 891,
+  "state": {
+    "rows": [
+      {
+        "id": 1,
+        "label": "nn"
+      },
+      {
+        "id": 4,
+        "label": "bb"
+      },
+      {
+        "id": 5,
+        "label": "bb"
+      },
+      {
+        "id": 2,
+        "label": "aa"
+      },
+      {
+        "id": 3,
+        "label": "bb"
+      },
+      {
+        "id": 6,
+        "label": "mm"
+      }
+    ],
+    "sel": 6
+  },
+  "mutations": [
+    "deep-mutate label {\"rows\":[{\"id\":1,\"label\":\"nn\"},{\"id\":2,\"label\":\"aa\"},{\"id\":3,\"label\":\"bb\"},{\"id\":4,\"label\":\"bb\"},{\"id\":5,\"label\":\"bb\"},{\"id\":6,\"label\":\"bb\"}]}",
+    "shuffle {\"rows\":[{\"id\":1,\"label\":\"nn\"},{\"id\":4,\"label\":\"bb\"},{\"id\":5,\"label\":\"bb\"},{\"id\":2,\"label\":\"aa\"},{\"id\":3,\"label\":\"bb\"},{\"id\":6,\"label\":\"bb\"}]}",
+    "select {\"sel\":6}",
+    "deep-mutate label {\"rows\":[{\"id\":1,\"label\":\"nn\"},{\"id\":4,\"label\":\"bb\"},{\"id\":5,\"label\":\"bb\"},{\"id\":2,\"label\":\"aa\"},{\"id\":3,\"label\":\"bb\"},{\"id\":6,\"label\":\"mm\"}]}"
+  ]
+}

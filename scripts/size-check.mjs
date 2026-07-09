@@ -11,12 +11,14 @@ import { gzipSync } from 'node:zlib';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
-const LIMIT_KB = 16.5; // raised 16.0 → 16.5 on 2026-07-09 (Wilkin, final,
-// re-frozen for the life of 1.x) to fund the spark-speed-up-max program's
-// template-dependency dispatch (F1–F3): the capture-observed binding graph
-// hoisted to template level — column sweeps instead of per-row Sets and
-// walks. +0.26 net at F1 after three design iterations of golf (ledger in
-// spark-speed-up-max.md §9); the raise buys the remaining F2/F3 headroom.
+const LIMIT_KB = 17.25; // ALL-IN ceiling for the spark-speed-up-max program,
+// set 2026-07-09 (Wilkin) after the 16.5 interim proved undersized: round
+// 1's speed program cost +1.31 KB measured, and round 2's structural work
+// (template-dependency dispatch F1 +0.29, trim-first reconcile F2 +0.56)
+// tracks the same shape. 17.25 covers F2–F5 entirely; any gate that would
+// exceed it is DESCOPED — no further budget conversations for the life of
+// 1.x. Interim: 16.0 → 16.5 (2026-07-09, F1). Program ledger:
+// spark-speed-up-max.md §9.
 // Previous raise: 15.0 → 16.0 on 2026-07-08 (Wilkin, itemized) funding the
 // first speed program (spark-speed-up.md) — "simplest AND fastest".
 // Speed-program ledger (measured per gate):

@@ -1,0 +1,19 @@
+{
+  "seed": 474,
+  "state": {
+    "rows": [
+      {
+        "id": 2,
+        "label": "mm"
+      }
+    ],
+    "sel": 2
+  },
+  "mutations": [
+    "replace one immutably {\"rows\":[{\"id\":1,\"label\":\"aa\"},{\"id\":2,\"label\":\"zz\"}]}",
+    "remove one {\"rows\":[{\"id\":2,\"label\":\"zz\"}]}",
+    "deep-mutate one {\"rows\":[{\"id\":2,\"label\":\"mm\"}]}",
+    "set sel {\"sel\":2}",
+    "set sel {\"sel\":2}"
+  ]
+}

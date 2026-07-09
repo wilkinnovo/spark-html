@@ -1,0 +1,22 @@
+{
+  "seed": 352,
+  "state": {
+    "rows": [
+      {
+        "id": 3,
+        "label": "nn"
+      },
+      {
+        "id": 2,
+        "label": "bb"
+      }
+    ],
+    "sel": 2
+  },
+  "mutations": [
+    "remove one {\"rows\":[{\"id\":2,\"label\":\"bb\"},{\"id\":3,\"label\":\"cc\"}]}",
+    "set sel {\"sel\":2}",
+    "swap extremes {\"rows\":[{\"id\":3,\"label\":\"cc\"},{\"id\":2,\"label\":\"bb\"}]}",
+    "deep-mutate one {\"rows\":[{\"id\":3,\"label\":\"nn\"},{\"id\":2,\"label\":\"bb\"}]}"
+  ]
+}

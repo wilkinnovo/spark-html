@@ -22,20 +22,28 @@ cached on the template, static marking at stamp time), **live-node row
 recipes** (shallow keyed rows patch a collected dynamic-node list, no tree
 descent — `block.live`/`patchLive`), and **shared per-template listeners**
 (handler attrs stripped from the template; one listener fn per handler via
-`e.currentTarget`; zero per-clone closures). Full document-level event
-delegation was REJECTED: +0.232 KB didn't fit the budget (plan ledger §9).
-The gzip budget was raised at 2026-07-08 (15.0 → 16.0, speed program) and a
-FINAL time 2026-07-09 (16.0 → 16.5, Wilkin via spark-speed-up-max.md §6
-stop-rule, funding the F1 template-dependency dispatch) — now 16.26 used,
-RE-FROZEN at 16.5 for the life of 1.x. **Speed-max F1 landed (b229c2c,
-2026-07-09, unreleased):** shallow keyed rows now dispatch dirty keys as
-column sweeps over the live-recipe points (`sweepEach`/`patchPoint` — no
-per-row ext Sets, no per-node dep Sets, rows after the first render
-capture-free; heals re-learn capture-free via the runExpr tier-2
+`e.currentTarget`; zero per-clone closures). The gzip budget was raised
+2026-07-08 (15.0 → 16.0, speed program), 2026-07-09 (16.0 → 16.5, F1 stop
+rule), and finally to an **ALL-IN 17.25 ceiling covering the whole speed-max
+program** (Wilkin, 2026-07-09; exceed ⇒ descope, never fund) — now 17.05
+used; frozen for the life of 1.x. **Speed-max F1+F2 landed (b229c2c + the
+F2 commit, 2026-07-09, unreleased):** F1 = template dependency dispatch —
+shallow keyed rows dispatch dirty keys as column sweeps over live-recipe
+points (`sweepEach`/`patchPoint`; no per-row ext Sets, no per-node dep Sets,
+rows after the first capture-free; heals re-learn via the runExpr tier-2
 `__fast === null` gate); absent attribute ≡ '' in runElementPlan compares;
-plan-op kinds are numeric (1 bind / 2 attr / 3 interp). Count=6 paired
-geomean 1.554 → 1.498; select/swap floors are F2's (cold-JIT per-row
-finding — see spark-speed-up-max.md §9). Internal boolean `__spark*` flags are set as `1`/truthy, never
+plan-op kinds numeric (1 bind / 2 attr / 3 interp). F2 = trim-first
+reconcile (prefix/suffix trim; windows classify no-op / pure-insert /
+≤4-mismatch direct permutation / map+LIS; raw-array scan via
+`arr[REACTIVE_RAW]`; `rowFn` key fast-variant with loop vars as real
+params) + **document delegation for stamped rows** (supersedes the G5
++0.232 rejection, under the ALL-IN budget): row clones carry `__sparkH` +
+ONE document capture listener per event type — zero per-row listeners;
+`e.currentTarget` is patched per dispatch; input/change stay direct so
+bind write-back ordering is preserved. Count=8 paired headless geomean
+**1.469** (F0 baseline 1.531); swap/remove/update floors are cold-JIT
+(fresh page per iteration), not scan work — see spark-speed-up-max.md §9.
+Internal boolean `__spark*` flags are set as `1`/truthy, never
 compared `=== true`. V1-API-FREEZE.md governs semver (stable surface =
 fixes only; experimental surfaces may move in minors) per spark-brain
 section 8. 1.0.0 shipped 2026-07-07 (all 21 packages, commit 4b26738); the

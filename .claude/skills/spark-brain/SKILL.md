@@ -78,12 +78,16 @@ When goods conflict, this is the tie-breaker order. Higher always beats lower:
    than 1.5 KB. [OVERRIDE 2026-07-08, Wilkin: raised a second time,
    15.0 → 16.0, itemized in scripts/size-check.mjs, to fund the krausest
    speed program (spark-speed-up.md) — "fastest" was declared part of the
-   mission.] [OVERRIDE 2026-07-09, Wilkin: raised a third time, 16.0 → 16.5,
-   via the spark-speed-up-max.md §6 stop-rule — the template-dependency
-   dispatch (F1) measured +0.26 KB of irreducible unique entropy after
-   exhaustive golf (three design iterations, 16.55→16.26), and the owner
-   chose the raise over degrading dispatch precision or stopping the
-   program. RE-FROZEN at 16.5 for the remaining life of 1.x.]
+   mission.] [OVERRIDE 2026-07-09, Wilkin, two steps ending in an ALL-IN
+   ceiling: 16.0 → 16.5 for F1's template-dependency dispatch (+0.26 after
+   three design iterations of golf), then 16.5 → **17.25** when F2's
+   trim-first reconcile measured +0.56 and the per-gate-ask pattern was
+   recognized as the real problem (round 1 cost +1.31 measured; structural
+   levers here are the same shape). 17.25 covers the WHOLE remaining
+   program; a gate that would exceed it is DESCOPED, never funded — no
+   further budget conversations for the life of 1.x. Estimate lesson,
+   twice-paid: plan-time gross byte estimates for structural core work run
+   2–4× light; only the per-gate measured ledger is admissible.]
 5. **Performance** — *defend, don't chase* was the 1.0 posture. [OVERRIDE
    2026-07-08, Wilkin: for the speed program, performance is actively chased
    — target is the top of the krausest js-framework-benchmark table — but

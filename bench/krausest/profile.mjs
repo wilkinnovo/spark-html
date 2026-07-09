@@ -71,7 +71,7 @@ await send('Runtime.enable');
 await send('Page.enable');
 await send('Profiler.enable');
 await send('Profiler.setSamplingInterval', { interval: 100 });
-await send('Page.navigate', { url: `http://127.0.0.1:${PORT}/bench/krausest/profile/index.html` });
+await send('Page.navigate', { url: process.env.PAGE || `http://127.0.0.1:${PORT}/bench/krausest/profile/index.html` });
 
 const evalJs = async (expression) => {
   const r = await send('Runtime.evaluate', { expression, returnByValue: true });
@@ -145,7 +145,16 @@ async function profileOp(name, action) {
   }
 }
 
-// ── the ops (repeat tiny ops inside one window for signal) ──
+// ── COLD single-op variant (F2 swap hunt): profile the FIRST swap after create ──
+if (process.env.COLD) {
+  await click('#run'); await wait(600);
+  await send('Profiler.setSamplingInterval', { interval: 50 });
+  await profileOp('swap COLD ×1', () => click('#swaprows'));
+  await profileOp('swap WARM2 ×1', () => click('#swaprows'));
+  await profileOp('select COLD ×1', () => click('#tbody tr:nth-child(300) td.col-md-4 a'));
+  ws.close(); chrome.kill(); server.stop(); rmSync(tmp, { recursive: true, force: true });
+  process.exit(0);
+}
 await profileOp('create 1k', () => click('#run'));
 if ((await rowCount()) !== 1000) console.error('create1k: row count wrong');
 await profileOp('select ×30', async () => {

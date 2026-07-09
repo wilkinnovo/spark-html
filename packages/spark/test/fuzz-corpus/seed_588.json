@@ -1,0 +1,43 @@
+{
+  "seed": 588,
+  "state": {
+    "rows": [
+      {
+        "id": 3,
+        "label": "mm"
+      },
+      {
+        "id": 2,
+        "label": "bb"
+      },
+      {
+        "id": 7,
+        "label": "dd"
+      },
+      {
+        "id": 5,
+        "label": "cc"
+      },
+      {
+        "id": 8,
+        "label": "aa"
+      },
+      {
+        "id": 6,
+        "label": "bb"
+      },
+      {
+        "id": 4,
+        "label": "aa"
+      }
+    ],
+    "sel": 0
+  },
+  "mutations": [
+    "insert one {\"rows\":[{\"id\":1,\"label\":\"dd\"},{\"id\":2,\"label\":\"bb\"},{\"id\":3,\"label\":\"cc\"},{\"id\":4,\"label\":\"aa\"},{\"id\":5,\"label\":\"cc\"},{\"id\":6,\"label\":\"bb\"},{\"id\":8,\"label\":\"aa\"},{\"id\":7,\"label\":\"dd\"}]}",
+    "deep-mutate one {\"rows\":[{\"id\":1,\"label\":\"dd\"},{\"id\":2,\"label\":\"bb\"},{\"id\":3,\"label\":\"mm\"},{\"id\":4,\"label\":\"aa\"},{\"id\":5,\"label\":\"cc\"},{\"id\":6,\"label\":\"bb\"},{\"id\":8,\"label\":\"aa\"},{\"id\":7,\"label\":\"dd\"}]}",
+    "remove one {\"rows\":[{\"id\":2,\"label\":\"bb\"},{\"id\":3,\"label\":\"mm\"},{\"id\":4,\"label\":\"aa\"},{\"id\":5,\"label\":\"cc\"},{\"id\":6,\"label\":\"bb\"},{\"id\":8,\"label\":\"aa\"},{\"id\":7,\"label\":\"dd\"}]}",
+    "swap extremes {\"rows\":[{\"id\":7,\"label\":\"dd\"},{\"id\":3,\"label\":\"mm\"},{\"id\":4,\"label\":\"aa\"},{\"id\":5,\"label\":\"cc\"},{\"id\":6,\"label\":\"bb\"},{\"id\":8,\"label\":\"aa\"},{\"id\":2,\"label\":\"bb\"}]}",
+    "shuffle {\"rows\":[{\"id\":3,\"label\":\"mm\"},{\"id\":2,\"label\":\"bb\"},{\"id\":7,\"label\":\"dd\"},{\"id\":5,\"label\":\"cc\"},{\"id\":8,\"label\":\"aa\"},{\"id\":6,\"label\":\"bb\"},{\"id\":4,\"label\":\"aa\"}]}"
+  ]
+}

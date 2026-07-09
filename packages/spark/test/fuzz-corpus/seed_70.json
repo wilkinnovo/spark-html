@@ -1,0 +1,23 @@
+{
+  "seed": 70,
+  "state": {
+    "rows": [
+      {
+        "id": 1,
+        "label": "nn"
+      },
+      {
+        "id": 3,
+        "label": "cc"
+      }
+    ],
+    "sel": 3
+  },
+  "mutations": [
+    "swap extremes {\"rows\":[{\"id\":3,\"label\":\"cc\"},{\"id\":2,\"label\":\"bb\"},{\"id\":1,\"label\":\"aa\"}]}",
+    "remove one {\"rows\":[{\"id\":3,\"label\":\"cc\"},{\"id\":1,\"label\":\"aa\"}]}",
+    "deep-mutate one {\"rows\":[{\"id\":3,\"label\":\"cc\"},{\"id\":1,\"label\":\"nn\"}]}",
+    "shuffle {\"rows\":[{\"id\":1,\"label\":\"nn\"},{\"id\":3,\"label\":\"cc\"}]}",
+    "set sel {\"sel\":3}"
+  ]
+}

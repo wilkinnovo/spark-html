@@ -1,0 +1,30 @@
+{
+  "seed": 591,
+  "state": {
+    "rows": [
+      {
+        "id": 4,
+        "label": "mm"
+      },
+      {
+        "id": 2,
+        "label": "zz"
+      },
+      {
+        "id": 3,
+        "label": "cc"
+      },
+      {
+        "id": 1,
+        "label": "rr"
+      }
+    ],
+    "sel": 4
+  },
+  "mutations": [
+    "replace one immutably {\"rows\":[{\"id\":1,\"label\":\"dd\"},{\"id\":2,\"label\":\"zz\"},{\"id\":3,\"label\":\"cc\"},{\"id\":4,\"label\":\"aa\"}]}",
+    "mixed same tick {\"rows\":[{\"id\":1,\"label\":\"rr\"},{\"id\":2,\"label\":\"zz\"},{\"id\":3,\"label\":\"cc\"},{\"id\":4,\"label\":\"aa\"}],\"sel\":4}",
+    "deep-mutate one {\"rows\":[{\"id\":1,\"label\":\"rr\"},{\"id\":2,\"label\":\"zz\"},{\"id\":3,\"label\":\"cc\"},{\"id\":4,\"label\":\"mm\"}]}",
+    "swap extremes {\"rows\":[{\"id\":4,\"label\":\"mm\"},{\"id\":2,\"label\":\"zz\"},{\"id\":3,\"label\":\"cc\"},{\"id\":1,\"label\":\"rr\"}]}"
+  ]
+}
