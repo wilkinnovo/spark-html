@@ -12,8 +12,16 @@ compilation step is out of scope by definition.** The stated mission (Wilkin,
 2026-07-06): be the *simplest* way to write SSR, prerender, and client-only
 apps while staying fast — "built for humans who want to code themselves."
 
-Knowledge here is accurate as of 2026-07-09 — **1.2.1 current** (a
-README-only republish of **1.2.0 "the dispatch release"**). BOTH speed
+Knowledge here is accurate as of 2026-07-09 (late) — **core 1.3.0 current**
+(doctor v2; runtime bytes identical to 1.2.x — the whole improvements-wave
+was core-byte-neutral, 17.24/17.25). Same-day companion wave, all
+registry-verified: spark-ssr 1.2.0 (script-local `<template await>`
+pass-through both halves, dev-events mirror, .d.ts), spark-html-bun 1.1.0
+(production import map for bare component-script imports + diagnose
+injection), spark-html-devtools 1.1.0 (`/diagnose` — the fail-loud dev
+layer), language-server 1.4.0 (directive-typo diagnostics), test-utils
+1.0.1 (.d.ts). 1.2.1 was a README-only republish of **1.2.0 "the dispatch
+release"**. BOTH speed
 programs are CLOSED: round 1 (spark-speed-up.md → 1.1.0) took CPU geomean
 3.46× → 1.53× vanilla; round 2 (spark-speed-up-max.md → 1.2.0, definitive
 paired count=15) landed **1.496× with first-paint 0.86× — beats vanilla**.
@@ -89,9 +97,9 @@ verified in the tree). M4 and the 1.0.0 release are complete.
 
 This skill holds the **facts**. The judgment layer — value ordering, decision
 gates, change protocols — is the `spark-brain` skill; load it alongside this
-one. The open work sequence is `improvements.md` at repo root (the
-"easiest AND fastest" program, written 2026-07-09; its predecessors — the
-v1 plan, then `spark-improvements.md` — each completed and were deleted).
+one. There is no open program doc (improvements.md completed in full
+2026-07-09 and was deleted, like each predecessor); the standing state is
+maintenance under the brain's §6/§8 obligations.
 
 ## Repo map
 
@@ -108,15 +116,32 @@ examples/                    basic, jsimports, no-build, pinterest, tabtube (tab
 website/                     spark-html.dev site; docs live in website/public/components/docs-body.html
                              (concept/API reference) and components/ssr.html (spark-ssr guide).
                              website/public/llms.txt is comprehensive by design (0345dd9).
-e2e/                         Playwright (thin — 2 spec files / 7 tests)
+e2e/                         Playwright: `chromium` (site) + `templates` (4 scaffolds) +
+                             `relocation` (the I2a gate — one page, three modes; now also
+                             exercises store/derived-in-component-script and script-local
+                             template-await, both fixed 2026-07-09); fixtures/cookbook/ =
+                             the 10 runnable recipes (checked by scripts/cookbook-check.mjs)
 scripts/size-check.mjs       THE gzip budget gate (part of npm test)
+scripts/check-snippets.mjs   doc-snippet syntax gate — every fenced/`<pre>` block in
+                             READMEs + website docs (npm test; skip=<reason> is the only opt-out)
+scripts/cookbook-check.mjs   runs the 10 cookbook fixtures at declared depth (bun chain)
+scripts/ecosystem-check.mjs  21-package coherence gate (peerDeps, tests wired, API freeze)
+.github/workflows/speed-gate.yml  nightly krausest ratio gate (1.65/2.30) + fuzz 5000;
+                             bench.yml ends with per-push SSR floor gate (bench-gate.mjs)
 graphify-out/                knowledge graph of this repo — `graphify query "<question>"` works
-benchmarks.md                the committed perf ledger (definitive krausest tables + method) —
-                             the ONE root .md besides README that is tracked; website/docs cite it
-improvements.md              the ACTIVE program: "easiest AND fastest", 5 items (written 2026-07-09;
-                             untracked like every root .md except README/benchmarks.md — items
-                             re-enter spark-brain §5 gates at execution. Predecessors v1 plan +
-                             spark-improvements.md: each completed, deleted)
+benchmarks.md                the committed perf ledger (definitive krausest tables + method +
+                             the CI first-paint environment note); tracked alongside README and
+                             V1-API-FREEZE.md (the API contract ecosystem-check enforces) —
+                             every other root .md is an untracked design note
+(no active program doc — improvements.md completed IN FULL 2026-07-09 and was
+deleted per convention: I1 debt→0, I2 promise gates (relocation/speed/fuzz/
+ssr-floor/size, all red-verified), I3 fail-loud dev layer, I4 snippet harness
++ 10-recipe cookbook, I5 ecosystem coherence + audit. Released that day:
+core 1.3.0 (doctor v2), spark-ssr 1.2.0 (script-local await pass-through +
+dev events + types), spark-html-bun 1.1.0 (production import map + diagnose
+injection), spark-html-devtools 1.1.0 (diagnose), lsp 1.4.0 (directive
+typos), test-utils 1.0.1 (types) — all registry-verified. Lineage: v1 plan →
+spark-improvements.md → improvements.md, each completed and deleted.)
 ```
 
 ## Hard invariants — violating any of these has caused real shipped bugs
@@ -192,6 +217,6 @@ See pitfalls.md "Fixed at v1-prep".)
 - `references/pitfalls.md` — the full bug history with root causes; what each
   one taught; browser-testing setup on this machine.
 
-For the roadmap: read `improvements.md` at repo root — the active
-"easiest AND fastest" program (untracked design note, like all root .md
-except README).
+For the roadmap: none open — the "easiest AND fastest" program
+(improvements.md) completed 2026-07-09; see the repo-map note above for
+what it shipped. New work re-enters through spark-brain §5.
