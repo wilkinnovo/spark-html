@@ -34,7 +34,7 @@ byte-for-byte — reactive, scoped, untouched.
 ```
 
 No compiler generates code from your template. No virtual DOM allocates and diffs
-a tree per frame. The file you write is what runs — ~14.6 kB gzipped, zero dependencies.
+a tree per frame. The file you write is what runs — ~16 kB gzipped, zero dependencies.
 
 ## Built for humans
 
@@ -222,7 +222,7 @@ Spark trades completeness for simplicity — these are deliberate edges, not roa
 
 | Package                                  | What it does                                                                                                        |
 | ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
-| [`spark-html`](packages/spark/README.md) | The runtime — `mount()`, components, reactivity, `store`/`derived`, `bind:form`, scoped styles, plus `npx spark-html doctor`. ~14.6 kB gzip, 0 deps. |
+| [`spark-html`](packages/spark/README.md) | The runtime — `mount()`, components, reactivity, `store`/`derived`, `bind:form`, scoped styles, plus `npx spark-html doctor`. ~16 kB gzip, 0 deps. |
 
 **UI &amp; UX siblings** (add only what you use)
 
