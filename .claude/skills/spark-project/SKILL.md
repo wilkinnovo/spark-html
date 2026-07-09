@@ -80,9 +80,7 @@ packages/prettier-plugin-spark/
 examples/                    basic, jsimports, no-build, pinterest, tabtube (tabtube = the big real-world one)
 website/                     spark-html.dev site; docs live in website/public/components/docs-body.html
                              (concept/API reference) and components/ssr.html (spark-ssr guide).
-                             website/public/llms.txt: hand-maintained (2026-07-09) — update it in
-                             the same commit as any docs-body.html/ssr.html section add/remove/
-                             rename until it's generated at build time (planned, not yet built).
+                             website/public/llms.txt status/plan: spark-improvements.md §2 E3.
 e2e/                         Playwright (thin — 2 spec files / 7 tests)
 scripts/size-check.mjs       THE gzip budget gate (part of npm test)
 graphify-out/                knowledge graph of this repo — `graphify query "<question>"` works
