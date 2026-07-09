@@ -4,6 +4,17 @@ Date: 2026-07-09 (1.2.0) / 2026-07-08 (1.1.0). Local paired runs; the
 upstream submission is PR #2048 (open) — see caveats at the bottom before
 citing these numbers anywhere external.
 
+> Environment note (2026-07-09, from the nightly speed-gate's first CI
+> runs): the **first-paint** metric is strongly display-regime-dependent.
+> On GitHub's ubuntu runners the paired ratio measures ~1.97× (identical
+> headless and xvfb-windowed; vanilla itself paints ~96 ms there vs 337 ms
+> below). The 0.86× below is real for this table's stated method — paired,
+> windowed, real display — and that is the method any re-measure must use.
+> CPU geomean transfers cleanly across environments (CI: 1.507–1.515 vs
+> 1.496 below). The nightly gate therefore holds CPU at ≤1.65× and
+> first-paint at ≤2.30× (CI's own band + headroom), catching regressions;
+> the headline first-paint claim is defended by re-running THIS method.
+
 > **FINAL — speed-max program complete (spark-html 1.2.0, "the dispatch
 > release").** The definitive run: paired vanilla+spark in one session,
 > **count=15, windowed** (headless can skip paints, so windowed is the

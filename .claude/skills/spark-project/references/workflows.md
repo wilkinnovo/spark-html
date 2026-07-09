@@ -125,17 +125,22 @@ Every published speed/convergence claim has a red gate; all verified
 red-then-green 2026-07-09 before being trusted:
 
 - **Krausest ratio gate** — `.github/workflows/speed-gate.yml` (nightly cron
-  + workflow_dispatch) runs `bench/krausest/run.sh --count 8 --gate 1.65
-  1.00` on ubuntu-latest (`CHROME=/usr/bin/google-chrome`,
+  + workflow_dispatch) runs `xvfb-run … run.sh --count 8 --windowed --gate
+  1.65 2.30` on ubuntu-latest (`CHROME=/usr/bin/google-chrome`,
   `JFB_DIR=$RUNNER_TEMP/jfb`). `table.mjs --gate <cpuMax> <fpMax>` exits 1
   if CPU geomean (01–09) > cpuMax, `43_first-paint` ratio > fpMax, or either
-  metric is missing/incomplete. Thresholds: 1.65 (achieved 1.496, wobble
-  ~1.47–1.54 — catches regressions, not noise) and 1.00 ("beats vanilla" is
-  published). Tighten only after ≥5 consecutive green nights establish the
-  CI runner's band. Red-verified against the real 1.2.0 ledger results with
-  inverted thresholds. `run.sh` now clears `webdriver-ts/results/` before
-  each run — table.mjs pools every json in the dir, so stale runs would
-  silently dilute ratios.
+  metric is missing/incomplete. CPU threshold 1.65: achieved 1.496; CI
+  measured 1.515/1.507 — paired ratios transfer. First-paint threshold
+  2.30: virtualized displays are a DIFFERENT fp regime (CI measured 1.967
+  headless and 1.978 xvfb-windowed — stable; vanilla paints ~96 ms there vs
+  337 on the ledger box). The published 0.86× stays defended by the
+  ledger's method (windowed, REAL display — benchmarks.md environment
+  note); the CI gate catches regressions in its own band. Tighten only
+  after ≥5 consecutive green nights. Red-verified against the real 1.2.0
+  ledger results with inverted thresholds; wiring proven by two real CI
+  runs. `run.sh` clears `webdriver-ts/results/` before each run —
+  table.mjs pools every json in the dir, so stale runs would silently
+  dilute ratios.
 - **SSR floor gate** — `bench.yml` (per-push) now ends with
   `bun test/bench-gate.mjs test/bench-output.txt`
   (`packages/spark-ssr/test/`). Floors calibrated from the last 3 CI
