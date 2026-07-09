@@ -557,6 +557,24 @@ function sweepEach(el) {
   }
 }
 
+// The V4 wipe: if the parent's managed children are exactly this anchor's
+// `own` nodes, wipe the parent in one pass and re-append the keepers
+// (anchor, whitespace, sibling non-managed markup) in order — byte-identical
+// to a fresh mount of the empty list. Returns whether it wiped.
+function wipeAll(el, own) {
+  const parent = el.parentNode;
+  const keep = [];
+  let managed = 0;
+  for (let n = parent.firstChild; n; n = n.nextSibling) {
+    if (n.__sparkManaged) managed++;
+    else keep.push(n);
+  }
+  if (managed !== own || keep.length > own) return 0;
+  parent.textContent = '';
+  for (const n of keep) parent.appendChild(n);
+  return 1;
+}
+
 export function patchEach(el, scope) {
   if (!el.__sparkEachParsed) {
     const expr = el.getAttribute('each').trim();
@@ -578,6 +596,26 @@ export function patchEach(el, scope) {
     el.__sparkEachKeyFn = ke && compileExpr(ke);
 
     el.__sparkEachTemplate = cloneTemplateNodes(el);
+    // Whitespace between table-structural rows is render-inert (CSS table
+    // fixup ignores it), but cloned into every BLOCK it triples the DOM
+    // mutations of every row move — a 2-row swap moved 6 nodes (the F1
+    // "swap paint gap", attributed at speed-max-pro P0). When EVERY element
+    // in the template is table-structural (or <option>), drop the
+    // whitespace-only text nodes; inline content keeps its whitespace —
+    // there it renders.
+    {
+      const tpl = el.__sparkEachTemplate;
+      let structural = 0;
+      for (const n of tpl) {
+        if (n.nodeType !== ELEMENT_NODE) continue;
+        if (!/^(?:TR|TD|TH|TBODY|THEAD|TFOOT|COL|COLGROUP|OPTION|OPTGROUP)$/.test(n.tagName)) { structural = 0; break; }
+        structural = 1;
+      }
+      if (structural) {
+        const t = tpl.filter((n) => n.nodeType !== TEXT_NODE || n.data.trim() !== '');
+        if (t.length) el.__sparkEachTemplate = t;
+      }
+    }
     // Template-level teardown fact, computed once: a row with no component
     // boundaries and no nested anchors anywhere in its subtree needs none of
     // the per-node teardown machinery (destroyComponent's querySelectorAll
@@ -791,20 +829,18 @@ export function patchEach(el, scope) {
   let sn = count - 1;
   while (so >= p && sn >= p && oldBlocks[so].key === keys[sn]) { so--; sn--; }
 
-  // (V4 — clear-as-one-wipe — was built here and DESCOPED at the 17.25
-  // ALL-IN ceiling: +0.08 KB of unique entropy after golf. Clears stay
-  // per-row removes. The verified design if bytes ever free up: collect the
-  // parent's non-__sparkManaged children, require managed count ===
-  // oldLen × templateNodes.length (a sibling anchor's rows must never be
-  // wiped) and keep.length ≤ oldLen, then parent.textContent = '' and
-  // re-append the kept nodes in order — byte-identical to a fresh mount.)
-
   const newBlocks = new Array(count);
   for (let i = 0; i < p; i++) reuse(newBlocks[i] = oldBlocks[i], i);
   for (let i = sn + 1, j = so + 1; i < count; i++, j++) reuse(newBlocks[i] = oldBlocks[j], i);
 
   // ── Stage 3: the window [p..so] → [p..sn] ──
-  if (p > so && p > sn) {
+  if (count === 0 && oldLen && !el.__sparkEachDeepRows && wipeAll(el, oldLen * templateNodes.length)) {
+    // V4 clear-as-one-wipe (descoped at the 17.25 ceiling, revived under
+    // the 18.00 program): one textContent='' beats oldLen removes. Shallow
+    // rows only (deep rows need leaveNode teardown), and only when every
+    // managed child of the parent is OURS — a sibling anchor sharing this
+    // parent must never be wiped; wipeAll proves it by exact count.
+  } else if (p > so && p > sn) {
     // nothing structural changed
   } else if (p > so) {
     // Pure insert (create 1k/10k, append): no reconcile bookkeeping at all.

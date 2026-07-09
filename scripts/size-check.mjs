@@ -11,7 +11,15 @@ import { gzipSync } from 'node:zlib';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
-const LIMIT_KB = 17.25; // ALL-IN ceiling for the spark-speed-up-max program,
+const LIMIT_KB = 18.00; // ALL-IN ceiling for spark-speed-up-max-PRO (the
+// third speed program), authorized by Wilkin 2026-07-09 late ("up to 18 KB
+// gzip") and moved here with the program's first paying gate (P1: V4
+// clear-wipe revived +/table-whitespace drop/shared proxy handler —
+// +0.26 KB measured, 17.24 → 17.50). Same law as before: the ceiling
+// covers the WHOLE program; a gate that would exceed it is DESCOPED or
+// funded by same-commit deletions — never a further ask. Program ledger:
+// spark-speed-up-max-pro.md §9.
+// ── history ── 17.25: ALL-IN ceiling for the spark-speed-up-max program,
 // set 2026-07-09 (Wilkin) after the 16.5 interim proved undersized: round
 // 1's speed program cost +1.31 KB measured, and round 2's structural work
 // (template-dependency dispatch F1 +0.29, trim-first reconcile F2 +0.56)

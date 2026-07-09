@@ -272,7 +272,11 @@ export function reactify(value, onMutate, cache) {
   const cached = cache.get(value);
   if (cached) return cached;
 
-  const proxy = new Proxy(value, {
+  // ONE handler per (onMutate, cache) root, memoized on the cache itself —
+  // a handler per proxy allocated three trap closures per object (~140 KB
+  // per 1k rows on the heap snapshot, speed-max-pro P0) for zero benefit:
+  // every proxy under one root shares the same onMutate and cache anyway.
+  const h = cache.__h || (cache.__h = {
     get(t, k) {
       if (k === REACTIVE_RAW) return t;
       return reactify(Reflect.get(t, k), onMutate, cache);
@@ -291,6 +295,7 @@ export function reactify(value, onMutate, cache) {
       return ok;
     },
   });
+  const proxy = new Proxy(value, h);
   cache.set(value, proxy);
   return proxy;
 }
