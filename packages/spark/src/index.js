@@ -24,8 +24,12 @@
 // every keystroke. Dedupe by a stable key: each distinct problem is
 // reported ONCE — enough to debug, quiet enough to live with.
 const warned = new Set();
+// warm.on: set while the idle self-warmup drives synthetic rows (speed-max-
+// pro P3) — warnings are suppressed WITHOUT entering the dedupe set, so a
+// real row hitting the same expression later still warns.
+export const warm = { on: 0 };
 export function warnOnce(key, ...args) {
-  if (warned.has(key)) return;
+  if (warm.on || warned.has(key)) return;
   warned.add(key);
   console.warn(...args);
 }
@@ -1085,7 +1089,7 @@ export function patchText(node, scope) {
 // `capture` object + the imported helpers.
 import {
   lifecycle, enterNode,
-  patchIf, patchEach, patchAwait,
+  patchIf, patchEach, patchAwait, warmEach,
 } from './directives.js';
 
 // ─── Attribute / event bindings ───────────────────────────────────────
@@ -1480,6 +1484,11 @@ async function mount(root = document.body, options = {}) {
       // so a form field's native `name=` doesn't inflate the tally.
       const count = [...root.querySelectorAll('[name]')].filter((e) => e.__sparkScope !== undefined).length;
       console.log(`[spark] ⚡ ready — ${count} component(s)`);
+    }
+    // Idle self-warmup (speed-max-pro P3): rIC gates it to real browsers
+    // (shims/prerender have none) and schedules it after first paint.
+    if (!isPrerender() && typeof requestIdleCallback === 'function') {
+      requestIdleCallback(() => { warm.on = 1; try { warmEach(root); } catch { /* never the page's problem */ } warm.on = 0; });
     }
   };
 

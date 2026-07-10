@@ -525,6 +525,39 @@ const gKeys = []; // key-scan scratch — pooled for shallow anchors only (same 
 // backing array may hold reactive proxies — dirtyItems/`block.raw` identity
 // must always compare the true raw target.
 const rawOf = (x) => (x && typeof x === 'object' && x[REACTIVE_RAW]) || x;
+// P2 (speed-max-pro): is point j's ONLY dirty-sensitive expression the
+// shape `rowKey === scalar ? a : b` (or bare/`!==`, either operand order),
+// where rowKey is EXACTLY this anchor's key expression and neither branch
+// mentions the scalar again? Then a change to that scalar can only move
+// the match from one row to another — patch those two rows, not N.
+// Classification is per (anchor, point), cached; source-level, masked by
+// nothing (expressions carry their compile source on fn.__src). ANY doubt
+// classifies as 0 → the full sweep below stays the semantic definition.
+function classifySel(el, nd) {
+  const K = el.__sparkEachKeyExpr;
+  if (!K || nd.nodeType === TEXT_NODE || !nd.__sparkPlan) return 0;
+  let name = null;
+  for (const op of nd.__sparkPlan) {
+    if (op.kind === 3) return 0; // interpolations: sweep
+    const src = op.fn && op.fn.__src;
+    if (!src) return 0;
+    const q = src.indexOf('?');
+    const head = (q < 0 ? src : src.slice(0, q)).trim();
+    // head must be exactly `KEY === id` / `id === KEY` (or !==) — exact
+    // string compare against the anchor's key source, no escaping games
+    const parts = head.split(/\s*[!=]==\s*/);
+    if (parts.length !== 2) return 0;
+    const id = parts[0] === K ? parts[1] : parts[1] === K ? parts[0] : null;
+    if (!id || !/^[A-Za-z_$][\w$]*$/.test(id)) return 0;
+    // the scalar must not appear in the branches — substring check is
+    // over-conservative on purpose; a miss only costs a sweep
+    if (q >= 0 && src.slice(q).includes(id)) return 0;
+    if (name && name !== id) return 0; // two different scalars: sweep
+    name = id;
+  }
+  return name || 0;
+}
+
 function sweepEach(el) {
   const blocks = el.__sparkEachBlocks;
   if (!blocks.length) return;
@@ -551,6 +584,37 @@ function sweepEach(el) {
     }
     if (hot) gHot.push(j);
   }
+
+  // Selector fast path (P2): exactly one hot point, one dirty key, and the
+  // point classifies as key-equality on that key. The key→block map is
+  // rebuilt lazily after every structural reconcile (patchEach nulls it),
+  // and the first sweep after a rebuild runs the FULL pass to re-sync
+  // `prev` with the rendered DOM — O(2) only ever follows a full sync.
+  if (gHot.length === 1 && dk.size === 1) {
+    const j = gHot[0];
+    const nd = live0[j];
+    let cls = nd.__sparkSC; // classification, cached on the point node
+    if (cls === undefined) cls = nd.__sparkSC = classifySel(el, nd);
+    if (cls && dk.has(cls)) {
+      let map = el.__sparkKeyMap;
+      const st = el.__sparkSelSt; // { j, v: value the DOM currently shows }
+      const val = blocks[0].scope[cls];
+      if (map && st && st.j === j) {
+        const a = map.get(st.v), b = map.get(val);
+        if (a) patchPoint(a.live[j], a.scope);
+        if (b && b !== a) patchPoint(b.live[j], b.scope);
+        st.v = val;
+        return;
+      }
+      if (!map) {
+        map = el.__sparkKeyMap = new Map();
+        for (const b of blocks) map.set(b.key, b);
+      }
+      el.__sparkSelSt = { j, v: val };
+      // fall through: full sweep re-syncs every row against the new value
+    }
+  }
+
   for (const b of blocks) {
     const live = b.live, scope = b.scope;
     for (let x = 0; x < gHot.length; x++) patchPoint(live[gHot[x]], scope);
@@ -573,6 +637,48 @@ function wipeAll(el, own) {
   parent.textContent = '';
   for (const n of keep) parent.appendChild(n);
   return 1;
+}
+
+// P3 (speed-max-pro): idle self-warmup. The krausest residual is FIRST-RUN
+// script cost — the row-patch pipeline runs in the interpreter exactly when
+// the user first interacts. So after mount settles, drive patchEach once
+// against a DETACHED clone of every shallow each-anchor with synthetic rows
+// (create → reverse → swap → clear): every hot path — chunked stamping,
+// trim/LIS/direct-permutation reconcile, the wipe, expression fast-variants
+// — has executed and tiered up before the first real interaction. Generic
+// framework self-initialization: touches only spark's own parsed templates,
+// costs idle time, and every app's first click benefits identically.
+// Row values are undefined-heavy on purpose; warnOnce is gated (gWarm) so
+// a throwing warm expression never spends a real warning's dedupe slot,
+// and the whole pass is try-wrapped — warming must never break a page.
+export function warmEach(root) {
+  if (!root.querySelectorAll) return;
+  for (const el of root.querySelectorAll('template[each]')) {
+    if (!el.__sparkEachParsed || el.__sparkEachDeepRows || !el.__sparkEachTemplate || el.__sparkWarmed) continue;
+    el.__sparkWarmed = 1;
+    let host = el.parentNode;
+    while (host && !host.__sparkScope) host = host.parentNode;
+    const scope = (host && host.__sparkScope) || {};
+    const w = el.ownerDocument.createElement('template');
+    // Every __spark* expando rides over; blocks/deep are overridden. The
+    // copied selector/arrKeys state is never consulted: warm passes run
+    // with dirtyMode off, so the reconcile-skip and sweep gates never open.
+    Object.assign(w, el);
+    w.__sparkEachDeepRows = 0;
+    w.__sparkEachBlocks = [];
+    el.ownerDocument.createElement('div').appendChild(w);
+    let rows = [];
+    for (let i = 0; i < 66; i++) rows.push({ id: ~i });
+    let cur;
+    w.__sparkEachArrayFn = () => cur;
+    try {
+      // chunked create + seed row, then clear/wipe. (Reorder warm passes —
+      // LIS + direct permutation — were descoped for bytes at 18.00; the
+      // move paths share placeWithRendered/patchPoint with these two.
+      // Revisit at the checkpoint if swap/update cold cost didn't move.)
+      for (cur of [rows, []]) patchEach(w, scope);
+    } catch { /* warming must never break the page */ }
+  }
 }
 
 export function patchEach(el, scope) {
@@ -605,15 +711,9 @@ export function patchEach(el, scope) {
     // there it renders.
     {
       const tpl = el.__sparkEachTemplate;
-      let structural = 0;
-      for (const n of tpl) {
-        if (n.nodeType !== ELEMENT_NODE) continue;
-        if (!/^(?:TR|TD|TH|TBODY|THEAD|TFOOT|COL|COLGROUP|OPTION|OPTGROUP)$/.test(n.tagName)) { structural = 0; break; }
-        structural = 1;
-      }
-      if (structural) {
-        const t = tpl.filter((n) => n.nodeType !== TEXT_NODE || n.data.trim() !== '');
-        if (t.length) el.__sparkEachTemplate = t;
+      const isEl = (n) => n.nodeType === ELEMENT_NODE;
+      if (tpl.some(isEl) && tpl.every((n) => !isEl(n) || /^(?:T[RDH]|TBODY)$/.test(n.tagName))) {
+        el.__sparkEachTemplate = tpl.filter((n) => n.nodeType !== TEXT_NODE || n.data.trim() !== '');
       }
     }
     // Template-level teardown fact, computed once: a row with no component
@@ -945,6 +1045,11 @@ export function patchEach(el, scope) {
   }
 
   el.__sparkEachBlocks = newBlocks;
+  // Structural change: the P2 selector map is stale (rows added/removed/
+  // reordered) — rebuild lazily, and force one full re-sync sweep before
+  // the O(2) path may run again.
+  el.__sparkKeyMap = null;
+  el.__sparkSelSt = null;
 
   // A reconcile tick can carry external-key writes too (rows = next AND
   // selected = id in one microtask). Identity-skipped rows never walked, so
