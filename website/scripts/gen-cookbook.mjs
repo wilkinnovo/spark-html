@@ -48,5 +48,82 @@ ${aside}
 ${body}
   </main>
 </div>
+
+<script>
+  let pageTitle = 'Spark — Cookbook';
+  let pageDescription = 'Task-shaped Spark recipes — auth, CRUD, forms, uploads, realtime, SEO, testing, and more. Every recipe runs in CI.';
+  onMount(() => {
+    if (typeof window !== 'undefined' && window.highlightAll) window.highlightAll();
+    // Scrollspy: mark the TOC link for the section currently at the top.
+    const links = [...document.querySelectorAll('.docs aside a')];
+    const byId = new Map();
+    links.forEach((a) => { const h = a.getAttribute('href') || ''; if (h[0] === '#') byId.set(h.slice(1), a); });
+    const heads = [...document.querySelectorAll('.docs main [id]')].filter((h) => byId.has(h.id));
+    if (!heads.length) return;
+
+    let lockUntil = 0; // after a click, keep the clicked link active through the smooth scroll
+    function setActive(id) {
+      links.forEach((a) => a.classList.remove('active'));
+      const a = byId.get(id);
+      if (a) a.classList.add('active');
+    }
+    function spy() {
+      if (Date.now() < lockUntil) return;
+      let current = heads[0].id;
+      for (const h of heads) {
+        if (h.getBoundingClientRect().top <= 120) current = h.id; else break;
+      }
+      setActive(current);
+    }
+    spy(); // set on load
+    window.addEventListener('scroll', spy, { passive: true });
+    // Clicking a link selects it immediately and holds it while the page scrolls.
+    links.forEach((a) => a.addEventListener('click', () => {
+      const h = a.getAttribute('href') || '';
+      if (h[0] === '#') { setActive(h.slice(1)); lockUntil = Date.now() + 900; }
+    }));
+    return () => window.removeEventListener('scroll', spy);
+  });
+</script>
+
+<style>
+  .docs {
+    padding: 56px 0 90px;
+    display: grid; grid-template-columns: 190px minmax(0, 1fr); gap: 48px; align-items: start;
+  }
+  aside { position: sticky; top: 24px; display: flex; flex-direction: column; gap: 1px; }
+  .aside-title { font-size: 11px; text-transform: uppercase; letter-spacing: .12em; color: var(--muted-dim); margin-bottom: 12px; }
+  aside a { color: var(--muted); font-size: 13.5px; padding: 5px 0; transition: color .12s; }
+  aside a:hover { color: var(--text); }
+  aside a.active { color: var(--spark-ink); font-weight: 700; }
+  main { min-width: 0; }
+  h1 { font-size: clamp(30px, 5vw, 40px); letter-spacing: -.03em; font-weight: 800; margin-bottom: 10px; }
+  .intro { color: var(--muted); font-size: 16px; max-width: 62ch; }
+  h2 { font-size: 20px; margin: 46px 0 14px; padding-top: 22px; border-top: 1px solid var(--border); letter-spacing: -.01em; scroll-margin-top: 24px; font-weight: 700; }
+  h3 { font-size: 16px; margin: 26px 0 10px; font-weight: 700; }
+  p { margin: 10px 0; font-size: 14.5px; color: var(--muted); max-width: 70ch; line-height: 1.75; }
+  p strong { color: var(--text); font-weight: 600; }
+  ul { margin: 10px 0 10px 18px; color: var(--muted); font-size: 14.5px; max-width: 70ch; line-height: 1.75; }
+  li { margin: 6px 0; }
+  .note { border-left: 2px solid var(--spark); background: var(--surface); padding: 12px 16px; font-size: 14px; color: var(--muted); margin: 14px 0; }
+  code { font-size: 13px; background: var(--surface-2); padding: 2px 6px; color: var(--spark-ink); }
+  pre { background: var(--surface); border: 1px solid var(--border); padding: 16px 18px; font-size: 13px; line-height: 1.7; color: var(--muted); overflow-x: auto; margin: 14px 0; white-space: pre; }
+  pre code { background: none; padding: 0; color: inherit; }
+  .filename { margin-top: 22px; }
+  .filename code { color: var(--text); }
+  .modes { margin-top: -4px; }
+  .modes code { margin-right: 4px; }
+  table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 14px; }
+  th, td { text-align: left; padding: 10px 14px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  th { font-size: 11px; text-transform: uppercase; letter-spacing: .1em; color: var(--muted-dim); font-weight: 500; }
+  td:first-child { white-space: nowrap; color: var(--text); }
+  td code { white-space: nowrap; }
+  @media (max-width: 800px) {
+    .docs { grid-template-columns: 1fr; gap: 24px; }
+    aside { position: static; flex-direction: row; flex-wrap: wrap; gap: 6px 14px; }
+    aside a { padding: 2px 0; }
+    table { display: block; overflow-x: auto; }
+  }
+</style>
 `);
 console.log(`[gen-cookbook] ${recipes.length} recipes → components/cookbook.html`);
