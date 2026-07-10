@@ -159,6 +159,21 @@ tree-wide before components boot; fixed via retry-after-ancestor-ready.
   see pinterest's `nav.html`, which reads `location.search` directly rather
   than accepting `q` as a prop, precisely to avoid this boundary).
 
+- **Same disease, second instance (fixed, spark-ssr 1.2.1): invented
+  source names are also name-blind.** `table="files"` pushes an auto
+  list-source named `files` into `dataPlan`'s sources FIRST, so it
+  shadowed a same-named DECLARED source (`files = SELECT … WHERE …`) —
+  the field-reported "my filtered list became the raw table". Rule now
+  enforced in `dataPlan` (parse.js): a `named:` source always outranks an
+  invented one for the same variable (ranked resolution), and the pair is
+  reported on `plan.shadowed` → server.js warns naming both origins.
+  General law for ALL synthesis in spark-ssr: anything that invents a
+  name must check what the author (or an ambient helper) already owns —
+  silent override is the forbidden outcome. Sibling fix in the same
+  release: the `/__spark/data/` endpoint now rebuilds `req.params`/path/
+  query from the page's own `[param]` segments (request parity — module
+  sources reading `req.params` were silently getting `{}` after hydrate).
+
 ## Environment / packaging
 
 - **Dual-package hazard** (the big one): see packages.md. Symptom: "store not

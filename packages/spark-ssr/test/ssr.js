@@ -2246,5 +2246,58 @@ await test('cli build --no-compile: dist/ carries pages, config, a server entry;
   assert.ok(docker.includes('oven/bun') && docker.includes('__server.js'), '--docker wrote a runnable Dockerfile');
 });
 
+
+// ── 2026-07-10 field-report fixes (spark-ssr-check.md §5) ──────────────
+
+await test('data endpoint gives module sources identical req (params/path/query parity)', async () => {
+  const root = mkdtempSync(join(tmpdir(), 'spark-ssr-params-'));
+  writeFileSync(join(root, 'spark.json'), JSON.stringify({ db: 'sqlite::memory:' }));
+  mkdirSync(join(root, 'lib'));
+  writeFileSync(join(root, 'lib', 'file.js'),
+    'export default (req) => ({ id: req.params.id ?? null, path: req.path, sort: req.query.sort ?? null, qid: req.query.id ?? null });');
+  mkdirSync(join(root, 'files'));
+  writeFileSync(join(root, 'files', '[id].html'), `<h1>{file.id}</h1><button onclick={noop}>x</button>
+<script>function noop() {}</script>
+<spark-ssr>
+  file = ./lib/file.js
+</spark-ssr>`);
+  const s = await serve({ root, port: 0, quiet: true, watch: false });
+  const base = 'http://localhost:' + s.port;
+  const ssr = await (await fetch(base + '/files/3?sort=asc')).text();
+  assert.ok(ssr.includes('<h1>3</h1>'), 'SSR page sees req.params.id');
+  // The hydration boot fetch: template-keyed URL + the forwarded QS the
+  // shell bakes onto the import path (page.js routeParamsQS).
+  const data = await (await fetch(base + '/__spark/data/files/%5Bid%5D.js?sort=asc&id=3')).text();
+  assert.ok(data.includes('"id":"3"'), 'module sees req.params.id on the data endpoint — got: ' + data.slice(0, 200));
+  assert.ok(data.includes('"path":"/files/3"'), 'module sees the PAGE path, not the data-endpoint path — got: ' + data.slice(0, 200));
+  assert.ok(data.includes('"sort":"asc"'), 'real query keys still visible');
+  assert.ok(data.includes('"qid":null'), 'param keys are params again, not query');
+});
+
+await test('declared source beats a same-named table= auto source, loudly', async () => {
+  const root = mkdtempSync(join(tmpdir(), 'spark-ssr-shadow-'));
+  writeFileSync(join(root, 'spark.json'), JSON.stringify({ db: 'sqlite::memory:' }));
+  writeFileSync(join(root, 'index.html'), `<ul><template each="f in files"><li>{f.name}</li></template></ul>
+<spark-ssr table="files" />
+<spark-ssr>
+  files = SELECT * FROM files WHERE shared = 1 ORDER BY id
+</spark-ssr>`);
+  const warns = [];
+  const ow = console.warn;
+  console.warn = (...a) => { warns.push(a.join(' ')); };
+  let s, html;
+  try {
+    s = await serve({ root, port: 0, quiet: true, watch: false });
+    await s.db.query('DROP TABLE IF EXISTS files');
+    await s.db.query('CREATE TABLE files (id INTEGER PRIMARY KEY, name TEXT, shared INTEGER)');
+    await s.db.query("INSERT INTO files (name, shared) VALUES ('private.txt', 0), ('shared.txt', 1)");
+    html = await (await fetch('http://localhost:' + s.port + '/')).text();
+  } finally { console.warn = ow; }
+  assert.ok(html.includes('shared.txt'), 'declared (filtered) source feeds {files}');
+  assert.ok(!html.includes('private.txt'), 'auto table source no longer steals the declared name — got: ' + html.slice(0, 300));
+  assert.ok(warns.some((w) => w.includes('files') && w.includes('table="files"')),
+    'the shadowing is loud and names both origins — warns: ' + JSON.stringify(warns));
+});
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

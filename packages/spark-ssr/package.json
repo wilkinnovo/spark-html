@@ -1,6 +1,6 @@
 {
   "name": "spark-ssr",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "description": "Zero-config SSR for spark-html on Bun. The HTML template infers everything: filesystem routing, layouts, <spark-ssr> declarative data (SQL, URLs, globs, modules), auto CRUD with validation, guards, no-JS forms, schema + seeds, live updates, SEO. Precompiled render programs + a full-page response cache + streaming: fast by default. No build step.",
   "homepage": "https://wilkinnovo.github.io/spark-html",
   "type": "module",

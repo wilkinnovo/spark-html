@@ -179,6 +179,9 @@ function pageData(page, cache, pagesDir) {
   const analysis = mergeAnalyses(parsed.map((p) => p.analysis));
   analysis.hasScript = !!code;
   const plan = dataPlan(analysis, blocks, code);
+  for (const sh of plan.shadowed || []) {
+    console.warn(`[spark-ssr] ${page.key}: {${sh.name}} is fed by your declared source; the same-named auto source${sh.overTable ? ` from table="${sh.overTable}"` : ''} is shadowed. If you wanted the raw ${sh.overKind === 'table' ? 'table rows' : 'auto source'}, rename the declared one — the table keeps its schema/CRUD roles either way.`);
+  }
   const forms = parsed.flatMap((p) => p.forms);
   const head = mergeHeads(parsed.map((p) => p.head));
   const scripts = mergeScripts(parsed.map((p) => p.scripts));
@@ -702,7 +705,26 @@ export async function serve(options = {}) {
           const page = pages.find((p) => p.key === key);
           if (!page) return finish(errorPage(404));
           const pd = pageData(page, cache, pagesDir);
-          const req = wrapReq(request, url, {}, session, srv);
+          // Parity: a source must not be able to tell it runs under the data
+          // endpoint. The shell forwarded the route's [param] segments as
+          // query keys (page.js routeParamsQS) — rebuild req.params from the
+          // page's own segments, restore the page-shaped path, and take the
+          // param keys back OUT of req.query. Before this, a module source
+          // reading req.params got {} here and silently returned null on
+          // every hydration boot ("Not found" only after hydrate — the
+          // 2026-07-10 field report). SQL :tokens are unaffected either way
+          // (resolveToken checks params first, then query).
+          const pageUrl = new URL(url);
+          const params = {};
+          pageUrl.pathname = '/' + page.segs.map((sg) => {
+            const dm = sg.match(/^\[(\w+)\]$/);
+            if (!dm) return sg;
+            const v = url.searchParams.get(dm[1]) ?? '';
+            params[dm[1]] = v;
+            pageUrl.searchParams.delete(dm[1]);
+            return encodeURIComponent(v);
+          }).join('/');
+          const req = wrapReq(request, pageUrl, params, session, srv);
           const data = {};
           for (const p of pd.plan) data[p.var] = await resolveSource(p, req);
           // {session} the hydration component may read ({path} it derives from
