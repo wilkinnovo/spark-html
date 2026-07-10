@@ -163,7 +163,7 @@ export function patchIf(el, scope) {
     // branches beyond the active one or their raw content stays visible.
     parseIfMember(m);
     const show = i === active;
-    const isShown = Boolean(m.__sparkIfRendered && m.__sparkIfRendered.length);
+    const isShown = !!(m.__sparkIfRendered && m.__sparkIfRendered.length);
 
     if (show && !isShown) {
       m.__sparkIfRendered = [];
@@ -202,7 +202,9 @@ export function patchIf(el, scope) {
 function awaitBranchScope(el, scope, state) {
   if (state !== 'then' && state !== 'catch') return scope;
   const v = state === 'then' ? el.__sparkAwaitValue : el.__sparkAwaitError;
-  return makeLoopScope({ v: 'await', iv: el.__sparkAwaitAs, item: v, i: v, scope });
+  // No proto cache here: await branches re-render rarely (settle/re-eval),
+  // so per-call proto build is cheaper than a cache slot.
+  return rowScope(makeLoopProto('await', el.__sparkAwaitAs, scope), { item: v, i: v });
 }
 
 function parseAwait(el) {
@@ -374,15 +376,15 @@ export function patchAwait(el, scope) {
 // Optional explicit key for identity-stable reconciliation across reorders:
 //   <template each="todo in todos" key="todo.id"> … </template>
 
-// A loop scope: the loop variable (`box.v`) and index (`box.iv`) resolve from
-// a mutable box via own accessors; everything else falls through the native
-// prototype chain to the enclosing scope proxy (so dependency capture still
-// sees those reads, one proxy trap instead of two). One scope object is
-// created per block and REUSED across patches — reconciliation just rewrites
-// box.item / box.i. The prototype is fixed at creation, so the callers that
-// rewrite box.scope must rebuild the scope object when its identity changes
-// (they compare first; a component's scope proxy is stable, so in practice
-// this never fires after creation).
+// A loop scope: the loop variable and index resolve via accessors on ONE
+// shared per-anchor prototype; everything else falls through the chain to
+// the enclosing scope proxy (so dependency capture still sees those reads,
+// one proxy trap instead of two). One `{__proto__, __b}` scope object is
+// created per block and REUSED across patches — reconciliation just
+// rewrites block.item / block.i. The proto captures the enclosing scope at
+// creation, so patchEach rebuilds it (and every row scope) when the scope
+// identity changes (it compares first; a component's scope proxy is
+// stable, so in practice this never fires after creation).
 // The loop-var setter is a silent no-op — an assignment must never clobber
 // the loop variable or leak it onto the shared parent scope.
 // The getters DO record their own name into the capture sets (like a scope
@@ -391,17 +393,34 @@ export function patchAwait(el, scope) {
 // set to resolve through this accessor instead of falling to a global
 // lookup. Row nodes therefore carry the loop-var name in their readKeys —
 // walkBlock's rowForce is what keeps item-driven row walks un-gated.
-function makeLoopScope(box) {
-  const record = (name) => {
-    if (capture.set) capture.set.add(name);
-    if (capture.sink) capture.sink.add(name);
+// P4b (speed-max-pro): ONE prototype per anchor carries the loop-var
+// getters — closures per ANCHOR, not per row. A row scope is then just
+// `{ __proto__: proto, __b: rowState }` (heap receipt: the old per-row
+// get/set/record closures were 82 KB at 1k rows). Reads record into the
+// active capture set/sink exactly as before; writes to a loop var stay
+// silently ignored. `__b` is set in the object literal (defineProperty
+// semantics) — a plain assignment would walk the proto chain into the
+// component scope proxy's set trap.
+function makeLoopProto(v, iv, scope) {
+  const desc = {};
+  const add = (name, k) => desc[name] = {
+    // No `configurable`: a proto is never redefined — scope-identity
+    // changes rebuild the whole proto object instead.
+    get() {
+      if (capture.set) capture.set.add(name);
+      if (capture.sink) capture.sink.add(name);
+      return this.__b[k];
+    },
+    set: () => {},
   };
-  const desc = {
-    [box.v]: { get: () => (record(box.v), box.item), set: () => {}, configurable: true },
-  };
-  if (box.iv) desc[box.iv] = { get: () => (record(box.iv), box.i), set: () => {}, configurable: true };
-  return Object.create(box.scope, desc);
+  add(v, 'item');
+  if (iv) add(iv, 'i');
+  return Object.create(scope, desc);
 }
+// A row scope over the shared proto. `__b` must be DEFINED (object
+// literal), never assigned — assignment would walk the chain into the
+// scope proxy's set trap.
+const rowScope = (p, b) => ({ __proto__: p, __b: b });
 
 // Siblings OWNED by an anchor node — the rendered output of an if/else
 // chain member, an await block, or a nested each. They sit after the anchor
@@ -667,16 +686,17 @@ export function warmEach(root) {
     w.__sparkEachDeepRows = 0;
     w.__sparkEachBlocks = [];
     el.ownerDocument.createElement('div').appendChild(w);
-    let rows = [];
-    for (let i = 0; i < 66; i++) rows.push({ id: ~i });
-    let cur;
+    let cur = [];
+    for (let i = 0; i < 66; i++) cur.push({ id: ~i });
     w.__sparkEachArrayFn = () => cur;
     try {
       // chunked create + seed row, then clear/wipe. (Reorder warm passes —
       // LIS + direct permutation — were descoped for bytes at 18.00; the
       // move paths share placeWithRendered/patchPoint with these two.
       // Revisit at the checkpoint if swap/update cold cost didn't move.)
-      for (cur of [rows, []]) patchEach(w, scope);
+      patchEach(w, scope);
+      cur = [];
+      patchEach(w, scope);
     } catch { /* warming must never break the page */ }
   }
 }
@@ -695,10 +715,10 @@ export function patchEach(el, scope) {
     }
 
     el.__sparkEachVar = match[1];
-    el.__sparkEachIndexVar = match[2] || null;
+    el.__sparkEachIndexVar = match[2] || 0;
     el.__sparkEachArrayExpr = match[3].trim();
     el.__sparkEachArrayFn = compileExpr(el.__sparkEachArrayExpr);
-    const ke = el.__sparkEachKeyExpr = (el.getAttribute('key') || '').trim() || null;
+    const ke = el.__sparkEachKeyExpr = (el.getAttribute('key') || '').trim() || 0;
     el.__sparkEachKeyFn = ke && compileExpr(ke);
 
     el.__sparkEachTemplate = cloneTemplateNodes(el);
@@ -713,7 +733,16 @@ export function patchEach(el, scope) {
       const tpl = el.__sparkEachTemplate;
       const isEl = (n) => n.nodeType === ELEMENT_NODE;
       if (tpl.some(isEl) && tpl.every((n) => !isEl(n) || /^(?:T[RDH]|TBODY)$/.test(n.tagName))) {
-        el.__sparkEachTemplate = tpl.filter((n) => n.nodeType !== TEXT_NODE || n.data.trim() !== '');
+        el.__sparkEachTemplate = tpl.filter((n) => n.nodeType !== TEXT_NODE || n.data.trim());
+        // P4a (DESCOPED 2026-07-10 at the 18.00 ALL-IN rule, +0.05 KB —
+        // same precedent as F4's park-then-revive): the same rule applies
+        // INSIDE the row containers — whitespace between a <tr>'s cells is
+        // render-inert too, but cloned per row it costs a Text node + a
+        // __spark expando slot + layout adjacency work each (heap receipt:
+        // ~4.5 such nodes per krausest row). Verified design: inside THIS
+        // gate, every element is T[RDH]|TBODY, so containers are simply
+        // !/^T[DH]$/ — for those, remove whitespace-only text children
+        // (cells hold flow content, never touched). Revive with funding.
       }
     }
     // Template-level teardown fact, computed once: a row with no component
@@ -721,15 +750,8 @@ export function patchEach(el, scope) {
     // the per-node teardown machinery (destroyComponent's querySelectorAll
     // per node is the expensive part) — removal is just n.remove(), unless
     // a leave transition wants to animate it out.
-    let deep = 0;
-    for (const t of el.__sparkEachTemplate) {
-      if (t.nodeType !== ELEMENT_NODE) continue;
-      if ((t.matches && t.matches(DEEP_SEL)) || (t.querySelector && t.querySelector(DEEP_SEL))) {
-        deep = 1;
-        break;
-      }
-    }
-    el.__sparkEachDeepRows = deep;
+    el.__sparkEachDeepRows = el.__sparkEachTemplate.some((t) => t.nodeType === ELEMENT_NODE
+      && ((t.matches && t.matches(DEEP_SEL)) || (t.querySelector && t.querySelector(DEEP_SEL)))) ? 1 : 0;
     el.__sparkEachParsed = 1;
     el.__sparkEachBlocks = []; // [{ key, nodes: [] }]
   }
@@ -742,8 +764,8 @@ export function patchEach(el, scope) {
     __sparkEachTemplate: templateNodes,
   } = el;
 
-  if (!varName || !arrayExpr || !templateNodes) return;
-  if (!el.parentNode) return;
+  // varName/arrayExpr/templateNodes are set together at parse — one guard.
+  if (!varName || !el.parentNode) return;
 
   // Reconcile-skip: in a dirty-key pass that doesn't touch any key the array
   // expression itself reads, the list's structure is untouched — the array
@@ -792,17 +814,22 @@ export function patchEach(el, scope) {
     return;
   }
 
-  // The key expression evaluates through ONE shared per-anchor box+proxy;
-  // each block carries its own persistent box+proxy for walking its nodes.
-  // Reconciliation updates three box fields per row instead of allocating a
-  // new Proxy per row per patch (see makeLoopScope).
-  const keyFn = el.__sparkEachKeyFn;
-  let keyBox = el.__sparkEachKeyBox;
-  if (keyFn && (!keyBox || keyBox.scope !== scope)) {
-    if (keyBox) keyBox.scope = scope;
-    else keyBox = el.__sparkEachKeyBox = { v: varName, iv: idxName, item: null, i: 0, scope };
-    el.__sparkEachKeyScope = makeLoopScope(keyBox);
+  // ONE prototype per anchor holds the loop-var getters (makeLoopProto);
+  // a row scope is `{__proto__: proto, __b: block}` — the block IS the row
+  // state (item/i live on it since P4b). Proto (and with it every row
+  // scope) rebuilds only when the enclosing scope identity changes — never
+  // for a stable component proxy.
+  let proto = el.__sparkEachProto;
+  const protoChanged = !proto || el.__sparkEachPS !== scope;
+  if (protoChanged) {
+    proto = el.__sparkEachProto = makeLoopProto(varName, idxName, scope);
+    el.__sparkEachPS = scope;
   }
+  const keyFn = el.__sparkEachKeyFn;
+  const keyBox = keyFn && (el.__sparkEachKeyBox ||= { item: null, i: 0 });
+  // Built once per reconcile (not cached): a two-property literal over the
+  // shared proto — cheaper than the old cached-scope invalidation dance.
+  const keyScope = keyFn && rowScope(proto, keyBox);
 
   const oldBlocks = el.__sparkEachBlocks || [];
   const oldLen = oldBlocks.length;
@@ -837,7 +864,7 @@ export function patchEach(el, scope) {
     if (!keyFn) for (let i = 0; i < count; i++) keys[i] = i;
     else for (let i = 0; i < count; i++) {
       keyBox.item = arr[i]; keyBox.i = i;
-      keys[i] = runExpr(keyFn, keyExpr, el.__sparkEachKeyScope);
+      keys[i] = runExpr(keyFn, keyExpr, keyScope);
     }
   }
 
@@ -849,26 +876,25 @@ export function patchEach(el, scope) {
   // wrapped read (arr[i]) happens ONLY when identity actually changed.
   const reuse = (block, i) => {
     const raw = rawOf(rawArr[i]);
-    const box = block.box;
     let force = false;
     let walk;
     if (capture.dirtyMode) {
-      force = block.raw !== raw || (idxName && box.i !== i) || !(block.live || block.ext);
+      force = block.raw !== raw || (idxName && block.i !== i) || !(block.live || block.ext);
       walk = force || (!block.live && setsIntersect(block.ext, capture.dirtyKeys));
     } else {
       walk = !capture.dirtyItems || capture.dirtyItems.has(raw);
     }
     if (block.raw !== raw) {
       block.raw = raw;
-      box.item = arr[i];
+      block.item = arr[i];
       if (items && raw && typeof raw === 'object') items.add(raw);
     }
-    if (idxName) box.i = i;
-    if (box.scope !== scope) {
+    if (idxName) block.i = i;
+    if (protoChanged) {
       // Enclosing scope identity changed (never for a stable component
-      // proxy) — the loop scope's prototype is fixed, so rebuild it.
-      box.scope = scope;
-      block.scope = makeLoopScope(box);
+      // proxy) — the shared proto was rebuilt above; re-seat this row's
+      // scope over it.
+      block.scope = rowScope(proto, block);
       walk = force = true;
     }
     if (walk) walkBlock(block, force);
@@ -885,8 +911,9 @@ export function patchEach(el, scope) {
   const build = (i, nodes, live) => {
     const raw = rawOf(rawArr[i]);
     if (items && raw && typeof raw === 'object') items.add(raw);
-    const box = { v: varName, iv: idxName, item: arr[i], i, scope };
-    return newBlocks[i] = { key: keys[i], nodes, box, scope: makeLoopScope(box), raw, ext: live ? 0 : new Set(), live };
+    const b = { key: keys[i], nodes, item: arr[i], i, scope: 0, raw, ext: 0, live };
+    b.scope = rowScope(proto, b);
+    return newBlocks[i] = b;
   };
   const make = (i, cur) => {
     const nodes = [];
@@ -897,7 +924,7 @@ export function patchEach(el, scope) {
       seeded = 1;
     } else {
       const prevSink = capture.sink;
-      capture.sink = block.ext;
+      capture.sink = block.ext = new Set();
       try {
         renderClones(templateNodes, cur, nodes, block.scope, live);
       } finally {

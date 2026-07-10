@@ -724,13 +724,13 @@ function formStateSnapshot(form) {
   const errors = {};
   const values = {};
   let valid = true;
-  for (const field of form.elements ? [...form.elements] : []) {
+  for (const field of form.elements || []) {
     const fname = field.name;
     if (!fname) continue;
     if (field.type === 'checkbox') values[fname] = field.checked;
     else if (field.type === 'radio') { if (field.checked) values[fname] = field.value; }
     else values[fname] = field.value;
-    if (typeof field.checkValidity === 'function' && !field.checkValidity()) {
+    if (field.checkValidity && !field.checkValidity()) {
       valid = false;
       if (!errors[fname]) errors[fname] = field.validationMessage || 'Invalid';
     }
@@ -750,8 +750,8 @@ function setupFormBinding(form, stateName, handlerAttr) {
     const base = formStateSnapshot(form);
     scope[stateName] = {
       ...base,
-      pending: prev.pending || false,
-      submitted: prev.submitted || false,
+      pending: !!prev.pending,
+      submitted: !!prev.submitted,
       error: prev.error || null,
       ...extra,
     };
@@ -768,11 +768,11 @@ function setupFormBinding(form, stateName, handlerAttr) {
   form.addEventListener('change', () => refresh({}));
 
   form.addEventListener('submit', async (e) => {
-    if (e && e.preventDefault) e.preventDefault();
+    e.preventDefault?.();
     refresh({ submitted: true });
-    if (typeof form.checkValidity === 'function' && !form.checkValidity()) {
+    if (form.checkValidity && !form.checkValidity()) {
       const bad = [...(form.elements || [])].find(
-        (f) => f.name && typeof f.checkValidity === 'function' && !f.checkValidity());
+        (f) => f.name && f.checkValidity && !f.checkValidity());
       if (bad && bad.focus) bad.focus(); // native focus-first-invalid, no library
       return;
     }
@@ -1303,15 +1303,20 @@ function delegate(e) {
 function wireElement(el, a, del) {
   for (const h of a.handlers) {
     if (del && !NO_BUBBLE.test(h.evt)) {
-      (el.__sparkH ||= {})[h.evt] = h;
+      // P4c: the evt→handler map is identical for every clone of this
+      // template element — build it ONCE on the analysis and point every
+      // clone's __sparkH at it (heap receipt: 2 such objects per krausest
+      // row). delegate() only ever reads it.
+      (a.hm ||= {})[h.evt] = h;
       // The assignment doubles as capture:true — one delegate per type, ever.
-      if (!gDelegated[h.evt]) document.addEventListener(h.evt, delegate, gDelegated[h.evt] = true);
+      if (!gDelegated[h.evt]) document.addEventListener(h.evt, delegate, gDelegated[h.evt] = 1);
     } else {
       // One SHARED listener per handler descriptor (h.l, built lazily) —
       // the element comes back out of e.currentTarget.
       el.addEventListener(h.evt, h.l ??= (e) => fireHandler(h, e.currentTarget, e));
     }
   }
+  if (del && a.hm) el.__sparkH = a.hm;
   for (const b of a.binds) {
     // Context is a factory: built only if the write actually throws.
     const bindCtx = () => ({
@@ -1482,7 +1487,7 @@ async function mount(root = document.body, options = {}) {
     if (!options.quiet && !(isPrerender())) {
       // Count genuine components only — a booted component carries __sparkScope,
       // so a form field's native `name=` doesn't inflate the tally.
-      const count = [...root.querySelectorAll('[name]')].filter((e) => e.__sparkScope !== undefined).length;
+      const count = [...root.querySelectorAll('[name]')].filter((e) => e.__sparkScope).length;
       console.log(`[spark] ⚡ ready — ${count} component(s)`);
     }
     // Idle self-warmup (speed-max-pro P3): rIC gates it to real browsers
@@ -1490,7 +1495,7 @@ async function mount(root = document.body, options = {}) {
     // strictly guarantee post-paint; measured fp-neutral by same-night A/B
     // (§9 checkpoint receipt) — a stricter double-rAF construction costs
     // bytes at zero headroom and the measured need is absent.
-    if (!isPrerender() && typeof requestIdleCallback === 'function') {
+    if (!isPrerender() && globalThis.requestIdleCallback) {
       requestIdleCallback(() => { warm.on = 1; try { warmEach(root); } catch { /* never the page's problem */ } warm.on = 0; });
     }
   };
