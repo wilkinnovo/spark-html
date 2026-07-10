@@ -8,21 +8,21 @@ description: The judgment layer for the Spark monorepo — value ordering, decis
 Written 2026-07-06 by Claude Fable 5 at Wilkin's request, against spark-html
 0.27.14 / spark-ssr 0.7.2, to be followed by every model that works in this
 repo after me. `spark-project` holds the **facts** (repo map, invariants,
-pitfalls, workflows). The **sequence** lives in `spark-speed-up-max-pro.md`
-— the third speed program ("less code, run twice"), commissioned by Wilkin
-2026-07-09 late and written 2026-07-10; it reopens krausest work THROUGH the
-standing denial's own precondition (every phase targets the recorded
-cold-JIT/first-run residual) with an 18.00 KB ALL-IN ceiling. Predecessors
-(v1 plan, spark-improvements.md, improvements.md) each completed and were
-deleted; deletion on completion is the convention. This file holds the **judgment**:
+pitfalls, workflows). There is NO active program doc: the third speed
+program (`spark-speed-up-max-pro.md`, "less code, run twice") COMPLETED
+2026-07-10 at its pre-registered SHIP target — definitive count=15 windowed
+geomean 1.286× (release 1.5.0) — and was deleted per convention; its verdict
+is archived in `benchmarks.md`. Predecessors (v1 plan,
+spark-improvements.md, improvements.md) had each completed and been deleted
+the same way. This file holds the **judgment**:
 how to decide when the facts and the sequence are silent, conflicting, or
 tempting you toward a mistake. It is written for the ways models like us
 actually fail here — every rule below is paid for by a real shipped bug or a
 real near-miss.
 
 **Precedence:** Wilkin's explicit instruction > this manual > the active
-program doc (`spark-speed-up-max-pro.md` since 2026-07-10; each predecessor
-completed and was deleted) > everything else. When a higher authority contradicts a lower one, say so once,
+program doc (none since 2026-07-10; each predecessor completed and was
+deleted) > everything else. When a higher authority contradicts a lower one, say so once,
 plainly, with the tradeoff — then follow the higher authority without
 relitigating. When Wilkin overrides a rule here, record the override (see
 "Maintaining the knowledge system") so the next model inherits the decision
@@ -30,8 +30,9 @@ instead of re-fighting it.
 
 **Session start ritual** (cheap, do it every time):
 1. Load `spark-project`, then this file.
-2. Read the STATUS line at the top of `spark-speed-up-max-pro.md` (the
-   active program), then `git log --oneline -15` to see where reality is.
+2. There is no active program doc (speed-max-pro completed 2026-07-10);
+   read `git log --oneline -15` to see where reality is, and `benchmarks.md`
+   for the standing perf verdict.
 3. Only then touch the task. Never start editing the reactivity core, the
    budget, or a release from a cold context.
 
@@ -96,12 +97,16 @@ When goods conflict, this is the tie-breaker order. Higher always beats lower:
    fund spark-speed-up-max-pro.md (the sanctioned third speed program —
    see §5). LIMIT_KB moved in the P1 gate commit (d006387) per that plan's
    §6; same descope-never-fund law. 18.00/18.00 used after P2+P3
-   (fc69317) — zero headroom again; P4+ must self-fund via deletions.]
+   (fc69317) — zero headroom again; P4+ must self-fund via deletions.
+   FINAL 2026-07-10, program complete: 18,427/18,432 bytes used, frozen for
+   the life of 1.x — self-fund-via-deletion is the only path for any core
+   byte, ever.]
 5. **Performance** — *defend, don't chase* was the 1.0 posture. [OVERRIDE
-   2026-07-08, Wilkin: for the speed program, performance is actively chased
-   — target is the top of the krausest js-framework-benchmark table — but
-   never above correctness or loud failure, and never with new user-facing
-   concepts. Outside that program, defend-don't-chase still applies.]
+   2026-07-08, Wilkin: for the speed programs, performance was actively
+   chased — never above correctness or loud failure, never with new
+   user-facing concepts. CLOSED 2026-07-10: all three programs complete
+   (3.46 → 1.286×, spark-html 1.5.0); **defend-don't-chase is again the
+   standing posture** — the nightly speed-gate defends the band.]
 6. **Internal elegance** — last, always, and only under a green harness. A
    3,200-line file that works outranks a beautiful module split that ships a
    silent reconciliation bug. This is not a license for permanent mess — M3
@@ -247,11 +252,17 @@ enforced by default: no new spark-ssr
 feature domains, no parser rewrite, no partial hydration/islands, no
 gestures package, no budget creep (18.00 ALL-IN since 2026-07-09 late —
 descope, never fund), no user-side build step ever. The "speed programs
-stay closed absent a cold-JIT lever" denial is SATISFIED, not deleted:
-spark-speed-up-max-pro.md is the sanctioned reopening (its §0 targets the
-recorded cold-JIT/first-run residual — the exact precondition the denial
-demanded); when that program completes and is deleted, the denial resumes
-with whatever new residual its verdict records.
+stay closed" denial RESUMED 2026-07-10 when speed-max-pro completed (1.286×
+definitive, 1.5.0) and was deleted. Its new precondition, from that
+program's final verdict: the CPU residual is clone+stamp+layout physics
+plus the no-build identity's interpretive floor (cold-JIT is spent — the
+idle warmup battery covers create, wipe, direct-permutation, and map+LIS
+paths); the memory residual (~1.9× run-memory) is attributed to per-row
+span/live arrays + `__spark*` expandos, with parked funded-only designs at
+their sites (P4a whitespace note in patchEach; flat-live analysis in
+benchmarks.md/git history). Do not reopen krausest work without a genuinely
+NEW lever against one of THOSE residuals — re-running the shipped levers is
+not a lever.
 
 When a feature idea arrives — including from Wilkin, including from *you*:
 1. Run the four identity gates (§1). Report which gate it hits, if any.
@@ -355,8 +366,9 @@ only what's written; judgment that stays in a context window dies with it.
 
 The plan ends at 1.0.0. The job doesn't:
 
-- **The budget stays frozen — at 17.25 KB ALL-IN since the 2026-07-09
-  overrides in §2 (17.24 used: zero headroom) — for the life of 1.x.**
+- **The budget stays frozen — at 18.00 KB ALL-IN since the 2026-07-09/10
+  overrides in §2 (18,427/18,432 bytes used: zero headroom) — for the life
+  of 1.x.**
   Every "it's only 200 bytes" is answered with a sibling package. The day the core needs
   a bigger budget is the day to ask whether the identity changed — that's a
   Wilkin conversation, not a version bump.

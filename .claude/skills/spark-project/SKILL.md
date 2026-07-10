@@ -12,11 +12,13 @@ compilation step is out of scope by definition.** The stated mission (Wilkin,
 2026-07-06): be the *simplest* way to write SSR, prerender, and client-only
 apps while staying fast — "built for humans who want to code themselves."
 
-Knowledge here is accurate as of 2026-07-10 — **core 1.4.0 current** (the
-speed-max-pro CHECKPOINT release: P1+P2+P3, definitive count=15 windowed
-geomean **1.313×** vanilla — select 1.21, clear 1.20, remove 1.12 — past
-Angular, statistically tied with Vue; gzip **18.00/18.00** under the
-Wilkin-authorized 18.00 ALL-IN ceiling, zero headroom left). **First-paint
+Knowledge here is accurate as of 2026-07-10 — **core 1.5.0 current** (the
+speed-max-pro FINAL release, program COMPLETE at its pre-registered SHIP
+target: definitive count=15 windowed geomean **1.286×** vanilla —
+update10th 1.39, swap 1.32, select 1.23, clear 1.17, remove 1.16 — past
+Angular (1.45) and past Vue (1.31) AT THE MARGIN on the reference frame
+(cross-machine caveat attaches to every external claim); gzip
+**18,427/18,432 bytes** under the 18.00 ALL-IN ceiling, frozen for 1.x). **First-paint
 honesty (2026-07-10): the 1.2.0 "0.86× beats vanilla" headline is RETIRED**
 — windowed single-sample fp spreads 0.92–1.61× per run; a same-night
 headless A/B (published 1.3.0 vs P1-P3 tree, 3 alternating pairs) measured
@@ -29,15 +31,23 @@ clear-as-one-wipe (`wipeAll`) + ONE shared reactify proxy handler per
 row losing + gaining the value; bail-to-full-sweep on any doubt). P3 =
 idle self-warmup (`warmEach`, post-ready rIC, detached template clone,
 warm flag silences sinks/lifecycle/warnings; rIC is NOT strictly
-post-paint — measured fp-neutral, comment at the site). 1.3.0 was doctor
+post-paint — measured fp-neutral, comment at the site; since 1.5.0 the
+battery also runs the reorder passes — far swap and reverse — so
+direct-permutation and map+LIS reconciles tier up before first use). 1.3.0 was doctor
 v2 (runtime bytes identical to 1.2.x). Companions (registry-verified,
 2026-07-09): spark-ssr 1.2.0, spark-html-bun 1.1.0, spark-html-devtools
-1.1.0, language-server 1.4.0, test-utils 1.0.1. Speed program history:
-round 1 (spark-speed-up.md → 1.1.0) 3.46× → 1.53×; round 2
+1.1.0, language-server 1.4.0, test-utils 1.0.1. Speed program history (ALL CLOSED
+2026-07-10): round 1 (spark-speed-up.md → 1.1.0) 3.46× → 1.53×; round 2
 (spark-speed-up-max.md → 1.2.0 "the dispatch release") → 1.496×; round 3
-= spark-speed-up-max-pro.md, ACTIVE past its checkpoint (P4-P7 remain;
-P4 re-scoped: creates are near-warm post-P3, the lever is run-memory
-2.08× + update10th 1.48). The core now has: LIS keyed reconciler, per-row identity/ext-key
+(spark-speed-up-max-pro.md → 1.4.0 checkpoint 1.313×, then 1.5.0 FINAL
+1.286×; deleted per convention, verdict archived in benchmarks.md). 1.5.0
+shipped: warm-reorder battery (warmEach also drives a far swap → direct
+permutation and a reverse → map+LIS at idle) + P4t1 row diet (shared
+loop-scope proto per anchor, box merged into block, shared per-template
+handler maps — 1k-row JS heap −18%, run-memory 2.08 → 1.95×). P4t2
+flat-live PARKED at the design kill-switch, P5 JIT + P6 split DESCOPED at
+the ALL-IN rule; memory residual ~1.9× attributed (per-row span/live
+arrays + __spark* expandos — revive parked designs only with funding). The core now has: LIS keyed reconciler, per-row identity/ext-key
 skip gates, fast no-`with` expression variants (capture-derived destructure
 prelude + ReferenceError self-heal), clone recipes (`stampTree` — analysis
 cached on the template, static marking at stamp time), **live-node row
@@ -232,6 +242,8 @@ See pitfalls.md "Fixed at v1-prep".)
 - `references/pitfalls.md` — the full bug history with root causes; what each
   one taught; browser-testing setup on this machine.
 
-For the roadmap: read `spark-speed-up-max-pro.md` at repo root — the
-active (third) speed program. Its §0 records which two prior denials
-Wilkin's mandate reverses; its §9 ledger is the only admissible number.
+For the roadmap: there is NO active program (speed-max-pro completed
+2026-07-10 and was deleted per convention). `benchmarks.md` holds the
+definitive perf verdict and method; spark-brain §5 gates all new work, and
+its speed-programs denial has resumed with the program-end residuals as
+its precondition.
