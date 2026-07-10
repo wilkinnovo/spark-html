@@ -92,6 +92,11 @@ When goods conflict, this is the tie-breaker order. Higher always beats lower:
    further budget conversations for the life of 1.x. Estimate lesson,
    twice-paid: plan-time gross byte estimates for structural core work run
    2–4× light; only the per-gate measured ledger is admissible.]
+   [OVERRIDE 2026-07-09 late, Wilkin: ceiling 17.25 → **18.00 ALL-IN** to
+   fund spark-speed-up-max-pro.md (the sanctioned third speed program —
+   see §5). LIMIT_KB moved in the P1 gate commit (d006387) per that plan's
+   §6; same descope-never-fund law. 18.00/18.00 used after P2+P3
+   (fc69317) — zero headroom again; P4+ must self-fund via deletions.]
 5. **Performance** — *defend, don't chase* was the 1.0 posture. [OVERRIDE
    2026-07-08, Wilkin: for the speed program, performance is actively chased
    — target is the top of the krausest js-framework-benchmark table — but
@@ -240,9 +245,13 @@ Saying no is most of the job — before 1.0 and after. Standing denials
 (recorded HERE since improvements.md completed and was deleted, 2026-07-09),
 enforced by default: no new spark-ssr
 feature domains, no parser rewrite, no partial hydration/islands, no
-gestures package, no budget creep (17.25 ALL-IN — descope, never fund), no
-user-side build step ever, and the speed programs stay closed absent a
-cold-JIT lever.
+gestures package, no budget creep (18.00 ALL-IN since 2026-07-09 late —
+descope, never fund), no user-side build step ever. The "speed programs
+stay closed absent a cold-JIT lever" denial is SATISFIED, not deleted:
+spark-speed-up-max-pro.md is the sanctioned reopening (its §0 targets the
+recorded cold-JIT/first-run residual — the exact precondition the denial
+demanded); when that program completes and is deleted, the denial resumes
+with whatever new residual its verdict records.
 
 When a feature idea arrives — including from Wilkin, including from *you*:
 1. Run the four identity gates (§1). Report which gate it hits, if any.
