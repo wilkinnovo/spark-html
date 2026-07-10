@@ -4,7 +4,7 @@
 
 <p align="center">
   <a href="https://www.npmjs.com/package/spark-html"><img alt="npm" src="https://img.shields.io/npm/v/spark-html?color=ffd24a&amp;label=spark-html" /></a>
-  <img alt="size" src="https://img.shields.io/badge/gzip-17.24%20kB-ffd24a" />
+  <img alt="size" src="https://img.shields.io/badge/gzip-18.00%20kB-ffd24a" />
   <img alt="deps" src="https://img.shields.io/badge/dependencies-0-ffd24a" />
   <a href="https://github.com/wilkinnovo/spark-html/blob/main/LICENSE"><img alt="license" src="https://img.shields.io/npm/l/spark-html?color=ffd24a" /></a>
   &middot; <a href="https://spark-html.dev">site</a>
@@ -34,13 +34,15 @@ byte-for-byte — reactive, scoped, untouched.
 ```
 
 No compiler generates code from your template. No virtual DOM allocates and diffs
-a tree per frame. The file you write is what runs — 17.24 kB gzipped, zero dependencies.
+a tree per frame. The file you write is what runs — 18.00 kB gzipped, zero dependencies.
 
-> ⚡ **Spark beats hand-written vanilla JS to first paint.**
-> On the krausest js-framework-benchmark, spark-html 1.2 reaches first paint at
-> **0.86× vanilla (291 ms vs 337 ms)** — no VDOM to build, no component graph to
-> initialize, no template compilation: the runtime walks the HTML it was handed and
-> patches it in place. *(Paired local run; [method & full table](#performance).)*
+> ⚡ **1.31× hand-written vanilla JS — with no build step at all.**
+> On the krausest js-framework-benchmark, spark-html 1.4 lands a CPU geomean of
+> **1.313× the hand-written `vanillajs` reference** — past Angular, tied with Vue
+> on the published scale — and first paint sits at parity with vanilla (we
+> retired our old "beats vanilla to first paint" headline once more samples
+> showed that metric's noise; the honesty audit trail is in `benchmarks.md`).
+> *(Paired local run; [method & full table](#performance).)*
 
 ## Built for humans
 
@@ -119,27 +121,28 @@ just files at a URL, so you can even `import` one straight from a CDN. See
 ## Performance
 
 **Measured, not claimed.** On the [krausest js-framework-benchmark](https://github.com/krausest/js-framework-benchmark)
-(the industry-standard table), spark-html 1.2.0 lands a **CPU geomean of
-1.496× hand-written vanilla JS — and reaches first paint *before* the
-vanilla reference** — paired run against the `vanillajs` reference, 15
-iterations, windowed Chrome 150, same machine, official webdriver-ts
-harness. On the published solidjs.com scale that sits between Angular
-(1.45) and React Hooks (1.61) — **while being the only framework in that
-neighborhood with no build step at all.** Local run, upstream submission
-open (PR #2048); numbers below are medians:
+(the industry-standard table), spark-html 1.4.0 lands a **CPU geomean of
+1.313× hand-written vanilla JS** — paired run against the `vanillajs`
+reference, 15 iterations, windowed Chrome, same machine, official
+webdriver-ts harness. On the published solidjs.com scale that is **past
+Angular (1.45) and statistically tied with Vue (1.31) — while being the
+only framework in that neighborhood with no build step at all.** First
+paint is at parity with vanilla (single-sample fp spreads ±20% per run;
+an A/B against the prior release measured Δ+0.6 ms — details in
+`benchmarks.md`). Local run, upstream submission open (PR #2048);
+numbers below are medians:
 
 | Benchmark | vanilla (ms) | spark (ms) | ratio |
 |---|---:|---:|---:|
-| create 1,000 rows | 98.2 | 138.0 | 1.41× |
-| replace 1,000 rows | 105.8 | 169.8 | 1.60× |
-| update every 10th (×16) | 48.5 | 74.7 | 1.54× |
-| select row | 11.6 | 23.4 | 2.02× |
-| swap rows | 57.3 | 92.5 | 1.61× |
-| remove one | 53.9 | 64.0 | 1.19× |
-| create 10,000 rows | 1105.8 | 1524.3 | 1.38× |
-| append 1,000 | 114.1 | 162.3 | 1.42× |
-| clear (×8) | 37.4 | 53.3 | 1.43× |
-| first paint | 337.2 | 291.3 | **0.86×** |
+| create 1,000 rows | 100.7 | 136.6 | 1.36× |
+| replace 1,000 rows | 113.8 | 159.9 | 1.41× |
+| update every 10th (×16) | 56.5 | 83.9 | 1.48× |
+| select row | 12.7 | 15.4 | 1.21× |
+| swap rows | 61.9 | 87.3 | 1.41× |
+| remove one | 58.3 | 65.1 | 1.12× |
+| create 10,000 rows | 1130.4 | 1488.1 | 1.32× |
+| append 1,000 | 117.6 | 159.6 | 1.36× |
+| clear (×8) | 34.5 | 41.5 | 1.20× |
 
 How it stays fast:
 
@@ -147,7 +150,7 @@ How it stays fast:
   template. The file you write is what runs.
 - **No virtual DOM** — patches mutate the DOM directly. No intermediate tree to
   allocate, diff, or discard per frame.
-- **17.24 kB gzipped, zero dependencies** — parses, mounts, and patches in a single
+- **18.00 kB gzipped, zero dependencies** — parses, mounts, and patches in a single
   microtask.
 - **Keyed reconciliation with minimal moves** — the diff trims the unchanged
   prefix/suffix and runs a longest-increasing-subsequence pass on the rest (a
@@ -157,7 +160,14 @@ How it stays fast:
   zero listeners and zero handler closures.
 - **Template-level dependency dispatch** — the template's observed dependency
   graph sends a changed key straight to the affected bindings in every row,
-  with no per-row bookkeeping at all.
+  with no per-row bookkeeping at all. Selection-shaped bindings
+  (`key === selected ? … : …`) go further: a keyed index patches exactly the
+  row losing the value and the row gaining it — two rows touched, not 1,000.
+- **The runtime warms itself** — after mount, at browser idle, spark exercises
+  its own row pipeline once against a detached template, so the first real
+  interaction runs JIT-warm instead of paying first-run compilation cost.
+  Something a build-time framework can't do for you: it happens against your
+  actual live templates, in your user's actual browser.
 
   ```html
   <p>{a} + {b} = {a + b}</p>
@@ -231,7 +241,7 @@ Spark trades completeness for simplicity — these are deliberate edges, not roa
 
 | Package                                  | What it does                                                                                                        |
 | ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
-| [`spark-html`](packages/spark/README.md) | The runtime — `mount()`, components, reactivity, `store`/`derived`, `bind:form`, scoped styles, plus `npx spark-html doctor`. 17.24 kB gzip, 0 deps. |
+| [`spark-html`](packages/spark/README.md) | The runtime — `mount()`, components, reactivity, `store`/`derived`, `bind:form`, scoped styles, plus `npx spark-html doctor`. 18.00 kB gzip, 0 deps. |
 
 **UI &amp; UX siblings** (add only what you use)
 

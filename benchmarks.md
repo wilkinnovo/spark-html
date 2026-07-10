@@ -1,19 +1,60 @@
 # spark-html vs. js-framework-benchmark (krausest)
 
-Date: 2026-07-09 (1.2.0) / 2026-07-08 (1.1.0). Local paired runs; the
-upstream submission is PR #2048 (open) — see caveats at the bottom before
-citing these numbers anywhere external.
+Date: 2026-07-10 (1.4.0) / 2026-07-09 (1.2.0) / 2026-07-08 (1.1.0). Local
+paired runs; the upstream submission is PR #2048 (open) — see caveats at
+the bottom before citing these numbers anywhere external.
 
-> Environment note (2026-07-09, from the nightly speed-gate's first CI
-> runs): the **first-paint** metric is strongly display-regime-dependent.
-> On GitHub's ubuntu runners the paired ratio measures ~1.97× (identical
-> headless and xvfb-windowed; vanilla itself paints ~96 ms there vs 337 ms
-> below). The 0.86× below is real for this table's stated method — paired,
-> windowed, real display — and that is the method any re-measure must use.
-> CPU geomean transfers cleanly across environments (CI: 1.507–1.515 vs
-> 1.496 below). The nightly gate therefore holds CPU at ≤1.65× and
-> first-paint at ≤2.30× (CI's own band + headroom), catching regressions;
-> the headline first-paint claim is defended by re-running THIS method.
+> Environment note (2026-07-09, amended 2026-07-10): the **first-paint**
+> metric is strongly display-regime-dependent AND, at the harness's one
+> iteration per run, single-sample noisy. On GitHub's ubuntu runners the
+> paired ratio measures ~1.97× (vanilla itself paints ~96 ms there vs ~300
+> below). On this machine's real display (windowed), six same-night paired
+> samples spread **0.92–1.61×** — vanilla alone swung 227–353 ms — so no
+> single windowed sample supports a headline in either direction; the
+> 1.2.0 block's "0.86×" below is retired as exactly that kind of sample.
+> First-paint claims are now defended by **A/B against the prior release
+> in the stable regime** (headless, alternating builds, medians — see the
+> 1.4.0 block) plus the CI-band tripwire (≤2.30). CPU geomean is
+> unaffected by all of this: it transfers cleanly across environments
+> (CI: 1.507–1.515 vs 1.496; nightly gate holds it at ≤1.65×).
+
+> **speed-max-pro CHECKPOINT (spark-html 1.4.0).** The third speed
+> program's P1+P2+P3 verdict: paired vanilla+spark in one session,
+> **count=15, windowed**, Chrome, quiet machine, zero harness errors:
+>
+> | Test | vanilla (ms) | spark (ms) | ratio |
+> |---|---:|---:|---:|
+> | create 1,000 | 100.7 | 136.6 | 1.36× |
+> | replace 1,000 | 113.8 | 159.9 | 1.41× |
+> | update 10th (×16) | 56.5 | 83.9 | 1.48× |
+> | select row | 12.7 | 15.4 | **1.21×** |
+> | swap rows | 61.9 | 87.3 | 1.41× |
+> | remove one | 58.3 | 65.1 | 1.12× |
+> | create 10,000 | 1130.4 | 1488.1 | 1.32× |
+> | append 1,000 | 117.6 | 159.6 | 1.36× |
+> | clear (×8) | 34.5 | 41.5 | 1.20× |
+> | *ready memory* | *0.6 MB* | *0.9 MB* | *1.63×* |
+> | *run memory (1k rows)* | *1.9 MB* | *3.9 MB* | *2.08×* |
+>
+> **CPU geomean 1.313× (was 1.496 at 1.2.0).** On the solidjs.com
+> reference frame that passes Angular (1.45) and statistically ties Vue
+> (1.31) — a tie, not a pass; the program continues. What 1.4.0 changed,
+> all internal, zero new concepts: (P1) table-structural row templates
+> drop render-inert whitespace text nodes (a 2-row swap now moves exactly
+> 2 rows), clear-as-one-wipe, one shared reactive-proxy handler per store
+> root; (P2) a keyed-equality selector index — `key === scalar` bindings
+> patch exactly the row losing and the row gaining the value instead of
+> sweeping all N (select 2.02× → 1.21×); (P3) idle self-warmup — after
+> mount the runtime exercises its own row pipeline against a detached
+> template at idle, so the first real interaction runs warm instead of
+> paying cold-JIT cost (the residual both prior programs named).
+> **First-paint**: no regression — same-night A/B, published 1.3.0 vs
+> this tree, headless stable regime, 3 alternating pairs: spark fp median
+> 163.9 → 164.5 ms (Δ+0.6 ms, within ±19 ms pair noise). Windowed fp is
+> parity-within-noise (see environment note); the old 0.86× headline is
+> retired, not because fp got slower but because one sample never
+> supported it. Core is 18.00 KB gzip (was 17.24) under the program's
+> 18.00 ALL-IN ceiling.
 
 > **FINAL — speed-max program complete (spark-html 1.2.0, "the dispatch
 > release").** The definitive run: paired vanilla+spark in one session,
@@ -36,7 +77,10 @@ citing these numbers anywhere external.
 > | *first paint* | *337.2* | *291.3* | ***0.86×*** |
 >
 > **CPU geomean 1.496× (was 1.531 at 1.1.0) — and spark now reaches first
-> paint BEFORE the vanilla reference (0.86×).** What 1.2.0 changed, all
+> paint BEFORE the vanilla reference (0.86×).** *[2026-07-10: the fp half
+> of this headline is retired — it was a single windowed sample of a
+> metric later shown to spread 0.92–1.61× per sample; see the environment
+> note and the 1.4.0 block's A/B method. The CPU half stands.]* What 1.2.0 changed, all
 > internal: template-dependency column dispatch for keyed rows, trim-first
 > reconcile over the raw array, document-level event delegation for stamped
 > rows (zero listeners per row), and chunked creates (64 rows per native

@@ -14,22 +14,27 @@
       <a class="btn" href="{app.base}/playground">Playground</a>
     </div>
 
-    <!-- First paint race — real numbers from the paired krausest run
-         (benchmarks.md, count=15 windowed): spark 291 ms vs vanilla 337 ms.
-         Bar durations are proportional to the measured times. -->
-    <div class="fp" aria-label="First paint: spark-html 291 milliseconds, hand-written vanilla JS 337 milliseconds — spark paints first at 0.86 times vanilla">
-      <p class="fp-title">First paint <span class="fp-vs">— spark beats <b>hand-written vanilla JS</b> to the screen</span></p>
-      <div class="fp-row">
-        <span class="fp-name fp-name-spark">spark-html</span>
-        <span class="fp-track"><span class="fp-bar fp-bar-spark"></span></span>
-        <span class="fp-ms fp-ms-spark">291 ms <em>⚡ 0.86×</em></span>
-      </div>
+    <!-- CPU geomean on the krausest scale (benchmarks.md, count=15 windowed;
+         lower is better). Bar lengths are proportional to the scores:
+         vanilla 1.00, spark 1.313, Angular 1.45 (solidjs.com reference). -->
+    <div class="fp" aria-label="CPU speed, krausest js-framework-benchmark, lower is better: hand-written vanilla JS 1.00, spark-html 1.31 with no build step, Angular 1.45">
+      <p class="fp-title">CPU speed <span class="fp-vs">— vs <b>hand-written vanilla JS</b> (geomean, lower is better)</span></p>
       <div class="fp-row">
         <span class="fp-name">vanilla js</span>
         <span class="fp-track"><span class="fp-bar fp-bar-van"></span></span>
-        <span class="fp-ms fp-ms-van">337 ms</span>
+        <span class="fp-ms fp-ms-van">1.00×</span>
       </div>
-      <p class="fp-note">krausest js-framework-benchmark, paired local run, spark-html 1.2 — <a href="{app.base}/docs#perf">method &amp; full table</a></p>
+      <div class="fp-row">
+        <span class="fp-name fp-name-spark">spark-html</span>
+        <span class="fp-track"><span class="fp-bar fp-bar-spark"></span></span>
+        <span class="fp-ms fp-ms-spark">1.31× <em>⚡ no build</em></span>
+      </div>
+      <div class="fp-row">
+        <span class="fp-name">angular</span>
+        <span class="fp-track"><span class="fp-bar fp-bar-ng"></span></span>
+        <span class="fp-ms fp-ms-van">1.45×</span>
+      </div>
+      <p class="fp-note">krausest js-framework-benchmark, paired local run, spark-html 1.4 — tied with Vue (1.31), and the only one here with no compiler and no build step — <a href="{app.base}/docs#perf">method &amp; full table</a></p>
     </div>
   </div>
 
@@ -239,9 +244,10 @@
   .fp-name-spark { color: var(--spark-ink); font-weight: 700; }
   .fp-track { position: relative; height: 10px; border-radius: 5px; background: var(--surface-2); overflow: hidden; }
   .fp-bar { position: absolute; inset: 0 auto 0 0; border-radius: 5px; transform-origin: left; transform: scaleX(1); }
-  .fp-bar-spark { width: 86.4%; background: linear-gradient(90deg, var(--spark-ink), #ffe28a); box-shadow: 0 0 12px rgba(255, 210, 74, .45); animation: fp-grow 1.16s cubic-bezier(.2,.7,.3,1) both; }
+  .fp-bar-spark { width: 90.6%; background: linear-gradient(90deg, var(--spark-ink), #ffe28a); box-shadow: 0 0 12px rgba(255, 210, 74, .45); animation: fp-grow 1.16s cubic-bezier(.2,.7,.3,1) both; }
   .fp-bar-spark::after { content: ""; position: absolute; inset: 0; background: linear-gradient(100deg, transparent 30%, rgba(255,255,255,.55) 50%, transparent 70%); transform: translateX(-100%); animation: fp-shine 1.8s ease-out 1.3s 2; }
-  .fp-bar-van { width: 100%; background: var(--muted-dim); animation: fp-grow 1.35s cubic-bezier(.2,.7,.3,1) both; }
+  .fp-bar-van { width: 69%; background: var(--muted-dim); animation: fp-grow 1.05s cubic-bezier(.2,.7,.3,1) both; }
+  .fp-bar-ng { width: 100%; background: var(--muted-dim); animation: fp-grow 1.35s cubic-bezier(.2,.7,.3,1) both; }
   .fp-ms { font-size: 12px; color: var(--muted); font-family: var(--mono, ui-monospace, monospace); white-space: nowrap; opacity: 0; animation: fp-in .4s ease-out forwards; }
   .fp-ms-spark { animation-delay: 1.1s; color: var(--text); }
   .fp-ms-van { animation-delay: 1.3s; }

@@ -343,24 +343,23 @@ export default {
     <p><strong>5 — No flash on load.</strong> A cloak style hides Spark-managed elements until each component is booted, styled, and patched — so the raw <code>{braces}</code> and unstyled markup never flash before the runtime catches up.</p>
 
     <h2 id="perf">Performance</h2>
-    <p>Measured, not claimed. Spark runs the <a href="https://github.com/krausest/js-framework-benchmark" target="_blank" rel="noopener">krausest js-framework-benchmark</a> — the industry-standard table every major framework is measured on — against the hand-written <code>vanillajs</code> reference implementation. Spark 1.2.0's numbers, from a paired run in one session (15 iterations, windowed Chrome 150, official webdriver-ts harness, same machine for both frameworks):</p>
+    <p>Measured, not claimed. Spark runs the <a href="https://github.com/krausest/js-framework-benchmark" target="_blank" rel="noopener">krausest js-framework-benchmark</a> — the industry-standard table every major framework is measured on — against the hand-written <code>vanillajs</code> reference implementation. Spark 1.4.0's numbers, from a paired run in one session (15 iterations, windowed Chrome, official webdriver-ts harness, same machine for both frameworks):</p>
     <table>
       <thead><tr><th>Benchmark</th><th>vanilla (ms)</th><th>spark (ms)</th><th>ratio</th></tr></thead>
       <tbody>
-        <tr><td>create 1,000 rows</td><td>98.2</td><td>138.0</td><td>1.41×</td></tr>
-        <tr><td>replace 1,000 rows</td><td>105.8</td><td>169.8</td><td>1.60×</td></tr>
-        <tr><td>update every 10th row (×16)</td><td>48.5</td><td>74.7</td><td>1.54×</td></tr>
-        <tr><td>select row</td><td>11.6</td><td>23.4</td><td>2.02×</td></tr>
-        <tr><td>swap rows</td><td>57.3</td><td>92.5</td><td>1.61×</td></tr>
-        <tr><td>remove one row</td><td>53.9</td><td>64.0</td><td>1.19×</td></tr>
-        <tr><td>create 10,000 rows</td><td>1,105.8</td><td>1,524.3</td><td>1.38×</td></tr>
-        <tr><td>append 1,000 rows</td><td>114.1</td><td>162.3</td><td>1.42×</td></tr>
-        <tr><td>clear 1,000 rows (×8)</td><td>37.4</td><td>53.3</td><td>1.43×</td></tr>
-        <tr><td>first paint</td><td>337.2</td><td>291.3</td><td><strong>0.86×</strong></td></tr>
+        <tr><td>create 1,000 rows</td><td>100.7</td><td>136.6</td><td>1.36×</td></tr>
+        <tr><td>replace 1,000 rows</td><td>113.8</td><td>159.9</td><td>1.41×</td></tr>
+        <tr><td>update every 10th row (×16)</td><td>56.5</td><td>83.9</td><td>1.48×</td></tr>
+        <tr><td>select row</td><td>12.7</td><td>15.4</td><td>1.21×</td></tr>
+        <tr><td>swap rows</td><td>61.9</td><td>87.3</td><td>1.41×</td></tr>
+        <tr><td>remove one row</td><td>58.3</td><td>65.1</td><td>1.12×</td></tr>
+        <tr><td>create 10,000 rows</td><td>1,130.4</td><td>1,488.1</td><td>1.32×</td></tr>
+        <tr><td>append 1,000 rows</td><td>117.6</td><td>159.6</td><td>1.36×</td></tr>
+        <tr><td>clear 1,000 rows (×8)</td><td>34.5</td><td>41.5</td><td>1.20×</td></tr>
       </tbody>
     </table>
-    <p><strong>CPU geomean: 1.496× vanilla — and Spark reaches first paint <em>before</em> the vanilla reference.</strong> On the scale solidjs.com publishes from the same benchmark, that sits between Angular (1.45) and React Hooks (1.61) — and Spark is the only framework in that neighborhood that ships your HTML untouched: no compiler, no build step, nothing generated. (Honesty note: this is our local paired run against vanilla on one machine; the upstream submission — PR #2048 — is still open. Method, raw medians, and the previous 1.1.0 run live in the repo's <code>benchmarks.md</code>.)</p>
-    <p>Where the speed comes from: keyed reconciliation that trims the unchanged prefix/suffix and diffs the rest with a longest-increasing-subsequence pass (a swap is 2 DOM moves, not 997), the template's observed dependency graph dispatching a changed key straight to the affected bindings in every row (no per-row bookkeeping at all), rows created 64 at a time from one native clone of a stamped recipe, and document-level event delegation for rows — creating 1,000 rows allocates zero listeners and zero handler closures. All of it internal: two speed programs added zero new concepts and zero API surface, inside a size budget that grew once, deliberately, to 17.25 KB gzip (17.24 used).</p>
+    <p><strong>CPU geomean: 1.313× vanilla.</strong> On the scale solidjs.com publishes from the same benchmark, that is past Angular (1.45) and statistically tied with Vue (1.31) — and Spark is the only framework in that neighborhood that ships your HTML untouched: no compiler, no build step, nothing generated. First paint sits at parity with vanilla — we previously published a 0.86× first-paint headline and retired it when more samples showed that metric swings ±20% per run; an A/B against the prior release measured a 0.6 ms difference. (Honesty notes: this is our local paired run against vanilla on one machine; the upstream submission — PR #2048 — is still open. Method, raw medians, the first-paint audit trail, and the previous runs live in the repo's <code>benchmarks.md</code>.)</p>
+    <p>Where the speed comes from: keyed reconciliation that trims the unchanged prefix/suffix and diffs the rest with a longest-increasing-subsequence pass (a swap is 2 DOM moves, not 997), the template's observed dependency graph dispatching a changed key straight to the affected bindings in every row (no per-row bookkeeping at all) — with selection-shaped bindings (<code>key === selected</code>) resolved through a keyed index that touches exactly two rows, not a thousand — rows created 64 at a time from one native clone of a stamped recipe, document-level event delegation for rows (creating 1,000 rows allocates zero listeners and zero handler closures), and a runtime that warms its own row pipeline at browser idle after mount, so the first real interaction runs JIT-warm. All of it internal: three speed programs added zero new concepts and zero API surface, inside a size budget that grew deliberately and is itemized per release — 18.00 KB gzip today.</p>
 
     <h2 id="debugging">Debugging</h2>
     <p>When something doesn't render, check the console — Spark warns (prefixed <code>[spark]</code>) instead of failing silently:</p>
@@ -479,7 +478,7 @@ cd myapp &amp;&amp; bun install &amp;&amp; bun dev</pre>
     <p>The core stays tiny on purpose; everything else ships as a small, single-purpose sibling package. Add only what you use — each one is documented on its npm page:</p>
     <table>
       <tr><th>Package</th><th>What it does</th></tr>
-      <tr><td><a href="https://www.npmjs.com/package/spark-html" target="_blank" rel="noopener"><code>spark-html</code></a></td><td>The runtime — components, reactivity, stores, forms, scoped styles. 17.24&nbsp;kB gzip, 0 deps.</td></tr>
+      <tr><td><a href="https://www.npmjs.com/package/spark-html" target="_blank" rel="noopener"><code>spark-html</code></a></td><td>The runtime — components, reactivity, stores, forms, scoped styles. 18.00&nbsp;kB gzip, 0 deps.</td></tr>
       <tr><td><a href="https://www.npmjs.com/package/spark-html-bun" target="_blank" rel="noopener"><code>spark-html-bun</code></a></td><td>Dev server, bundler &amp; preview on Bun — scoped HMR, no-build dev, post-build pipeline.</td></tr>
       <tr><td><a href="https://www.npmjs.com/package/spark-html-router" target="_blank" rel="noopener"><code>spark-html-router</code></a></td><td><code>&lt;template route&gt;</code> routing — nested routes/layouts, <code>route.query</code>, active links.</td></tr>
       <tr><td><a href="https://www.npmjs.com/package/spark-html-theme" target="_blank" rel="noopener"><code>spark-html-theme</code></a></td><td>Dark/light/system theming in one line — persisted, no flash.</td></tr>

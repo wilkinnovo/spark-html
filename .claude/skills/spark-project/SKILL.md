@@ -12,21 +12,32 @@ compilation step is out of scope by definition.** The stated mission (Wilkin,
 2026-07-06): be the *simplest* way to write SSR, prerender, and client-only
 apps while staying fast — "built for humans who want to code themselves."
 
-Knowledge here is accurate as of 2026-07-09 (late) — **core 1.3.0 current**
-(doctor v2; runtime bytes identical to 1.2.x — the whole improvements-wave
-was core-byte-neutral, 17.24/17.25). Same-day companion wave, all
-registry-verified: spark-ssr 1.2.0 (script-local `<template await>`
-pass-through both halves, dev-events mirror, .d.ts), spark-html-bun 1.1.0
-(production import map for bare component-script imports + diagnose
-injection), spark-html-devtools 1.1.0 (`/diagnose` — the fail-loud dev
-layer), language-server 1.4.0 (directive-typo diagnostics), test-utils
-1.0.1 (.d.ts). 1.2.1 was a README-only republish of **1.2.0 "the dispatch
-release"**. BOTH speed
-programs are CLOSED: round 1 (spark-speed-up.md → 1.1.0) took CPU geomean
-3.46× → 1.53× vanilla; round 2 (spark-speed-up-max.md → 1.2.0, definitive
-paired count=15) landed **1.496× with first-paint 0.86× — beats vanilla**.
-The residual is cold-JIT first-run cost — do not reopen without a lever for
-that (spark-speed-up-max.md §9). The core now has: LIS keyed reconciler, per-row identity/ext-key
+Knowledge here is accurate as of 2026-07-10 — **core 1.4.0 current** (the
+speed-max-pro CHECKPOINT release: P1+P2+P3, definitive count=15 windowed
+geomean **1.313×** vanilla — select 1.21, clear 1.20, remove 1.12 — past
+Angular, statistically tied with Vue; gzip **18.00/18.00** under the
+Wilkin-authorized 18.00 ALL-IN ceiling, zero headroom left). **First-paint
+honesty (2026-07-10): the 1.2.0 "0.86× beats vanilla" headline is RETIRED**
+— windowed single-sample fp spreads 0.92–1.61× per run; a same-night
+headless A/B (published 1.3.0 vs P1-P3 tree, 3 alternating pairs) measured
+Δ+0.6 ms = no program regression; fp claims are now defended by A/B vs
+prior release in the stable regime + the CI ≤2.30 tripwire (benchmarks.md
+environment note is the source). P1 = table-row whitespace drop +
+clear-as-one-wipe (`wipeAll`) + ONE shared reactify proxy handler per
+(onMutate,cache). P2 = keyed-equality selector index (`classifySel` /
+`__sparkKeyMap` in sweepEach: `key === scalar` points patch exactly the
+row losing + gaining the value; bail-to-full-sweep on any doubt). P3 =
+idle self-warmup (`warmEach`, post-ready rIC, detached template clone,
+warm flag silences sinks/lifecycle/warnings; rIC is NOT strictly
+post-paint — measured fp-neutral, comment at the site). 1.3.0 was doctor
+v2 (runtime bytes identical to 1.2.x). Companions (registry-verified,
+2026-07-09): spark-ssr 1.2.0, spark-html-bun 1.1.0, spark-html-devtools
+1.1.0, language-server 1.4.0, test-utils 1.0.1. Speed program history:
+round 1 (spark-speed-up.md → 1.1.0) 3.46× → 1.53×; round 2
+(spark-speed-up-max.md → 1.2.0 "the dispatch release") → 1.496×; round 3
+= spark-speed-up-max-pro.md, ACTIVE past its checkpoint (P4-P7 remain;
+P4 re-scoped: creates are near-warm post-P3, the lever is run-memory
+2.08× + update10th 1.48). The core now has: LIS keyed reconciler, per-row identity/ext-key
 skip gates, fast no-`with` expression variants (capture-derived destructure
 prelude + ReferenceError self-heal), clone recipes (`stampTree` — analysis
 cached on the template, static marking at stamp time), **live-node row
@@ -35,9 +46,10 @@ descent — `block.live`/`patchLive`), and **shared per-template listeners**
 (handler attrs stripped from the template; one listener fn per handler via
 `e.currentTarget`; zero per-clone closures). The gzip budget was raised
 2026-07-08 (15.0 → 16.0, speed program), 2026-07-09 (16.0 → 16.5, F1 stop
-rule), and finally to an **ALL-IN 17.25 ceiling covering the whole speed-max
-program** (Wilkin, 2026-07-09; exceed ⇒ descope, never fund) — now 17.24
-used; frozen for the life of 1.x. **Speed-max F1+F2+F3 shipped in 1.2.0
+rule), then to an **ALL-IN 17.25 ceiling covering the whole speed-max
+program** (Wilkin, 2026-07-09; exceed ⇒ descope, never fund), and finally
+to **18.00 ALL-IN for speed-max-pro** (Wilkin, 2026-07-09 late) — now
+18.00 used, ZERO headroom: further core work self-funds via deletions. **Speed-max F1+F2+F3 shipped in 1.2.0
 (6f12dd1, 2026-07-09, registry-verified); F4 clear-wipe DESCOPED
 (+0.08 KB didn't fit — design recorded in patchEach at the descope site):**
 F1 = template dependency dispatch —
@@ -149,9 +161,10 @@ spark-improvements.md → improvements.md, each completed and deleted.)
 ## Hard invariants — violating any of these has caused real shipped bugs
 
 1. **Gzip budget is law.** `scripts/size-check.mjs` gates the core at
-   **17.25 KB ALL-IN** (history 13.5 → 15.0 → 16.0 → 16.5 → 17.25, each
-   step Wilkin-itemized; 17.24 used — effectively ZERO headroom, frozen for
-   the life of 1.x: doesn't fit ⇒ descope or sibling package, never fund).
+   **18.00 KB ALL-IN** (history 13.5 → 15.0 → 16.0 → 16.5 → 17.25 → 18.00,
+   each step Wilkin-itemized; 18.00 used — ZERO headroom: doesn't fit ⇒
+   descope, delete-to-fund in the same commit, or sibling package — never
+   a further ask).
    Dedup is gzip-neutral; *unique entropy* (new identifiers, strings, logic)
    is what costs. Measure every candidate edit empirically (esbuild
    bundle+minify+gzipSync) — intuition is unreliable.

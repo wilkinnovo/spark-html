@@ -1486,7 +1486,10 @@ async function mount(root = document.body, options = {}) {
       console.log(`[spark] ⚡ ready — ${count} component(s)`);
     }
     // Idle self-warmup (speed-max-pro P3): rIC gates it to real browsers
-    // (shims/prerender have none) and schedules it after first paint.
+    // (shims/prerender have none) and defers it to idle. rIC does NOT
+    // strictly guarantee post-paint; measured fp-neutral by same-night A/B
+    // (§9 checkpoint receipt) — a stricter double-rAF construction costs
+    // bytes at zero headroom and the measured need is absent.
     if (!isPrerender() && typeof requestIdleCallback === 'function') {
       requestIdleCallback(() => { warm.on = 1; try { warmEach(root); } catch { /* never the page's problem */ } warm.on = 0; });
     }
