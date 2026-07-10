@@ -612,8 +612,7 @@ function sweepEach(el) {
   if (gHot.length === 1 && dk.size === 1) {
     const j = gHot[0];
     const nd = live0[j];
-    let cls = nd.__sparkSC; // classification, cached on the point node
-    if (cls === undefined) cls = nd.__sparkSC = classifySel(el, nd);
+    const cls = nd.__sparkSC ??= classifySel(el, nd); // cached on the point node
     if (cls && dk.has(cls)) {
       let map = el.__sparkKeyMap;
       const st = el.__sparkSelSt; // { j, v: value the DOM currently shows }
@@ -690,10 +689,14 @@ export function warmEach(root) {
     for (let i = 0; i < 66; i++) cur.push({ id: ~i });
     w.__sparkEachArrayFn = () => cur;
     try {
-      // chunked create + seed row, then clear/wipe. (Reorder warm passes —
-      // LIS + direct permutation — were descoped for bytes at 18.00; the
-      // move paths share placeWithRendered/patchPoint with these two.
-      // Revisit at the checkpoint if swap/update cold cost didn't move.)
+      // chunked create + seed row, then the reorder passes (revived at the
+      // checkpoint: swap/update cold cost hadn't moved) — a far swap tiers
+      // up trim + direct permutation + placeWithRendered, a reverse
+      // compiles the map+LIS window, then clear/wipe.
+      patchEach(w, scope);
+      cur[1] = cur.splice(64, 1, cur[1])[0];
+      patchEach(w, scope);
+      cur.reverse();
       patchEach(w, scope);
       cur = [];
       patchEach(w, scope);
@@ -762,6 +765,7 @@ export function patchEach(el, scope) {
     __sparkEachArrayExpr: arrayExpr,
     __sparkEachKeyExpr: keyExpr,
     __sparkEachTemplate: templateNodes,
+    __sparkEachDeepRows: deep,
   } = el;
 
   // varName/arrayExpr/templateNodes are set together at parse — one guard.
@@ -782,7 +786,7 @@ export function patchEach(el, scope) {
     // Shallow live rows: column dispatch through the template dependency
     // graph — no per-block set algebra, no row walks. Deep rows keep the
     // per-block ext gating.
-    if (!el.__sparkEachDeepRows) { sweepEach(el); return; }
+    if (!deep) { sweepEach(el); return; }
     for (const b of el.__sparkEachBlocks) {
       if (b.ext && setsIntersect(b.ext, capture.dirtyKeys)) walkBlock(b);
     }
@@ -853,7 +857,7 @@ export function patchEach(el, scope) {
   // proxy hops, no with(). Any throw (a branch key the first capture never
   // saw, an exotic key expr) pins THIS anchor to the box path, which
   // re-captures and stays correct.
-  const keys = el.__sparkEachDeepRows ? new Array(count) : gKeys; // pooled only where reentry is impossible
+  const keys = deep ? new Array(count) : gKeys; // pooled only where reentry is impossible
   keys.length = count;
   let rf = keyFn && el.__sparkEachRowKey !== 0 ? rowFn(keyFn, varName, idxName) : 0;
   if (rf) {
@@ -917,7 +921,7 @@ export function patchEach(el, scope) {
   };
   const make = (i, cur) => {
     const nodes = [];
-    const live = el.__sparkEachDeepRows ? 0 : [];
+    const live = deep ? 0 : [];
     const block = build(i, nodes, live);
     if (live) {
       renderClones(templateNodes, cur, nodes, block.scope, live, seeded);
@@ -936,7 +940,7 @@ export function patchEach(el, scope) {
   };
   // Shallow rows (no components/anchors, no leave hook) need no teardown
   // machinery on drop: just detach.
-  const shallow = !el.__sparkEachDeepRows && !leaveHook;
+  const shallow = !deep && !leaveHook;
   // The span end of block i-1 (or the anchor itself) — where row i inserts.
   const endOf = (blocks, i) => {
     if (i < 0) return el;
@@ -961,7 +965,7 @@ export function patchEach(el, scope) {
   for (let i = sn + 1, j = so + 1; i < count; i++, j++) reuse(newBlocks[i] = oldBlocks[j], i);
 
   // ── Stage 3: the window [p..so] → [p..sn] ──
-  if (count === 0 && oldLen && !el.__sparkEachDeepRows && wipeAll(el, oldLen * templateNodes.length)) {
+  if (!count && oldLen && !deep && wipeAll(el, oldLen * templateNodes.length)) {
     // V4 clear-as-one-wipe (descoped at the 17.25 ceiling, revived under
     // the 18.00 program): one textContent='' beats oldLen removes. Shallow
     // rows only (deep rows need leaveNode teardown), and only when every
@@ -977,7 +981,7 @@ export function patchEach(el, scope) {
     let cur = endOf(newBlocks, p - 1);
     let i = p;
     if (!seeded && i <= sn) { newBlocks[i] = make(i, cur); cur = endOf(newBlocks, i); i++; }
-    if (!el.__sparkEachDeepRows) {
+    if (!deep) {
       // 64 = the chunk size (one clone + one insert per group; G swept 8/16/32/64/128 at F3 — 64 won creates).
       while (sn - i > 62) {
         insertChunk(templateNodes, cur, el, 64, (nodes, live) => build(i++, nodes, live));
@@ -993,7 +997,7 @@ export function patchEach(el, scope) {
     // differing positions are a permutation of each other — a swap is 2
     // moves with no map and no LIS, regardless of how far apart the rows
     // sit. Bail to the general path the moment it isn't that shape.
-    let direct = so - p === sn - p ? [] : null;
+    let direct = so === sn ? [] : null;
     if (direct) {
       for (let i = p; i <= sn && direct; i++) {
         if (oldBlocks[i].key !== keys[i] && direct.push(i) > 4) direct = null;
@@ -1083,5 +1087,5 @@ export function patchEach(el, scope) {
   // dispatch the external keys over the graph; it exits for free when no
   // registered key is dirty, and re-evaluating just-created rows is an
   // idempotent compare-gated no-op.
-  if (capture.dirtyMode && !el.__sparkEachDeepRows) sweepEach(el);
+  if (capture.dirtyMode && !deep) sweepEach(el);
 }
