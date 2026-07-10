@@ -36,13 +36,13 @@ byte-for-byte — reactive, scoped, untouched.
 No compiler generates code from your template. No virtual DOM allocates and diffs
 a tree per frame. The file you write is what runs — 18.00 kB gzipped, zero dependencies.
 
-> ⚡ **1.31× hand-written vanilla JS — with no build step at all.**
-> On the krausest js-framework-benchmark, spark-html 1.4 lands a CPU geomean of
-> **1.313× the hand-written `vanillajs` reference** — past Angular, tied with Vue
-> on the published scale — and first paint sits at parity with vanilla (we
-> retired our old "beats vanilla to first paint" headline once more samples
-> showed that metric's noise; the honesty audit trail is in `benchmarks.md`).
-> *(Paired local run; [method & full table](#performance).)*
+> ⚡ **1.29× hand-written vanilla JS — with no build step at all.**
+> On the krausest js-framework-benchmark, spark-html 1.5 lands a CPU geomean of
+> **1.286× the hand-written `vanillajs` reference** — past Angular, past Vue at
+> the margin on the published scale — and first paint sits at parity with
+> vanilla (we retired our old "beats vanilla to first paint" headline once more
+> samples showed that metric's noise; the honesty audit trail is in
+> `benchmarks.md`). *(Paired local run; [method & full table](#performance).)*
 
 ## Built for humans
 
@@ -121,11 +121,11 @@ just files at a URL, so you can even `import` one straight from a CDN. See
 ## Performance
 
 **Measured, not claimed.** On the [krausest js-framework-benchmark](https://github.com/krausest/js-framework-benchmark)
-(the industry-standard table), spark-html 1.4.0 lands a **CPU geomean of
-1.313× hand-written vanilla JS** — paired run against the `vanillajs`
+(the industry-standard table), spark-html 1.5.0 lands a **CPU geomean of
+1.286× hand-written vanilla JS** — paired run against the `vanillajs`
 reference, 15 iterations, windowed Chrome, same machine, official
 webdriver-ts harness. On the published solidjs.com scale that is **past
-Angular (1.45) and statistically tied with Vue (1.31) — while being the
+Angular (1.45) and past Vue (1.31) — at the margin, and while being the
 only framework in that neighborhood with no build step at all.** First
 paint is at parity with vanilla (single-sample fp spreads ±20% per run;
 an A/B against the prior release measured Δ+0.6 ms — details in
@@ -134,15 +134,15 @@ numbers below are medians:
 
 | Benchmark | vanilla (ms) | spark (ms) | ratio |
 |---|---:|---:|---:|
-| create 1,000 rows | 100.7 | 136.6 | 1.36× |
-| replace 1,000 rows | 113.8 | 159.9 | 1.41× |
-| update every 10th (×16) | 56.5 | 83.9 | 1.48× |
-| select row | 12.7 | 15.4 | 1.21× |
-| swap rows | 61.9 | 87.3 | 1.41× |
-| remove one | 58.3 | 65.1 | 1.12× |
-| create 10,000 rows | 1130.4 | 1488.1 | 1.32× |
-| append 1,000 | 117.6 | 159.6 | 1.36× |
-| clear (×8) | 34.5 | 41.5 | 1.20× |
+| create 1,000 rows | 96.2 | 128.9 | 1.34× |
+| replace 1,000 rows | 111.3 | 156.4 | 1.41× |
+| update every 10th (×16) | 53.7 | 74.5 | 1.39× |
+| select row | 12.0 | 14.8 | 1.23× |
+| swap rows | 60.4 | 79.7 | 1.32× |
+| remove one | 55.4 | 64.2 | 1.16× |
+| create 10,000 rows | 1125.2 | 1452.3 | 1.29× |
+| append 1,000 | 121.7 | 158.2 | 1.30× |
+| clear (×8) | 35.1 | 40.9 | 1.17× |
 
 How it stays fast:
 

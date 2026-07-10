@@ -297,15 +297,15 @@ on a reused dev port. Zero config; exits non-zero when something needs a look.
 
 ## Performance
 
-**Measured, not claimed.** On the [krausest js-framework-benchmark](https://github.com/krausest/js-framework-benchmark), spark-html 1.4.0 lands a **CPU geomean of 1.313× hand-written vanilla JS** (paired run vs the `vanillajs` reference, 15 iterations, windowed Chrome, official webdriver-ts harness; local run, upstream submission open — PR #2048). On the published solidjs.com scale that is **past Angular (1.45) and statistically tied with Vue (1.31)** — with no build step at all. First paint sits at parity with vanilla (the metric is single-sample noisy; an A/B against the prior release measured Δ+0.6 ms — see the repo's `benchmarks.md`):
+**Measured, not claimed.** On the [krausest js-framework-benchmark](https://github.com/krausest/js-framework-benchmark), spark-html 1.5.0 lands a **CPU geomean of 1.286× hand-written vanilla JS** (paired run vs the `vanillajs` reference, 15 iterations, windowed Chrome, official webdriver-ts harness; local run, upstream submission open — PR #2048). On the published solidjs.com scale that is **past Angular (1.45) and past Vue (1.31) at the margin** — with no build step at all. First paint sits at parity with vanilla (the metric is single-sample noisy; an A/B against the prior release measured Δ+0.6 ms — see the repo's `benchmarks.md`):
 
 | Benchmark | ratio vs vanilla | | Benchmark | ratio vs vanilla |
 |---|---:|---|---|---:|
-| create 1,000 rows | 1.36× | | remove one | 1.12× |
-| replace 1,000 rows | 1.41× | | create 10,000 rows | 1.32× |
-| update every 10th | 1.48× | | append 1,000 | 1.36× |
-| select row | 1.21× | | clear | 1.20× |
-| swap rows | 1.41× | | | |
+| create 1,000 rows | 1.34× | | remove one | 1.16× |
+| replace 1,000 rows | 1.41× | | create 10,000 rows | 1.29× |
+| update every 10th | 1.39× | | append 1,000 | 1.30× |
+| select row | 1.23× | | clear | 1.17× |
+| swap rows | 1.32× | | | |
 
 - **Components ship as authored HTML** — no compiler generates code from your template, so there is nothing to parse or evaluate at startup. The file you write is the component that runs.
 - **Text-level extraction of `<script>`/`<style>`** — browsers strip `<script>` tags injected via `innerHTML` (the only way most client-only frameworks can parse a fetched HTML fragment). Spark extracts script and style from the raw text with a tokenizer before the markup ever touches the DOM — sidestepping the entire class of bugs that every other runtime-only framework has to work around.

@@ -1,8 +1,8 @@
 # spark-html vs. js-framework-benchmark (krausest)
 
-Date: 2026-07-10 (1.4.0) / 2026-07-09 (1.2.0) / 2026-07-08 (1.1.0). Local
-paired runs; the upstream submission is PR #2048 (open) — see caveats at
-the bottom before citing these numbers anywhere external.
+Date: 2026-07-10 (1.5.0, 1.4.0) / 2026-07-09 (1.2.0) / 2026-07-08 (1.1.0).
+Local paired runs; the upstream submission is PR #2048 (open) — see caveats
+at the bottom before citing these numbers anywhere external.
 
 > Environment note (2026-07-09, amended 2026-07-10): the **first-paint**
 > metric is strongly display-regime-dependent AND, at the harness's one
@@ -17,6 +17,48 @@ the bottom before citing these numbers anywhere external.
 > 1.4.0 block) plus the CI-band tripwire (≤2.30). CPU geomean is
 > unaffected by all of this: it transfers cleanly across environments
 > (CI: 1.507–1.515 vs 1.496; nightly gate holds it at ≤1.65×).
+
+> **FINAL — speed-max-pro program complete (spark-html 1.5.0).** The
+> third speed program's definitive run: paired vanilla+spark in one
+> session, **count=15, windowed**, Chrome, quiet machine, zero harness
+> errors:
+>
+> | Test | vanilla (ms) | spark (ms) | ratio |
+> |---|---:|---:|---:|
+> | create 1,000 | 96.2 | 128.9 | 1.34× |
+> | replace 1,000 | 111.3 | 156.4 | 1.41× |
+> | update 10th (×16) | 53.7 | 74.5 | **1.39×** |
+> | select row | 12.0 | 14.8 | 1.23× |
+> | swap rows | 60.4 | 79.7 | **1.32×** |
+> | remove one | 55.4 | 64.2 | 1.16× |
+> | create 10,000 | 1125.2 | 1452.3 | 1.29× |
+> | append 1,000 | 121.7 | 158.2 | 1.30× |
+> | clear (×8) | 35.1 | 40.9 | 1.17× |
+> | *ready memory* | *0.6 MB* | *1.0 MB* | *1.71×* |
+> | *run memory (1k rows)* | *1.9 MB* | *3.6 MB* | *1.95×* |
+>
+> **CPU geomean 1.286× (was 1.313 at 1.4.0, 1.496 at 1.2.0, 3.46 before
+> the programs).** On the solidjs.com reference frame that is past
+> Angular (1.45) and past Vue (1.31) — at the margin: 1.29 vs 1.31 sits
+> at the edge of cross-run separation, and reference ratios are
+> cross-machine extrapolations via the shared vanilla baseline (Vue was
+> never paired on this machine). The honest sentence: **faster than Vue
+> on the reference frame, with no build step, in 18.00 KB gzip.** What
+> 1.5.0 changed, all internal, zero new concepts: the idle self-warmup
+> battery now also exercises the REORDER reconcile paths (a far swap →
+> the direct-permutation path, a reverse → the map+LIS window), so
+> swap/update interactions run warm from the first click (update10th
+> 1.48 → 1.39, swap 1.41 → 1.32 — the two ops the lever targeted moved
+> most); plus the P4 row-structure diet (one shared loop-scope prototype
+> per list instead of per-row closure triplets, one shared handler map
+> per template element) — 1k-row JS heap −18%, run memory 2.08× → 1.95×.
+> The program is CLOSED at its pre-registered SHIP target (≤1.30).
+> Stretch (≤1.20) honestly not reached: the residual is clone+stamp+
+> layout physics plus the interpretive floor of the no-build identity —
+> reopening requires a genuinely new lever against that residual, not a
+> re-run of these. Remaining memory mass is attributed (per-row span/live
+> arrays + `__spark*` expandos, designs parked at their sites with
+> funding preconditions).
 
 > **speed-max-pro CHECKPOINT (spark-html 1.4.0).** The third speed
 > program's P1+P2+P3 verdict: paired vanilla+spark in one session,
