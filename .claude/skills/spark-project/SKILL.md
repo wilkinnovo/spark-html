@@ -120,11 +120,14 @@ verified in the tree). M4 and the 1.0.0 release are complete.
 This skill holds the **facts**. The judgment layer — value ordering, decision
 gates, change protocols — is the `spark-brain` skill; load it alongside this
 one. The ACTIVE program is `post-spark-speed-pro-max.md` (the FOURTH speed
-program, commissioned 2026-07-10: SHIP ≤1.24 / stretch ≤1.20, release only
-if the definitive run clears SHIP; ceiling 18.00 NEVER moves — funded by
-G1's measured terser-second-pass harvest, 18,427 → ~17,715 gz. Gates: G1
-byte harvest ✅ → G2 P4a whitespace → G3 moveBefore → G4 dirty-row
-narrowing → G5 lazy-live → G6 definitive + release decision).
+program, commissioned 2026-07-10; Wilkin override: commit-but-NO-push-NO-
+release until the definitive run hits ≤1.13; ceiling 18.00 NEVER moves —
+funded by G1's terser-second-pass harvest. Gates G1–G5 ALL DONE 2026-07-10,
+unpushed (96cd854, 828a5ec, 187fde1): terser two-pass → P4a whitespace →
+moveBefore → row-pass shortcut → positional stamp recipes. Interim count=8
+headless: geomean 1.208 ≈ ~1.19 windowed, run-mem 1.49×, 18,285/18,432 gz
+(headroom 147). Next lever: nodes[] unbox for single-root templates; then
+only N5 JIT sibling, Wilkin-gated).
 
 ## Repo map
 
