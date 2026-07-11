@@ -717,8 +717,10 @@ export function warmEach(root) {
       // One pass tiers the reorder loops to baseline only; the first real
       // 1000-row op then pays optimizing-tier compilation mid-click (~13 ms
       // measured at speed-up-extended E0). Repeating the cycle feeds the
-      // back-edge budget so the optimizer runs at idle instead.
-      for (let k = 0; k < 6; k++) {
+      // back-edge budget so the optimizer runs at idle instead. 3 cycles,
+      // not more: 6 measured ready-memory 1.76 vs the ≤1.75 guardrail
+      // (retained compile state), and 3 keeps the receipt's CPU numbers.
+      for (let k = 0; k < 3; k++) {
         cur[1] = cur.splice(64, 1, cur[1])[0];
         patchEach(w, scope);
         cur.reverse();
