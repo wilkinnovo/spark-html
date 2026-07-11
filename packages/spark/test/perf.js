@@ -117,9 +117,12 @@ await test('dynamic cell tracks the item; static label is skippable', async () =
   assert.equal(vals[0].childNodes[0].textContent, 'a');
   assert.equal(vals[1].childNodes[0].textContent, 'b');
 
-  // The static label cell inside a reused row is marked static.
+  // The static label cell inside a reused row does no per-patch work. Since
+  // G5 (positional stamp recipes) that's stronger than a static mark: the
+  // cell is never collected as a dynamic point — no plan, no live flag, no
+  // __spark* expandos at all (stampFast touches only the recipe's points).
   const label = list.querySelector('.label');
-  assert.ok(label.__sparkStatic, 'static flag set');
+  assert.ok(label.__sparkPlan === undefined && !label.__sparkLive, 'not a dynamic point');
 
   fire(list.querySelector('.bump'), 'click');
   await tick();

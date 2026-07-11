@@ -847,15 +847,101 @@ function stampTree(clone, tpl, live) {
   return allStatic;
 }
 
+// ── Positional stamp recipes (G5, post-spark-speed-pro-max) ──
+// One preorder step over a template-shaped tree: firstChild → nextSibling →
+// climb until a sibling exists or the root is reached. `skip` = treat the
+// current node as an opaque leaf (a spark-ignore subtree stays untouched,
+// but its single step keeps builder and stamper hop counts aligned).
+function stepPre(n, root, skip) {
+  if (!skip && n.firstChild) return n.firstChild;
+  while (n !== root && !n.nextSibling) n = n.parentNode;
+  return n === root ? null : n.nextSibling;
+}
+
+// Build the positional recipe for ONE top-level template node: flat
+// [hopsFromPrevPoint, type, payload] triples over the preorder walk.
+// Types: 1 dynamic text (payload: interpolation template) · 2 element with
+// per-patch work but no per-clone wiring (payload: the shared analysis;
+// bubbling handlers are pre-delegated here, ONCE — wireElement's del branch
+// hoisted out of the per-clone path; never wire the template node itself,
+// binds would attach dead listeners) · 3 element that must wire per clone
+// (binds / form / non-bubbling handler) · 4 opaque leaf. Returns 0 when the
+// subtree needs the full stampTree walk (anchor/component/import — callers
+// are shallow-gated already, this is the belt); ??= at the call sites keeps
+// 0 sticky.
+function buildStampRecipe(tpl) {
+  const r = [];
+  let n = tpl, hops = 0;
+  while (n) {
+    let skip = 0, type = 0, payload = 0;
+    if (n.nodeType === TEXT_NODE) {
+      payload = textTpl(n);
+      if (payload !== null) type = 1;
+    } else if (n.nodeType === ELEMENT_NODE) {
+      const k = kindOf(n);
+      if (k === 1) { type = 4; skip = 1; }
+      else if (k || n.__sparkNamed || n.hasAttribute('import')) return 0;
+      else {
+        const a = n.__sparkAnalysis ??= analyzeElement(n);
+        if (a.live) {
+          payload = a;
+          type = a.binds.length || a.form ? 3 : 2;
+          for (const h of a.handlers) {
+            if (NO_BUBBLE.test(h.evt)) type = 3;
+            else {
+              (a.hm ||= {})[h.evt] = h;
+              if (!gDelegated[h.evt]) document.addEventListener(h.evt, delegate, gDelegated[h.evt] = 1);
+            }
+          }
+        }
+      }
+    }
+    if (type) { r.push(hops, type, payload); hops = 0; }
+    n = stepPre(n, tpl, skip);
+    hops++;
+  }
+  return r;
+}
+
+// Replay a recipe over a fresh clone: touch ONLY the dynamic points (~4 per
+// krausest row) instead of stampTree's per-node kind/static/plan writes and
+// recursion over every node. Static cells carry no __spark* expandos at all
+// — walkBlock never descends a live row (all passes go patchLive), kindOf/
+// textTpl self-heal lazily for any stray reader, and shallow teardown is
+// n.remove(). Push order = preorder = stampTree's order: sweepEach treats
+// live[j] as the same template column across ALL blocks — never reorder.
+function stampFast(clone, r, live) {
+  let n = clone, skip = 0;
+  for (let i = 0; i < r.length; i += 3) {
+    for (let h = r[i]; h--; skip = 0) n = stepPre(n, clone, skip);
+    const t = r[i + 1], p = r[i + 2];
+    if (t === 1) { n.__sparkTpl = p; live.push(n); }
+    else if (t === 4) skip = 1;
+    else {
+      // Points always carry the shared plan (even empty): a lazy
+      // patchElement build on a clone would re-analyze with the handler
+      // attrs already stripped — and double-wire a bind:form.
+      n.__sparkPlan = p.plan;
+      if (t === 3) wireElement(n, p, 1);
+      else if (p.hm) n.__sparkH = p.hm;
+      live.push(n);
+    }
+  }
+}
+
 // Render a block: clone every template node, mark it managed (owned by its
 // anchor, not the parent walk), stamp it with the template's cached recipe,
 // insert the clones in order after `cursor`, and collect them into `out`.
-// Shared by the each/if/await anchors.
+// Shared by the each/if/await anchors. Shallow live rows go positional
+// (stampFast): the recipe is built BEFORE the first clone, so analyzeElement
+// has already stripped handler attrs — every clone is born clean.
 export function insertClones(templateNodes, cursor, out, live) {
   for (const tpl of templateNodes) {
+    const r = live && (tpl.__sparkR ??= buildStampRecipe(tpl));
     const clone = tpl.cloneNode(true);
     clone.__sparkManaged = 1;
-    stampTree(clone, tpl, live);
+    if (r) stampFast(clone, r, live);
+    else stampTree(clone, tpl, live);
     cursor.after(clone);
     cursor = clone;
     out.push(clone);
@@ -886,7 +972,9 @@ export function insertChunk(templateNodes, cursor, host, n, mk) {
     for (const t of templateNodes) {
       const nx = c.nextSibling;
       c.__sparkManaged = 1;
-      stampTree(c, t, live);
+      const r = t.__sparkR ??= buildStampRecipe(t);
+      if (r) stampFast(c, r, live);
+      else stampTree(c, t, live);
       nodes.push(c);
       c = nx;
     }
