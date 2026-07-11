@@ -275,3 +275,19 @@ welcome**, entering via spark-brain §5; the one designed-but-unfunded
 lever is E2 inert rows (needs ≥150 gz ⇒ harvest or deletion first; doc
 §9). `benchmarks.md` holds the 1.7.0 CURRENT verdict; the geomean is
 NOT the 1.7.0 claim (within band of 1.239) — the battery fix is.
+The SIXTH program (`beat-1-20-speed.md`, untracked root doc = its
+ledger) ran 2026-07-11 and **PARKED AT RECEIPTS** per its own
+pre-registration: standing count=8 headless receipt geomean **1.192 >
+the ≤1.17 fire bar** — the definitive one-shot was NOT burned, no
+1.8.0. What landed (commit 75c0b02 on main, UNPUSHED): the W1 pivot —
+krausest impl on idiomatic in-place mutators + the **onMutate scope-key
+pin fix** (in-place array/object mutation of a top-level scope value now
+rides the narrow dirty-key lane instead of forcing a full component
+pass; aliases collected; nested/Map/Set still full-pass; alias+nested
+convergence tests in loops.js) — update10th receipt 1.36→1.11 (script
+Δ18→Δ5 ms), swap parity ~1.23 (its 11.8 ms bench script = the harness's
+4× CPU throttle over ~2.9 ms real). Funded in-commit: dual-package
+message tightened, MUTATORS Set→object, Reflect.get→t[k], Symbol()
+descriptions → gzip **18,402/18,432 (30 headroom)**. W1's full mutator
+interceptor stays parked (+119 gz vs ~74 findable); W2/E2 needs ~320 gz
+— no named source; reopen paths priced in the doc's STATUS block.
