@@ -17,7 +17,8 @@
 // suite imports src and cannot catch a bad rename.
 export const terserOpts = {
   module: true,
-  compress: { passes: 3 },
+  ecma: 2020,
+  compress: { passes: 3, ecma: 2020, hoist_funs: true },
   mangle: {
     properties: {
       // builtins:true — several list names collide with DOM/std props terser
@@ -33,7 +34,10 @@ export const terserOpts = {
       // API (index.js export line) — public surface, consumed by
       // spark-html-test-utils and devtools. Same rule for any field of an
       // exported object (parseSFC's markup/script/style, inspect's deps).
-      regex: /^(?:dirtyKeys|dirtyItems|dirtyMode|rowForce|sink|fnExpr|writeStmt|eventName|realAttr|staticClass|oldIdx|stay|handlers|binds|plan|kind|expr|mode|live|tpl|code|block|spec|defaultName|nsName|named|imports|reactiveStmts|key|raw|nodes|ext|evt|state|proxy|__fast|__fastable|__row|__keys|__src)$/,
+      // round-6 additions (beat-1-20-speed.md S0): subscribers — internal
+      // field of store entries; the `stores` Map export never leaves the
+      // bundle (not on the public API line) and no sibling reads it.
+      regex: /^(?:dirtyKeys|dirtyItems|dirtyMode|rowForce|sink|fnExpr|writeStmt|eventName|realAttr|staticClass|oldIdx|stay|handlers|binds|plan|kind|expr|mode|live|tpl|code|block|spec|defaultName|nsName|named|imports|reactiveStmts|key|raw|nodes|ext|evt|state|proxy|subscribers|__fast|__fastable|__row|__keys|__src)$/,
     },
   },
 };

@@ -111,11 +111,21 @@ function makeScope(rawCode, componentEl, props = {}) {
   // can't be pinned to a row, so it forces a full pass — never stale.
   const onMutate = (obj) => {
     if (!ready) return;
-    if (obj && componentEl.__sparkItems && componentEl.__sparkItems.has(obj)) {
-      dirtyItems.add(obj);
-    } else {
-      fullDirty = true;
+    // An in-place mutation of a top-level scope value (rows[1] = x,
+    // rows.push/splice/sort, settings.theme = 'dark') is pinned to every
+    // scope key holding that object, so the flush rides the SAME narrow
+    // dirty-key lane a whole-value reassignment takes — key granularity is
+    // Tier-2's documented contract either way. All aliases are collected
+    // (a binding reading `b` where `b === a` must not go stale); Set.add
+    // returns the Set — a cheap truthy hit flag. Anything unpinnable (a
+    // nested object like obj.list, Map/Set — their wrapper calls onMutate
+    // with no argument) forces the full pass — never stale.
+    let hit;
+    if (obj) {
+      if (componentEl.__sparkItems?.has(obj)) hit = dirtyItems.add(obj);
+      else for (const k in raw) if (raw[k] === obj) hit = dirtyKeys.add(k);
     }
+    if (!hit) fullDirty = true;
     schedule();
   };
 

@@ -45,7 +45,7 @@ export const stores = new Map();           // name → { state, subscribers }
 // duplicate is loading: warn loud and name the fix. The copies still work in
 // isolation, so this is a diagnosis, not a throw.
 if (globalThis.__SPARK_CORE__ && !isPrerender()) {
-  console.error('[spark-html] a second copy of the runtime loaded — two store registries in one page cause "store not created" bugs. Dedupe the install (run `npx spark-html doctor`).');
+  console.error('[spark-html] a second runtime copy loaded — causes "store not created" bugs. Fix: npx spark-html doctor');
 }
 globalThis.__SPARK_CORE__ = true;
 
@@ -220,10 +220,10 @@ export function derived(name, deps, compute) {
 // Only PLAIN objects/arrays are wrapped. Dates, Maps, Sets, class instances,
 // and DOM nodes pass straight through, so their internal slots/methods keep
 // working (a proxied Date would throw on .getTime()).
-export const REACTIVE_RAW = Symbol('spark.raw');
+export const REACTIVE_RAW = Symbol();
 // Marks a store proxy so the component scope doesn't re-wrap it (which would
 // bypass the store's own deep reactivity + subscriber notification).
-export const REACTIVE_STORE = Symbol('spark.store');
+export const REACTIVE_STORE = Symbol();
 
 export function isPlainContainer(v) {
   if (Array.isArray(v)) return true;
@@ -237,7 +237,15 @@ export function isPlainContainer(v) {
 
 // Mutating methods that should trigger a re-render. One list serves both
 // collections: Map has no .add and Set has no .set, so nothing misfires.
-export const MUTATORS = new Set(['set', 'add', 'delete', 'clear']);
+export const MUTATORS = { set: 1, add: 1, delete: 1, clear: 1 };
+
+// W1 array-mutator raw-execution (beat-1-20-speed.md §3) PARKED at the
+// funding wall 2026-07-11: the golfed interceptor measured +119 gz against
+// ~74 of findable harvest at the 18,432/18,432 ceiling — §2's stop rule.
+// Design + measured semantics live in the plan doc; restore ONLY with a
+// same-commit harvest that covers it. Until then array mutators run
+// through the generic traps (the engine pays O(n) trap pairs on
+// splice/sort through the wrap — attributed, known, funded-fix-only).
 
 export function reactify(value, onMutate, cache) {
   // Unwrap any reactive proxy back to its raw target first, so every value
@@ -255,11 +263,11 @@ export function reactify(value, onMutate, cache) {
     const proxyC = new Proxy(value, {
       get(t, k) {
         if (k === REACTIVE_RAW) return t;
-        const v = Reflect.get(t, k);
+        const v = t[k];
         if (typeof v !== 'function') return v;
         return function (...args) {
           const r = v.apply(t, args);
-          if (MUTATORS.has(k)) onMutate();
+          if (MUTATORS[k] === 1) onMutate();
           return r === t ? proxyC : r; // keep chaining reactive (Map.set returns the map)
         };
       },
@@ -279,7 +287,7 @@ export function reactify(value, onMutate, cache) {
   const h = cache.__h || (cache.__h = {
     get(t, k) {
       if (k === REACTIVE_RAW) return t;
-      return reactify(Reflect.get(t, k), onMutate, cache);
+      return reactify(t[k], onMutate, cache);
     },
     set(t, k, v) {
       if (v && typeof v === 'object' && v[REACTIVE_RAW]) v = v[REACTIVE_RAW];

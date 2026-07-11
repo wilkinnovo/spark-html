@@ -439,5 +439,54 @@ await test('row-pass with two loops over one array: both anchors patch their own
   assert.equal(body.querySelector('[name="rowpasstwin"] .tb').textContent, 'Y');
 });
 
+// ── in-place array mutation rides the narrow dirty-key lane (beat-1-20 W1) ──
+// onMutate pins an in-place mutation of a top-level scope value to its scope
+// key(s). These pin the three edges: alias collection (both keys dirty),
+// keyed in-place index swap (DOM order moves), and a NESTED array staying on
+// the full-pass path (unpinnable — must never go stale).
+component('inplaceswap', `
+<template each="r in rows" key="r.id"><b class="sw">{r.label}</b></template>
+<p class="alias">{twin[0].label}</p>
+<button class="mut" onclick="{doSwap}">m</button>
+<script>
+  let rows = [{ id: 1, label: 'a' }, { id: 2, label: 'b' }];
+  let twin = rows;
+  function doSwap() {
+    const t = rows[0];
+    rows[0] = rows[1];
+    rows[1] = t;
+  }
+</script>
+`);
+await test('in-place index swap: keyed DOM order moves AND an aliased binding updates', async () => {
+  parseHTML('<div import="inplaceswap"></div>', body);
+  await mount();
+  await tick();
+  const labels = () => [...body.querySelectorAll('[name="inplaceswap"] .sw')].map((n) => n.textContent);
+  assert.deepEqual(labels(), ['a', 'b']);
+  assert.equal(body.querySelector('[name="inplaceswap"] .alias').textContent, 'a');
+  fire(body.querySelector('[name="inplaceswap"] .mut'), 'click');
+  await tick();
+  assert.deepEqual(labels(), ['b', 'a']);
+  assert.equal(body.querySelector('[name="inplaceswap"] .alias').textContent, 'b');
+});
+
+component('inplacenested', `
+<template each="x, i in box.list"><b class="nl">{x}</b></template>
+<button class="mut" onclick="{box.list.push('n')}">m</button>
+<script>
+  let box = { list: ['a'] };
+</script>
+`);
+await test('in-place mutation of a NESTED array still renders (full-pass fallback)', async () => {
+  parseHTML('<div import="inplacenested"></div>', body);
+  await mount();
+  await tick();
+  fire(body.querySelector('[name="inplacenested"] .mut'), 'click');
+  await tick();
+  const got = [...body.querySelectorAll('[name="inplacenested"] .nl')].map((n) => n.textContent);
+  assert.deepEqual(got, ['a', 'n']);
+});
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

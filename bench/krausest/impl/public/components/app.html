@@ -82,11 +82,12 @@
   }
 
   function update() {
-    const next = rows.slice();
-    for (let i = 0; i < next.length; i += 10) {
-      next[i] = { id: next[i].id, label: next[i].label + ' !!!' };
+    // In-place mutation is the idiomatic spark style: each row write lands
+    // in the dirty-row lane (mode 2) — the framework patches exactly the
+    // mutated rows, no list reconcile, no array copy.
+    for (let i = 0; i < rows.length; i += 10) {
+      rows[i].label += ' !!!';
     }
-    rows = next;
   }
 
   function select(id) {
@@ -103,12 +104,12 @@
   }
 
   function swapRows() {
+    // In-place index swap: two writes, and the reconciler's identity trim
+    // resolves it to two DOM moves — no 1,000-element copy per click.
     if (rows.length > 998) {
-      const next = rows.slice();
-      const tmp = next[1];
-      next[1] = next[998];
-      next[998] = tmp;
-      rows = next;
+      const tmp = rows[1];
+      rows[1] = rows[998];
+      rows[998] = tmp;
     }
   }
 </script>
