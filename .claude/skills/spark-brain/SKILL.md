@@ -15,17 +15,24 @@ OPEN as a standing invitation for NEW proposals only: candidates enter
 through §5's new-lever bar, never by re-running shipped levers; the
 identity gates and the 18 KB ceiling are non-negotiable; N5 (JIT) is
 permanently denied. The doc stays at repo root as the ledger. The FIFTH
-program (`speed-up-extended.md`) entered through that gate the same day
-and **PARKED 2026-07-11 at its own pre-registered bar**: definitive
-count=15 windowed geomean **1.223× ≥ Wilkin's <1.20 SHIP condition ⇒ no
-release** — work compounds on main UNPUSHED (E1 path-op elision · E3
-identity pre-trim · warm battery in the rAF→setTimeout slot after bare-rIC
-failed the fp A/B and rAF→rIC lost the idle race · prop-mangle harvest;
-gzip 18,432/18,432, ZERO headroom). Beat-or-no-release honored a second
-time: the definitive was NOT re-rolled to chase the bar (three battery
-schedulings, one verdict each; the 1.192 read belonged to the fp-failed
-artifact and is not citable). Reopen = fund E2 inert rows (≥150 gz at
-zero headroom ⇒ harvest/deletion first) — doc §9. The third program (`spark-speed-up-max-pro.md`, "less code, run
+program (`speed-up-extended.md`) entered through that gate the same day,
+missed its own pre-registered bar (definitive count=15 windowed
+**1.223× ≥ the <1.20 SHIP condition**), PARKED per beat-or-no-release —
+and was then **RELEASED as core 1.7.0 by Wilkin's explicit override,
+same day** ("go release v1.7.0"), for the content not the geomean: warm
+battery in the rAF→setTimeout slot (strictly post-paint AND
+pre-interaction, after bare-rIC failed the fp A/B and rAF→rIC lost the
+idle race — kills the ~13 ms mid-click tier-up) · E1 path-op elision ·
+E3 identity pre-trim · prop-mangle harvest; gzip 18,432/18,432, ZERO
+headroom. Process integrity held both ways: the definitive was NOT
+re-rolled to chase the bar (three battery schedulings, one verdict each;
+the 1.192 read belonged to the fp-failed artifact and is not citable),
+and the override is recorded as an override — release claims quote the
+battery fix, never "1.223 beats 1.239" (within band). Standing order at
+close, Wilkin verbatim: **"new proposals on beating 1.20 stay open and
+are welcomed"** — the <1.20 bar is the open target; E2 inert rows is the
+designed-but-unfunded lever (≥150 gz at zero headroom ⇒ harvest/deletion
+first) — doc §9. The third program (`spark-speed-up-max-pro.md`, "less code, run
 twice") COMPLETED 2026-07-10 at its SHIP target — definitive count=15
 windowed geomean 1.286× (release 1.5.0) — and was deleted per convention;
 verdict archived in `benchmarks.md`. Predecessors (v1 plan,
@@ -38,8 +45,8 @@ real near-miss.
 
 **Precedence:** Wilkin's explicit instruction > this manual > the active
 program doc (NONE since 2026-07-11 — `speed-up-extended.md` is the fifth
-program's PARKED ledger; `post-spark-speed-pro-max.md` the fourth's) >
-everything else. When a higher authority contradicts a lower one, say so once,
+program's closed ledger, released as 1.7.0 by owner override;
+`post-spark-speed-pro-max.md` the fourth's) > everything else. When a higher authority contradicts a lower one, say so once,
 plainly, with the tradeoff — then follow the higher authority without
 relitigating. When Wilkin overrides a rule here, record the override (see
 "Maintaining the knowledge system") so the next model inherits the decision
@@ -48,11 +55,10 @@ instead of re-fighting it.
 **Session start ritual** (cheap, do it every time):
 1. Load `spark-project`, then this file.
 2. Read the program ledgers if perf is in play (`speed-up-extended.md` —
-   the fifth program, PARKED with its reopen path in §9;
+   the fifth program, closed as 1.7.0 with the E2 reopen path in §9;
    `post-spark-speed-pro-max.md` — the fourth's closed ledger),
    `git log --oneline -15` to see where reality is, and `benchmarks.md`
-   for the standing perf verdict. NOTE: main is AHEAD of origin and of
-   published 1.6.0 — the parked program-5 levers ride the next release.
+   for the standing perf verdict.
 3. Only then touch the task. Never start editing the reactivity core, the
    budget, or a release from a cold context.
 
@@ -306,8 +312,9 @@ mass = per-row live[]/scope/expandos that only E2 (inert rows — designed,
 novel, funding-parked in speed-up-extended.md §3, needs ≥150 gz at ZERO
 headroom) stops allocating. The bar stands: no reopen without a NEW
 lever against THOSE residuals — re-running shipped levers is not a
-lever, and re-rolling a definitive is not a lever either (program 5
-parked honoring both).
+lever, and re-rolling a definitive is not a lever either (program 5's
+verdict honored both; its 1.7.0 release was an explicit owner override
+of the bar, not a re-roll).
 
 When a feature idea arrives — including from Wilkin, including from *you*:
 1. Run the four identity gates (§1). Report which gate it hits, if any.

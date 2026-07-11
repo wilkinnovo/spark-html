@@ -2,7 +2,7 @@
 
 > Spark is a no-build reactive HTML framework: the file you write is the file
 > that runs. No compiler, no virtual DOM, no build step for the user. HTML +
-> `{expr}` + a handful of directives + stores — one runtime (17.91 KB gzip, 0
+> `{expr}` + a handful of directives + stores — one runtime (18.00 KB gzip, 0
 > deps) that works the same as a plain client app, a build-time-prerendered
 > static site, or a full-stack server-rendered app via the spark-ssr sibling
 > package (inferred database, REST API, auth, jobs — the HTML template is the

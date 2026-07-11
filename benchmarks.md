@@ -1,6 +1,6 @@
 # spark-html vs. js-framework-benchmark (krausest)
 
-Date: 2026-07-11 (program-5 park, 1.6.0) / 2026-07-10 (1.5.0, 1.4.0) / 2026-07-09 (1.2.0) / 2026-07-08 (1.1.0).
+Date: 2026-07-11 (1.7.0, 1.6.0) / 2026-07-10 (1.5.0, 1.4.0) / 2026-07-09 (1.2.0) / 2026-07-08 (1.1.0).
 Local paired runs; the upstream submission is PR #2048 (open) — see caveats
 at the bottom before citing these numbers anywhere external.
 
@@ -18,17 +18,21 @@ at the bottom before citing these numbers anywhere external.
 > unaffected by all of this: it transfers cleanly across environments
 > (CI: 1.507–1.515 vs 1.496; nightly gate holds it at ≤1.65×).
 
-> **PARKED — speed program 5 (unreleased tree; SHIP bar <1.20 missed).**
-> The fifth program (speed-up-extended.md — 3× idle warm-reorder battery ·
-> E1 path-op call elision — bare loop-var dot-path text points patch by a
-> raw property read, no fast-fn call, no interpolate · E3 identity
-> pre-trim — same raw object at the same position reconciles by one
-> pointer compare, keys fill per-window only · funding: curated
-> internal-prop terser mangle, scripts/terser-opts.mjs; gzip 18,344 →
-> **18,432/18,432 — the ceiling to the byte, zero headroom**) closed at
-> its beat-or-no-release bar. Definitive on the final artifact (warm
-> battery in the rAF→setTimeout slot): paired vanilla+spark in one
-> session, **count=15, windowed**, Chrome, zero harness errors:
+> **CURRENT — speed program 5 (spark-html 1.7.0, released by owner's
+> call).** The fifth program (speed-up-extended.md — 3× idle warm-reorder
+> battery, now scheduled rAF→setTimeout so it runs strictly after first
+> paint AND before the first interaction · E1 path-op call elision — bare
+> loop-var dot-path text points patch by a raw property read, no fast-fn
+> call, no interpolate · E3 identity pre-trim — same raw object at the
+> same position reconciles by one pointer compare, keys fill per-window
+> only · funding: curated internal-prop terser mangle,
+> scripts/terser-opts.mjs; gzip 18,344 → **18,432/18,432 — the ceiling to
+> the byte, zero headroom**) missed its pre-registered <1.20 SHIP bar and
+> initially PARKED per beat-or-no-release; Wilkin overrode same day
+> ("go release v1.7.0") for the warm-battery first-interaction fix +
+> swap/remove gains, with **<1.20 remaining the open bar for new
+> proposals**. Definitive on the shipped artifact: paired vanilla+spark
+> in one session, **count=15, windowed**, Chrome, zero harness errors:
 >
 > | Test | vanilla (ms) | spark (ms) | ratio |
 > |---|---:|---:|---:|
@@ -44,27 +48,30 @@ at the bottom before citing these numbers anywhere external.
 > | *ready memory* | *0.6 MB* | *1.0 MB* | *1.75×* |
 > | *run memory (1k rows)* | *1.9 MB* | *2.7 MB* | *1.45×* |
 >
-> **CPU geomean 1.223× — misses the pre-registered <1.20 SHIP bar; no
-> release (the round-4 beat-or-no-release precedent). Work compounds on
-> main unpushed.** The full story, for the next reopen: three warm-battery
-> scheduling variants were measured, one definitive each, no re-rolling.
-> Bare rIC read **1.192** but failed the fp guardrail (can fire before
-> first paint; A/B vs 1.6.0: +13 ms in all 3 pairs). rAF→rIC fixed fp but
-> the browser may hold the idle slot past the first interaction —
-> update10th 1.30 → 1.37 (mid-click tier-up returns). rAF→setTimeout
-> passed fp (A/B medians 180.3 → 171.3 ms, 2 of 3 pairs improve) and read
-> 1.223. The timed-op code is identical across all three — the
-> 1.192↔1.223 spread is the run-to-run band, and it straddles the bar;
-> the pre-registered rule resolves a straddle by the shipping artifact's
-> own single definitive: a miss. This outcome was §7's projection once E2
-> (inert rows, the creates/memory lever) parked unfunded — without E2,
-> creates hold the 1.2–1.35 band and the geomean floor sits at ~1.20–1.24.
-> Guardrails all green: run-memory 1.45×, ready 1.75×, fp no-regression,
-> suite/fuzz/e2e. Vanilla control flat vs the sibling run (create10k
-> 1126.8 vs 1129.3 ms) — the miss is not machine noise. Reopen path:
-> fund E2 (≥150 gz at zero headroom ⇒ needs a new harvest or a deletion).
+> **CPU geomean 1.223× (was 1.239 at 1.6.0 — within the run band, so the
+> geomean is NOT this release's claim). Run-memory holds 1.45×; ready
+> 1.75×.** The release's real content: the warm battery now reliably
+> beats the first interaction (1.6.0's single bare-rIC cycle left ~13 ms
+> of optimizing-tier compilation on the first real 1000-row op), plus
+> swap 1.34 → 1.23 and remove 1.30 → 1.13. The scheduling story, for the
+> record: three warm-slot variants, one definitive each, no re-rolling —
+> bare rIC read **1.192** but failed the fp guardrail (can fire before
+> first paint; A/B vs 1.6.0: +13 ms in all 3 pairs, NOT citable);
+> rAF→rIC fixed fp but the browser may hold the idle slot past the first
+> interaction (update10th 1.30 → 1.37); rAF→setTimeout passed fp (A/B
+> medians 180.3 → 171.3 ms, 2 of 3 pairs improve) and read 1.223. The
+> timed-op code is identical across the three — the 1.192↔1.223 spread
+> is the same-tree run band. Per-op wobble stays real (clear 0.96 at
+> 1.6.0, 1.14 here; remove 1.05–1.33 on record). The <1.20 geomean floor
+> without E2 (inert rows, funding-parked: needs ≥150 gz at zero headroom)
+> was §7's projection and held. First-paint A/B vs published 1.6.0:
+> headless alternating, 3 pairs — parity, tree faster by medians. On the
+> reference frame: **past Vue (1.31) and Angular (1.45); approaching —
+> not reaching — Svelte 5 (~1.13)**; reference ratios remain
+> cross-machine extrapolations and that caveat attaches to every
+> external claim.
 
-> **CURRENT — speed program 4 (spark-html 1.6.0).** The fourth program's
+> **FINAL — speed program 4 (spark-html 1.6.0).** The fourth program's
 > definitive run (levers, all self-funded under the untouched 18.00 KB
 > ceiling: G1 terser two-pass on the dist · G2 in-row whitespace drop ·
 > G3 `moveBefore` reorders · G4 row-pass shortcut · G5 positional stamp

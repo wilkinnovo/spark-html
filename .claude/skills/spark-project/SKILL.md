@@ -12,14 +12,21 @@ compilation step is out of scope by definition.** The stated mission (Wilkin,
 2026-07-06): be the *simplest* way to write SSR, prerender, and client-only
 apps while staying fast — "built for humans who want to code themselves."
 
-Knowledge here is accurate as of 2026-07-11 — **core 1.6.0 current** (the
-fourth speed program's release: definitive count=15 windowed geomean
-**1.239×** vanilla (was 1.286), **run-memory 1.45×** (was 1.95) — past
+Knowledge here is accurate as of 2026-07-11 — **core 1.7.0 current**
+(the fifth speed program's release, BY OWNER OVERRIDE over its own <1.20
+bar — see the roadmap paragraph at the bottom: definitive count=15
+windowed geomean **1.223×** vanilla (was 1.239 — within the run band, so
+the geomean is NOT the 1.7.0 claim), **run-memory 1.45×** (held), ready
+1.75×; the release's claim is the warm battery running strictly
+post-paint AND pre-interaction — rAF→setTimeout(0) slot in index.js —
+killing the ~13 ms mid-click tier-up on the first big op, plus E1
+path-op call elision, E3 identity pre-trim, swap 1.23/remove 1.13; past
 Vue (1.31) and past Angular (1.45) on the reference frame (cross-machine
-caveat attaches to every external claim; clear 0.96/remove 1.30 in that
-run are per-op wobble, geomean is the currency); gzip **18,344/18,432
-bytes = 17.91 KB** under the 18.00 ALL-IN ceiling, frozen for 1.x.
-1.6.0 levers, all self-funded: terser two-pass dist, in-row whitespace
+caveat attaches to every external claim; per-op wobble is real — clear
+0.96 at 1.6.0 vs 1.14 at 1.7.0, geomean is the currency); gzip
+**18,432/18,432 bytes = 18.00 KB — the ceiling to the byte, ZERO
+headroom** under the 18.00 ALL-IN ceiling, frozen for 1.x.
+1.6.0 levers (the architecture of record), all self-funded: terser two-pass dist, in-row whitespace
 drop, moveBefore reorders, G4 row-pass shortcut, G5 positional stamp
 recipes — buildStampRecipe/stampFast in index.js: static row cells
 carry ZERO __spark* expandos; push order = preorder = sweepEach's
@@ -253,18 +260,18 @@ See pitfalls.md "Fixed at v1-prep".)
   one taught; browser-testing setup on this machine.
 
 For the roadmap: NO ACTIVE PROGRAM — `speed-up-extended.md` (the FIFTH
-speed program) **PARKED 2026-07-11 at its own bar**: definitive count=15
-windowed geomean **1.223× ≥ the <1.20 SHIP bar ⇒ no release** (Wilkin's
-beat-or-no-release condition). The parked tree sits ON MAIN, UNPUSHED
-(ahead of origin): E1 path-op call elision + E3 identity pre-trim + 3×
-warm-reorder battery in the rAF→setTimeout(0) slot (bare rIC failed the
-fp A/B guardrail +13 ms ×3; rAF→rIC lost the idle race — update10th
-1.37; setTimeout passed fp AND kept the battery pre-interaction) + the
-prop-mangle funding harvest (scripts/terser-opts.mjs) — gzip
-**18,432/18,432, the ceiling to the byte, ZERO headroom**. Guardrails
-green at park: run-mem 1.45×, ready 1.75×, fp A/B pass, suite+fuzz+e2e.
-So: main ≠ published 1.6.0 — the next release ships this tree's levers
-automatically. Reopen path (doc §9): fund E2 inert rows (needs ≥150 gz ⇒
-harvest or deletion first); no other lever on file. `benchmarks.md`
-holds the standing 1.6.0 verdict + the program-5 PARKED block;
-spark-brain §5 gates all new work.
+speed program) closed 2026-07-11 as **core 1.7.0, released by owner
+override**: the definitive (count=15 windowed) read **1.223×, OVER the
+pre-registered <1.20 SHIP bar**; it parked per beat-or-no-release, then
+Wilkin overrode same day for the release's real content — the warm
+battery now runs in the rAF→setTimeout(0) slot, strictly post-paint AND
+pre-interaction (bare rIC failed the fp A/B +13 ms ×3; rAF→rIC lost the
+idle race, update10th 1.37), killing the ~13 ms mid-click tier-up on the
+first big op — plus E1 path-op call elision, E3 identity pre-trim, swap
+1.23 / remove 1.13. Run-mem holds 1.45×, ready 1.75×, gzip
+**18,432/18,432 — the ceiling to the byte, ZERO headroom**. Standing
+Wilkin order at close: **the <1.20 bar stays OPEN — new proposals
+welcome**, entering via spark-brain §5; the one designed-but-unfunded
+lever is E2 inert rows (needs ≥150 gz ⇒ harvest or deletion first; doc
+§9). `benchmarks.md` holds the 1.7.0 CURRENT verdict; the geomean is
+NOT the 1.7.0 claim (within band of 1.239) — the battery fix is.

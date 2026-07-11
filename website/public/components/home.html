@@ -16,9 +16,9 @@
 
     <!-- CPU geomean on the krausest scale (benchmarks.md, count=15 windowed;
          lower is better). Bar lengths are proportional to the scores:
-         vanilla 1.00, spark 1.239, Vue 1.31, Angular 1.45 (solidjs.com
+         vanilla 1.00, spark 1.223, Vue 1.31, Angular 1.45 (solidjs.com
          reference; Vue/Angular are reference-frame numbers, see docs#perf). -->
-    <div class="fp" aria-label="CPU speed, krausest js-framework-benchmark, lower is better: hand-written vanilla JS 1.00, spark-html 1.24 with no build step, Vue 1.31, Angular 1.45">
+    <div class="fp" aria-label="CPU speed, krausest js-framework-benchmark, lower is better: hand-written vanilla JS 1.00, spark-html 1.22 with no build step, Vue 1.31, Angular 1.45">
       <p class="fp-title">CPU speed <span class="fp-vs">— vs <b>hand-written vanilla JS</b> (geomean, lower is better)</span></p>
       <div class="fp-row">
         <span class="fp-name">vanilla js</span>
@@ -28,7 +28,7 @@
       <div class="fp-row">
         <span class="fp-name fp-name-spark">spark-html</span>
         <span class="fp-track"><span class="fp-bar fp-bar-spark"></span></span>
-        <span class="fp-ms fp-ms-spark">1.24× <em>⚡ no build</em></span>
+        <span class="fp-ms fp-ms-spark">1.22× <em>⚡ no build</em></span>
       </div>
       <div class="fp-row">
         <span class="fp-name">vue</span>
@@ -40,7 +40,7 @@
         <span class="fp-track"><span class="fp-bar fp-bar-ng"></span></span>
         <span class="fp-ms fp-ms-van">1.45×</span>
       </div>
-      <p class="fp-note">krausest js-framework-benchmark, paired local run, spark-html 1.6 — past Vue (1.31), and the only one here with no compiler and no build step. <b>And the quiet headline: run memory dropped 1.95× → 1.45× vanilla in the same release.</b> <a href="{app.base}/docs#perf">method &amp; full table</a></p>
+      <p class="fp-note">krausest js-framework-benchmark, paired local run, spark-html 1.7 — past Vue (1.31), and the only one here with no compiler and no build step. <b>Run memory holds 1.45× vanilla; the first big interaction now runs JIT-warm.</b> <a href="{app.base}/docs#perf">method &amp; full table</a></p>
     </div>
   </div>
 
@@ -278,7 +278,7 @@
   .fp-name-spark { color: var(--spark-ink); font-weight: 700; }
   .fp-track { position: relative; height: 10px; border-radius: 5px; background: var(--surface-2); overflow: hidden; }
   .fp-bar { position: absolute; inset: 0 auto 0 0; border-radius: 5px; transform-origin: left; transform: scaleX(1); }
-  .fp-bar-spark { width: 85.4%; background: linear-gradient(90deg, var(--spark-ink), #ffe28a); box-shadow: 0 0 12px rgba(255, 210, 74, .45); animation: fp-grow 1.16s cubic-bezier(.2,.7,.3,1) both; }
+  .fp-bar-spark { width: 84.3%; background: linear-gradient(90deg, var(--spark-ink), #ffe28a); box-shadow: 0 0 12px rgba(255, 210, 74, .45); animation: fp-grow 1.16s cubic-bezier(.2,.7,.3,1) both; }
   .fp-bar-spark::after { content: ""; position: absolute; inset: 0; background: linear-gradient(100deg, transparent 30%, rgba(255,255,255,.55) 50%, transparent 70%); transform: translateX(-100%); animation: fp-shine 1.8s ease-out 1.3s 2; }
   .fp-bar-van { width: 69%; background: var(--muted-dim); animation: fp-grow 1.05s cubic-bezier(.2,.7,.3,1) both; }
   .fp-bar-vue { width: 90.3%; background: var(--muted-dim); animation: fp-grow 1.2s cubic-bezier(.2,.7,.3,1) both; }
