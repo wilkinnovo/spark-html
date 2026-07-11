@@ -301,6 +301,12 @@ templates.push({
       { desc: 'deep-mutate one', apply: (el) => { const rows = el.__sparkScope.rows; if (rows.length) rows[Math.floor(rng() * rows.length)].label = pick(rng, ['mm', 'nn']); return { rows: [...el.__sparkScope.rows] }; } },
       { desc: 'set sel', apply: (el) => { const rows = el.__sparkScope.rows; const nv = rows.length ? rows[Math.floor(rng() * rows.length)].id : 0; setScopeVar(el, 'sel', nv); return { sel: nv }; } },
       { desc: 'mixed same tick', apply: (el) => { const rows = el.__sparkScope.rows; let nv = 0; if (rows.length) { rows[0].label = pick(rng, ['qq', 'rr']); nv = rows[rows.length - 1].id; } setScopeVar(el, 'sel', nv); return { rows: [...el.__sparkScope.rows], sel: nv }; } },
+      // E3/__sparkKD pin: mutating a KEY FIELD in place (mode-2) must (a)
+      // disable the identity-trim lane until a full key pass re-syncs, and
+      // (b) disable the P2 keyed-select O(2) lane — the key→block map may
+      // name the wrong row until then. Random sequences compose this with
+      // reorders and `set sel` (including sel = the mutated id).
+      { desc: 'mutate key field', apply: (el) => { const rows = el.__sparkScope.rows; if (rows.length) rows[Math.floor(rng() * rows.length)].id = ++nid + 1000; return { rows: [...el.__sparkScope.rows] }; } },
     ], schema: { rows, sel: 0 } };
   },
   rebuild(state, name) {
@@ -399,6 +405,10 @@ templates.push({
       { desc: 'remove one', apply: (el) => { const rs = live(el); if (rs.length) rs.splice(Math.floor(rng() * rs.length), 1); setScopeVar(el, 'rows', rs); return { rows: rs }; } },
       { desc: 'insert one', apply: (el) => { const rs = live(el); rs.splice(Math.floor(rng() * (rs.length + 1)), 0, mk()); setScopeVar(el, 'rows', rs); return { rows: rs }; } },
       { desc: 'deep-mutate one', apply: (el) => { const rows = el.__sparkScope.rows; if (rows.length) rows[Math.floor(rng() * rows.length)].label = pick(rng, ['mm', 'nn']); return { rows: [...el.__sparkScope.rows] }; } },
+      // E1×KD pin: this template's {r.label} text is path-op eligible (E1
+      // descriptor), so key-field mutation here composes the descriptor
+      // patch lane with the __sparkKD identity/select gates.
+      { desc: 'mutate key field', apply: (el) => { const rows = el.__sparkScope.rows; if (rows.length) rows[Math.floor(rng() * rows.length)].id = ++nid + 1000; return { rows: [...el.__sparkScope.rows] }; } },
     ], schema: { rows, sel: 0 } };
   },
   rebuild(state, name) {

@@ -252,8 +252,10 @@ See pitfalls.md "Fixed at v1-prep".)
 - `references/pitfalls.md` — the full bug history with root causes; what each
   one taught; browser-testing setup on this machine.
 
-For the roadmap: the ACTIVE program is `post-spark-speed-pro-max.md` (fourth
-speed program, opened 2026-07-10 through spark-brain §5's own reopen gate —
-new levers: moveBefore, dirty-row narrowing, lazy-live; ceiling untouched,
-beat-≤1.24-or-no-release). `benchmarks.md` holds the standing 1.5.0 verdict
+For the roadmap: the ACTIVE program is `speed-up-extended.md` (FIFTH speed
+program, commissioned 2026-07-11 — SHIP <1.20 definitive or no release;
+E0 attribution + E1 path-op call elision + E3 identity pre-trim landed
+2026-07-11 with the prop-mangle funding harvest in scripts/terser-opts.mjs;
+E2 inert rows PARKED at the funding ladder, E4 micros skipped on
+cost/benefit). `benchmarks.md` holds the standing 1.5.0 verdict
 and method; spark-brain §5 still gates all other new work.

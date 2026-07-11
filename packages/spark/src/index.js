@@ -858,6 +858,24 @@ function stepPre(n, root, skip) {
   return n === root ? null : n.nextSibling;
 }
 
+// E1 (speed-up-extended): does this interpolation template reduce to
+// [static?, loop-var dot-path, static?]? Then its value is a property
+// chain off the RAW row — the patch path reads it directly and skips the
+// fast-fn invocation and interpolate assembly entirely (call elision).
+// The seed row still evaluates the real expression under capture, so
+// dependency learning is untouched; ANY doubt returns 0 = today's path.
+function pathDesc(tpl, v) {
+  if (!v) return 0;
+  const segs = parseTemplate(tpl);
+  let e = -1;
+  for (let i = 0; i < segs.length; i++) {
+    if (typeof segs[i] === 'object') { if (e >= 0) return 0; e = i; }
+  }
+  if (e < 0) return 0;
+  const m = /^([A-Za-z_$][\w$]*)\.([A-Za-z_$][\w$]*)$/.exec(segs[e].code);
+  return m && m[1] === v ? { t: tpl, p: segs[e - 1] || '', s: segs[e + 1] || '', k: m[2] } : 0;
+}
+
 // Build the positional recipe for ONE top-level template node: flat
 // [hopsFromPrevPoint, type, payload] triples over the preorder walk.
 // Types: 1 dynamic text (payload: interpolation template) · 2 element with
@@ -876,7 +894,13 @@ function buildStampRecipe(tpl) {
     let skip = 0, type = 0, payload = 0;
     if (n.nodeType === TEXT_NODE) {
       payload = textTpl(n);
-      if (payload !== null) type = 1;
+      if (payload !== null) {
+        type = 1;
+        // tpl.__sparkEV (the anchor's loop-var name) exists only on
+        // each-templates — if/await recipes never carry descriptors.
+        const d = pathDesc(payload, tpl.__sparkEV);
+        if (d) { type = 5; payload = d; }
+      }
     } else if (n.nodeType === ELEMENT_NODE) {
       const k = kindOf(n);
       if (k === 1) { type = 4; skip = 1; }
@@ -916,6 +940,7 @@ function stampFast(clone, r, live) {
     for (let h = r[i]; h--; skip = 0) n = stepPre(n, clone, skip);
     const t = r[i + 1], p = r[i + 2];
     if (t === 1) { n.__sparkTpl = p; live.push(n); }
+    else if (t === 5) { n.__sparkTpl = p.t; n.__sparkPD = p; live.push(n); }
     else if (t === 4) skip = 1;
     else {
       // Points always carry the shared plan (even empty): a lazy
@@ -1336,6 +1361,21 @@ export function patchLive(live, scope, fast) {
 // skip plan-less listener elements precisely because of that coupling.
 export function patchPoint(nd, scope) {
   if (nd.nodeType === TEXT_NODE) {
+    const d = nd.__sparkPD;
+    if (d) {
+      // E1 path-op: property read off the RAW row (never the proxy —
+      // hot-loop discipline), compare-write via textContent (NOT .data:
+      // linkedom backs Text.textContent only — a .data write is inert
+      // there, and in browsers the two are the same accessor). A throw
+      // (null deref) falls through PERMANENTLY for this node: the
+      // interpolate path reproduces the '' render and owns the warning.
+      try {
+        let v = scope.__b.raw[d.k];
+        v = d.p + (v == null ? '' : v) + d.s;
+        if (nd.textContent !== v) nd.textContent = v;
+        return;
+      } catch { nd.__sparkPD = 0; }
+    }
     const next = interpolate(nd.__sparkTpl, scope);
     if (nd.textContent !== next) nd.textContent = next;
   } else {

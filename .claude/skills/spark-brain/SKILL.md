@@ -26,7 +26,8 @@ actually fail here — every rule below is paid for by a real shipped bug or a
 real near-miss.
 
 **Precedence:** Wilkin's explicit instruction > this manual > the active
-program doc (`post-spark-speed-pro-max.md` since 2026-07-10) > everything
+program doc (`speed-up-extended.md`, the fifth program, since 2026-07-11;
+`post-spark-speed-pro-max.md` remains the fourth's ledger) > everything
 else. When a higher authority contradicts a lower one, say so once,
 plainly, with the tradeoff — then follow the higher authority without
 relitigating. When Wilkin overrides a rule here, record the override (see
@@ -35,9 +36,10 @@ instead of re-fighting it.
 
 **Session start ritual** (cheap, do it every time):
 1. Load `spark-project`, then this file.
-2. Read the active program doc (`post-spark-speed-pro-max.md` — the fourth
-   speed program, gates + ledger), `git log --oneline -15` to see where
-   reality is, and `benchmarks.md` for the standing perf verdict.
+2. Read the active program doc (`speed-up-extended.md` — the fifth speed
+   program; `post-spark-speed-pro-max.md` is the fourth's closed ledger),
+   `git log --oneline -15` to see where reality is, and `benchmarks.md`
+   for the standing perf verdict.
 3. Only then touch the task. Never start editing the reactivity core, the
    budget, or a release from a cold context.
 

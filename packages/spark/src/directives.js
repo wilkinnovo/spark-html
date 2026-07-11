@@ -630,7 +630,10 @@ function sweepEach(el) {
     const j = gHot[0];
     const nd = live0[j];
     const cls = nd.__sparkSC ??= classifySel(el, nd); // cached on the point node
-    if (cls && dk.has(cls)) {
+    // __sparkKD: a mode-2 row patch may have mutated key FIELDS since the
+    // map was built — map/prev can then name the wrong row. Full sweep
+    // (per-row evaluation) is the safe semantics until a key pass re-syncs.
+    if (cls && dk.has(cls) && !el.__sparkKD) {
       let map = el.__sparkKeyMap;
       const st = el.__sparkSelSt; // { j, v: value the DOM currently shows }
       const val = blocks[0].scope[cls];
@@ -711,10 +714,16 @@ export function warmEach(root) {
       // up trim + direct permutation + placeWithRendered, a reverse
       // compiles the map+LIS window, then clear/wipe.
       patchEach(w, scope);
-      cur[1] = cur.splice(64, 1, cur[1])[0];
-      patchEach(w, scope);
-      cur.reverse();
-      patchEach(w, scope);
+      // One pass tiers the reorder loops to baseline only; the first real
+      // 1000-row op then pays optimizing-tier compilation mid-click (~13 ms
+      // measured at speed-up-extended E0). Repeating the cycle feeds the
+      // back-edge budget so the optimizer runs at idle instead.
+      for (let k = 0; k < 6; k++) {
+        cur[1] = cur.splice(64, 1, cur[1])[0];
+        patchEach(w, scope);
+        cur.reverse();
+        patchEach(w, scope);
+      }
       cur = [];
       patchEach(w, scope);
     } catch { /* warming must never break the page */ }
@@ -774,6 +783,9 @@ export function patchEach(el, scope) {
         for (const n of el.__sparkEachTemplate) if (isEl(n) && !/^T[DH]$/.test(n.tagName)) scrub(n);
       }
     }
+    // E1: recipes for these template nodes may carry loop-var path
+    // descriptors — the anchor's var name is the annotation key.
+    for (const t of el.__sparkEachTemplate) t.__sparkEV = el.__sparkEachVar;
     // Template-level teardown fact, computed once: a row with no component
     // boundaries and no nested anchors anywhere in its subtree needs none of
     // the per-node teardown machinery (destroyComponent's querySelectorAll
@@ -871,6 +883,10 @@ export function patchEach(el, scope) {
       el.__sparkRowMap = m;
     }
     if (m) {
+      // A row patched here may have mutated its KEY field — block.key is
+      // only re-synced by the key pipeline, so the identity lane below
+      // stays off until the next key-path reconcile clears this.
+      el.__sparkKD = 1;
       for (const raw of capture.dirtyItems) {
         const b = m.get(raw);
         if (b) walkBlock(b);
@@ -914,25 +930,29 @@ export function patchEach(el, scope) {
   const rawArr = arr[REACTIVE_RAW] || arr;
   el.__sparkEachRawArr = rawArr; // the G4 row-pass identity gate's anchor
 
-  // ── Stage 1: new-side keys, once. Fast path: the key expression with the
-  // loop vars as REAL parameters over raw items (rowFn) — no box writes, no
-  // proxy hops, no with(). Any throw (a branch key the first capture never
-  // saw, an exotic key expr) pins THIS anchor to the box path, which
-  // re-captures and stays correct.
+  // ── Stage 1: new-side keys, bounded (E3). fillKeys(a,b) evaluates keys
+  // for a window only — identity-resolved reconciles (swap/remove/trim-only
+  // passes) never evaluate a key at all. Fast path: the key expression with
+  // the loop vars as REAL parameters over raw items (rowFn) — no box
+  // writes, no proxy hops, no with(). Any throw (a branch key the first
+  // capture never saw, an exotic key expr) pins THIS anchor to the box
+  // path, which re-captures and stays correct.
   const keys = deep ? new Array(count) : gKeys; // pooled only where reentry is impossible
   keys.length = count;
-  let rf = keyFn && el.__sparkEachRowKey !== 0 ? rowFn(keyFn, varName, idxName) : 0;
-  if (rf) {
-    try { for (let i = 0; i < count; i++) keys[i] = rf(scope, rawArr[i], i); }
-    catch { rf = el.__sparkEachRowKey = 0; }
-  }
-  if (!rf) {
-    if (!keyFn) for (let i = 0; i < count; i++) keys[i] = i;
-    else for (let i = 0; i < count; i++) {
-      keyBox.item = arr[i]; keyBox.i = i;
-      keys[i] = runExpr(keyFn, keyExpr, keyScope);
+  const fillKeys = (a, b) => {
+    let rf = keyFn && el.__sparkEachRowKey !== 0 ? rowFn(keyFn, varName, idxName) : 0;
+    if (rf) {
+      try { for (let i = a; i <= b; i++) keys[i] = rf(scope, rawArr[i], i); }
+      catch { rf = el.__sparkEachRowKey = 0; }
     }
-  }
+    if (!rf) {
+      if (!keyFn) for (let i = a; i <= b; i++) keys[i] = i;
+      else for (let i = a; i <= b; i++) {
+        keyBox.item = arr[i]; keyBox.i = i;
+        keys[i] = runExpr(keyFn, keyExpr, keyScope);
+      }
+    }
+  };
 
   // Per-row reuse bookkeeping — decide BEFORE overwriting: a row whose item
   // identity, index, and read keys are untouched this tick renders
@@ -1015,15 +1035,41 @@ export function patchEach(el, scope) {
     return last ? blockEnd(last) : el;
   };
 
-  // ── Stage 2: trim the common prefix/suffix by key. Rows that didn't move
-  // pay bookkeeping only — no map, no LIS, no entry objects. An unkeyed
-  // each (key = index) trims its whole overlap, so appends/truncates are
-  // O(changed) by construction.
+  // ── Stage 2: trim the common prefix/suffix. E3 identity-first: on a
+  // keyed list, the same raw object at the same position proves the row
+  // unchanged by ONE pointer compare — no key eval (E0 profiled swap's
+  // script residual as exactly this preamble: ~1000 rowFn calls to move 2
+  // rows). Key-field staleness can't reach this lane: a mode-2 row patch
+  // (the only pass that can mutate a key field without a reconcile) sets
+  // __sparkKD, which forces the key path here until a full key pass
+  // re-syncs every block.key (drifted rows re-key by recreation, exactly
+  // as before E3) and clears it. Unkeyed eaches keep the index-key trim:
+  // identity would stop at in-place item replacements that index keys
+  // deliberately absorb. Rows that didn't move pay bookkeeping only — no
+  // map, no LIS, no entry objects.
+  const idm = keyFn && !el.__sparkKD;
   let p = 0;
   const pMax = oldLen < count ? oldLen : count;
-  while (p < pMax && oldBlocks[p].key === keys[p]) p++;
   let so = oldLen - 1;
   let sn = count - 1;
+  if (idm) {
+    // Identity pre-trim: same raw object at the same position = unchanged
+    // row, one pointer compare. A pure append/remove/trim-only pass then
+    // fills keys for the shrunken window only (append: the new tail;
+    // remove: none). Identity stops at REPLACED rows (immutable updates
+    // mint new objects with the same key), so the shared key-trim below
+    // continues where it left off — those rows stay trim-reused exactly
+    // as before E3.
+    while (p < pMax && oldBlocks[p].raw === rawOf(rawArr[p])) p++;
+    while (so >= p && sn >= p && oldBlocks[so].raw === rawOf(rawArr[sn])) { so--; sn--; }
+    if (p <= sn && p <= so) fillKeys(p, sn);
+  } else {
+    el.__sparkKD = 0;
+    fillKeys(0, count - 1);
+  }
+  // (The window guards are no-ops when the identity pass didn't run:
+  // p < pMax already implies p ≤ so and p ≤ sn there.)
+  while (p < pMax && p <= so && p <= sn && oldBlocks[p].key === keys[p]) p++;
   while (so >= p && sn >= p && oldBlocks[so].key === keys[sn]) { so--; sn--; }
 
   const newBlocks = new Array(count);
@@ -1044,6 +1090,7 @@ export function patchEach(el, scope) {
     // Shallow runs after the seed row go CHUNKED (F3): stamp CHUNK rows out
     // of one fragment clone and land them in one insert. Remainder rows —
     // and deep rows, and the capturing seed row — take the single path.
+    if (idm) fillKeys(p, sn); // identity trim skipped the evals; builds need keys
     let cur = endOf(newBlocks, p - 1);
     let i = p;
     if (!seeded && i <= sn) { newBlocks[i] = make(i, cur); cur = endOf(newBlocks, i); i++; }
@@ -1098,6 +1145,9 @@ export function patchEach(el, scope) {
       for (let i = p; i <= sn; i++) reuse(newBlocks[i], i);
     } else {
       // ── General window: old-index map → LIS → move only off-LIS rows ──
+      // (window keys are always filled here: the key-trim extension above
+      // ran exactly when this window has both sides; an empty new side
+      // never reads keys.)
       const oldByKey = new Map();
       for (let j = p; j <= so; j++) {
         const b = oldBlocks[j];

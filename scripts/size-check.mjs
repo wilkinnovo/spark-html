@@ -8,6 +8,7 @@
  */
 import { build } from 'esbuild';
 import { minify } from 'terser';
+import { terserOpts } from './terser-opts.mjs';
 import { gzipSync } from 'node:zlib';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
@@ -65,10 +66,9 @@ const res = await build({
 });
 
 // Second pass mirrors build-dist.mjs exactly — the gate measures the bytes
-// that actually ship.
-const two = await minify(res.outputFiles[0].text, {
-  module: true, compress: { passes: 3 }, mangle: true,
-});
+// that actually ship (shared config in terser-opts.mjs, incl. the round-5
+// internal-prop mangle harvest).
+const two = await minify(res.outputFiles[0].text, terserOpts);
 const min = Buffer.from(two.code);
 const gzip = gzipSync(min).length;
 const kb = (gzip / 1024).toFixed(2);

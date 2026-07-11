@@ -166,6 +166,9 @@ await profileOp('swap ×30', async () => {
 await profileOp('update 10th ×10', async () => {
   for (let i = 0; i < 10; i++) { await click('#update'); await wait(40); }
 });
+await profileOp('remove ×30', async () => {
+  for (let i = 0; i < 30; i++) { await click(`#tbody tr:nth-child(${5 + i}) td.col-md-1 a`); await wait(30); }
+});
 await click('#clear'); await wait(300);
 await profileOp('create 10k', () => click('#runlots'));
 if ((await rowCount()) !== 10000) console.error('create10k: row count wrong');

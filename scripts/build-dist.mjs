@@ -22,6 +22,7 @@
  */
 import { build } from 'esbuild';
 import { minify } from 'terser';
+import { terserOpts } from './terser-opts.mjs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { mkdir, writeFile } from 'node:fs/promises';
@@ -42,10 +43,10 @@ const res = await build({
 
 // G1 (post-spark-speed-pro-max.md, 2026-07-10): terser second pass over the
 // esbuild output — same semantics, −709 gz measured at P0. size-check.mjs
-// measures this same two-pass artifact; the two must never diverge.
-const two = await minify(res.outputFiles[0].text, {
-  module: true, compress: { passes: 3 }, mangle: true,
-});
+// measures this same two-pass artifact; the two must never diverge — the
+// shared config (incl. the round-5 internal-prop mangle) lives in
+// terser-opts.mjs.
+const two = await minify(res.outputFiles[0].text, terserOpts);
 
 await mkdir(outDir, { recursive: true });
 await writeFile(outFile, two.code);
