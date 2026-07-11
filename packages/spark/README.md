@@ -1,4 +1,4 @@
-# spark-html. HTML that reacts. Built for humans.
+# HTML that reacts. Built for humans.
 
 Single-file HTML components with built-in reactivity. No compiler, no virtual DOM,
 no build step — for people who love hand-writing their web apps.
@@ -68,27 +68,27 @@ That's it. No build step, no framework CLI — `mount()` finds every `<div impor
 
 ## Template syntax
 
-| Feature | Syntax |
-|---|---|
-| Text binding | `<p>Hello {name}</p>` |
-| Expressions | `<p>{price * qty}</p>` `{ok ? 'x' : 'y'}` |
-| Events | `<button onclick={add}>` |
-| Dynamic attributes | `<button :disabled="count >= 10">` |
-| Attribute interpolation | `<input value="{input}">` |
-| Loops | `<template each="todo in todos">…</template>` |
-| Loop with index | `<template each="todo, i in todos">…</template>` |
-| Keyed loops | `<template each="row in rows" key="row.id">…` |
-| Conditionals | `<template if="show">…</template>` |
-| Else branches | `<template else-if="score > 60">` / `<template else>` — chain directly after an `if`; first truthy branch renders |
-| Async blocks | `<template await="promise"> + <template then> / <template catch>` |
-| Two-way binding | `bind:value`, `bind:checked`, `bind:group`, `bind:form` |
-| Reactive statements | `$: doubled = count * 2` |
-| Scoped styles | `<style>` auto-scoped to the component |
-| Global style escape | `:global(body)` / `:global(.x) .y` |
-| Slots | `<slot>` / `<slot name="title">` |
-| Lifecycle | `onMount(fn)` — return a cleanup function |
-| Literal braces | `\{` / `\}` |
-| Escape hatch | `spark-ignore` attribute — subtree never patched |
+| Feature                 | Syntax                                                                                                            |
+| ----------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| Text binding            | `<p>Hello {name}</p>`                                                                                             |
+| Expressions             | `<p>{price * qty}</p>` `{ok ? 'x' : 'y'}`                                                                         |
+| Events                  | `<button onclick={add}>`                                                                                          |
+| Dynamic attributes      | `<button :disabled="count >= 10">`                                                                                |
+| Attribute interpolation | `<input value="{input}">`                                                                                         |
+| Loops                   | `<template each="todo in todos">…</template>`                                                                     |
+| Loop with index         | `<template each="todo, i in todos">…</template>`                                                                  |
+| Keyed loops             | `<template each="row in rows" key="row.id">…`                                                                     |
+| Conditionals            | `<template if="show">…</template>`                                                                                |
+| Else branches           | `<template else-if="score > 60">` / `<template else>` — chain directly after an `if`; first truthy branch renders |
+| Async blocks            | `<template await="promise"> + <template then> / <template catch>`                                                 |
+| Two-way binding         | `bind:value`, `bind:checked`, `bind:group`, `bind:form`                                                           |
+| Reactive statements     | `$: doubled = count * 2`                                                                                          |
+| Scoped styles           | `<style>` auto-scoped to the component                                                                            |
+| Global style escape     | `:global(body)` / `:global(.x) .y`                                                                                |
+| Slots                   | `<slot>` / `<slot name="title">`                                                                                  |
+| Lifecycle               | `onMount(fn)` — return a cleanup function                                                                         |
+| Literal braces          | `\{` / `\}`                                                                                                       |
+| Escape hatch            | `spark-ignore` attribute — subtree never patched                                                                  |
 
 ### Async blocks
 
@@ -221,7 +221,7 @@ Chains and memoizes — only notifies subscribers when a key actually changes.
 1. **`mount()`** finds `<div import="…">` placeholders and fetches each component file.
 2. **Script and style are extracted from raw text** before the markup touches `innerHTML` — browsers strip `<script>` tags injected via `innerHTML`, so text-level extraction sidesteps the whole class of bugs.
 3. **The script runs inside a `Proxy` scope** — every assignment schedules a patch of only that component's DOM. Patches are batched onto a single microtask.
-4. **Patches are cheap by construction** — static subtrees (no bindings) are walked once and then skipped. A patch costs work proportional to *dynamic* nodes, not the whole tree. Dependency tracking (`O(changed)`) re-evaluates only bindings that read a changed key.
+4. **Patches are cheap by construction** — static subtrees (no bindings) are walked once and then skipped. A patch costs work proportional to _dynamic_ nodes, not the whole tree. Dependency tracking (`O(changed)`) re-evaluates only bindings that read a changed key.
 5. **Deep reactivity** — plain objects and arrays read from scope are wrapped in proxies so `todos.push(x)` and `row.done = true` re-render without replacing the whole value. `Map` and `Set` mutations are tracked too.
 6. **Styles are auto-scoped** via a `[name="component"]` prefix. `@media`/`@supports` scope correctly, `@keyframes`/`@font-face` pass through, and `:global(…)` opts out.
 7. **Loops reconcile by key** — each item keeps its DOM nodes across updates (matched by index, or by `key`), so inputs inside loops keep focus.
@@ -281,13 +281,13 @@ on a reused dev port. Zero config; exits non-zero when something needs a look.
 
 **Measured, not claimed.** On the [krausest js-framework-benchmark](https://github.com/krausest/js-framework-benchmark), spark-html 1.6.0 lands a **CPU geomean of 1.239× hand-written vanilla JS** (paired run vs the `vanillajs` reference, 15 iterations, windowed Chrome, official webdriver-ts harness; local run, upstream submission open — PR #2048). On the published solidjs.com scale that is **past Vue (1.31) and past Angular (1.45)** — with no build step at all — and run memory dropped 1.95× → 1.45× vanilla in the same release. First paint sits at parity with vanilla (the metric is single-sample noisy; an A/B against the prior release measured Δ−4.3 ms — see the repo's `benchmarks.md`):
 
-| Benchmark | ratio vs vanilla | | Benchmark | ratio vs vanilla |
-|---|---:|---|---|---:|
-| create 1,000 rows | 1.30× | | remove one | 1.30× |
-| replace 1,000 rows | 1.31× | | create 10,000 rows | 1.21× |
-| update every 10th | 1.34× | | append 1,000 | 1.24× |
-| select row | 1.21× | | clear | 0.96× |
-| swap rows | 1.34× | | | |
+| Benchmark          | ratio vs vanilla |     | Benchmark          | ratio vs vanilla |
+| ------------------ | ---------------: | --- | ------------------ | ---------------: |
+| create 1,000 rows  |            1.30× |     | remove one         |            1.30× |
+| replace 1,000 rows |            1.31× |     | create 10,000 rows |            1.21× |
+| update every 10th  |            1.34× |     | append 1,000       |            1.24× |
+| select row         |            1.21× |     | clear              |            0.96× |
+| swap rows          |            1.34× |     |                    |                  |
 
 - **Components ship as authored HTML** — no compiler generates code from your template, so there is nothing to parse or evaluate at startup. The file you write is the component that runs.
 - **Text-level extraction of `<script>`/`<style>`** — browsers strip `<script>` tags injected via `innerHTML` (the only way most client-only frameworks can parse a fetched HTML fragment). Spark extracts script and style from the raw text with a tokenizer before the markup ever touches the DOM — sidestepping the entire class of bugs that every other runtime-only framework has to work around.
@@ -317,6 +317,7 @@ on a reused dev port. Zero config; exits non-zero when something needs a look.
   ```
 
   `toggle()` re-walks only row index 3 — the other 999 rows are untouched. A structural change (push, splice, re-sort) still re-reconciles the list shape but skips rows whose identity (key) didn't move. Deep mutations not pinned to a row fall back to a full (still cheap) pass — never stale.
+
 - **Tracked `Map`/`Set` mutations** — `map.set(key, val)`, `set.add(item)`, and `delete`/`clear` trigger re-renders, just like array push and object property assignment. No special API or immutability discipline required.
 - **Keyed reconciliation with minimal moves** — the diff trims the unchanged prefix/suffix and runs a longest-increasing-subsequence pass on the rest (a swap is 2 DOM moves, not 997), rows are created 64 at a time from one native clone of a stamped recipe (template analysis runs once, never per row), and row events use document-level delegation — creating 1,000 rows allocates zero listeners and zero handler closures.
 - **Template-level dependency dispatch** — the template's observed dependency graph sends a changed key straight to the affected bindings in every row, with no per-row bookkeeping at all.
@@ -328,7 +329,7 @@ on a reused dev port. Zero config; exits non-zero when something needs a look.
 - **Class instances / `Date`** — not deeply reactive (intentional). Reassign the variable to trigger an update. Plain objects, arrays, `Map`, and `Set` are all tracked.
 - **Loops reconcile by index by default** — add `key="…"` for identity-stable reordering (keeps focus, preserves element state).
 - **The script rewriter is a scanner, not a parser** — it is string- and comment-aware (code-shaped text inside string literals stays byte-intact, as of 0.30), with one documented unparseable construct: a regex literal containing a quote character. That case warns loudly and names the fix (move the regex to an imported `.js` module).
-- **CSP** — the runtime uses `new Function` for expressions and event handlers, so a strict Content Security Policy needs `unsafe-eval`. For integrity of what you *load*, [`spark-html-sri`](https://www.npmjs.com/package/spark-html-sri) hashes and verifies assets and URL-imported components.
+- **CSP** — the runtime uses `new Function` for expressions and event handlers, so a strict Content Security Policy needs `unsafe-eval`. For integrity of what you _load_, [`spark-html-sri`](https://www.npmjs.com/package/spark-html-sri) hashes and verifies assets and URL-imported components.
 - **`import.meta`** — not available inside component scripts (imports are replayed as dynamic `import()`). Bare specifiers need an import map when running without a bundler.
 
 ## The Spark family
@@ -337,25 +338,25 @@ Small, single-purpose packages that share one philosophy: no compiler, no
 virtual DOM, no build step required — built for humans who love hand-writing
 their web apps. Add only what you use.
 
-| Package | What it does |
-|---|---|
-| [`spark-html`](https://www.npmjs.com/package/spark-html) | The runtime — components, reactivity, stores, forms, scoped styles. 17.91 kB gzip, 0 deps. |
-| [`spark-html-bun`](https://www.npmjs.com/package/spark-html-bun) | Dev server, bundler & preview on Bun — scoped HMR, no-build dev, post-build pipeline. |
-| [`spark-html-router`](https://www.npmjs.com/package/spark-html-router) | `<template route>` routing — nested routes/layouts, `route.query`, active links. |
-| [`spark-html-theme`](https://www.npmjs.com/package/spark-html-theme) | Dark/light/system theming in one line — persisted, no flash. |
-| [`spark-html-head`](https://www.npmjs.com/package/spark-html-head) | Reactive `<title>`/`<meta>` per route + a `head` store. |
-| [`spark-html-motion`](https://www.npmjs.com/package/spark-html-motion) | Enter/leave transitions on if/each blocks — `transition="fade|slide|scale"`. |
-| [`spark-html-devtools`](https://www.npmjs.com/package/spark-html-devtools) | In-page devtools — live stores, component tree, patch activity. |
-| [`spark-html-query`](https://www.npmjs.com/package/spark-html-query) | Declarative async data — a self-fetching store (`loading`/`error`/`data`/`refetch`). |
-| [`spark-html-persist`](https://www.npmjs.com/package/spark-html-persist) | Persist stores to localStorage/sessionStorage in one line. |
-| [`spark-html-websocket`](https://www.npmjs.com/package/spark-html-websocket) | A WebSocket as a reactive store — auto-reconnect, JSON, `send()`. |
-| [`spark-ssr`](https://www.npmjs.com/package/spark-ssr) | Full-stack SSR on Bun — the template is the backend: inferred DB, REST CRUD, auth, live updates. Precompiled + response-cached: fast by default. |
-| [`spark-prerender`](https://www.npmjs.com/package/spark-prerender) | Build-time SEO prerender + sitemap/robots — no SSR server. |
-| [`spark-html-image`](https://www.npmjs.com/package/spark-html-image) | Build-time image optimization — webp/avif + responsive `srcset`, zero config. |
-| [`spark-html-font`](https://www.npmjs.com/package/spark-html-font) | Font loading optimizer — preload + size-adjusted fallbacks, no FOUT. |
-| [`spark-html-manifest`](https://www.npmjs.com/package/spark-html-manifest) | PWA manifest + icons + head tags (and optional service worker) from one config. |
-| [`spark-html-offline`](https://www.npmjs.com/package/spark-html-offline) | Offline URL imports — a service worker that caches CDN components. |
-| [`spark-html-sri`](https://www.npmjs.com/package/spark-html-sri) | Subresource Integrity — hash + verify assets and remote components. |
-| [`create-spark-html-app`](https://www.npmjs.com/package/create-spark-html-app) | Scaffold a spark-html app in one command. |
-| [`prettier-plugin-spark`](https://www.npmjs.com/package/prettier-plugin-spark) | Prettier for components — formats `<script>`/`<style>`, markup stays byte-for-byte. |
-| [`spark-html-language-server`](https://www.npmjs.com/package/spark-html-language-server) | LSP — diagnostics, go-to-definition, prop autocomplete, hover docs. |
+| Package                                                                                  | What it does                                                                                                                                     |
+| ---------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| [`spark-html`](https://www.npmjs.com/package/spark-html)                                 | The runtime — components, reactivity, stores, forms, scoped styles. 17.91 kB gzip, 0 deps.                                                       |
+| [`spark-html-bun`](https://www.npmjs.com/package/spark-html-bun)                         | Dev server, bundler & preview on Bun — scoped HMR, no-build dev, post-build pipeline.                                                            |
+| [`spark-html-router`](https://www.npmjs.com/package/spark-html-router)                   | `<template route>` routing — nested routes/layouts, `route.query`, active links.                                                                 |
+| [`spark-html-theme`](https://www.npmjs.com/package/spark-html-theme)                     | Dark/light/system theming in one line — persisted, no flash.                                                                                     |
+| [`spark-html-head`](https://www.npmjs.com/package/spark-html-head)                       | Reactive `<title>`/`<meta>` per route + a `head` store.                                                                                          |
+| [`spark-html-motion`](https://www.npmjs.com/package/spark-html-motion)                   | Enter/leave transitions on if/each blocks — `transition="fade                                                                                    | slide | scale"`. |
+| [`spark-html-devtools`](https://www.npmjs.com/package/spark-html-devtools)               | In-page devtools — live stores, component tree, patch activity.                                                                                  |
+| [`spark-html-query`](https://www.npmjs.com/package/spark-html-query)                     | Declarative async data — a self-fetching store (`loading`/`error`/`data`/`refetch`).                                                             |
+| [`spark-html-persist`](https://www.npmjs.com/package/spark-html-persist)                 | Persist stores to localStorage/sessionStorage in one line.                                                                                       |
+| [`spark-html-websocket`](https://www.npmjs.com/package/spark-html-websocket)             | A WebSocket as a reactive store — auto-reconnect, JSON, `send()`.                                                                                |
+| [`spark-ssr`](https://www.npmjs.com/package/spark-ssr)                                   | Full-stack SSR on Bun — the template is the backend: inferred DB, REST CRUD, auth, live updates. Precompiled + response-cached: fast by default. |
+| [`spark-prerender`](https://www.npmjs.com/package/spark-prerender)                       | Build-time SEO prerender + sitemap/robots — no SSR server.                                                                                       |
+| [`spark-html-image`](https://www.npmjs.com/package/spark-html-image)                     | Build-time image optimization — webp/avif + responsive `srcset`, zero config.                                                                    |
+| [`spark-html-font`](https://www.npmjs.com/package/spark-html-font)                       | Font loading optimizer — preload + size-adjusted fallbacks, no FOUT.                                                                             |
+| [`spark-html-manifest`](https://www.npmjs.com/package/spark-html-manifest)               | PWA manifest + icons + head tags (and optional service worker) from one config.                                                                  |
+| [`spark-html-offline`](https://www.npmjs.com/package/spark-html-offline)                 | Offline URL imports — a service worker that caches CDN components.                                                                               |
+| [`spark-html-sri`](https://www.npmjs.com/package/spark-html-sri)                         | Subresource Integrity — hash + verify assets and remote components.                                                                              |
+| [`create-spark-html-app`](https://www.npmjs.com/package/create-spark-html-app)           | Scaffold a spark-html app in one command.                                                                                                        |
+| [`prettier-plugin-spark`](https://www.npmjs.com/package/prettier-plugin-spark)           | Prettier for components — formats `<script>`/`<style>`, markup stays byte-for-byte.                                                              |
+| [`spark-html-language-server`](https://www.npmjs.com/package/spark-html-language-server) | LSP — diagnostics, go-to-definition, prop autocomplete, hover docs.                                                                              |
