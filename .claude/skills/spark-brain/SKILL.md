@@ -256,7 +256,13 @@ Saying no is most of the job — before 1.0 and after. Standing denials
 enforced by default: no new spark-ssr
 feature domains, no parser rewrite, no partial hydration/islands, no
 gestures package, no budget creep (18.00 ALL-IN since 2026-07-09 late —
-descope, never fund), no user-side build step ever. The "speed programs
+descope, never fund), no user-side build step ever, and **no JIT
+companion (spark-html-jit / N5) EVER** — Wilkin, 2026-07-11, verbatim
+"no spark-html-jit compiler ever... spark stays true to itself," closing
+the question the fourth program left open. This one is permanent, not
+funding-gated: the interpretive floor is accepted as the identity's
+price, and no future speed proposal may route around it by relocating
+compilation into a sibling. The "speed programs
 stay closed" denial was RESUMED 2026-07-10 when speed-max-pro completed
 (1.286× definitive, 1.5.0), then its reopen precondition was MET the same
 day: `post-spark-speed-pro-max.md` (the fourth program) qualified through
