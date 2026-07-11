@@ -36,12 +36,13 @@ byte-for-byte — reactive, scoped, untouched.
 No compiler generates code from your template. No virtual DOM allocates and diffs
 a tree per frame. The file you write is what runs — 18.00 kB gzipped, zero dependencies.
 
-> ⚡ **1.22× hand-written vanilla JS — with no build step at all.**
-> **And the first big interaction runs JIT-warm — the runtime warms its own
-> row pipeline right after first paint, before your first click.**
-> On the krausest js-framework-benchmark, spark-html 1.7 lands a CPU geomean of
-> **1.223× the hand-written `vanillajs` reference** — past Vue, past Angular on
-> the published scale — run memory holds 1.45× vanilla, and first paint sits at
+> ⚡ **1.19× hand-written vanilla JS — with no build step at all.**
+> **And mutating your state in place is now the fast path — the documented
+> spark style rides the narrowest update lane in the runtime.**
+> On the krausest js-framework-benchmark, spark-html 1.8 lands a CPU geomean of
+> **1.185× the hand-written `vanillajs` reference** — past Vue, past Angular on
+> the published scale — update-every-10th-row dropped 1.36× → 1.12×, run memory
+> holds ~1.45× vanilla, and first paint sits at
 > parity (we retired our old "beats vanilla to first paint" headline once more
 > samples showed that metric's noise; the honesty audit trail is in
 > `benchmarks.md`). *(Paired local run; [method & full table](#performance).)*
@@ -123,10 +124,13 @@ just files at a URL, so you can even `import` one straight from a CDN. See
 ## Performance
 
 **Measured, not claimed.** On the [krausest js-framework-benchmark](https://github.com/krausest/js-framework-benchmark)
-(the industry-standard table), spark-html 1.7.0 lands a **CPU geomean of
-1.223× hand-written vanilla JS** — paired run against the `vanillajs`
-reference, 15 iterations, windowed Chrome, same machine, official
-webdriver-ts harness. On the published solidjs.com scale that is **past
+(the industry-standard table), spark-html 1.8.0 lands a **CPU geomean of
+1.185× hand-written vanilla JS** — paired run against the `vanillajs`
+reference, 25 iterations, windowed Chrome, same machine, official
+webdriver-ts harness. In-place mutation (`rows[i].label += '!'`,
+`rows[1] = x`) now rides the same narrow dirty-key lane as reassignment
+— it's the idiomatic spark style AND the fast path; update-every-10th
+dropped 1.36× → 1.12×. On the published solidjs.com scale that is **past
 Vue (1.31) and past Angular (1.45), while being the only framework in
 that neighborhood with no build step at all** — run memory holds 1.45×
 vanilla, and the runtime now warms its own row pipeline right after

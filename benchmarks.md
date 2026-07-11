@@ -18,7 +18,55 @@ at the bottom before citing these numbers anywhere external.
 > unaffected by all of this: it transfers cleanly across environments
 > (CI: 1.507–1.515 vs 1.496; nightly gate holds it at ≤1.65×).
 
-> **CURRENT — speed program 5 (spark-html 1.7.0, released by owner's
+> **CURRENT — speed program 6/7 (spark-html 1.8.0, definitive fired by
+> owner's override).** The sixth program (beat-1-20-speed.md, its ledger
+> at repo root) parked at receipts per its own pre-registration (standing
+> count=8 headless receipt 1.192 > the ≤1.17 fire bar); round 7 went
+> terminal (E2 unfundable by arithmetic at the 18 KB ceiling; micros
+> measured flat). Wilkin then overrode the firing rule ("FIRE IT") and
+> the one-shot definitive ran from the 1.192 receipt — and landed UNDER
+> the <1.20 SHIP bar. What shipped: **in-place mutation pinned to scope
+> keys** (onMutate routes `rows[1] = x` / `rows[i].label += '!'` /
+> `settings.x = y` down the same narrow dirty-key lane as reassignment —
+> previously a full component pass; aliases collected; nested/Map/Set
+> still full-pass), the krausest impl restyled to that idiomatic
+> in-place style, and an S0 funding sprint (terser hoist_funs +
+> `subscribers` mangle, message-skeleton tightening with every fix still
+> named, MUTATORS Set→object, Reflect.get→t[k], Symbol() descriptions):
+> gzip **18,432 → 18,356/18,432 (76 headroom back under the frozen
+> ceiling)**. Definitive on the shipped artifact: paired vanilla+spark
+> in one session, **count=25, windowed**, Chrome, zero harness errors;
+> vanilla control valid (create10k 1127.6 vs prior 1126.8):
+>
+> | Test | vanilla (ms) | spark (ms) | ratio |
+> |---|---:|---:|---:|
+> | create 1,000 | 102.1 | 121.5 | 1.19× |
+> | replace 1,000 | 110.9 | 131.9 | 1.19× |
+> | update 10th (×16) | 51.0 | 57.3 | **1.12×** |
+> | select row | 11.6 | 13.7 | 1.18× |
+> | swap rows | 60.0 | 75.5 | 1.26× |
+> | remove one | 53.7 | 62.4 | 1.16× |
+> | create 10,000 | 1127.6 | 1374.5 | 1.22× |
+> | append 1,000 | 118.3 | 145.8 | 1.23× |
+> | clear | 35.5 | 39.6 | 1.12× |
+> | **CPU geomean (01–09)** | | | **1.185×** |
+> | ready memory | 0.6 | 1.0 | 1.76× |
+> | run memory | 1.9 | 2.7 | 1.46× |
+> | run+clear memory | 0.7 | 1.4 | 2.12× |
+> | first paint | 325.2 | 310.7 | 0.96× (single sample — NOT a claim; the A/B vs published 1.7.0 is the fp oracle: reversed-order medians 177.8 vs 176.3 ms = parity; forward-order read +18 ms and was diagnosed as first-run order bias) |
+>
+> Honesty notes: memory reads 1.46/1.76 vs the 1.45/1.75 guardrails =
+> ±0.01 rounding band on unchanged allocation behavior (no
+> memory-touching change shipped this round; the chunk-prebuild micro
+> was reverted after measuring flat). Per-op wobble is real and quoted:
+> swap read 1.20–1.38 and update 1.11–1.22 across same-day count=8
+> receipts (vanilla-side drift); the geomean is the only currency. The
+> update10th script delta vs vanilla fell 18 → 5 ms (regime-independent).
+> The receipt-gated firing rule was OVERRIDDEN by the owner for this
+> definitive — recorded as an override, and it paid off; the rule stands
+> for future programs.
+
+> **FINAL — speed program 5 (spark-html 1.7.0, released by owner's
 > call).** The fifth program (speed-up-extended.md — 3× idle warm-reorder
 > battery, now scheduled rAF→setTimeout so it runs strictly after first
 > paint AND before the first interaction · E1 path-op call elision — bare
