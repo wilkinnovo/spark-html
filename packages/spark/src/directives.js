@@ -74,9 +74,16 @@ export function enterNode(n) {
 // subscriptions never fire and their DOM nodes never leave. Recursive
 // because any of those siblings can itself be a nested each/if/await
 // anchor (a <template each> whose rows each contain a <template if>, say).
+// N4 (speed program 4): a shallow SINGLE-ROOT row stores its one clone
+// directly in block.nodes — no per-row span array (1k rows = 1k array
+// headers + backing stores retained for the list's lifetime). Deep rows
+// keep the array (import hydration swaps entries in place); multi-root
+// templates keep it (real spans). Every consumer branches on .nodeType.
+const lastOf = (ns) => ns.nodeType ? ns : ns[ns.length - 1];
+const eachOf = (ns, f) => { if (ns.nodeType) f(ns); else for (const n of ns) f(n); };
 function teardownManaged(n) {
   if (n.__sparkEachBlocks) {
-    for (const b of n.__sparkEachBlocks) for (const c of b.nodes) leaveNode(c);
+    for (const b of n.__sparkEachBlocks) eachOf(b.nodes, leaveNode);
     n.__sparkEachBlocks = [];
   }
   if (n.__sparkIfRendered) {
@@ -430,7 +437,7 @@ function anchorOwnedNodes(n) {
   if (n.__sparkAwaitRendered && n.__sparkAwaitRendered.length) return n.__sparkAwaitRendered;
   if (n.__sparkEachBlocks && n.__sparkEachBlocks.length) {
     const out = [];
-    for (const b of n.__sparkEachBlocks) out.push(...b.nodes);
+    for (const b of n.__sparkEachBlocks) eachOf(b.nodes, (c) => out.push(c));
     return out;
   }
   return null;
@@ -974,6 +981,10 @@ export function patchEach(el, scope) {
     b.scope = rowScope(proto, b);
     return newBlocks[i] = b;
   };
+  // Unbox condition for N4 (see eachOf): shallow rows are never mutated
+  // after creation (no import hydration), so a single-root span needs no
+  // array. Unboxing happens AFTER renderClones fills the local array.
+  const single = !deep && templateNodes.length === 1;
   const make = (i, cur) => {
     const nodes = [];
     const live = deep ? 0 : [];
@@ -981,6 +992,7 @@ export function patchEach(el, scope) {
     if (live) {
       renderClones(templateNodes, cur, nodes, block.scope, live, seeded);
       seeded = 1;
+      if (single) block.nodes = nodes[0];
     } else {
       const prevSink = capture.sink;
       capture.sink = block.ext = new Set();
@@ -999,8 +1011,7 @@ export function patchEach(el, scope) {
   // The span end of block i-1 (or the anchor itself) — where row i inserts.
   const endOf = (blocks, i) => {
     if (i < 0) return el;
-    const b = blocks[i];
-    const last = b.nodes[b.nodes.length - 1];
+    const last = lastOf(blocks[i].nodes);
     return last ? blockEnd(last) : el;
   };
 
@@ -1039,7 +1050,11 @@ export function patchEach(el, scope) {
     if (!deep) {
       // 64 = the chunk size (one clone + one insert per group; G swept 8/16/32/64/128 at F3 — 64 won creates).
       while (sn - i > 62) {
-        insertChunk(templateNodes, cur, el, 64, (nodes, live) => build(i++, nodes, live));
+        insertChunk(templateNodes, cur, el, 64, (nodes, live) => {
+          const b = build(i++, nodes, live);
+          if (single) b.nodes = nodes[0];
+          return b;
+        });
         cur = endOf(newBlocks, i - 1);
       }
     }
@@ -1078,7 +1093,7 @@ export function patchEach(el, scope) {
       // already in final order, so the predecessor's span end is the cursor.
       for (const i of direct) {
         let cursor = endOf(newBlocks, i - 1);
-        for (const nd of newBlocks[i].nodes) cursor = placeWithRendered(cursor, nd);
+        eachOf(newBlocks[i].nodes, (nd) => cursor = placeWithRendered(cursor, nd));
       }
       for (let i = p; i <= sn; i++) reuse(newBlocks[i], i);
     } else {
@@ -1113,19 +1128,19 @@ export function patchEach(el, scope) {
             // Rows still in place are never touched, so a focused <input>
             // keeps focus.
             let cursor = insertAfter;
-            for (const nd of block.nodes) cursor = placeWithRendered(cursor, nd);
+            eachOf(block.nodes, (nd) => cursor = placeWithRendered(cursor, nd));
           }
           reuse(block, i);
         } else {
           block = make(i, insertAfter);
         }
         newBlocks[i] = block;
-        const last = block.nodes[block.nodes.length - 1];
+        const last = lastOf(block.nodes);
         if (last) insertAfter = blockEnd(last);
       }
       // Anything left in the map was dropped from the array.
       for (const b of oldByKey.values()) {
-        for (const n of b.nodes) shallow ? n.remove() : leaveNode(n);
+        eachOf(b.nodes, shallow ? (n) => n.remove() : leaveNode);
       }
     }
   }
