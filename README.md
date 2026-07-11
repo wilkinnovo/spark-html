@@ -37,6 +37,7 @@ No compiler generates code from your template. No virtual DOM allocates and diff
 a tree per frame. The file you write is what runs — 17.91 kB gzipped, zero dependencies.
 
 > ⚡ **1.24× hand-written vanilla JS — with no build step at all.**
+> **And run memory dropped 1.95× → 1.45× vanilla — the 1.6 release's quiet headline.**
 > On the krausest js-framework-benchmark, spark-html 1.6 lands a CPU geomean of
 > **1.239× the hand-written `vanillajs` reference** — past Vue, past Angular on
 > the published scale — and first paint sits at parity with

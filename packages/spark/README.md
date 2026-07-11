@@ -277,24 +277,6 @@ on a reused dev port. Zero config; exits non-zero when something needs a look.
 
 ---
 
-## Companion packages
-
-| Package | What it does |
-|---|---|
-| [`spark-html-router`](https://www.npmjs.com/package/spark-html-router) | Declarative SPA router — `<template route>`, nested routes, `aria-current`, focus management |
-| [`spark-html-theme`](https://www.npmjs.com/package/spark-html-theme) | Dark/light/system theming with localStorage persistence and no-flash init script |
-| [`spark-html-motion`](https://www.npmjs.com/package/spark-html-motion) | Declarative view transitions — `<template motion>` with named views and animation presets |
-| [`spark-html-head`](https://www.npmjs.com/package/spark-html-head) | Per-route `<title>`, `<meta>`, and `<link>` management |
-| [`spark-html-query`](https://www.npmjs.com/package/spark-html-query) | Self-fetching stores with `loading`/`error`/`data`/`refetch` |
-| [`spark-html-persist`](https://www.npmjs.com/package/spark-html-persist) | Persist any store to `localStorage` — survives refresh |
-| [`spark-html-devtools`](https://www.npmjs.com/package/spark-html-devtools) | Browser devtools panel — inspect stores, components, and reactivity |
-| [`spark-prerender`](https://www.npmjs.com/package/spark-prerender) | Build-time prerendering + client hydration — SEO without SSR |
-| [`spark-ssr`](https://www.npmjs.com/package/spark-ssr) | Full-stack SSR on Bun — the template is the backend: inferred DB, REST CRUD, auth, live updates. Precompiled + response-cached: fast by default. |
-| [`create-spark-html-app`](https://www.npmjs.com/package/create-spark-html-app) | Scaffold a new project in one command |
-| [`prettier-plugin-spark`](https://www.npmjs.com/package/prettier-plugin-spark) | Prettier plugin for Spark component files |
-
----
-
 ## Performance
 
 **Measured, not claimed.** On the [krausest js-framework-benchmark](https://github.com/krausest/js-framework-benchmark), spark-html 1.6.0 lands a **CPU geomean of 1.239× hand-written vanilla JS** (paired run vs the `vanillajs` reference, 15 iterations, windowed Chrome, official webdriver-ts harness; local run, upstream submission open — PR #2048). On the published solidjs.com scale that is **past Vue (1.31) and past Angular (1.45)** — with no build step at all — and run memory dropped 1.95× → 1.45× vanilla in the same release. First paint sits at parity with vanilla (the metric is single-sample noisy; an A/B against the prior release measured Δ−4.3 ms — see the repo's `benchmarks.md`):
@@ -367,6 +349,7 @@ their web apps. Add only what you use.
 | [`spark-html-query`](https://www.npmjs.com/package/spark-html-query) | Declarative async data — a self-fetching store (`loading`/`error`/`data`/`refetch`). |
 | [`spark-html-persist`](https://www.npmjs.com/package/spark-html-persist) | Persist stores to localStorage/sessionStorage in one line. |
 | [`spark-html-websocket`](https://www.npmjs.com/package/spark-html-websocket) | A WebSocket as a reactive store — auto-reconnect, JSON, `send()`. |
+| [`spark-ssr`](https://www.npmjs.com/package/spark-ssr) | Full-stack SSR on Bun — the template is the backend: inferred DB, REST CRUD, auth, live updates. Precompiled + response-cached: fast by default. |
 | [`spark-prerender`](https://www.npmjs.com/package/spark-prerender) | Build-time SEO prerender + sitemap/robots — no SSR server. |
 | [`spark-html-image`](https://www.npmjs.com/package/spark-html-image) | Build-time image optimization — webp/avif + responsive `srcset`, zero config. |
 | [`spark-html-font`](https://www.npmjs.com/package/spark-html-font) | Font loading optimizer — preload + size-adjusted fallbacks, no FOUT. |
