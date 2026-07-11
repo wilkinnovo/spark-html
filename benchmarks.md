@@ -1,6 +1,6 @@
 # spark-html vs. js-framework-benchmark (krausest)
 
-Date: 2026-07-10 (1.5.0, 1.4.0) / 2026-07-09 (1.2.0) / 2026-07-08 (1.1.0).
+Date: 2026-07-11 (1.6.0) / 2026-07-10 (1.5.0, 1.4.0) / 2026-07-09 (1.2.0) / 2026-07-08 (1.1.0).
 Local paired runs; the upstream submission is PR #2048 (open) — see caveats
 at the bottom before citing these numbers anywhere external.
 
@@ -17,6 +17,42 @@ at the bottom before citing these numbers anywhere external.
 > 1.4.0 block) plus the CI-band tripwire (≤2.30). CPU geomean is
 > unaffected by all of this: it transfers cleanly across environments
 > (CI: 1.507–1.515 vs 1.496; nightly gate holds it at ≤1.65×).
+
+> **CURRENT — speed program 4 (spark-html 1.6.0).** The fourth program's
+> definitive run (levers, all self-funded under the untouched 18.00 KB
+> ceiling: G1 terser two-pass on the dist · G2 in-row whitespace drop ·
+> G3 `moveBefore` reorders · G4 row-pass shortcut · G5 positional stamp
+> recipes · N4 single-root span unbox; gzip 18,427 → 18,344/18,432):
+> paired vanilla+spark in one session, **count=15, windowed**, Chrome,
+> zero harness errors:
+>
+> | Test | vanilla (ms) | spark (ms) | ratio |
+> |---|---:|---:|---:|
+> | create 1,000 | 97.9 | 127.1 | 1.30× |
+> | replace 1,000 | 112.5 | 147.0 | 1.31× |
+> | update 10th (×16) | 57.9 | 77.5 | 1.34× |
+> | select row | 12.5 | 15.1 | 1.21× |
+> | swap rows | 63.4 | 84.9 | 1.34× |
+> | remove one | 54.4 | 70.8 | 1.30× |
+> | create 10,000 | 1173.0 | 1424.5 | 1.21× |
+> | append 1,000 | 121.0 | 149.6 | 1.24× |
+> | clear (×8) | 41.2 | 39.4 | 0.96× |
+> | *ready memory* | *0.6 MB* | *1.0 MB* | *1.73×* |
+> | *run memory (1k rows)* | *1.9 MB* | *2.7 MB* | ***1.45×*** |
+>
+> **CPU geomean 1.239× (was 1.286 at 1.5.0). Run-memory 1.95 → 1.45×**
+> (G5 deleted the per-static-cell `__spark*` expandos; N4 the per-row
+> span arrays). Honesty notes, same discipline as the fp lesson above:
+> clear's 0.96 is one run's per-op median, NOT a "faster than vanilla"
+> claim; remove's 1.30 (1.16 at 1.5.0) is the same per-op wobble in the
+> other direction — the geomean is the only currency. First-paint A/B
+> vs published 1.5.0 (headless, alternating builds, 3 pairs, medians):
+> 184.4 → 180.1 ms, Δ−4.3 ms = no regression; parity-within-noise
+> stands. Ready memory reads 1.73 vs 1.71 (one-decimal granularity).
+> On the reference frame: **past Vue (1.31) with clearer margin than
+> 1.5.0, past Angular (1.45), approaching Svelte 5 (~1.13)** — reference
+> ratios remain cross-machine extrapolations; the caveat attaches to
+> every external claim.
 
 > **FINAL — speed-max-pro program complete (spark-html 1.5.0).** The
 > third speed program's definitive run: paired vanilla+spark in one

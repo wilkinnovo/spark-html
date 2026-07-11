@@ -16,7 +16,7 @@ no build step — for people who love hand-writing their web apps.
 </style>
 ```
 
-**18.00 kB gzipped**.
+**17.91 kB gzipped**.
 
 ---
 
@@ -297,15 +297,15 @@ on a reused dev port. Zero config; exits non-zero when something needs a look.
 
 ## Performance
 
-**Measured, not claimed.** On the [krausest js-framework-benchmark](https://github.com/krausest/js-framework-benchmark), spark-html 1.5.0 lands a **CPU geomean of 1.286× hand-written vanilla JS** (paired run vs the `vanillajs` reference, 15 iterations, windowed Chrome, official webdriver-ts harness; local run, upstream submission open — PR #2048). On the published solidjs.com scale that is **past Angular (1.45) and past Vue (1.31) at the margin** — with no build step at all. First paint sits at parity with vanilla (the metric is single-sample noisy; an A/B against the prior release measured Δ+0.6 ms — see the repo's `benchmarks.md`):
+**Measured, not claimed.** On the [krausest js-framework-benchmark](https://github.com/krausest/js-framework-benchmark), spark-html 1.6.0 lands a **CPU geomean of 1.239× hand-written vanilla JS** (paired run vs the `vanillajs` reference, 15 iterations, windowed Chrome, official webdriver-ts harness; local run, upstream submission open — PR #2048). On the published solidjs.com scale that is **past Vue (1.31) and past Angular (1.45)** — with no build step at all — and run memory dropped 1.95× → 1.45× vanilla in the same release. First paint sits at parity with vanilla (the metric is single-sample noisy; an A/B against the prior release measured Δ−4.3 ms — see the repo's `benchmarks.md`):
 
 | Benchmark | ratio vs vanilla | | Benchmark | ratio vs vanilla |
 |---|---:|---|---|---:|
-| create 1,000 rows | 1.34× | | remove one | 1.16× |
-| replace 1,000 rows | 1.41× | | create 10,000 rows | 1.29× |
-| update every 10th | 1.39× | | append 1,000 | 1.30× |
-| select row | 1.23× | | clear | 1.17× |
-| swap rows | 1.32× | | | |
+| create 1,000 rows | 1.30× | | remove one | 1.30× |
+| replace 1,000 rows | 1.31× | | create 10,000 rows | 1.21× |
+| update every 10th | 1.34× | | append 1,000 | 1.24× |
+| select row | 1.21× | | clear | 0.96× |
+| swap rows | 1.34× | | | |
 
 - **Components ship as authored HTML** — no compiler generates code from your template, so there is nothing to parse or evaluate at startup. The file you write is the component that runs.
 - **Text-level extraction of `<script>`/`<style>`** — browsers strip `<script>` tags injected via `innerHTML` (the only way most client-only frameworks can parse a fetched HTML fragment). Spark extracts script and style from the raw text with a tokenizer before the markup ever touches the DOM — sidestepping the entire class of bugs that every other runtime-only framework has to work around.
@@ -357,7 +357,7 @@ their web apps. Add only what you use.
 
 | Package | What it does |
 |---|---|
-| [`spark-html`](https://www.npmjs.com/package/spark-html) | The runtime — components, reactivity, stores, forms, scoped styles. 18.00 kB gzip, 0 deps. |
+| [`spark-html`](https://www.npmjs.com/package/spark-html) | The runtime — components, reactivity, stores, forms, scoped styles. 17.91 kB gzip, 0 deps. |
 | [`spark-html-bun`](https://www.npmjs.com/package/spark-html-bun) | Dev server, bundler & preview on Bun — scoped HMR, no-build dev, post-build pipeline. |
 | [`spark-html-router`](https://www.npmjs.com/package/spark-html-router) | `<template route>` routing — nested routes/layouts, `route.query`, active links. |
 | [`spark-html-theme`](https://www.npmjs.com/package/spark-html-theme) | Dark/light/system theming in one line — persisted, no flash. |
