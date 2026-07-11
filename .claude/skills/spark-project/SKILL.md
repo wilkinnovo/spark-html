@@ -290,4 +290,10 @@ convergence tests in loops.js) — update10th receipt 1.36→1.11 (script
 message tightened, MUTATORS Set→object, Reflect.get→t[k], Symbol()
 descriptions → gzip **18,402/18,432 (30 headroom)**. W1's full mutator
 interceptor stays parked (+119 gz vs ~74 findable); W2/E2 needs ~320 gz
-— no named source; reopen paths priced in the doc's STATUS block.
+— no named source. **Round 7 (same day) went TERMINAL:** S0' banked −46
+more (18,356/18,432, 76 headroom, commit a8f221c); E2 closed by
+arithmetic (effective form 300–500 gz vs ≤156 findable; cheap form
+thins to noise); W3b.1 prebuild measured flat and reverted. <1.20 is
+NOT reachable in receipt-space under the 18 KB law with known levers —
+the only remaining move is a Wilkin override firing the definitive
+from the 1.192 standing receipt (doc §11 has the odds).
