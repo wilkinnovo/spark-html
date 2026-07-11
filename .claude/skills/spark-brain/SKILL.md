@@ -8,12 +8,17 @@ description: The judgment layer for the Spark monorepo — value ordering, decis
 Written 2026-07-06 by Claude Fable 5 at Wilkin's request, against spark-html
 0.27.14 / spark-ssr 0.7.2, to be followed by every model that works in this
 repo after me. `spark-project` holds the **facts** (repo map, invariants,
-pitfalls, workflows). There is NO active program doc: the third speed
-program (`spark-speed-up-max-pro.md`, "less code, run twice") COMPLETED
-2026-07-10 at its pre-registered SHIP target — definitive count=15 windowed
-geomean 1.286× (release 1.5.0) — and was deleted per convention; its verdict
-is archived in `benchmarks.md`. Predecessors (v1 plan,
-spark-improvements.md, improvements.md) had each completed and been deleted
+pitfalls, workflows). The ACTIVE program doc is `post-spark-speed-pro-max.md`
+(the FOURTH speed program, commissioned by Wilkin 2026-07-10 the same day the
+third closed — reopened through §5's own gate with new levers; its two
+binding conditions: ceiling NEVER moves ("max is 18kb... no more"; funding
+comes from a measured build-pipeline byte harvest, G1), and release only if
+the definitive run clears the pre-registered SHIP bar ≤1.24×, else nothing
+ships). The third program (`spark-speed-up-max-pro.md`, "less code, run
+twice") COMPLETED 2026-07-10 at its SHIP target — definitive count=15
+windowed geomean 1.286× (release 1.5.0) — and was deleted per convention;
+verdict archived in `benchmarks.md`. Predecessors (v1 plan,
+spark-improvements.md, improvements.md) each completed and were deleted
 the same way. This file holds the **judgment**:
 how to decide when the facts and the sequence are silent, conflicting, or
 tempting you toward a mistake. It is written for the ways models like us
@@ -21,8 +26,8 @@ actually fail here — every rule below is paid for by a real shipped bug or a
 real near-miss.
 
 **Precedence:** Wilkin's explicit instruction > this manual > the active
-program doc (none since 2026-07-10; each predecessor completed and was
-deleted) > everything else. When a higher authority contradicts a lower one, say so once,
+program doc (`post-spark-speed-pro-max.md` since 2026-07-10) > everything
+else. When a higher authority contradicts a lower one, say so once,
 plainly, with the tradeoff — then follow the higher authority without
 relitigating. When Wilkin overrides a rule here, record the override (see
 "Maintaining the knowledge system") so the next model inherits the decision
@@ -30,9 +35,9 @@ instead of re-fighting it.
 
 **Session start ritual** (cheap, do it every time):
 1. Load `spark-project`, then this file.
-2. There is no active program doc (speed-max-pro completed 2026-07-10);
-   read `git log --oneline -15` to see where reality is, and `benchmarks.md`
-   for the standing perf verdict.
+2. Read the active program doc (`post-spark-speed-pro-max.md` — the fourth
+   speed program, gates + ledger), `git log --oneline -15` to see where
+   reality is, and `benchmarks.md` for the standing perf verdict.
 3. Only then touch the task. Never start editing the reactivity core, the
    budget, or a release from a cold context.
 
@@ -252,17 +257,24 @@ enforced by default: no new spark-ssr
 feature domains, no parser rewrite, no partial hydration/islands, no
 gestures package, no budget creep (18.00 ALL-IN since 2026-07-09 late —
 descope, never fund), no user-side build step ever. The "speed programs
-stay closed" denial RESUMED 2026-07-10 when speed-max-pro completed (1.286×
-definitive, 1.5.0) and was deleted. Its new precondition, from that
-program's final verdict: the CPU residual is clone+stamp+layout physics
-plus the no-build identity's interpretive floor (cold-JIT is spent — the
-idle warmup battery covers create, wipe, direct-permutation, and map+LIS
-paths); the memory residual (~1.9× run-memory) is attributed to per-row
-span/live arrays + `__spark*` expandos, with parked funded-only designs at
-their sites (P4a whitespace note in patchEach; flat-live analysis in
-benchmarks.md/git history). Do not reopen krausest work without a genuinely
-NEW lever against one of THOSE residuals — re-running the shipped levers is
-not a lever.
+stay closed" denial was RESUMED 2026-07-10 when speed-max-pro completed
+(1.286× definitive, 1.5.0), then its reopen precondition was MET the same
+day: `post-spark-speed-pro-max.md` (the fourth program) qualified through
+this gate with genuinely new levers against the named residuals —
+`moveBefore` (API absent from all prior idea sets), write-side dirty-row
+narrowing (the triaged per-key candidate, never attempted), lazy `live[]`
+(existence-deferral, not flat-live's representation change) — funded by a
+measured build-pipeline harvest (terser second pass, −~712 gz) with the
+ceiling untouched, and Wilkin sanctioned the posture flip with a
+beat-≤1.24-or-no-release condition. The residuals for any FUTURE reopen
+remain: CPU = clone+stamp+layout physics plus the no-build identity's
+interpretive floor (cold-JIT is spent — the idle warmup battery covers
+create, wipe, direct-permutation, and map+LIS paths); memory (~1.9×
+run-memory) = per-row span/live arrays + `__spark*` expandos, with parked
+funded-only designs at their sites (P4a whitespace note in patchEach —
+scheduled as this program's G2; flat-live analysis in benchmarks.md/git
+history). The bar stands: no reopen without a NEW lever against THOSE
+residuals — re-running shipped levers is not a lever.
 
 When a feature idea arrives — including from Wilkin, including from *you*:
 1. Run the four identity gates (§1). Report which gate it hits, if any.

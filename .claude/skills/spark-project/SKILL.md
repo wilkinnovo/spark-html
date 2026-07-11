@@ -119,11 +119,12 @@ verified in the tree). M4 and the 1.0.0 release are complete.
 
 This skill holds the **facts**. The judgment layer — value ordering, decision
 gates, change protocols — is the `spark-brain` skill; load it alongside this
-one. The ACTIVE program is `spark-speed-up-max-pro.md` (the third speed
-program, commissioned 2026-07-09 late: staged targets ship ≤1.30 / stretch
-≤1.20 / moonshot ≤1.15, ceiling 18.00 ALL-IN; phases P0 profile → P1 F4
-revive → P2 keyed-equality index → P3 idle self-warmup → checkpoint → P4
-lazy rows → P5 template JIT → P6 hot/cold split → P7 memory receipt).
+one. The ACTIVE program is `post-spark-speed-pro-max.md` (the FOURTH speed
+program, commissioned 2026-07-10: SHIP ≤1.24 / stretch ≤1.20, release only
+if the definitive run clears SHIP; ceiling 18.00 NEVER moves — funded by
+G1's measured terser-second-pass harvest, 18,427 → ~17,715 gz. Gates: G1
+byte harvest ✅ → G2 P4a whitespace → G3 moveBefore → G4 dirty-row
+narrowing → G5 lazy-live → G6 definitive + release decision).
 
 ## Repo map
 
@@ -242,8 +243,8 @@ See pitfalls.md "Fixed at v1-prep".)
 - `references/pitfalls.md` — the full bug history with root causes; what each
   one taught; browser-testing setup on this machine.
 
-For the roadmap: there is NO active program (speed-max-pro completed
-2026-07-10 and was deleted per convention). `benchmarks.md` holds the
-definitive perf verdict and method; spark-brain §5 gates all new work, and
-its speed-programs denial has resumed with the program-end residuals as
-its precondition.
+For the roadmap: the ACTIVE program is `post-spark-speed-pro-max.md` (fourth
+speed program, opened 2026-07-10 through spark-brain §5's own reopen gate —
+new levers: moveBefore, dirty-row narrowing, lazy-live; ceiling untouched,
+beat-≤1.24-or-no-release). `benchmarks.md` holds the standing 1.5.0 verdict
+and method; spark-brain §5 still gates all other new work.

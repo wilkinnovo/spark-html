@@ -7,11 +7,19 @@
  * part of `npm test`).
  */
 import { build } from 'esbuild';
+import { minify } from 'terser';
 import { gzipSync } from 'node:zlib';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
-const LIMIT_KB = 18.00; // ALL-IN ceiling for spark-speed-up-max-PRO (the
+const LIMIT_KB = 18.00; // CEILING UNCHANGED — 2026-07-10 G1 (4th program,
+// post-spark-speed-pro-max.md): a terser second pass over the esbuild output
+// joined the measured artifact (build-dist.mjs ships the identical bytes),
+// 18,427 → ~17,718 gz on unchanged semantics. Wilkin: "the max is 18kb
+// runtime... no more" — the ~714-byte harvest is program funding, spent per
+// that doc's gate ledger (G2 P4a, G3 moveBefore, G4 dirty-row narrowing,
+// G5 lazy-live), never a ceiling conversation.
+// ── history ── 18.00: ALL-IN ceiling for spark-speed-up-max-PRO (the
 // third speed program), authorized by Wilkin 2026-07-09 late ("up to 18 KB
 // gzip") and moved here with the program's first paying gate (P1: V4
 // clear-wipe revived +/table-whitespace drop/shared proxy handler —
@@ -56,7 +64,12 @@ const res = await build({
   logLevel: 'silent',
 });
 
-const min = res.outputFiles[0].contents;
+// Second pass mirrors build-dist.mjs exactly — the gate measures the bytes
+// that actually ship.
+const two = await minify(res.outputFiles[0].text, {
+  module: true, compress: { passes: 3 }, mangle: true,
+});
+const min = Buffer.from(two.code);
 const gzip = gzipSync(min).length;
 const kb = (gzip / 1024).toFixed(2);
 const limit = LIMIT_KB * 1024;

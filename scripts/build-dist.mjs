@@ -21,6 +21,7 @@
  *   node scripts/build-dist.mjs
  */
 import { build } from 'esbuild';
+import { minify } from 'terser';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { mkdir, writeFile } from 'node:fs/promises';
@@ -39,8 +40,15 @@ const res = await build({
   logLevel: 'silent',
 });
 
-await mkdir(outDir, { recursive: true });
-await writeFile(outFile, res.outputFiles[0].contents);
+// G1 (post-spark-speed-pro-max.md, 2026-07-10): terser second pass over the
+// esbuild output — same semantics, −709 gz measured at P0. size-check.mjs
+// measures this same two-pass artifact; the two must never diverge.
+const two = await minify(res.outputFiles[0].text, {
+  module: true, compress: { passes: 3 }, mangle: true,
+});
 
-const bytes = res.outputFiles[0].contents.length;
+await mkdir(outDir, { recursive: true });
+await writeFile(outFile, two.code);
+
+const bytes = Buffer.byteLength(two.code);
 console.log(`built packages/spark/dist/spark.js — ${(bytes / 1024).toFixed(2)} KB min`);
