@@ -293,7 +293,14 @@ interceptor stays parked (+119 gz vs ~74 findable); W2/E2 needs ~320 gz
 — no named source. **Round 7 (same day) went TERMINAL:** S0' banked −46
 more (18,356/18,432, 76 headroom, commit a8f221c); E2 closed by
 arithmetic (effective form 300–500 gz vs ≤156 findable; cheap form
-thins to noise); W3b.1 prebuild measured flat and reverted. <1.20 is
-NOT reachable in receipt-space under the 18 KB law with known levers —
-the only remaining move is a Wilkin override firing the definitive
-from the 1.192 standing receipt (doc §11 has the odds).
+thins to noise); W3b.1 prebuild measured flat and reverted. Wilkin then FIRED the
+override — **the definitive landed 1.185× (count=25 windowed) < the
+1.20 bar → RELEASED as core 1.8.0** (tag v1.8.0, 79c9937,
+registry-verified 2026-07-11): in-place mutation pinned to scope keys
+(the idiomatic style IS the fast path), update10th 1.36→1.12, gzip
+18,356/18,432 (76 headroom). Memory 1.46/1.76 = rounding band; fp A/B
+parity (forward-order +18 ms was order bias — reverse drive order).
+**Upstream PR #2048 MERGED 2026-07-11** — spark-html is listed in the
+official js-framework-benchmark; bump its impl to ^1.8.0 via a fresh
+fork PR. benchmarks.md CURRENT = the 1.8.0 block (1.7.0 → FINAL);
+beat-1-20-speed.md stays at repo root as the round-6/7 ledger.
