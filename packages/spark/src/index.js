@@ -1620,12 +1620,15 @@ async function mount(root = document.body, options = {}) {
     }
     // Idle self-warmup (speed-max-pro P3): the rIC presence-check gates it
     // to real browsers (shims/prerender have none). Scheduling is rAF →
-    // rIC: a bare rIC can run BEFORE first paint, and the round-5 3-cycle
-    // battery made that visible (fp A/B vs 1.6.0: +13 ms in all 3 pairs);
-    // an idle slot requested FROM a frame callback is strictly after that
-    // frame's paint, so the battery can never delay fp again.
+    // setTimeout(0): a bare rIC can run BEFORE first paint — the round-5
+    // 3-cycle battery made that visible (fp A/B vs 1.6.0: +13 ms in all 3
+    // pairs) — while a macrotask queued FROM a frame callback runs right
+    // AFTER that frame's paint. Not rAF → rIC: the browser may hold an
+    // idle slot long enough to lose the race to the first interaction,
+    // which resurrects the mid-click tier-up cost the battery removes
+    // (measured: update10th 1.30 → 1.37 with rIC here).
     if (!isPrerender() && globalThis.requestIdleCallback) {
-      requestAnimationFrame(() => requestIdleCallback(() => { warm.on = 1; try { warmEach(root); } catch { /* never the page's problem */ } warm.on = 0; }));
+      requestAnimationFrame(() => setTimeout(() => { warm.on = 1; try { warmEach(root); } catch { /* never the page's problem */ } warm.on = 0; }));
     }
   };
 

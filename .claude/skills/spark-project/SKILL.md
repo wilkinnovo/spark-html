@@ -252,10 +252,19 @@ See pitfalls.md "Fixed at v1-prep".)
 - `references/pitfalls.md` — the full bug history with root causes; what each
   one taught; browser-testing setup on this machine.
 
-For the roadmap: the ACTIVE program is `speed-up-extended.md` (FIFTH speed
-program, commissioned 2026-07-11 — SHIP <1.20 definitive or no release;
-E0 attribution + E1 path-op call elision + E3 identity pre-trim landed
-2026-07-11 with the prop-mangle funding harvest in scripts/terser-opts.mjs;
-E2 inert rows PARKED at the funding ladder, E4 micros skipped on
-cost/benefit). `benchmarks.md` holds the standing 1.5.0 verdict
-and method; spark-brain §5 still gates all other new work.
+For the roadmap: NO ACTIVE PROGRAM — `speed-up-extended.md` (the FIFTH
+speed program) **PARKED 2026-07-11 at its own bar**: definitive count=15
+windowed geomean **1.223× ≥ the <1.20 SHIP bar ⇒ no release** (Wilkin's
+beat-or-no-release condition). The parked tree sits ON MAIN, UNPUSHED
+(ahead of origin): E1 path-op call elision + E3 identity pre-trim + 3×
+warm-reorder battery in the rAF→setTimeout(0) slot (bare rIC failed the
+fp A/B guardrail +13 ms ×3; rAF→rIC lost the idle race — update10th
+1.37; setTimeout passed fp AND kept the battery pre-interaction) + the
+prop-mangle funding harvest (scripts/terser-opts.mjs) — gzip
+**18,432/18,432, the ceiling to the byte, ZERO headroom**. Guardrails
+green at park: run-mem 1.45×, ready 1.75×, fp A/B pass, suite+fuzz+e2e.
+So: main ≠ published 1.6.0 — the next release ships this tree's levers
+automatically. Reopen path (doc §9): fund E2 inert rows (needs ≥150 gz ⇒
+harvest or deletion first); no other lever on file. `benchmarks.md`
+holds the standing 1.6.0 verdict + the program-5 PARKED block;
+spark-brain §5 gates all new work.
