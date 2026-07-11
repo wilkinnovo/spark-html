@@ -123,11 +123,12 @@ one. The ACTIVE program is `post-spark-speed-pro-max.md` (the FOURTH speed
 program, commissioned 2026-07-10; Wilkin override: commit-but-NO-push-NO-
 release until the definitive run hits ≤1.13; ceiling 18.00 NEVER moves —
 funded by G1's terser-second-pass harvest. Gates G1–G5 ALL DONE 2026-07-10,
-unpushed (96cd854, 828a5ec, 187fde1): terser two-pass → P4a whitespace →
-moveBefore → row-pass shortcut → positional stamp recipes. Interim count=8
-headless: geomean 1.208 ≈ ~1.19 windowed, run-mem 1.49×, 18,285/18,432 gz
-(headroom 147). Next lever: nodes[] unbox for single-root templates; then
-only N5 JIT sibling, Wilkin-gated).
+unpushed (96cd854, 828a5ec, 187fde1, 7a4e7b0): terser two-pass → P4a
+whitespace → moveBefore → row-pass shortcut → positional stamp recipes →
+N4 single-root span unbox. State: geomean ~1.21 headless ≈ ~1.19 windowed,
+run-mem 1.44×, 18,344/18,432 gz (headroom 88). ALL in-scope levers spent;
+only N5 JIT sibling remains, Wilkin-gated; G6 definitive when ≤1.13 is
+plausible).
 
 ## Repo map
 
