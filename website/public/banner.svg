@@ -22,7 +22,7 @@
   <!-- ── left column ─────────────────────────────────────────────── -->
   <!-- wordmark -->
   <text x="56" y="72" font-size="17" font-weight="700" fill="#ffffff" letter-spacing="6">
-    <tspan fill="#ffd24a">⚡</tspan> SPARK <tspan fill="#ffd24a" letter-spacing="2">1.7</tspan>
+    <tspan fill="#ffd24a">⚡</tspan> SPARK <tspan fill="#ffd24a" letter-spacing="2">1.8</tspan>
   </text>
 
   <!-- headline -->
