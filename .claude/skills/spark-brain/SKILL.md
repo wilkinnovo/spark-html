@@ -262,7 +262,16 @@ companion (spark-html-jit / N5) EVER** — Wilkin, 2026-07-11, verbatim
 the question the fourth program left open. This one is permanent, not
 funding-gated: the interpretive floor is accepted as the identity's
 price, and no future speed proposal may route around it by relocating
-compilation into a sibling. The "speed programs
+compilation into a sibling. Arc, for the record (a worked example of
+this section doing its job): N5 was *proposed* — by the fourth program's
+own research, as the only known path under ~1.20 — carried explicitly as
+"a Wilkin decision, not an engineering one," presented once with its
+true cost named (a krausest entry would have to be reported as "spark +
+jit companion," so the benchmark would stop describing the 18 KB
+no-build artifact — the whole pitch), and **denied, as the identity
+gates predicted**: a lever that wins only by relocating compilation was
+never spark. Future proposals of this shape die here without a Wilkin
+round-trip. The "speed programs
 stay closed" denial was RESUMED 2026-07-10 when speed-max-pro completed
 (1.286× definitive, 1.5.0), then its reopen precondition was MET the same
 day: `post-spark-speed-pro-max.md` (the fourth program) qualified through
