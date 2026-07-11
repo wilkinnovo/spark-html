@@ -279,15 +279,15 @@ on a reused dev port. Zero config; exits non-zero when something needs a look.
 
 ## Performance
 
-**Measured, not claimed.** On the [krausest js-framework-benchmark](https://github.com/krausest/js-framework-benchmark), spark-html 1.7.0 lands a **CPU geomean of 1.223× hand-written vanilla JS** (paired run vs the `vanillajs` reference, 15 iterations, windowed Chrome, official webdriver-ts harness; local run, upstream submission open — PR #2048). On the published solidjs.com scale that is **past Vue (1.31) and past Angular (1.45)** — with no build step at all — run memory holds 1.45× vanilla, and the runtime warms its own row pipeline right after first paint, so the first big interaction runs JIT-warm. First paint sits at parity with vanilla (the metric is single-sample noisy; the A/B against the prior release read −9 ms by medians — see the repo's `benchmarks.md`):
+**Measured, not claimed.** On the [krausest js-framework-benchmark](https://github.com/krausest/js-framework-benchmark), spark-html 1.8.0 lands a **CPU geomean of 1.185× hand-written vanilla JS** (paired run vs the `vanillajs` reference, 25 iterations, windowed Chrome, official webdriver-ts harness; the upstream submission — PR #2048 — is MERGED, so spark-html is listed in the official benchmark). On the published solidjs.com scale that is **past Vue (1.31) and past Angular (1.45)** — with no build step at all — run memory holds ~1.45× vanilla, and in-place mutation (`rows[i].label += '!'`, `rows[1] = x`) rides the same narrow dirty-key lane as reassignment: the idiomatic spark style is also the fast path (update-every-10th 1.36× → 1.12×). First paint sits at parity with vanilla (the metric is single-sample noisy; the A/B against the prior release read −9 ms by medians — see the repo's `benchmarks.md`):
 
 | Benchmark          | ratio vs vanilla |     | Benchmark          | ratio vs vanilla |
 | ------------------ | ---------------: | --- | ------------------ | ---------------: |
-| create 1,000 rows  |            1.35× |     | remove one         |            1.13× |
-| replace 1,000 rows |            1.28× |     | create 10,000 rows |            1.20× |
-| update every 10th  |            1.36× |     | append 1,000       |            1.17× |
-| select row         |            1.18× |     | clear              |            1.14× |
-| swap rows          |            1.23× |     |                    |                  |
+| create 1,000 rows  |            1.19× |     | remove one         |            1.16× |
+| replace 1,000 rows |            1.19× |     | create 10,000 rows |            1.22× |
+| update every 10th  |            1.12× |     | append 1,000       |            1.23× |
+| select row         |            1.18× |     | clear              |            1.12× |
+| swap rows          |            1.26× |     | **CPU geomean**    |       **1.185×** |
 
 - **Components ship as authored HTML** — no compiler generates code from your template, so there is nothing to parse or evaluate at startup. The file you write is the component that runs.
 - **Text-level extraction of `<script>`/`<style>`** — browsers strip `<script>` tags injected via `innerHTML` (the only way most client-only frameworks can parse a fetched HTML fragment). Spark extracts script and style from the raw text with a tokenizer before the markup ever touches the DOM — sidestepping the entire class of bugs that every other runtime-only framework has to work around.

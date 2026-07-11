@@ -137,20 +137,22 @@ vanilla, and the runtime now warms its own row pipeline right after
 first paint, so the first big interaction runs JIT-warm. First paint is
 at parity with vanilla (single-sample fp spreads ±20% per run; the A/B
 against the prior release read −9 ms by medians — details in
-`benchmarks.md`). Local run, upstream submission open (PR #2048);
-numbers below are medians:
+`benchmarks.md`). Local run; the upstream submission (PR #2048) is MERGED —
+spark-html is listed in the official benchmark. Numbers below are
+medians from the 1.8.0 definitive (25 iterations, windowed):
 
 | Benchmark | vanilla (ms) | spark (ms) | ratio |
 |---|---:|---:|---:|
-| create 1,000 rows | 92.6 | 124.6 | 1.35× |
-| replace 1,000 rows | 102.9 | 131.5 | 1.28× |
-| update every 10th (×16) | 49.4 | 67.4 | 1.36× |
-| select row | 11.3 | 13.3 | 1.18× |
-| swap rows | 59.2 | 72.8 | 1.23× |
-| remove one | 54.5 | 61.8 | 1.13× |
-| create 10,000 rows | 1126.8 | 1348.1 | 1.20× |
-| append 1,000 | 117.9 | 137.5 | 1.17× |
-| clear (×8) | 34.4 | 39.3 | 1.14× |
+| create 1,000 rows | 102.1 | 121.5 | 1.19× |
+| replace 1,000 rows | 110.9 | 131.9 | 1.19× |
+| update every 10th (×16) | 51.0 | 57.3 | 1.12× |
+| select row | 11.6 | 13.7 | 1.18× |
+| swap rows | 60.0 | 75.5 | 1.26× |
+| remove one | 53.7 | 62.4 | 1.16× |
+| create 10,000 rows | 1127.6 | 1374.5 | 1.22× |
+| append 1,000 | 118.3 | 145.8 | 1.23× |
+| clear (×8) | 35.5 | 39.6 | 1.12× |
+| **CPU geomean** | | | **1.185×** |
 
 How it stays fast:
 
