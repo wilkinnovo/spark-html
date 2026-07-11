@@ -110,7 +110,7 @@ export function compileStmt(code) {
 // A thrown evaluation (e.g. reading a property of undefined) renders as
 // empty — tell the consumer which expression and why, once.
 function exprError(code, e) {
-  warnOnce(`e:${code}`, `[spark] Error evaluating {${code}} — ${e.message}. (Rendered as empty. Use {a?.b} for values that may be missing.)`);
+  warnOnce(`e:${code}`, `[spark] Error evaluating {${code}} — ${e.message} — rendered empty; use {a?.b} for maybe-missing values.`);
   return '';
 }
 

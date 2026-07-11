@@ -649,7 +649,7 @@ export function withSink(node, fn, a, b) {
     // Invariant: dep sets must never shrink (the 0.27.14 lesson).
     // If this fires, something cleared or deleted from a withSink set.
     if (!isPrerender() && set.size < beforeSize) {
-      console.error(`[spark] invariant: dep set shrank on ${node.tagName || '$:stmt'} — ${beforeSize}→${set.size}. This is a bug.`);
+      console.error(`[spark] invariant: dep set shrank on ${node.tagName || '$:stmt'} — ${beforeSize}→${set.size}.`);
     }
     // Propagate to an enclosing block so a nested loop's deps count for the
     // outer one too.
@@ -1112,7 +1112,7 @@ export function walkNode(node, scope, isRoot = false) {
     if (!node.__sparkIfManagedBy) {
       warnOnce(
         `orphan-else:${node.getAttribute('else-if') || 'else'}`,
-        '[spark] <template else-if>/<template else> must directly follow a <template if> (or another else-if). Branch ignored.',
+        '[spark] <template else-if>/<template else> must directly follow a <template if>/else-if — branch ignored.',
       );
     }
     if (!isRoot) node.__sparkStatic = 1;

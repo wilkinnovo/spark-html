@@ -59,7 +59,7 @@ function warnScan(src, i, j) {
   const near = src.slice(i, Math.min(j, i + 50));
   if (scanWarned.has(near)) return;
   scanWarned.add(near);
-  console.warn(`[spark] unterminated ${src[i]} string in <script> near ${near} — a regex literal with a quote? The scanner can't parse those: use new RegExp() or an imported .js module.`);
+  console.warn(`[spark] unterminated ${src[i]} string in <script> near ${near} — a regex literal with a quote can't be scanned — use new RegExp() or an imported .js module.`);
 }
 
 // The {/} nesting depth at every position in `src`. Positions inside

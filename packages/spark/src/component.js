@@ -328,7 +328,7 @@ function makeScope(rawCode, componentEl, props = {}) {
     componentEl.__sparkScopePending = false;
     reportError(e, {
       phase: 'script', component: componentEl.getAttribute('name'),
-      detail: 'the <script> failed to run — state and handlers are unavailable',
+      detail: 'the <script> failed to run — state/handlers unavailable',
     });
   };
 
