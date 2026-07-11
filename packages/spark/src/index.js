@@ -1618,13 +1618,14 @@ async function mount(root = document.body, options = {}) {
       const count = [...root.querySelectorAll('[name]')].filter((e) => e.__sparkScope).length;
       console.log(`[spark] ⚡ ready — ${count} component(s)`);
     }
-    // Idle self-warmup (speed-max-pro P3): rIC gates it to real browsers
-    // (shims/prerender have none) and defers it to idle. rIC does NOT
-    // strictly guarantee post-paint; measured fp-neutral by same-night A/B
-    // (§9 checkpoint receipt) — a stricter double-rAF construction costs
-    // bytes at zero headroom and the measured need is absent.
+    // Idle self-warmup (speed-max-pro P3): the rIC presence-check gates it
+    // to real browsers (shims/prerender have none). Scheduling is rAF →
+    // rIC: a bare rIC can run BEFORE first paint, and the round-5 3-cycle
+    // battery made that visible (fp A/B vs 1.6.0: +13 ms in all 3 pairs);
+    // an idle slot requested FROM a frame callback is strictly after that
+    // frame's paint, so the battery can never delay fp again.
     if (!isPrerender() && globalThis.requestIdleCallback) {
-      requestIdleCallback(() => { warm.on = 1; try { warmEach(root); } catch { /* never the page's problem */ } warm.on = 0; });
+      requestAnimationFrame(() => requestIdleCallback(() => { warm.on = 1; try { warmEach(root); } catch { /* never the page's problem */ } warm.on = 0; }));
     }
   };
 
