@@ -45,6 +45,18 @@
   </div>
 
   <div class="demo">
+    <div class="quote-block">
+      <div class="quote-stack">
+        <template each="q in quotes" key="q.id">
+          <p class="hero-quote" :class="quoteTab === q.id ? 'hq-on' : ''">“{q.text}” <cite>— {q.author}</cite></p>
+        </template>
+      </div>
+      <div class="quote-tabs" role="tablist" aria-label="Reader quotes">
+        <template each="q in quotes" key="q.id">
+          <button :class="quoteTab === q.id ? 'qtab on' : 'qtab'" role="tab" :aria-selected="quoteTab === q.id" onclick="{showQuote(q.id)}">{q.id + 1}</button>
+        </template>
+      </div>
+    </div>
     <div class="demo-tabs">
       <button :class="tab === 'url' ? 'dt on' : 'dt'" onclick="{showUrl}">URL import</button>
       <button :class="tab === 'counter' ? 'dt on' : 'dt'" onclick="{showCounter}">counter.html</button>
@@ -107,18 +119,6 @@
           <p class="ssr-api" :hidden="!lastApi">→ <code>{lastApi}</code></p>
         </div>
       </div>
-    </div>
-  </div>
-  <div class="quote-block">
-    <div class="quote-stack">
-      <template each="q in quotes" key="q.id">
-        <p class="hero-quote" :class="quoteTab === q.id ? 'hq-on' : ''">“{q.text}” <cite>— {q.author}</cite></p>
-      </template>
-    </div>
-    <div class="quote-tabs" role="tablist" aria-label="Reader quotes">
-      <template each="q in quotes" key="q.id">
-        <button :class="quoteTab === q.id ? 'qtab on' : 'qtab'" role="tab" :aria-selected="quoteTab === q.id" onclick="{showQuote(q.id)}">{q.id + 1}</button>
-      </template>
     </div>
   </div>
   <div class="chips">
@@ -395,21 +395,22 @@
   .card .nm { padding: 12px 2px 2px; font-size: 15px; font-weight: 600; }
   .card .ds { font-size: 12.5px; color: var(--muted); }
 
-  .quote-stack { display: grid; }
-  .hero-quote { grid-area: 1 / 1; font-size: 13.5px; line-height: 1.6; color: var(--muted-dim); font-style: italic; margin: 0; opacity: 0; transition: opacity .6s ease; pointer-events: none; }
+  /* Quote strip — sits at the top of the demo panel, above the code tabs, so
+     on large screens it reads as "top right of the hero, above the example
+     code" without competing with the CPU-speed chart under hero-copy. On
+     mobile it rides along with .demo (which follows hero-copy in DOM order),
+     so it still lands directly above the example code, just full-width. */
+  .quote-block { padding: 14px 18px; border-bottom: 1px solid var(--border); background: var(--surface-2); display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+  .quote-stack { display: grid; flex: 1; min-width: 0; }
+  .hero-quote { grid-area: 1 / 1; font-size: 12px; line-height: 1.55; color: var(--muted-dim); font-style: italic; margin: 0; opacity: 0; transition: opacity .6s ease; pointer-events: none; }
   .hero-quote.hq-on { opacity: 1; pointer-events: auto; }
   .hero-quote cite { font-style: normal; color: var(--muted); }
-  .quote-tabs { display: flex; gap: 6px; margin-top: 10px; }
-  .qtab { width: 20px; height: 20px; padding: 0; display: grid; place-items: center; font-size: 10.5px; font-family: var(--font); color: var(--muted-dim); background: var(--surface-2); border: 1px solid var(--border); cursor: pointer; border-radius: 50%; transition: color .15s, border-color .15s; }
+  .quote-tabs { display: flex; gap: 5px; flex-shrink: 0; }
+  .qtab { width: 17px; height: 17px; padding: 0; display: grid; place-items: center; font-size: 9.5px; font-family: var(--font); color: var(--muted-dim); background: var(--bg); border: 1px solid var(--border); cursor: pointer; border-radius: 50%; transition: color .15s, border-color .15s; }
   .qtab:hover { color: var(--text); border-color: var(--border-strong); }
   .qtab.on { color: #000; background: var(--spark); border-color: var(--spark); font-weight: 700; }
   .chips { display: flex; flex-wrap: wrap; gap: 10px; padding: 40px 0 0; }
   .chip { font-size: 12.5px; background: var(--surface-2); border: 1px solid var(--border); padding: 8px 12px; border-radius: 6px; color: var(--muted); }
-  @media (min-width: 861px) {
-    .quote-block { grid-column: 2; grid-row: 2; justify-self: end; text-align: right; border-right: 2px solid var(--spark-ink); padding-right: 16px; max-width: 55ch; }
-    .quote-tabs { justify-content: flex-end; }
-    .chips { grid-column: 1; grid-row: 2; align-self: end; padding: 0; }
-  }
-  @media (max-width: 860px) { .hero { grid-template-columns: 1fr; gap: 24px; padding: 48px 0 40px; } }
+  @media (max-width: 860px) { .hero { grid-template-columns: 1fr; gap: 24px; padding: 48px 0 40px; } .quote-block { flex-direction: column; align-items: stretch; gap: 8px; } .quote-tabs { justify-content: center; } }
   @media (prefers-reduced-motion: reduce) { .hero-quote { transition: none; } }
 </style>
