@@ -12,13 +12,21 @@ compilation step is out of scope by definition.** The stated mission (Wilkin,
 2026-07-06): be the *simplest* way to write SSR, prerender, and client-only
 apps while staying fast — "built for humans who want to code themselves."
 
-Knowledge here is accurate as of 2026-07-10 — **core 1.5.0 current** (the
-speed-max-pro FINAL release, program COMPLETE at its pre-registered SHIP
-target: definitive count=15 windowed geomean **1.286×** vanilla —
-update10th 1.39, swap 1.32, select 1.23, clear 1.17, remove 1.16 — past
-Angular (1.45) and past Vue (1.31) AT THE MARGIN on the reference frame
-(cross-machine caveat attaches to every external claim); gzip
-**18,427/18,432 bytes** under the 18.00 ALL-IN ceiling, frozen for 1.x). **First-paint
+Knowledge here is accurate as of 2026-07-11 — **core 1.6.0 current** (the
+fourth speed program's release: definitive count=15 windowed geomean
+**1.239×** vanilla (was 1.286), **run-memory 1.45×** (was 1.95) — past
+Vue (1.31) and past Angular (1.45) on the reference frame (cross-machine
+caveat attaches to every external claim; clear 0.96/remove 1.30 in that
+run are per-op wobble, geomean is the currency); gzip **18,344/18,432
+bytes = 17.91 KB** under the 18.00 ALL-IN ceiling, frozen for 1.x.
+1.6.0 levers, all self-funded: terser two-pass dist, in-row whitespace
+drop, moveBefore reorders, G4 row-pass shortcut, G5 positional stamp
+recipes — buildStampRecipe/stampFast in index.js: static row cells
+carry ZERO __spark* expandos; push order = preorder = sweepEach's
+column invariant — and N4 single-root span unbox (block.nodes is the
+bare clone for shallow single-root rows; lastOf/eachOf branch on
+.nodeType). The fp A/B oracle vs prior release: fp rides the
+`--benchmark 40_` sizes group, never 43_ standalone.) **First-paint
 honesty (2026-07-10): the 1.2.0 "0.86× beats vanilla" headline is RETIRED**
 — windowed single-sample fp spreads 0.92–1.61× per run; a same-night
 headless A/B (published 1.3.0 vs P1-P3 tree, 3 alternating pairs) measured
@@ -119,16 +127,13 @@ verified in the tree). M4 and the 1.0.0 release are complete.
 
 This skill holds the **facts**. The judgment layer — value ordering, decision
 gates, change protocols — is the `spark-brain` skill; load it alongside this
-one. The ACTIVE program is `post-spark-speed-pro-max.md` (the FOURTH speed
-program, commissioned 2026-07-10; Wilkin override: commit-but-NO-push-NO-
-release until the definitive run hits ≤1.13; ceiling 18.00 NEVER moves —
-funded by G1's terser-second-pass harvest. Gates G1–G5 ALL DONE 2026-07-10,
-unpushed (96cd854, 828a5ec, 187fde1, 7a4e7b0): terser two-pass → P4a
-whitespace → moveBefore → row-pass shortcut → positional stamp recipes →
-N4 single-root span unbox. State: geomean ~1.21 headless ≈ ~1.19 windowed,
-run-mem 1.44×, 18,344/18,432 gz (headroom 88). ALL in-scope levers spent;
-only N5 JIT sibling remains, Wilkin-gated; G6 definitive when ≤1.13 is
-plausible).
+one. The fourth speed program RELEASED as 1.6.0 (2026-07-11, tag v1.6.0):
+`post-spark-speed-pro-max.md` stays at repo root as the ledger of record,
+and per Wilkin the speed program **remains OPEN for NEW proposals only**
+— every candidate enters through spark-brain §5's new-lever bar, the
+identity gates are non-negotiable, the 18 KB ceiling never moves, and
+the N5 JIT path is permanently denied (brain §5 records the full
+proposed-then-denied arc).
 
 ## Repo map
 

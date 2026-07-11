@@ -8,13 +8,13 @@ description: The judgment layer for the Spark monorepo — value ordering, decis
 Written 2026-07-06 by Claude Fable 5 at Wilkin's request, against spark-html
 0.27.14 / spark-ssr 0.7.2, to be followed by every model that works in this
 repo after me. `spark-project` holds the **facts** (repo map, invariants,
-pitfalls, workflows). The ACTIVE program doc is `post-spark-speed-pro-max.md`
-(the FOURTH speed program, commissioned by Wilkin 2026-07-10 the same day the
-third closed — reopened through §5's own gate with new levers; its two
-binding conditions: ceiling NEVER moves ("max is 18kb... no more"; funding
-comes from a measured build-pipeline byte harvest, G1), and release only if
-the definitive run clears the pre-registered SHIP bar ≤1.24×, else nothing
-ships). The third program (`spark-speed-up-max-pro.md`, "less code, run
+pitfalls, workflows). The fourth speed program (`post-spark-speed-pro-max.md`)
+RELEASED as core 1.6.0 on 2026-07-11 (definitive 1.239×, run-memory 1.45×,
+18,344/18,432 gz) — and per Wilkin the same day, the speed program REMAINS
+OPEN as a standing invitation for NEW proposals only: candidates enter
+through §5's new-lever bar, never by re-running shipped levers; the
+identity gates and the 18 KB ceiling are non-negotiable; N5 (JIT) is
+permanently denied. The doc stays at repo root as the ledger. The third program (`spark-speed-up-max-pro.md`, "less code, run
 twice") COMPLETED 2026-07-10 at its SHIP target — definitive count=15
 windowed geomean 1.286× (release 1.5.0) — and was deleted per convention;
 verdict archived in `benchmarks.md`. Predecessors (v1 plan,
