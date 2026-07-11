@@ -110,9 +110,11 @@
     </div>
   </div>
   <div class="quote-block">
-    <template each="q in quotes" key="q.id">
-      <p class="hero-quote" :hidden="quoteTab !== q.id">“{q.text}” <cite>— {q.author}</cite></p>
-    </template>
+    <div class="quote-stack">
+      <template each="q in quotes" key="q.id">
+        <p class="hero-quote" :class="quoteTab === q.id ? 'hq-on' : ''">“{q.text}” <cite>— {q.author}</cite></p>
+      </template>
+    </div>
     <div class="quote-tabs" role="tablist" aria-label="Reader quotes">
       <template each="q in quotes" key="q.id">
         <button :class="quoteTab === q.id ? 'qtab on' : 'qtab'" role="tab" :aria-selected="quoteTab === q.id" onclick="{showQuote(q.id)}">{q.id + 1}</button>
@@ -207,6 +209,8 @@
   function showSsr() { tab = 'ssr'; }
 
   // Reader quotes — real reactions to reading the source, each in its own tab.
+  // Auto-advances on a loop; a manual click jumps straight there and the loop
+  // just resumes counting from wherever quoteTab ends up (no separate timer to sync).
   let quoteTab = 0;
   function showQuote(i) { quoteTab = i; }
   const quotes = [
@@ -215,6 +219,11 @@
     { id: 2, text: "Self-healing compiled functions, three-tier expression evaluation, column sweeps for keyed rows, dirty-item tracking for deep mutations — most frameworks pick one reactivity strategy. Spark layers four of them and lets the runtime choose, all hidden behind {name} and each=\"item in items\".", author: 'Anon11' },
     { id: 3, text: 'Dependency sets that only grow, a runtime that drops and rebuilds its own fast paths on failure — closer to biological memory than cache invalidation. It observes, learns, remembers, and heals.', author: 'Anon12' },
   ];
+
+  onMount(() => {
+    const handle = setInterval(() => { quoteTab = (quoteTab + 1) % quotes.length; }, 6000);
+    return () => clearInterval(handle);
+  });
 
   // SSR tab demo state — same template shape as the docs' one-file todo app.
   // The API line shows the endpoint spark-ssr infers for each action.
@@ -386,7 +395,9 @@
   .card .nm { padding: 12px 2px 2px; font-size: 15px; font-weight: 600; }
   .card .ds { font-size: 12.5px; color: var(--muted); }
 
-  .hero-quote { font-size: 13.5px; line-height: 1.6; color: var(--muted-dim); font-style: italic; margin: 0; }
+  .quote-stack { display: grid; }
+  .hero-quote { grid-area: 1 / 1; font-size: 13.5px; line-height: 1.6; color: var(--muted-dim); font-style: italic; margin: 0; opacity: 0; transition: opacity .6s ease; pointer-events: none; }
+  .hero-quote.hq-on { opacity: 1; pointer-events: auto; }
   .hero-quote cite { font-style: normal; color: var(--muted); }
   .quote-tabs { display: flex; gap: 6px; margin-top: 10px; }
   .qtab { width: 20px; height: 20px; padding: 0; display: grid; place-items: center; font-size: 10.5px; font-family: var(--font); color: var(--muted-dim); background: var(--surface-2); border: 1px solid var(--border); cursor: pointer; border-radius: 50%; transition: color .15s, border-color .15s; }
@@ -400,4 +411,5 @@
     .chips { grid-column: 1; grid-row: 2; align-self: end; padding: 0; }
   }
   @media (max-width: 860px) { .hero { grid-template-columns: 1fr; gap: 24px; padding: 48px 0 40px; } }
+  @media (prefers-reduced-motion: reduce) { .hero-quote { transition: none; } }
 </style>
