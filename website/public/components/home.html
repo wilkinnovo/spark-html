@@ -109,7 +109,16 @@
       </div>
     </div>
   </div>
-  <div class="hero-quote">“Spark-html is what web frameworks could've been if we didn't spend 21 years bolting JS frameworks on top of HTML instead of just reading the HTML.” <cite>— Anon9</cite></div>
+  <div class="quote-block">
+    <template each="q in quotes" key="q.id">
+      <p class="hero-quote" :hidden="quoteTab !== q.id">“{q.text}” <cite>— {q.author}</cite></p>
+    </template>
+    <div class="quote-tabs" role="tablist" aria-label="Reader quotes">
+      <template each="q in quotes" key="q.id">
+        <button :class="quoteTab === q.id ? 'qtab on' : 'qtab'" role="tab" :aria-selected="quoteTab === q.id" onclick="{showQuote(q.id)}">{q.id + 1}</button>
+      </template>
+    </div>
+  </div>
   <div class="chips">
     <span class="chip"><b>{stats.build}</b> build step</span>
     <span class="chip"><b>~{stats.runtimeKb}kb</b> runtime</span>
@@ -196,6 +205,16 @@
   function showUrl() { tab = 'url'; }
   function showCounter() { tab = 'counter'; }
   function showSsr() { tab = 'ssr'; }
+
+  // Reader quotes — real reactions to reading the source, each in its own tab.
+  let quoteTab = 0;
+  function showQuote(i) { quoteTab = i; }
+  const quotes = [
+    { id: 0, text: "Spark-html is what web frameworks could've been if we didn't spend 21 years bolting JS frameworks on top of HTML instead of just reading the HTML.", author: 'Anon9' },
+    { id: 1, text: 'The scanner-not-parser tradeoff is the real genius: no compiler means no build step, and the runtime learns the dependency graph by observing what each expression reads during evaluation. It turns the "no compiler" constraint into a self-adapting system.', author: 'Anon10' },
+    { id: 2, text: "Self-healing compiled functions, three-tier expression evaluation, column sweeps for keyed rows, dirty-item tracking for deep mutations — most frameworks pick one reactivity strategy. Spark layers four of them and lets the runtime choose, all hidden behind {name} and each=\"item in items\".", author: 'Anon11' },
+    { id: 3, text: 'Dependency sets that only grow, a runtime that drops and rebuilds its own fast paths on failure — closer to biological memory than cache invalidation. It observes, learns, remembers, and heals.', author: 'Anon12' },
+  ];
 
   // SSR tab demo state — same template shape as the docs' one-file todo app.
   // The API line shows the endpoint spark-ssr infers for each action.
@@ -367,12 +386,17 @@
   .card .nm { padding: 12px 2px 2px; font-size: 15px; font-weight: 600; }
   .card .ds { font-size: 12.5px; color: var(--muted); }
 
-  .hero-quote { font-size: 13.5px; line-height: 1.6; color: var(--muted-dim); font-style: italic; }
+  .hero-quote { font-size: 13.5px; line-height: 1.6; color: var(--muted-dim); font-style: italic; margin: 0; }
   .hero-quote cite { font-style: normal; color: var(--muted); }
+  .quote-tabs { display: flex; gap: 6px; margin-top: 10px; }
+  .qtab { width: 20px; height: 20px; padding: 0; display: grid; place-items: center; font-size: 10.5px; font-family: var(--font); color: var(--muted-dim); background: var(--surface-2); border: 1px solid var(--border); cursor: pointer; border-radius: 50%; transition: color .15s, border-color .15s; }
+  .qtab:hover { color: var(--text); border-color: var(--border-strong); }
+  .qtab.on { color: #000; background: var(--spark); border-color: var(--spark); font-weight: 700; }
   .chips { display: flex; flex-wrap: wrap; gap: 10px; padding: 40px 0 0; }
   .chip { font-size: 12.5px; background: var(--surface-2); border: 1px solid var(--border); padding: 8px 12px; border-radius: 6px; color: var(--muted); }
   @media (min-width: 861px) {
-    .hero-quote { grid-column: 2; grid-row: 2; justify-self: end; text-align: right; border-left: none; border-right: 2px solid var(--spark-ink); padding-right: 16px; max-width: 55ch; }
+    .quote-block { grid-column: 2; grid-row: 2; justify-self: end; text-align: right; border-right: 2px solid var(--spark-ink); padding-right: 16px; max-width: 55ch; }
+    .quote-tabs { justify-content: flex-end; }
     .chips { grid-column: 1; grid-row: 2; align-self: end; padding: 0; }
   }
   @media (max-width: 860px) { .hero { grid-template-columns: 1fr; gap: 24px; padding: 48px 0 40px; } }
