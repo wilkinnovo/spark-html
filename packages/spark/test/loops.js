@@ -332,5 +332,112 @@ await test('duplicate new-side keys degrade to a correct render (no block lands 
   assert.notEqual(lis[1], lis[2], 'the two k-rows are distinct DOM nodes');
 });
 
+// ── G4 row-pass shortcut (post-spark-speed-pro-max.md): a pure-row flush
+// over a bare stable array patches exactly the dirty rows through the
+// raw→block map — these pin the shortcut's semantics AND its bail paths.
+component('rowpass', `
+<ul>
+  <template each="r in rows" key="r.id">
+    <li class="rp">{r.label}</li>
+  </template>
+</ul>
+<button class="m1" onclick="{rows[1].label = 'B2'}">m</button>
+<button class="m0" onclick="{rows[0].label = 'A2'}">m</button>
+<button class="push" onclick="{rows = [...rows, { id: 3, label: 'c' }]}">p</button>
+<button class="m2" onclick="{rows[2].label = 'C2'}">m</button>
+<script>
+  let rows = [{ id: 1, label: 'a' }, { id: 2, label: 'b' }];
+</script>
+`);
+await test('row-pass shortcut: repeated deep row mutations patch only-and-exactly the mutated row', async () => {
+  parseHTML('<div import="rowpass"></div>', body);
+  await mount();
+  await tick();
+  const li = () => [...body.querySelectorAll('[name="rowpass"] .rp')].map((n) => n.textContent);
+  assert.deepEqual(li(), ['a', 'b']);
+  fire(body.querySelector('[name="rowpass"] .m1'), 'click');
+  await tick(); // first row-pass: builds the map
+  assert.deepEqual(li(), ['a', 'B2']);
+  fire(body.querySelector('[name="rowpass"] .m0'), 'click');
+  await tick(); // second row-pass: map hit path
+  assert.deepEqual(li(), ['A2', 'B2']);
+  fire(body.querySelector('[name="rowpass"] .push'), 'click');
+  await tick(); // structural: invalidates the map
+  assert.deepEqual(li(), ['A2', 'B2', 'c']);
+  fire(body.querySelector('[name="rowpass"] .m2'), 'click');
+  await tick(); // rebuilt map covers the new row
+  assert.deepEqual(li(), ['A2', 'B2', 'C2']);
+});
+
+component('rowpassfilter', `
+<ul>
+  <template each="r in rows.filter((x) => x.on)" key="r.id">
+    <li class="rf">{r.label}</li>
+  </template>
+</ul>
+<button class="off" onclick="{rows[0].on = false}">o</button>
+<button class="ren" onclick="{rows[1].label = 'B2'}">r</button>
+<script>
+  let rows = [{ id: 1, label: 'a', on: true }, { id: 2, label: 'b', on: true }];
+</script>
+`);
+await test('row-pass bails on derived arrays: a row mutation that changes membership reconciles fully', async () => {
+  parseHTML('<div import="rowpassfilter"></div>', body);
+  await mount();
+  await tick();
+  const li = () => [...body.querySelectorAll('[name="rowpassfilter"] .rf')].map((n) => n.textContent);
+  assert.deepEqual(li(), ['a', 'b']);
+  fire(body.querySelector('[name="rowpassfilter"] .ren'), 'click');
+  await tick(); // derived array ⇒ identity gate fails ⇒ full path still updates
+  assert.deepEqual(li(), ['a', 'B2']);
+  fire(body.querySelector('[name="rowpassfilter"] .off'), 'click');
+  await tick(); // membership change MUST be seen (the filter re-runs)
+  assert.deepEqual(li(), ['B2']);
+});
+
+component('rowpassdup', `
+<ul>
+  <template each="r in items">
+    <li class="rd">{r.label}</li>
+  </template>
+</ul>
+<button class="mut" onclick="{items[0].label = 'Z'}">m</button>
+<script>
+  const one = { label: 'z' };
+  let items = [one, one];
+</script>
+`);
+await test('row-pass poisons on duplicate raws: both rows of a repeated object update', async () => {
+  parseHTML('<div import="rowpassdup"></div>', body);
+  await mount();
+  await tick();
+  const li = () => [...body.querySelectorAll('[name="rowpassdup"] .rd')].map((n) => n.textContent);
+  assert.deepEqual(li(), ['z', 'z']);
+  fire(body.querySelector('[name="rowpassdup"] .mut'), 'click');
+  await tick(); // then a second row-pass against the poisoned map
+  assert.deepEqual(li(), ['Z', 'Z']);
+  fire(body.querySelector('[name="rowpassdup"] .mut'), 'click');
+  await tick();
+  assert.deepEqual(li(), ['Z', 'Z']);
+});
+
+component('rowpasstwin', `
+<template each="r in rows" key="r.id"><b class="ta">{r.label}</b></template>
+<template each="r in rows" key="r.id"><i class="tb">{r.label}</i></template>
+<button class="mut" onclick="{rows[0].label = 'Y'}">m</button>
+<script>
+  let rows = [{ id: 1, label: 'x' }];
+</script>
+`);
+await test('row-pass with two loops over one array: both anchors patch their own row', async () => {
+  parseHTML('<div import="rowpasstwin"></div>', body);
+  await mount();
+  await tick();
+  fire(body.querySelector('[name="rowpasstwin"] .mut'), 'click');
+  await tick();
+  assert.equal(body.querySelector('[name="rowpasstwin"] .ta').textContent, 'Y');
+  assert.equal(body.querySelector('[name="rowpasstwin"] .tb').textContent, 'Y');
+});
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

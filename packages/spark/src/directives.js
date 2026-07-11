@@ -451,7 +451,17 @@ function blockEnd(n) {
 // Ensure `n` sits right after `cursor` (moving it only when needed), then its
 // owned rendered siblings after it, recursively. Returns the new cursor.
 function placeWithRendered(cursor, n) {
-  if (cursor.nextSibling !== n) cursor.after(n);
+  if (cursor.nextSibling !== n) {
+    // G3 (post-spark-speed-pro-max.md): when the row already lives in this
+    // parent, moveBefore relocates it atomically — no disconnect/reconnect
+    // steps, and live state (focus, selection, animations) survives the
+    // move, which remove+insert resets. Fresh clones, detached trees, and
+    // engines without it (linkedom) take the after() path.
+    const p = cursor.parentNode;
+    if (p && p.moveBefore && n.parentNode === p) {
+      try { p.moveBefore(n, cursor.nextSibling); } catch { cursor.after(n); }
+    } else cursor.after(n);
+  }
   cursor = n;
   const owned = anchorOwnedNodes(n);
   if (owned) {
@@ -737,15 +747,24 @@ export function patchEach(el, scope) {
       const isEl = (n) => n.nodeType === ELEMENT_NODE;
       if (tpl.some(isEl) && tpl.every((n) => !isEl(n) || /^(?:T[RDH]|TBODY)$/.test(n.tagName))) {
         el.__sparkEachTemplate = tpl.filter((n) => n.nodeType !== TEXT_NODE || n.data.trim());
-        // P4a (DESCOPED 2026-07-10 at the 18.00 ALL-IN rule, +0.05 KB —
-        // same precedent as F4's park-then-revive): the same rule applies
-        // INSIDE the row containers — whitespace between a <tr>'s cells is
-        // render-inert too, but cloned per row it costs a Text node + a
-        // __spark expando slot + layout adjacency work each (heap receipt:
-        // ~4.5 such nodes per krausest row). Verified design: inside THIS
-        // gate, every element is T[RDH]|TBODY, so containers are simply
-        // !/^T[DH]$/ — for those, remove whitespace-only text children
-        // (cells hold flow content, never touched). Revive with funding.
+        // P4a (REVIVED 2026-07-10 as G2 of post-spark-speed-pro-max.md,
+        // funded by G1's terser harvest — F4's park-then-revive precedent):
+        // the same rule applies INSIDE the row containers — whitespace
+        // between a <tr>'s cells is render-inert too, but cloned per row it
+        // cost a Text node + a __spark expando slot + layout adjacency work
+        // each (~4.5 such nodes per krausest row). Containers here are
+        // !/^T[DH]$/; cells hold flow content and are never touched, and
+        // non-structural elements aren't descended into (their whitespace
+        // renders). A whitespace-only Text can never be an interpolation
+        // point ({expr} survives trim), so no dynamic point is dropped.
+        const scrub = (e) => {
+          for (let c = e.firstChild, nx; c; c = nx) {
+            nx = c.nextSibling;
+            if (c.nodeType === TEXT_NODE && !c.data.trim()) c.remove();
+            else if (c.nodeType === ELEMENT_NODE && /^(?:TR|TBODY)$/.test(c.tagName)) scrub(c);
+          }
+        };
+        for (const n of el.__sparkEachTemplate) if (isEl(n) && !/^T[DH]$/.test(n.tagName)) scrub(n);
       }
     }
     // Template-level teardown fact, computed once: a row with no component
@@ -818,6 +837,41 @@ export function patchEach(el, scope) {
     return;
   }
 
+  // G4 (post-spark-speed-pro-max.md): the row-pass twin of the dirty-key
+  // reconcile-skip above. In a pure-row flush (dirtyItems set ⇒ NO top-level
+  // key changed, nothing forced full — component.js mode 2) an array expr
+  // that evaluates to the SAME raw array as the last reconcile proves the
+  // list's membership and order are untouched: structural writes force mode
+  // 3, and a derived expr or getter (rows.filter(…)) mints a NEW array and
+  // fails this identity gate, falling through to the full reconcile. So:
+  // patch exactly the mutated rows through a raw→block map — no key evals,
+  // no reuse pass, no placement — O(dirty) instead of O(rows). The map is
+  // built lazily once per structure epoch (invalidated with __sparkKeyMap
+  // below); a duplicate raw poisons it (0) for the epoch and dup lists keep
+  // the full path. Misses are rows of other loops — theirs to patch.
+  if (capture.dirtyItems && !capture.rowForce && !deep
+    && (arr[REACTIVE_RAW] || arr) === el.__sparkEachRawArr
+    && el.__sparkEachProto && el.__sparkEachPS === scope) {
+    let m = el.__sparkRowMap;
+    if (m == null) {
+      m = new Map();
+      for (const b of el.__sparkEachBlocks) {
+        if (b.raw && typeof b.raw === 'object') {
+          if (m.has(b.raw)) { m = 0; break; }
+          m.set(b.raw, b);
+        }
+      }
+      el.__sparkRowMap = m;
+    }
+    if (m) {
+      for (const raw of capture.dirtyItems) {
+        const b = m.get(raw);
+        if (b) walkBlock(b);
+      }
+      return;
+    }
+  }
+
   // ONE prototype per anchor holds the loop-var getters (makeLoopProto);
   // a row scope is `{__proto__: proto, __b: block}` — the block IS the row
   // state (item/i live on it since P4b). Proto (and with it every row
@@ -851,6 +905,7 @@ export function patchEach(el, scope) {
   // keep receiving wrapped values (box.item) so in-place mutation
   // reactivity is untouched.
   const rawArr = arr[REACTIVE_RAW] || arr;
+  el.__sparkEachRawArr = rawArr; // the G4 row-pass identity gate's anchor
 
   // ── Stage 1: new-side keys, once. Fast path: the key expression with the
   // loop vars as REAL parameters over raw items (rowFn) — no box writes, no
@@ -1081,6 +1136,7 @@ export function patchEach(el, scope) {
   // the O(2) path may run again.
   el.__sparkKeyMap = null;
   el.__sparkSelSt = null;
+  el.__sparkRowMap = null; // G4 raw→block map: same staleness, same epoch
 
   // A reconcile tick can carry external-key writes too (rows = next AND
   // selected = id in one microtask). Identity-skipped rows never walked, so
