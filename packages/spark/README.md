@@ -16,7 +16,7 @@ no build step — for people who love hand-writing their web apps.
 </style>
 ```
 
-**18.00 kB gzipped**.
+**17.93 kB gzipped**.
 
 ---
 
@@ -340,7 +340,7 @@ their web apps. Add only what you use.
 
 | Package                                                                                  | What it does                                                                                                                                     |
 | ---------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
-| [`spark-html`](https://www.npmjs.com/package/spark-html)                                 | The runtime — components, reactivity, stores, forms, scoped styles. 18.00 kB gzip, 0 deps.                                                       |
+| [`spark-html`](https://www.npmjs.com/package/spark-html)                                 | The runtime — components, reactivity, stores, forms, scoped styles. 17.93 kB gzip, 0 deps.                                                       |
 | [`spark-html-bun`](https://www.npmjs.com/package/spark-html-bun)                         | Dev server, bundler & preview on Bun — scoped HMR, no-build dev, post-build pipeline.                                                            |
 | [`spark-html-router`](https://www.npmjs.com/package/spark-html-router)                   | `<template route>` routing — nested routes/layouts, `route.query`, active links.                                                                 |
 | [`spark-html-theme`](https://www.npmjs.com/package/spark-html-theme)                     | Dark/light/system theming in one line — persisted, no flash.                                                                                     |
