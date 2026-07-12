@@ -1429,22 +1429,9 @@ function delegate(e) {
 // bubbling handlers become one `__sparkH` property + the shared document
 // delegate instead of an addEventListener each.
 function wireElement(el, a, del) {
-  for (const h of a.handlers) {
-    if (del && !NO_BUBBLE.test(h.evt)) {
-      // P4c: the evt→handler map is identical for every clone of this
-      // template element — build it ONCE on the analysis and point every
-      // clone's __sparkH at it (heap receipt: 2 such objects per krausest
-      // row). delegate() only ever reads it.
-      (a.hm ||= {})[h.evt] = h;
-      // The assignment doubles as capture:true — one delegate per type, ever.
-      if (!gDelegated[h.evt]) document.addEventListener(h.evt, delegate, gDelegated[h.evt] = 1);
-    } else {
-      // One SHARED listener per handler descriptor (h.l, built lazily) —
-      // the element comes back out of e.currentTarget.
-      el.addEventListener(h.evt, h.l ??= (e) => fireHandler(h, e.currentTarget, e));
-    }
-  }
-  if (del && a.hm) el.__sparkH = a.hm;
+  // binds wire BEFORE handlers: a same-event onXXX (onchange={…} beside
+  // bind:checked=…) must observe the write-back's new value, not the stale
+  // one — DOM fires same-type listeners in registration order.
   for (const b of a.binds) {
     // Context is a factory: built only if the write actually throws.
     const bindCtx = () => ({
@@ -1464,6 +1451,22 @@ function wireElement(el, a, del) {
       scheduleRerender(el);
     });
   }
+  for (const h of a.handlers) {
+    if (del && !NO_BUBBLE.test(h.evt)) {
+      // P4c: the evt→handler map is identical for every clone of this
+      // template element — build it ONCE on the analysis and point every
+      // clone's __sparkH at it (heap receipt: 2 such objects per krausest
+      // row). delegate() only ever reads it.
+      (a.hm ||= {})[h.evt] = h;
+      // The assignment doubles as capture:true — one delegate per type, ever.
+      if (!gDelegated[h.evt]) document.addEventListener(h.evt, delegate, gDelegated[h.evt] = 1);
+    } else {
+      // One SHARED listener per handler descriptor (h.l, built lazily) —
+      // the element comes back out of e.currentTarget.
+      el.addEventListener(h.evt, h.l ??= (e) => fireHandler(h, e.currentTarget, e));
+    }
+  }
+  if (del && a.hm) el.__sparkH = a.hm;
   if (a.form) {
     if (a.form.handlerAttr != null) el.removeAttribute('onsubmit');
     setupFormBinding(el, a.form.stateName, a.form.handlerAttr);
