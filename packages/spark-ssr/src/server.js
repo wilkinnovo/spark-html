@@ -27,6 +27,7 @@ import { makeRequest, json, localPath } from './request.js';
 import { makeCrud } from './crud.js';
 import { makePage } from './page.js';
 import { makeRoutes } from './routes.js';
+import { makeRateLimiter, parseRate } from './ratelimit.js';
 import { inferSchema, diffSchema, pushSchema, seedTables } from './schema.js';
 // Head semantics live in one place for the whole family: spark-html-head owns
 // title/meta on the client (pushState updates); its /ssr module owns them
@@ -239,6 +240,16 @@ export async function serve(options = {}) {
   const cache = new Map();
   const pages = [];
   let pagesDir = root;
+  // API-only mode (§ improve-spark-ssr): declare the API in HTML, don't serve
+  // the HTML. `globalApi` withholds page rendering app-wide; `globalHybrid`
+  // serves pages AND the JSON API. Per-page `api`/`render` block attributes
+  // override this (resolved onto page.apiOnly in refreshPages).
+  const globalApi = !!(config.api || options.api);
+  const globalHybrid = config.api === 'hybrid' || config.html === true || !!options.html;
+  // Declarative rate limiter (null when unconfigured — only the login limiter
+  // runs then). Inline block rate="…" specs are registered in refreshPages.
+  const limiter = makeRateLimiter(config);
+  const startedAt = Date.now();
   const uploadsDir = join(root, config.uploads);
   const quiet = !!options.quiet;
   const log = quiet ? () => {} : (m) => console.log(`[spark-ssr] ${m}`);
@@ -413,6 +424,50 @@ export async function serve(options = {}) {
   // /__spark/data endpoints.
   const { servePage, resolveSource } = makePage(app);
 
+  // API-only response for a page: run its declared sources and return the bound
+  // data as JSON instead of a rendered document (the same data /__spark/data
+  // computes for hydration). req.params is already the matched route's segments.
+  async function servePageJson(page, req) {
+    const pd = pageData(page, cache, pagesDir);
+    const data = {};
+    for (const p of pd.plan) data[p.var] = await resolveSource(p, req);
+    if (pd.analysis.needs.has('session')) data.session = req.session;
+    return json(data, 200, { 'cache-control': 'no-store' });
+  }
+
+  // The branded "⚡ Powered by spark-ssr — fast API" index, served at GET / in
+  // api mode when no page owns "/". Reuses the prerender/showcase hero style
+  // (create-spark-html-app option 3). Content-negotiated: HTML for a browser,
+  // a machine object for a JSON client.
+  function apiIndex(wantsHtml, origin) {
+    const links = { openapi: '/__spark/openapi.json', client: '/__spark/client.ts', health: '/api/health' };
+    if (!wantsHtml) return json({ service: 'spark-ssr', powered_by: 'spark-ssr', ...links });
+    const body = `<!doctype html><meta charset="utf-8"><title>spark-ssr — fast API</title>
+<style>
+  :root{--text:#0f172a;--muted:#64748b;--spark:#f5a623;--bg:#fff}
+  @media(prefers-color-scheme:dark){:root{--text:#f1f5f9;--muted:#94a3b8;--bg:#0b1120}}
+  body{margin:0;background:var(--bg);color:var(--text);font:15px/1.6 system-ui,sans-serif}
+  .hero{display:flex;flex-direction:column;align-items:center;text-align:center;gap:16px;padding:12vh 24px}
+  .bolt{font-size:44px;line-height:1;filter:drop-shadow(0 0 14px rgba(245,166,35,.45))}
+  h1{font-size:clamp(30px,6vw,46px);font-weight:800;letter-spacing:-.03em;margin:0}
+  .grad{background:linear-gradient(110deg,var(--text),var(--spark));-webkit-background-clip:text;background-clip:text;color:transparent}
+  .tagline{max-width:460px;color:var(--muted);margin:0}
+  .links{display:flex;gap:12px;flex-wrap:wrap;justify-content:center;margin-top:8px}
+  .links a{padding:9px 16px;border-radius:999px;background:color-mix(in oklab,var(--spark) 16%,transparent);color:var(--text);text-decoration:none;font-weight:600;font-size:13px}
+</style>
+<header class="hero">
+  <span class="bolt">⚡</span>
+  <h1>Powered by spark-ssr — <span class="grad">fast API</span></h1>
+  <p class="tagline">This backend declares its API in HTML and serves JSON. Nothing to build.</p>
+  <nav class="links">
+    <a href="${links.openapi}">OpenAPI</a>
+    <a href="${links.client}">Typed client</a>
+    <a href="${links.health}">Health</a>
+  </nav>
+</header>`;
+    return new Response(body, { headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-cache' } });
+  }
+
   // api/ folder endpoints, API matching, middleware.html (split to
   // src/routes.js). routes.middleware is the compiled per-mtime function.
   const routes = makeRoutes(app);
@@ -502,7 +557,21 @@ export async function serve(options = {}) {
     for (const page of pages) {
       let pd;
       try { pd = pageData(page, cache, pagesDir); } catch { continue; }
+      // Per-page render mode: `render` forces HTML; `api` withholds it; else the
+      // app-wide default (api-only unless hybrid).
+      const hasRender = pd.blocks.some((b) => b.render);
+      const hasApi = pd.blocks.some((b) => b.api);
+      page.apiOnly = hasRender ? false : hasApi ? true : (globalApi && !globalHybrid);
       for (const b of pd.blocks) {
+        // Inline rate="100/1m" → register against this block's routes/table.
+        if (b.rate && limiter) {
+          const spec = parseRate(b.rate);
+          if (spec) {
+            if (b.rateKey) spec.key = b.rateKey;
+            if (b.table) limiter.addInline('*', '/api/' + b.table, spec);
+            for (const r of b.routes) if (r.path) limiter.addInline(r.method || '*', r.path, spec);
+          }
+        }
         if (b.table) {
           if (!tables.has(b.table)) { tables.add(b.table); registerTable(b.table); schemaDirty = true; }
           if (b.live) liveTables.add(b.table);
@@ -643,6 +712,18 @@ export async function serve(options = {}) {
           return res;
         };
 
+        // Declarative rate limiting — applied to the app surface (API + pages),
+        // never the internal channels, module server, or static uploads. Over
+        // the window → 429 + Retry-After, with a message naming the wait.
+        if (limiter && !pathname.startsWith('/__spark') && !pathname.startsWith('/@modules') && !pathname.startsWith('/uploads/')) {
+          const rlReq = wrapReq(request, url, {}, session, srv);
+          const role = session ? (isAdmin(session) ? 'admin' : (session.role || 'user')) : 'anon';
+          const over = limiter.check(rlReq, role);
+          if (over) return finish(json(
+            { error: 'rate_limited', message: `Too many requests — retry after ${over.retryAfter}s`, status: 429 },
+            429, { 'retry-after': String(over.retryAfter) }));
+        }
+
         if (pathname.startsWith('/@modules/')) {
           const rest = pathname.slice('/@modules/'.length);
           const slash = rest.indexOf('/');
@@ -753,6 +834,10 @@ export async function serve(options = {}) {
             return new Response(null, { status: 204, headers: { ...(cors || {}), ...extraHeaders } });
           }
           const hit = matchApi(request.method, pathname);
+          // Generated health check — yields to a user-authored api/health.html.
+          if (!hit && request.method === 'GET' && pathname === '/api/health') {
+            return finish(json({ ok: true, uptime: Math.floor((Date.now() - startedAt) / 1000), db: db ? 'up' : 'none' }, 200, cors || {}));
+          }
           if (!hit) return finish(json({ error: 'not found' }, 404, cors || {}));
           const req = wrapReq(request, url, hit.params, session, srv);
           const res = await hit.route.handler(req, { headers: {} });
@@ -821,7 +906,15 @@ export async function serve(options = {}) {
         const hit = matchPage(pages, pathname);
         if (hit) {
           const req = wrapReq(request, url, hit.params, session, srv);
+          // api-only page → return its bound data as JSON, not rendered HTML.
+          if (hit.page.apiOnly && request.method === 'GET') return finish(await servePageJson(hit.page, req));
           return finish(await servePage(hit.page, req));
+        }
+
+        // Branded API index at "/" when api mode is on and no page claimed it.
+        if (globalApi && pathname === '/' && request.method === 'GET') {
+          const wantsHtml = (request.headers.get('accept') || '').includes('text/html');
+          return finish(apiIndex(wantsHtml, url.origin));
         }
 
         // Built-in auth screens (only if auth is configured and no user page

@@ -2299,5 +2299,64 @@ await test('declared source beats a same-named table= auto source, loudly', asyn
     'the shadowing is loud and names both origins — warns: ' + JSON.stringify(warns));
 });
 
+// ── API-only mode (improve-spark-ssr) ──────────────────────────────────────
+await test('api mode: branded index at / (hero HTML + JSON) when no page owns /', async () => {
+  const root = mkdtempSync(join(tmpdir(), 'spark-ssr-api-'));
+  writeFileSync(join(root, 'spark.json'), JSON.stringify({ db: 'sqlite::memory:', api: true }));
+  mkdirSync(join(root, 'pages'), { recursive: true });
+  writeFileSync(join(root, 'pages', 'notes.html'), `<h1>{n}</h1>\n<spark-ssr table="notes" />`);
+  const s = await serve({ root, port: 0, quiet: true, watch: false });
+  try {
+    const jr = await fetch(`http://localhost:${s.port}/`, { headers: { accept: 'application/json' } });
+    assert.equal((await jr.json()).powered_by, 'spark-ssr', 'JSON index identifies the service');
+    const hr = await fetch(`http://localhost:${s.port}/`, { headers: { accept: 'text/html' } });
+    const html = await hr.text();
+    assert.ok(html.includes('Powered by spark-ssr') && html.includes('fast API'), 'browser gets the hero');
+    // health check is generated.
+    assert.equal((await (await fetch(`http://localhost:${s.port}/api/health`)).json()).ok, true, 'health ok');
+  } finally { await s.stop(true); }
+});
+
+await test('api mode: a named page path serves its data as JSON (no HTML)', async () => {
+  const root = mkdtempSync(join(tmpdir(), 'spark-ssr-api2-'));
+  writeFileSync(join(root, 'spark.json'), JSON.stringify({ db: 'sqlite::memory:', api: true }));
+  mkdirSync(join(root, 'pages'), { recursive: true });
+  writeFileSync(join(root, 'pages', 'ping.html'), `<h1>{msg}</h1>\n<spark-ssr>\n  msg = SELECT 'pong' AS v\n</spark-ssr>`);
+  const s = await serve({ root, port: 0, quiet: true, watch: false });
+  try {
+    const r = await fetch(`http://localhost:${s.port}/ping`);
+    const body = await r.text();
+    assert.ok(!body.includes('<h1>'), 'HTML is withheld in api mode — got: ' + body.slice(0, 120));
+    const j = JSON.parse(body);
+    assert.equal(j.msg[0].v, 'pong', 'the page data is the JSON response');
+  } finally { await s.stop(true); }
+});
+
+await test('api mode: per-page `render` opts one page back into HTML', async () => {
+  const root = mkdtempSync(join(tmpdir(), 'spark-ssr-api3-'));
+  writeFileSync(join(root, 'spark.json'), JSON.stringify({ db: 'sqlite::memory:', api: true }));
+  mkdirSync(join(root, 'pages'), { recursive: true });
+  writeFileSync(join(root, 'pages', 'admin.html'), `<h1>Admin</h1>\n<spark-ssr render />`);
+  const s = await serve({ root, port: 0, quiet: true, watch: false });
+  try {
+    const body = await (await fetch(`http://localhost:${s.port}/admin`)).text();
+    assert.ok(body.includes('<h1>Admin</h1>'), 'render= restores HTML — got: ' + body.slice(0, 120));
+  } finally { await s.stop(true); }
+});
+
+await test('non-conflict: with no api/rate attrs, pages render exactly as before', async () => {
+  const root = mkdtempSync(join(tmpdir(), 'spark-ssr-noconf-'));
+  writeFileSync(join(root, 'spark.json'), JSON.stringify({ db: 'sqlite::memory:' }));
+  writeFileSync(join(root, 'index.html'), `<h1>Hello</h1>\n<spark-ssr table="notes" />`);
+  const s = await serve({ root, port: 0, quiet: true, watch: false });
+  try {
+    const body = await (await fetch(`http://localhost:${s.port}/`)).text();
+    assert.ok(body.includes('<h1>Hello</h1>'), 'HTML still renders when no api signal is present');
+    // The /api/notes CRUD surface is still inferred (unchanged behavior).
+    const r = await fetch(`http://localhost:${s.port}/api/notes`);
+    assert.equal(r.status, 200, 'auto-CRUD endpoint unchanged');
+  } finally { await s.stop(true); }
+});
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

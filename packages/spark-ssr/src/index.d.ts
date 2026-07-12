@@ -15,6 +15,11 @@ export interface ServeOptions {
   watch?: boolean;
   /** Suppress logs (tests). */
   quiet?: boolean;
+  /** API-only mode: declare the API in HTML, don't serve the HTML (pages return
+   *  their bound data as JSON). Overrides spark.json `api`. */
+  api?: boolean;
+  /** Serve pages AND the JSON API (hybrid) on top of `api`. */
+  html?: boolean;
   [key: string]: unknown;
 }
 

@@ -363,5 +363,58 @@ await test('auth-table GET never enumerates accounts — anon 401, session own r
   } finally { await s.stop?.(); }
 });
 
+// ── Rate limiting (improve-spark-ssr §2) ────────────────────────────────────
+// Each assertion fails if the limiter is removed or its resolution ladder breaks.
+
+function makeRateApp(rateLimit, page) {
+  const root = mkdtempSync(join(tmpdir(), 'spark-ssr-rl-'));
+  writeFileSync(join(root, 'spark.json'), JSON.stringify({ db: 'sqlite::memory:', rateLimit }));
+  mkdirSync(join(root, 'pages'), { recursive: true });
+  writeFileSync(join(root, 'pages', 'index.html'), page || '<spark-ssr table="notes" />');
+  return root;
+}
+
+await test('rate limit: over the window → 429 with Retry-After', async () => {
+  const s = await serve({ root: makeRateApp({ window: '1m', max: 3, key: 'ip' }), port: 0, quiet: true, watch: false });
+  const B = `http://localhost:${s.port}`;
+  try {
+    for (let i = 0; i < 3; i++) assert.equal((await fetch(`${B}/api/notes`)).status, 200, `req ${i + 1} allowed`);
+    const over = await fetch(`${B}/api/notes`);
+    assert.equal(over.status, 429, '4th request over max=3 is blocked');
+    assert.ok(Number(over.headers.get('retry-after')) >= 1, 'Retry-After names the wait');
+    assert.equal((await over.json()).status, 429, 'JSON body names the limit');
+  } finally { await s.stop(true); }
+});
+
+await test('rate limit: default off — no config means no throttling', async () => {
+  const s = await serve({ root: makeRateApp(null), port: 0, quiet: true, watch: false });
+  const B = `http://localhost:${s.port}`;
+  try {
+    for (let i = 0; i < 10; i++) assert.equal((await fetch(`${B}/api/notes`)).status, 200, 'unthrottled by default');
+  } finally { await s.stop(true); }
+});
+
+await test('rate limit: inline rate= attribute throttles its route', async () => {
+  const s = await serve({ root: makeRateApp(true, '<spark-ssr table="notes" rate="2/1m" />'), port: 0, quiet: true, watch: false });
+  const B = `http://localhost:${s.port}`;
+  try {
+    assert.equal((await fetch(`${B}/api/notes`)).status, 200, 'req 1');
+    assert.equal((await fetch(`${B}/api/notes`)).status, 200, 'req 2');
+    assert.equal((await fetch(`${B}/api/notes`)).status, 429, 'inline rate="2/1m" blocks the 3rd');
+  } finally { await s.stop(true); }
+});
+
+await test('rate limit: config route override beats the coarser default', async () => {
+  const s = await serve({
+    root: makeRateApp({ window: '1m', max: 100, routes: { 'GET /api/notes': { max: 1 } } }),
+    port: 0, quiet: true, watch: false,
+  });
+  const B = `http://localhost:${s.port}`;
+  try {
+    assert.equal((await fetch(`${B}/api/notes`)).status, 200, 'first allowed');
+    assert.equal((await fetch(`${B}/api/notes`)).status, 429, 'exact-route max=1 wins over global max=100');
+  } finally { await s.stop(true); }
+});
+
 console.log(`\n${pass} passed, ${fail} failed`);
 if (fail) process.exit(1);

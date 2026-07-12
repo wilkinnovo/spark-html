@@ -44,9 +44,12 @@ actually fail here — every rule below is paid for by a real shipped bug or a
 real near-miss.
 
 **Precedence:** Wilkin's explicit instruction > this manual > the active
-program doc (NONE since 2026-07-11 — `speed-up-extended.md` is the fifth
-program's closed ledger, released as 1.7.0 by owner override;
-`post-spark-speed-pro-max.md` the fourth's) > everything else. When a higher authority contradicts a lower one, say so once,
+program doc (**ACTIVE since 2026-07-12: `improve-spark-ssr.md`** — spark-ssr
+as an API-only backend + ease-of-use; an owner-sanctioned override of the §5
+"no new spark-ssr feature domains" denial, Wilkin having directed and iterated
+the whole design; prior ledgers `speed-up-extended.md` = fifth speed program,
+released 1.7.0 by owner override, and `post-spark-speed-pro-max.md` = fourth's)
+> everything else. When a higher authority contradicts a lower one, say so once,
 plainly, with the tradeoff — then follow the higher authority without
 relitigating. When Wilkin overrides a rule here, record the override (see
 "Maintaining the knowledge system") so the next model inherits the decision

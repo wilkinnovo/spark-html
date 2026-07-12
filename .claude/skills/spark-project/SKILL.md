@@ -259,7 +259,22 @@ See pitfalls.md "Fixed at v1-prep".)
 - `references/pitfalls.md` — the full bug history with root causes; what each
   one taught; browser-testing setup on this machine.
 
-For the roadmap: NO ACTIVE PROGRAM — `speed-up-extended.md` (the FIFTH
+**ACTIVE PROGRAM (2026-07-12): `improve-spark-ssr.md`** (repo root) — spark-ssr
+as an **API-only backend** + ease-of-use. Owner-sanctioned override of the §5
+"no new spark-ssr feature domains" denial (Wilkin directed + iterated the whole
+design this session). Core decisions, all resolved: `api` mode = *declare the
+API in HTML, don't serve the HTML* (rendering opt-in via `html:true` / per-page
+`<spark-ssr render>`); activation via a **template attribute** (`<spark-ssr
+api>`), CLI flag, or `spark.json` — **no config file required**; declarative
+rate limits both inline (`rate="100/1m"`) and advanced in `spark.json` (per
+method/table/role, resolving least→most specific); a branded `GET /` hero
+(reuses the prerender/showcase `hero.html` style). **Spends ZERO spark-html
+core budget** — all server-side spark-ssr code (its own footprint may grow if
+earned). Purely additive to existing inference (§7, pinned by a golden test).
+Next step = §5 item 1 (declarative rate limits, independently shippable). The
+doc's STATUS line is the live ledger.
+
+Prior roadmap: NO ACTIVE PROGRAM — `speed-up-extended.md` (the FIFTH
 speed program) closed 2026-07-11 as **core 1.7.0, released by owner
 override**: the definitive (count=15 windowed) read **1.223×, OVER the
 pre-registered <1.20 SHIP bar**; it parked per beat-or-no-release, then

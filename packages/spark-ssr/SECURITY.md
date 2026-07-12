@@ -113,6 +113,31 @@ reading the code" is not verification here.
   is never stored — so one visitor's page can't be served to another. Pinned by
   the cache-poisoning test.
 
+## Rate limiting
+
+- **Declarative, off by default.** With no `rateLimit` config only the built-in
+  login limiter runs. `"rateLimit": true` applies 120 req/min/IP; an object tunes
+  `window`/`max`/`key` and per-method/table/role/route tiers (`src/ratelimit.js`),
+  resolving narrowest-wins. A block's inline `rate="100/1m"` throttles just its
+  route. Over the window → `429` + `Retry-After`, body naming the wait. Pinned by
+  the rate-limit tests in `test/security.js` (each fails if the limiter is
+  removed or the ladder breaks).
+- **In-memory, per-process (accepted limit).** Counters live in this process;
+  behind multiple instances the limit applies *per instance*. A distributed
+  limiter is a `middleware.html` hook, not core (identity: no new dependency
+  domain). Keyed on `req.ip` — trust it only behind a proxy that sets
+  `X-Forwarded-For` authoritatively.
+
+## API-only mode
+
+- **`api` withholds HTML, never routes.** `"api": true` (or a per-page `api`
+  block attribute, or `--api`) stops serving rendered pages — a page GET returns
+  its bound data as JSON — but does not create or remove any `/api/*` route; the
+  JSON surface is exactly what `table=`/`route=` already infer. `render`/
+  `"html": true`/`"api": "hybrid"` re-enable HTML. Purely additive: a project
+  with none of these signals renders and routes identically to before (pinned by
+  the non-conflict test in `test/ssr.js`).
+
 ## Known / accepted
 
 - **`SameSite=Lax` (no token)** — see CSRF above; documented, not a gap.

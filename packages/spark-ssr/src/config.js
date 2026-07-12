@@ -39,6 +39,17 @@ export function loadConfig(root) {
     // stays deliberately database-free (the markdown-blog templates rely on it).
     db: cfg.db || (exists ? null : 'sqlite://./dev.db'),
     auth: cfg.auth || null,
+    // API-only mode: declare the API in HTML, but don't serve the HTML. A page
+    // GET returns its bound data as JSON instead of a rendered document. Also
+    // set per-page with a bare `api` attribute on a <spark-ssr> block, or at
+    // the CLI with --api (options.api). `"api": "hybrid"` (or html:true) serves
+    // pages AND the JSON API. Per-page `render` re-enables one page's HTML.
+    api: cfg.api ?? false,
+    html: cfg.html ?? false,
+    // Declarative rate limiting (off by default → only the built-in login
+    // limiter runs). `true` = a sane default; an object tunes window/max/key
+    // and per method/table/role/route tiers (src/ratelimit.js).
+    rateLimit: cfg.rateLimit ?? null,
     cors: cfg.cors ?? false,
     uploads: cfg.uploads || 'uploads',
     // Cap on any single request body (uploads + JSON), enforced at the socket
