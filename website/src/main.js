@@ -11,6 +11,7 @@ import { shouldHandle } from 'spark-html-offline';
 import stats from './stats.js';
 import { highlightAll } from './highlight.js';
 import { TUTORIAL_LESSONS } from './tutorial-lessons.js';
+import { BLOG_POSTS } from './blog-posts.js';
 import { setupPlayground } from './playground.js';
 
 // Hero stats, computed from live source (see scripts/gen-stats.js) — never hand-edited.
@@ -37,6 +38,7 @@ head({
     '/playground': 'Spark — Playground',
     '/tutorials': 'Spark — Tutorials',
     '/showcase': 'Spark — Showcase',
+    '/blog': 'Spark — Blog',
     '*': 'Spark — HTML that reacts. Built for humans.',
   },
 });
@@ -55,6 +57,9 @@ store('showcase', {
       tags: ['router', 'theme', 'prerender'] },
   ],
 });
+
+// Releases, fixes, and news — rendered on /blog and /blog/:slug.
+store('blog', { posts: BLOG_POSTS });
 
 // ── Playground (the multi-file REPL on /playground) ───────────────────
 setupPlayground();

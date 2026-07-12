@@ -1,0 +1,72 @@
+<section class="page">
+  <header class="head">
+    <h1 class="page-title">Blog</h1>
+    <p class="sub">Releases, fixes, and news from the Spark runtime and its ecosystem.</p>
+  </header>
+
+  <div class="list">
+    <template each="p in posts">
+      <a class="post" :href="app.base + '/blog/' + p.slug">
+        <div class="row1">
+          <span :class="'tag tag-' + p.tag.toLowerCase()">{p.tag}</span>
+          <time class="date">{p.date}</time>
+        </div>
+        <h2 class="title">{p.title}</h2>
+        <p class="excerpt">{p.excerpt}</p>
+        <span class="read">Read post <span class="arr">→</span></span>
+      </a>
+    </template>
+
+    <p class="empty" :hidden="posts.length">No posts yet — check back soon.</p>
+  </div>
+</section>
+
+<script>
+  let pageTitle = 'Spark — Blog';
+  let pageDescription = 'Releases, fixes, and news from the Spark runtime and its ecosystem.';
+  const app = useStore('app');
+  const blog = useStore('blog');
+  $: posts = blog.posts || [];
+</script>
+
+<style>
+  .page { padding: 64px 0; min-height: calc(100vh - 220px); }
+  .head { margin-bottom: 36px; }
+  .page-title { font-size: clamp(30px, 5vw, 44px); font-weight: 800; letter-spacing: -.03em; }
+  .sub { color: var(--muted); margin-top: 10px; font-size: 15px; max-width: 60ch; }
+
+  .list { display: flex; flex-direction: column; max-width: 760px; }
+  .post {
+    display: block; padding: 28px 0; border-bottom: 1px solid var(--border);
+    transition: transform .12s;
+  }
+  .post:first-child { padding-top: 0; }
+  .post:hover { transform: translateX(4px); }
+  .row1 { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+  .tag {
+    font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em;
+    padding: 3px 9px; border-radius: 999px; color: #000; background: var(--spark);
+  }
+  .tag-fix { background: var(--spark); }
+  .tag-release { background: #7ce29b; }
+  .tag-news { background: #8fc6ff; }
+  .date { font-size: 12.5px; color: var(--muted-dim); }
+  .title { font-size: 21px; font-weight: 700; letter-spacing: -.01em; margin-bottom: 8px; }
+  .post:hover .title { color: var(--spark-ink); }
+  .excerpt { font-size: 14.5px; color: var(--muted); line-height: 1.7; max-width: 66ch; }
+  .read {
+    display: inline-flex; align-items: center; gap: 5px; margin-top: 14px;
+    font-size: 12.5px; font-weight: 600; color: var(--muted-nav);
+  }
+  .post:hover .read { color: var(--spark-ink); }
+  .arr { transition: transform .12s; }
+  .post:hover .arr { transform: translateX(3px); }
+  .empty { color: var(--muted-dim); font-size: 14px; padding: 20px 0; }
+
+  @media (max-width: 720px) {
+    .page { padding: 40px 0; }
+    .post { padding: 22px 0; }
+    .title { font-size: 18px; }
+    .excerpt { font-size: 14px; }
+  }
+</style>
