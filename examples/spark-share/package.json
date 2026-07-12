@@ -10,9 +10,9 @@
     "build": "bun spark-ssr build"
   },
   "dependencies": {
-    "spark-html": "latest",
-    "spark-ssr": "latest",
-    "spark-html-theme": "latest",
-    "spark-html-font": "latest"
+    "spark-html": "*",
+    "spark-ssr": "*",
+    "spark-html-theme": "*",
+    "spark-html-font": "*"
   }
 }
