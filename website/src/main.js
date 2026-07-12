@@ -11,7 +11,6 @@ import { shouldHandle } from 'spark-html-offline';
 import stats from './stats.js';
 import { highlightAll } from './highlight.js';
 import { TUTORIAL_LESSONS } from './tutorial-lessons.js';
-import { BLOG_POSTS } from './blog-posts.js';
 import { setupPlayground } from './playground.js';
 
 // Hero stats, computed from live source (see scripts/gen-stats.js) — never hand-edited.
@@ -39,6 +38,7 @@ head({
     '/tutorials': 'Spark — Tutorials',
     '/showcase': 'Spark — Showcase',
     '/blog': 'Spark — Blog',
+    '/blog/1-8-1-bind-write-back-ordering': 'Spark — v1.8.1: a same-event bind + handler ordering fix',
     '*': 'Spark — HTML that reacts. Built for humans.',
   },
 });
@@ -57,9 +57,6 @@ store('showcase', {
       tags: ['router', 'theme', 'prerender'] },
   ],
 });
-
-// Releases, fixes, and news — rendered on /blog and /blog/:slug.
-store('blog', { posts: BLOG_POSTS });
 
 // ── Playground (the multi-file REPL on /playground) ───────────────────
 setupPlayground();

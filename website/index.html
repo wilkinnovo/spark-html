@@ -81,7 +81,9 @@
           <template route="/cookbook"><div import="components/cookbook"></div></template>
           <template route="/showcase"><div import="components/showcase"></div></template>
           <template route="/blog"><div import="components/blog"></div></template>
-          <template route="/blog/:slug"><div import="components/blog-post"></div></template>
+          <!-- One explicit static route per post → each prerenders to its own
+               crawlable HTML page (a :slug route can't be enumerated at build). -->
+          <template route="/blog/1-8-1-bind-write-back-ordering"><div import="components/blog/1-8-1-bind-write-back-ordering"></div></template>
         </main>
         <div import="components/footer"></div>
       </div>

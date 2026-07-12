@@ -8,6 +8,8 @@
     <a href="#quickstart">Quick start</a>
     <a href="#inference">What gets inferred</a>
     <a href="#config">Config</a>
+    <a href="#api-mode">API-only mode</a>
+    <a href="#rate-limits">Rate limits</a>
     <a href="#routing">Routing &amp; layouts</a>
     <a href="#data">Data sources</a>
     <a href="#guide-sql">Guide: a Pinterest-style app</a>
@@ -74,7 +76,42 @@ bun spark-ssr</pre>
   "db": "sqlite://./dev.db",
   "auth": { "table": "users", "identity": "email", "secret": "ENV.SESSION_SECRET" }
 }</pre>
-    <p><strong>No spark.json at all?</strong> <code>db</code> defaults to <code>sqlite://./dev.db</code>, so <code>bun spark-ssr</code> runs on a folder holding one <code>index.html</code>. Postgres works with a <code>postgres://</code> URL (Bun ships both drivers). A spark.json that <em>exists</em> but omits <code>db</code> stays deliberately database-free — the markdown-blog mode. Other keys: <code>cors</code>, <code>fonts</code> (spark-html-font head tags in every page), <code>mail</code>, <code>maxBodyMb</code> (413 at the socket), <code>responseCache</code>.</p>
+    <p><strong>No spark.json at all?</strong> <code>db</code> defaults to <code>sqlite://./dev.db</code>, so <code>bun spark-ssr</code> runs on a folder holding one <code>index.html</code>. Postgres works with a <code>postgres://</code> URL (Bun ships both drivers). A spark.json that <em>exists</em> but omits <code>db</code> stays deliberately database-free — the markdown-blog mode. Other keys: <code>cors</code>, <code>fonts</code> (spark-html-font head tags in every page), <code>mail</code>, <code>maxBodyMb</code> (413 at the socket), <code>responseCache</code>, <code>api</code> (API-only mode, below), <code>rateLimit</code> (below).</p>
+
+    <h2 id="api-mode">API-only mode</h2>
+    <p>The same file you write for a page <em>is</em> a JSON backend — auto-CRUD (<code>/api/todos</code>), custom <code>api/*.html</code> endpoints, a generated OpenAPI spec and typed client all come from the template. <strong>API-only mode</strong> keeps that JSON surface and simply <em>stops serving the HTML</em>: a page <code>GET</code> returns its bound data as JSON instead of a rendered document. You declare the API in HTML as always — you just flip one signal when you don't want the page. Added in <strong>spark-ssr 1.3.0</strong>.</p>
+
+    <h3>Turn it on — three ways, no config file required</h3>
+    <table>
+      <tr><th>Where</th><th>How</th><th>Scope</th></tr>
+      <tr><td>Per page</td><td><code>&lt;spark-ssr table="todos" api /&gt;</code></td><td>that page is API-only; no <code>spark.json</code> at all</td></tr>
+      <tr><td>CLI</td><td><code>spark-ssr start --api</code></td><td>whole app, for one run</td></tr>
+      <tr><td>Config</td><td><code>"api": true</code> in spark.json</td><td>whole-app default</td></tr>
+    </table>
+    <p>Rendering is opt-<em>in</em> from there: <code>"html": true</code> (or <code>"api": "hybrid"</code>) serves pages <strong>and</strong> the JSON API on the same server, and a per-page <code>&lt;spark-ssr render /&gt;</code> restores HTML for just one page (e.g. a single login screen in an otherwise headless backend). <code>api</code> and <code>render</code> are mirrors: one withholds a page's HTML, the other restores it.</p>
+    <pre spark-ignore>{ "db": "sqlite://./app.db", "api": true,
+  "cors": { "origin": "https://myapp.com" },
+  "auth": { "table": "users", "identity": "email", "secret": "ENV.SESSION_SECRET" } }</pre>
+    <p><strong>Purely additive.</strong> <code>api</code> only toggles whether HTML is served — it never creates or removes a route. A project with no <code>api</code> signal renders and routes exactly as before. Hitting <code>GET /</code> in API mode (when no page owns it) returns a self-describing index — a branded page in a browser, or <code>{ powered_by, openapi, client, health }</code> for a JSON client — and <code>GET /api/health</code> is generated for free.</p>
+
+    <h2 id="rate-limits">Rate limits</h2>
+    <p>Declarative and off by default (only the built-in login limiter runs). Enable it in one word or tune it per method, table, role, and route — no middleware to write. Added in <strong>1.3.0</strong>.</p>
+
+    <h3>Inline in the template — inferred like everything else</h3>
+    <p>Because the API is declared in HTML, a route's limit rides the same block that declares it — one more attribute on a tag you already write:</p>
+    <pre spark-ignore>&lt;spark-ssr table="comments" api rate="10/1m" rate-key="ip" /&gt;</pre>
+    <p><code>rate="&lt;max&gt;/&lt;window&gt;"</code> (windows: <code>s</code>/<code>m</code>/<code>h</code>/<code>d</code>); optional <code>rate-key</code> is <code>ip</code> (default), <code>session</code>, <code>ip+path</code>, or <code>header:X-Api-Key</code>.</p>
+
+    <h3>Cross-cutting policy — spark.json</h3>
+    <p><code>"rateLimit": true</code> applies a sane default (120/min/IP). An object tunes it, with tiers resolving narrowest-wins:</p>
+    <pre spark-ignore>{ "rateLimit": {
+    "window": "1m", "max": 120, "key": "ip",
+    "methods": { "GET": { "max": 300 }, "POST": { "max": 30 }, "DELETE": { "max": 10 } },
+    "tables":  { "uploads": { "methods": { "POST": { "max": 3 } } } },
+    "roles":   { "anon": { "max": 60 }, "user": { "max": 600, "key": "session" }, "admin": false },
+    "routes":  { "POST /api/login": { "max": 5, "window": "5m" } }
+} }</pre>
+    <p>Resolution order (each level inherits unset fields from the next, <code>false</code> = no limit): exact <code>routes</code> → inline <code>rate=</code> → <code>tables[t].methods[m]</code> → <code>tables[t]</code> → <code>roles[role]</code> → <code>methods[m]</code> → global default. Over the window → <code>429</code> with a <code>Retry-After</code> header and a JSON body naming the wait. The limiter is in-memory and per-process — behind multiple instances, limits apply per instance (a distributed limiter is a <code>middleware.html</code> hook, not core).</p>
 
     <h2 id="routing">Routing &amp; layouts</h2>
     <p>The filesystem is the router: <code>pages/index.html</code> → <code>/</code>, <code>pages/blog/[slug].html</code> → <code>/blog/:slug</code> — and <code>:slug</code> binds straight into queries. <code>pages/_layout.html</code> wraps every page in its folder (nested folders nest layouts); the layout is a component and <code>&lt;slot&gt;</code> is the page. A layout's <code>&lt;spark-ssr&gt;</code> vars are in scope for every page it wraps.</p>

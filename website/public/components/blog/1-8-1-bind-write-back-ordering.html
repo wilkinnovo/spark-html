@@ -1,0 +1,121 @@
+<!-- A blog post authored as real HTML (not a JS string): the prose lives in
+     the markup so it prerenders into the static page — crawlable, shareable,
+     no client render required. Add a post = one file like this + a static
+     route in index.html + a card in blog.html + a title in main.js head(). -->
+<section class="page">
+  <a class="back" :href="app.base + '/blog'">← All posts</a>
+
+  <header class="head">
+    <div class="row1">
+      <span class="tag tag-fix">Fix</span>
+      <time class="date" datetime="2026-07-12">2026-07-12</time>
+    </div>
+    <h1 class="title">v1.8.1 — a same-event bind + handler ordering fix</h1>
+  </header>
+
+  <article class="body">
+    <p><strong>spark-html 1.8.1</strong> is a small, focused patch: it fixes the
+    order two kinds of listeners get wired onto the same element when they share
+    an event.</p>
+
+    <h2 id="the-bug">The bug</h2>
+    <p>Spark supports two ways to react to an event on the same element — a
+    <code>bind:</code> (e.g. <code>bind:checked</code>) that writes a DOM value
+    back into your state, and a plain <code>onXXX</code> handler for your own
+    logic. Write both on the same event and you'd reasonably expect your handler
+    to see the state <em>after</em> the bind has written back — that's the whole
+    point of a two-way bind.</p>
+
+    <pre><code>&lt;input type="checkbox" bind:checked="agreed" onchange="{track}" /&gt;
+
+&lt;script&gt;
+  let agreed = false;
+  function track() {
+    // expected: agreed already reflects the new checkbox state
+  }
+&lt;/script&gt;</code></pre>
+
+    <p>Internally, <code>wireElement()</code> registered a component's declared
+    <code>onXXX</code> handlers before its binds. The DOM fires same-type
+    listeners in registration order, so <code>track()</code> could run
+    <em>before</em> the bind's write-back had updated <code>agreed</code> —
+    the handler observed the pre-write-back value on that first tick.</p>
+
+    <h2 id="the-fix">The fix</h2>
+    <p>The fix is a three-line reorder in
+    <a href="https://github.com/wilkinnovo/spark-html/blob/main/packages/spark/src/index.js" target="_blank" rel="noopener"><code>packages/spark/src/index.js</code></a>:
+    binds wire before handlers, unconditionally, so registration order always
+    puts the write-back first.</p>
+
+    <pre><code>// binds wire BEFORE handlers: a same-event onXXX (onchange={…} beside
+// bind:checked=…) must observe the write-back's new value, not the stale
+// one — DOM fires same-type listeners in registration order.
+for (const b of a.binds) { /* … */ }
+for (const h of a.handlers) { /* … */ }</code></pre>
+
+    <p>No new concepts, no API surface change, no size cost — this is exactly
+    the kind of fix the <a :href="app.base + '/docs#limits'">limits table</a> and
+    this changelog exist for: name the bug precisely, fix it, ship it, move
+    on.</p>
+
+    <h2 id="verifying">Verifying it</h2>
+    <p>Every core change here runs the full suite before it ships — 500 fuzz
+    scenarios, the scanner fuzzer, <code>spark-html doctor</code>, the snippet
+    and ecosystem checks, and the gzip budget gate — plus a manual convergence
+    check for the ordering itself. All green:</p>
+
+    <pre><code>500 passed, 0 failed (500 scenarios, 29 corpus)
+scanner-fuzz: 200 passed, 0 failed
+spark-html runtime: 17.93 KB gzip · budget 18 KB
+✅ within budget</code></pre>
+
+    <h2 id="upgrade">Upgrading</h2>
+    <p>1.8.1 is a pure bug fix with no breaking changes — bump your
+    <code>spark-html</code> range and you're done:</p>
+    <pre><code>npm install spark-html@^1.8.1</code></pre>
+
+    <p>Full details: <a href="https://www.npmjs.com/package/spark-html" target="_blank" rel="noopener">spark-html on npm</a> · <a href="https://github.com/wilkinnovo/spark-html/releases/tag/v1.8.1" target="_blank" rel="noopener">v1.8.1 on GitHub</a>.</p>
+  </article>
+
+  <footer class="postfoot">
+    <a class="back2" :href="app.base + '/blog'">← All posts</a>
+  </footer>
+</section>
+
+<script>
+  const app = useStore('app');
+</script>
+
+<style>
+  .page { padding: 64px 0 90px; min-height: calc(100vh - 220px); max-width: 720px; }
+  .back, .back2 { font-size: 13px; color: var(--muted); }
+  .back:hover, .back2:hover { color: var(--spark-ink); }
+  .back { display: inline-block; margin-bottom: 28px; }
+  .head { margin-bottom: 30px; }
+  .row1 { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+  .tag {
+    font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em;
+    padding: 3px 9px; border-radius: 999px; color: #000; background: var(--spark);
+  }
+  .tag-fix { background: var(--spark); }
+  .tag-release { background: #7ce29b; }
+  .tag-news { background: #8fc6ff; }
+  .date { font-size: 12.5px; color: var(--muted-dim); }
+  .title { font-size: clamp(26px, 4.4vw, 38px); font-weight: 800; letter-spacing: -.03em; line-height: 1.25; }
+
+  /* article prose — matches the docs page's typographic system */
+  .body h2 { font-size: 20px; margin: 40px 0 14px; padding-top: 20px; border-top: 1px solid var(--border); letter-spacing: -.01em; font-weight: 700; scroll-margin-top: 24px; }
+  .body p { margin: 12px 0; font-size: 15px; color: var(--muted); line-height: 1.8; }
+  .body p strong { color: var(--text); font-weight: 600; }
+  .body a { color: var(--spark-ink); }
+  .body code { font-size: 13px; background: var(--surface-2); padding: 2px 6px; color: var(--spark-ink); }
+  .body pre { background: var(--surface); border: 1px solid var(--border); padding: 16px 18px; font-size: 13px; line-height: 1.7; color: var(--muted); overflow-x: auto; margin: 16px 0; white-space: pre; }
+  .body pre code { background: none; padding: 0; color: inherit; }
+
+  .postfoot { margin-top: 48px; padding-top: 20px; border-top: 1px solid var(--border); }
+
+  @media (max-width: 720px) {
+    .page { padding: 36px 0 60px; }
+    .body pre { padding: 12px 14px; font-size: 12.5px; }
+  }
+</style>

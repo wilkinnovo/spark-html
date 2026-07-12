@@ -4,29 +4,24 @@
     <p class="sub">Releases, fixes, and news from the Spark runtime and its ecosystem.</p>
   </header>
 
+  <!-- Post cards are authored as static HTML (not a store `each`) so the
+       listing prerenders into the page for crawlers. New post = add a card
+       here + a component under components/blog/ + a route in index.html. -->
   <div class="list">
-    <template each="p in posts">
-      <a class="post" :href="app.base + '/blog/' + p.slug">
-        <div class="row1">
-          <span :class="'tag tag-' + p.tag.toLowerCase()">{p.tag}</span>
-          <time class="date">{p.date}</time>
-        </div>
-        <h2 class="title">{p.title}</h2>
-        <p class="excerpt">{p.excerpt}</p>
-        <span class="read">Read post <span class="arr">→</span></span>
-      </a>
-    </template>
-
-    <p class="empty" :hidden="posts.length">No posts yet — check back soon.</p>
+    <a class="post" :href="app.base + '/blog/1-8-1-bind-write-back-ordering'">
+      <div class="row1">
+        <span class="tag tag-fix">Fix</span>
+        <time class="date" datetime="2026-07-12">2026-07-12</time>
+      </div>
+      <h2 class="title">v1.8.1 — a same-event bind + handler ordering fix</h2>
+      <p class="excerpt">A bind and an onXXX handler on the same event could fire in the wrong order, so the handler saw the stale value instead of the write-back. Binds now wire first.</p>
+      <span class="read">Read post <span class="arr">→</span></span>
+    </a>
   </div>
 </section>
 
 <script>
-  let pageTitle = 'Spark — Blog';
-  let pageDescription = 'Releases, fixes, and news from the Spark runtime and its ecosystem.';
   const app = useStore('app');
-  const blog = useStore('blog');
-  $: posts = blog.posts || [];
 </script>
 
 <style>
