@@ -1,0 +1,149 @@
+<!-- A blog post authored as real HTML so it prerenders into the static page. -->
+<section class="page">
+  <a class="back" :href="app.base + '/blog'">← All posts</a>
+
+  <header class="head">
+    <div class="row1">
+      <span class="tag tag-release">Release</span>
+      <time class="date" datetime="2026-07-12">2026-07-12</time>
+    </div>
+    <h1 class="title">spark-ssr 1.3.0 — your HTML is now an API-only backend</h1>
+  </header>
+
+  <article class="body">
+    <p><strong>spark-ssr 1.3.0</strong> makes the thing spark-ssr was quietly
+    already good at official: running as a <strong>JSON API backend</strong>.
+    The same single-file templates you write for pages now serve as an API —
+    you flip one signal to drop the HTML — plus declarative rate limits, all
+    declared in the HTML with no new concepts to learn.</p>
+
+    <h2 id="api-only">API-only mode: declare in HTML, don't serve the HTML</h2>
+    <p>spark-ssr already infers a REST surface from your templates: a
+    <code>&lt;spark-ssr table="todos"&gt;</code> block gives you
+    <code>GET/POST/PUT/PATCH/DELETE /api/todos</code>, custom
+    <code>api/*.html</code> endpoints return JSON, and an OpenAPI spec plus a
+    typed client are generated for free. <strong>API-only mode</strong> keeps
+    all of that and stops rendering the pages — a page <code>GET</code> returns
+    its bound data as JSON instead of a document.</p>
+
+    <p>Turn it on wherever is smallest for the job — <strong>no
+    <code>spark.json</code> required</strong>:</p>
+
+    <pre><code>&lt;!-- per page: this route is API-only, nothing else to configure --&gt;
+&lt;spark-ssr table="todos" api /&gt;</code></pre>
+
+    <p>…or app-wide with <code>spark-ssr start --api</code>, or
+    <code>"api": true</code> in <code>spark.json</code>. Rendering is opt-in
+    from there: <code>"html": true</code> (or <code>"api": "hybrid"</code>)
+    serves pages <em>and</em> the JSON API on one server, and a per-page
+    <code>&lt;spark-ssr render /&gt;</code> restores HTML for just one page —
+    handy for a single login screen in an otherwise headless backend.
+    <code>api</code> and <code>render</code> are mirrors: one withholds a
+    page's HTML, the other restores it.</p>
+
+    <p>It's <strong>purely additive</strong>: <code>api</code> only toggles
+    whether HTML is served — it never creates or removes a route, so a project
+    with no <code>api</code> signal renders and routes exactly as before.
+    Hitting <code>GET /</code> in API mode returns a self-describing index
+    (a branded page in a browser, JSON for a client), and
+    <code>GET /api/health</code> comes generated.</p>
+
+    <h2 id="rate-limits">Rate limits, declared in the template</h2>
+    <p>Because the API is declared in HTML, a route's rate limit rides the same
+    block — one more attribute:</p>
+
+    <pre><code>&lt;spark-ssr table="comments" api rate="10/1m" rate-key="ip" /&gt;</code></pre>
+
+    <p>For cross-cutting policy, <code>spark.json</code> takes a
+    <code>rateLimit</code> object with tiers that resolve narrowest-wins — per
+    route, per table, per role, per method:</p>
+
+    <pre><code>{ "rateLimit": {
+    "window": "1m", "max": 120, "key": "ip",
+    "methods": { "GET": { "max": 300 }, "POST": { "max": 30 } },
+    "roles":   { "anon": { "max": 60 }, "user": { "max": 600, "key": "session" }, "admin": false },
+    "routes":  { "POST /api/login": { "max": 5, "window": "5m" } }
+} }</code></pre>
+
+    <p>Over the window a request gets a <code>429</code> with a
+    <code>Retry-After</code> header and a JSON body naming the wait. The
+    limiter is in-memory and per-process — behind multiple instances, limits
+    apply per instance (a distributed limiter is a <code>middleware.html</code>
+    hook, not core, by design: no new dependency domain).</p>
+
+    <h2 id="whole-backend">A whole blog + comments, in a handful of files</h2>
+    <p>Three lines declare the data model and a background email job — all
+    API-only, all served as JSON, zero <code>spark.json</code>:</p>
+
+    <pre><code>&lt;!-- pages/_schema.html --&gt;
+&lt;spark-ssr table="posts"    api seed="./seed/posts.json" /&gt;
+&lt;spark-ssr table="comments" api /&gt;
+&lt;spark-ssr job="notify-author" on="insert:comments" api /&gt;</code></pre>
+
+    <p>Add a page with two named queries and you've got a post plus its comment
+    thread as one JSON document; add <code>guard="session"</code> and
+    <code>rate="10/1m"</code> to the comments block and writes are auth-gated
+    and throttled. The whole backend is a few short HTML files — the data
+    model, REST API, auth, validation, rate limits, and transactional email,
+    each declared next to the thing it describes.</p>
+
+    <h2 id="why">Why this fits Spark</h2>
+    <p>No new concepts, no build step, no new package — API-only is a fourth
+    relocation of the same server you already write. It spends
+    <strong>zero</strong> of the spark-html core's gzip budget (it's all
+    server-side spark-ssr code), and every rate-limit tier is pinned by a test
+    that fails if the protection is removed. The pitch stays intact:
+    <em>declare it in HTML, infer the rest, flip one attribute to drop the
+    pages.</em></p>
+
+    <p>Full details in the <a :href="app.base + '/ssr#api-mode'">SSR guide</a> ·
+    <a href="https://www.npmjs.com/package/spark-ssr" target="_blank" rel="noopener">spark-ssr on npm</a>.</p>
+  </article>
+
+  <footer class="postfoot">
+    <a class="back2" :href="app.base + '/blog'">← All posts</a>
+  </footer>
+</section>
+
+<script>
+  // Baked into <head> at prerender (spark-prerender reads these off scope).
+  let pageTitle = 'Spark — spark-ssr 1.3.0: API-only mode + rate limits';
+  let pageDescription = 'spark-ssr 1.3.0 turns your HTML templates into a JSON API backend: API-only mode (declare in HTML, don\'t serve the HTML), declarative rate limits, a branded index and /api/health — no new concepts, no build step.';
+  let ogTitle = 'spark-ssr 1.3.0 — your HTML is now an API-only backend';
+  let ogDescription = 'API-only mode + declarative rate limits, all declared in HTML. No new concepts, no build step, zero core budget.';
+  const app = useStore('app');
+</script>
+
+<style>
+  .page { padding: 64px 0 90px; min-height: calc(100vh - 220px); max-width: 720px; }
+  .back, .back2 { font-size: 13px; color: var(--muted); }
+  .back:hover, .back2:hover { color: var(--spark-ink); }
+  .back { display: inline-block; margin-bottom: 28px; }
+  .head { margin-bottom: 30px; }
+  .row1 { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+  .tag {
+    font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em;
+    padding: 3px 9px; border-radius: 999px; color: #000; background: var(--spark);
+  }
+  .tag-fix { background: var(--spark); }
+  .tag-release { background: #7ce29b; }
+  .tag-news { background: #8fc6ff; }
+  .date { font-size: 12.5px; color: var(--muted-dim); }
+  .title { font-size: clamp(26px, 4.4vw, 38px); font-weight: 800; letter-spacing: -.03em; line-height: 1.25; }
+
+  /* article prose — matches the docs page's typographic system */
+  .body h2 { font-size: 20px; margin: 40px 0 14px; padding-top: 20px; border-top: 1px solid var(--border); letter-spacing: -.01em; font-weight: 700; scroll-margin-top: 24px; }
+  .body p { margin: 12px 0; font-size: 15px; color: var(--muted); line-height: 1.8; }
+  .body p strong { color: var(--text); font-weight: 600; }
+  .body a { color: var(--spark-ink); }
+  .body code { font-size: 13px; background: var(--surface-2); padding: 2px 6px; color: var(--spark-ink); }
+  .body pre { background: var(--surface); border: 1px solid var(--border); padding: 16px 18px; font-size: 13px; line-height: 1.7; color: var(--muted); overflow-x: auto; margin: 16px 0; white-space: pre; }
+  .body pre code { background: none; padding: 0; color: inherit; }
+
+  .postfoot { margin-top: 48px; padding-top: 20px; border-top: 1px solid var(--border); }
+
+  @media (max-width: 720px) {
+    .page { padding: 36px 0 60px; }
+    .body pre { padding: 12px 14px; font-size: 12.5px; }
+  }
+</style>

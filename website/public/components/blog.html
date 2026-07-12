@@ -8,6 +8,16 @@
        listing prerenders into the page for crawlers. New post = add a card
        here + a component under components/blog/ + a route in index.html. -->
   <div class="list">
+    <a class="post" :href="app.base + '/blog/1-3-0-spark-ssr-api-only-mode'">
+      <div class="row1">
+        <span class="tag tag-release">Release</span>
+        <time class="date" datetime="2026-07-12">2026-07-12</time>
+      </div>
+      <h2 class="title">spark-ssr 1.3.0 — your HTML is now an API-only backend</h2>
+      <p class="excerpt">The templates you write for pages now serve as a JSON API — flip one attribute to drop the HTML — plus declarative rate limits, all declared in the HTML with no new concepts.</p>
+      <span class="read">Read post <span class="arr">→</span></span>
+    </a>
+
     <a class="post" :href="app.base + '/blog/1-8-1-bind-write-back-ordering'">
       <div class="row1">
         <span class="tag tag-fix">Fix</span>
@@ -21,6 +31,13 @@
 </section>
 
 <script>
+  // Prerender bakes these into <head> (spark-prerender reads pageTitle/
+  // pageDescription/og* off the component scope — main.js doesn't run at
+  // build, so titles live on the component, not the head() route map).
+  let pageTitle = 'Spark — Blog';
+  let pageDescription = 'Releases, fixes, and news from the Spark runtime and its ecosystem.';
+  let ogTitle = 'Spark — Blog';
+  let ogDescription = 'Releases, fixes, and news from the Spark runtime and its ecosystem.';
   const app = useStore('app');
 </script>
 

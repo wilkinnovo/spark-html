@@ -83,6 +83,11 @@ spark-html runtime: 17.93 KB gzip · budget 18 KB
 </section>
 
 <script>
+  // Baked into <head> at prerender (spark-prerender reads these off scope).
+  let pageTitle = 'Spark — v1.8.1: a same-event bind + handler ordering fix';
+  let pageDescription = 'A bind and an onXXX handler on the same event could fire in the wrong order, so the handler saw the stale value instead of the write-back. Binds now wire first.';
+  let ogTitle = 'spark-html v1.8.1 — bind + handler ordering fix';
+  let ogDescription = 'A same-event bind + handler ordering fix: binds now wire before handlers so a same-event onXXX sees the write-back.';
   const app = useStore('app');
 </script>
 

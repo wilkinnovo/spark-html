@@ -38,6 +38,7 @@ head({
     '/tutorials': 'Spark — Tutorials',
     '/showcase': 'Spark — Showcase',
     '/blog': 'Spark — Blog',
+    '/blog/1-3-0-spark-ssr-api-only-mode': 'Spark — spark-ssr 1.3.0: API-only mode + rate limits',
     '/blog/1-8-1-bind-write-back-ordering': 'Spark — v1.8.1: a same-event bind + handler ordering fix',
     '*': 'Spark — HTML that reacts. Built for humans.',
   },

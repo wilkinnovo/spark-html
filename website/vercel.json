@@ -29,6 +29,10 @@
       "destination": "/blog.html"
     },
     {
+      "source": "/blog/1-3-0-spark-ssr-api-only-mode",
+      "destination": "/blog/1-3-0-spark-ssr-api-only-mode.html"
+    },
+    {
       "source": "/blog/1-8-1-bind-write-back-ordering",
       "destination": "/blog/1-8-1-bind-write-back-ordering.html"
     },
