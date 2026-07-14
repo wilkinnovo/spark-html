@@ -26,6 +26,7 @@
     <a href="#ssr">Full-stack (spark-ssr)</a>
     <a href="#ecosystem">Ecosystem</a>
     <a href="#limits">Limitations</a>
+    <a href="#known-issues">Known issues</a>
   </aside>
 
   <main>
@@ -515,6 +516,17 @@ cd myapp &amp;&amp; bun install &amp;&amp; bun dev</pre>
       <tr><td><code>{session}</code> not ambient in hydrating client scripts</td><td><code>{session}</code> and <code>{path}</code> are ambient in server-rendered template expressions and server-only <code>&lt;script&gt;</code>s. A hydrating page's client component script runs client-side only and does not have <code>session</code> in scope — read the user's id from a declared data source (e.g. <code>me.id</code>) instead.</td></tr>
       <tr><td>SSR response cache &amp; writes outside the server</td><td>In production, spark-ssr's full-page cache is invalidated by writes <em>through the server</em> (its API or SQL routes). A row changed directly in the database by another process stays invisible on cached public pages until the TTL lapses (60&nbsp;s default — set <code>"responseCache"</code> in spark.json, or <code>false</code> to disable).</td></tr>
       <tr><td>Live channel fanout is per-process</td><td><code>live</code> broadcasts a write to every open tab over one server process's SSE connections; benchmarked reliable (zero drops) to 5,000 concurrent subscribers, with tail latency growing with subscriber count on a single instance (~16&nbsp;ms p99 at 200 subscribers, ~216&nbsp;ms at 2,000). For tighter fanout latency at higher concurrency, run multiple server instances — each handles its own share of subscribers, so tail latency drops roughly with instance count.</td></tr>
+    </table>
+
+    <h2 id="known-issues">Known issues</h2>
+    <p>Open bugs we're tracking — distinct from the design limitations above (those are permanent; these are defects with a workaround, being fixed):</p>
+    <table class="limits">
+      <tr><td>Interpolated <code>src</code>/<code>poster</code> flashes a literal <code>{expr}</code> request</td><td>On a component whose first paint is async (an SSR module source, or an <code>onMount</code>-deferred write), an interpolated <code>&lt;img src="{url}"&gt;</code> / <code>&lt;video poster&gt;</code> / <code>&lt;iframe src&gt;</code> is briefly attached to the live DOM with the raw <code>{url}</code>, so the browser fires one real request for the literal text — a <code>404</code> for <code>%7B…%7D</code> in the console. The DOM self-heals within ~300&nbsp;ms; the error is cosmetic (no wrong content persists). <strong>Workaround:</strong> set <code>src</code> from <code>onMount</code>, or avoid an interpolated <code>src</code> on components that resolve their data asynchronously.</td></tr>
+      <tr><td>Loop variable as a prop to an imported component breaks on hydration</td><td>Passing an <code>each</code> loop's own variable as a prop into an imported child component (<code>&lt;div import="/c" x="{item.y}"&gt;</code>) throws <code>"x is not defined"</code> during client hydration — the same shape works fine on a non-loop row. <strong>Workaround:</strong> inline the child's markup inside the loop (it stays in the loop's own template scope) rather than importing a component.</td></tr>
+      <tr><td>Boolean attribute bound to a falsy non-boolean stays on</td><td><code>:disabled</code> / <code>:hidden</code> / <code>:checked</code> bound to a value that is falsy but not a real boolean — a SQLite <code>0</code>, say — renders the attribute present (<code>disabled="0"</code> is still disabled). <strong>Workaround:</strong> coerce to a real boolean at the binding, e.g. <code>:disabled="!!col"</code>.</td></tr>
+      <tr><td><code>bind:value</code> inside a hidden container loses its value</td><td>A <code>bind:value</code> input nested inside a <code>display:none</code> container loses its value across the show/hide toggle. <strong>Workaround:</strong> don't wrap bound inputs in a <code>display:none</code> container (toggle with a conditional block, or keep them mounted).</td></tr>
+      <tr><td>Interpolated <code>width</code>/<code>height</code> on <code>&lt;svg&gt;</code> cleared on hydration</td><td>Bound <code>width</code>/<code>height</code> attributes on a raw <code>&lt;svg&gt;</code> are set to empty on the hydration patch, so it falls back to intrinsic sizing. <strong>Workaround:</strong> size a wrapper element via an interpolated inline <code>style</code> and give the <code>&lt;svg&gt;</code> static <code>width="100%" height="100%"</code>.</td></tr>
+      <tr><td>OpenAPI / typed-client output is incomplete (experimental)</td><td>The generated <code>/__spark/openapi.json</code> reports empty <code>components</code>, documents inserts as <code>200</code> rather than <code>201</code>, and <code>client.ts</code> methods are untyped — it doesn't reflect the real inferred schema. This surface is <em>experimental</em> (may change in a 1.x minor); low priority.</td></tr>
     </table>
   </main>
 </div>

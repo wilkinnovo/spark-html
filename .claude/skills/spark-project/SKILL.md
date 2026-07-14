@@ -266,6 +266,39 @@ false positive** in ssr 1.3.2 — see pitfalls.md "San-App port audit".)
 - **Bound `width`/`height` on a raw `<svg>` are cleared on the hydration
   patch** — size a wrapper via interpolated `style`, give the `<svg>` static
   `width="100%" height="100%"`. (bugs.md #1.)
+- **An interpolated `src`/`poster` on an async-first-paint component fires a
+  real request for the LITERAL `{expr}` text.** The non-hydrate `import=` path
+  (`resolveImportNode`) sets `host.innerHTML = markup` (raw `{expr}`) and
+  attaches it live BEFORE the first patch — so `<img src="{url}">` /
+  `<video poster>` / `<iframe src>` on any component whose first paint is async
+  (SSR module source, `onMount`-deferred write) briefly holds `{url}` in a
+  connected node and the browser 404s on `/…/%7Burl%7D`. Self-heals in ~300 ms
+  (cosmetic console error, correct final DOM). **root `bugs.md` #8 — its "FIXED
+  IN TREE" note is STALE** (an agent's boot-before-attach fix was reverted; the
+  code still gates on `if (hydrate)`). The fix design (`hydrate ||
+  node.isConnected` boot gate + `patchSlots` `off || n.isConnected` relaxation +
+  a `jsimport.js` regression test, ~+4 gz) is written up in full in that entry.
+- **A loop variable passed as a prop into an imported component throws
+  "`X is not defined`" on CLIENT hydration** — only inside an `each` loop; the
+  same `each → import(component)` shape works fine on a non-loop row. Not
+  root-caused. Workaround: inline the child's markup inside the loop (stays in
+  the loop's own template scope) instead of `<div import>`. (San-App
+  `discover.html`/`notifs.html`/`san/[id].html` inlining comments; not yet a
+  numbered `bugs.md` entry.)
+- **OpenAPI / typed-client generation doesn't reflect the inferred schema** —
+  `/__spark/openapi.json` `components` is `{}`, inserts documented `200` not
+  `201`, `client.ts` methods untyped. Experimental surface (V1-API-FREEZE
+  buckets it experimental → may change in a 1.x minor), deprioritized. root
+  `bugs.md` #6.
+
+**This list IS the bug tracker now** (mirrored user-facing in the website docs'
+`#known-issues` table). The old repo-root `bugs.md` and `examples/San-App/bugs.md`
+were REMOVED (2026-07-14) after consolidating everything here — do not look for
+them. The `#N` labels above are historical ids from those files, kept only for
+git-history cross-reference. When you fix one of these, delete its bullet here
+AND its row in `website/public/components/docs-body.html` (`#known-issues`), per
+the row-lifecycle rule. Always verify a "fixed" claim against the actual source
+before trusting it — the img-src bug carried a false "fixed" mark for two days.
 
 ## Deep references (load on demand)
 
