@@ -258,6 +258,83 @@ tree-wide before components boot; fixed via retry-after-ancestor-ready.
   template index in the file. Never let a failing run's writeFileSync
   clobber tracked seeds without checking what it overwrote.
 
+## San-App port audit (2026-07-14) — 21 reports, 3 real spark-ssr bugs
+
+A real app (`examples/San-App`, a rotating-savings app: auth, uploads,
+cross-user notifications, live badges, draw animation, infinite scroll) was
+ported and 21 things were logged as "bugs" (`examples/San-App/bugs.md`).
+Audited against source, only THREE were real spark-ssr defects. Public
+write-up: website blog post `1-3-2-what-looks-like-a-bug`.
+
+**Real spark-ssr fixes (shipped):**
+- **ssr 1.3.1 — `live` on raw writes.** A custom `api/*.html` endpoint's
+  hand-written `db.query("INSERT …")` never pinged `/__spark/live` (only the
+  auto-CRUD route did). Fix: `jobs.js` `liveDb()` wraps the endpoint `db`
+  handle — reads pass through, writes fan out to live + cache invalidation +
+  job hooks, COALESCED per request (an N-row loop pings each table once).
+  Opt-in (only a `live`-declared table broadcasts); `db.raw` stays manual.
+- **ssr 1.3.2 — auth table as SSR source scoping (security).**
+  `table="<authTable>"` used as a page source ran an UNSCOPED `SELECT` —
+  `crud.js` `tableInfo`'s `scoped` deliberately excludes the identity table
+  (it self-references by `id`, not `user_id`), and no `id`-based check
+  replaced it. So a self-service page iterating it leaked every account. Fix:
+  `tableRows` adds `WHERE id = ?` for non-admins on the auth table, matching
+  the `/api/<authTable>` GET route. NOTE: behavior change — a "list all users"
+  page must now use explicit SQL.
+- **ssr 1.3.2 — dev "missing source" false positive.** `each="n in
+  Array(k).fill(0)"` flagged `Array` as an unresolved data source. Fix:
+  `parse.js` `JS_GLOBALS` set + call-expression guard in the each-source
+  branch; the analyzer ignores built-in globals.
+
+**Real, but spark-html CORE (not spark-ssr) — see SKILL.md Known-but-unfixed:**
+`:disabled="0"` boolean-attr (#14), `bind:value` in `display:none` (#11),
+`<svg>` width/height wiped on hydrate (#1). #20 (phone-photo EXIF orientation)
+was a core multipart-upload bug, fixed upstream.
+
+**FALSE CLAIMS — design working as intended. Do NOT "fix" these; a future
+model will be tempted to, and shouldn't:**
+- **`navigate()` is `onclick` sugar, NOT a programmatic router.** It takes an
+  EVENT (`onclick={navigate}`), click-delegates SAME-PATH `<a href="?q=…">`
+  links, refetches via `refresh()`. `navigate('/path')` (a string) was never
+  its API — it threw on `e.target.closest`. Works in a single-route app
+  (`examples/spark-chat`, nav is all `href="/?with=…"`); a no-op across a
+  multi-route app's distinct routes BY DESIGN. Cross-route → `location.href`
+  or a real link; app-wide client routing → `spark-html-router`. (An attempt
+  to add a string form was REVERTED — it grew helper surface and still only
+  did `location.href` for the cross-route case. bugs.md #17.)
+- **Server-only page-`<script>` top-level-name extraction is a line-anchored
+  string SCANNER, not a parser** (`page.js` `namesOf`; same shape in
+  `parse.js` `definedNames` + core's rewriter). A `let/const/var` at the start
+  of a line INSIDE a callback gets misread and returned from the wrapper →
+  `ReferenceError` that discards the whole script. Convention: keep returned
+  page-script vars at the top level, or inline the expression. Adding
+  bracket-depth cleverness was tried and REVERTED (still a scanner — can't do
+  template literals / block comments / regex; adds risk to capture code). If
+  ever addressed, the identity-aligned move is a loud fix-naming warning, not a
+  smarter regex. bugs.md #3.
+- **`table="X"` means THE X table as a source** — want a subset/join, write the
+  SQL. (#7's fix is the ONE exception: the auth table is scoped for security.)
+- **An interactive page's `<script>` is the CLIENT component and never runs
+  server-side** — compute display fields (dates, counts) in the DATA SOURCE.
+  A non-interactive page keeps its script server-side. Same tag, opposite
+  runtime. (#5; and the layout-`{session}` breakage #8 is the same boundary.)
+- **A server-only script's scope is exactly `req`/`db`/`fetch`/`mail`** — it
+  can't see a sibling `<spark-ssr>` source by name; re-run `db.query(...)`.
+  Same no-implicit-cross-scope rule as component scope. (#4.)
+- **`spark-ignore` is SYMMETRIC** — it disables server AND client
+  interpolation (so a code sample renders identically both sides). (#9.) Also
+  the blog-post authoring lesson: wrap `<pre>`/inline `<code>` containing
+  `{…}` in `spark-ignore` or the braces render empty (`render.js:162` pushes
+  `outerHTML` verbatim for any `spark-ignore` element).
+- **Components declare their own prop defaults** via `export let name = …`
+  (#2). **Interactive pages own their form submits** — `redirect=`/`flash=`
+  are the no-JS mechanism; on a hydrating page drive the outcome from a
+  `fetch` handler (#12, #15). **`onclick={fn(arg)}` / `onclick={() => fn(arg)}`
+  are the correct arg-passing patterns** (#16). Auto-CRUD takes form fields
+  as-is (no type coercion — cast in SQL) (#19); an empty file input still
+  creates a zero-byte upload (guard it) (#10) — both deliberate "raw and
+  predictable" boundaries.
+
 ## Meta
 
 - Program-doc lineage (deletion on completion is the convention): the v1

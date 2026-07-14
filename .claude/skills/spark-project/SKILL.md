@@ -249,6 +249,24 @@ See pitfalls.md "Fixed at v1-prep".)
   can mask a failure that a clean CI install exposes (see the release-checklist
   memory) — dedupe before tagging.
 
+(spark-ssr's own list shortened by the San-App audit: **live-on-raw-writes**
+shipped in ssr 1.3.1, **auth-table-as-SSR-source scoping** + **dev-analyzer
+false positive** in ssr 1.3.2 — see pitfalls.md "San-App port audit".)
+
+- **`:disabled="0"` / a boolean attribute bound to a falsy NON-boolean renders
+  it PRESENT** (a SQLite `0` → `disabled="0"`, still disabled). Lives in BOTH
+  spark-ssr `render.js` AND core `index.js` (~L1521, the `:attr` kind-2 patcher:
+  only `typeof===boolean`/null are presence-toggles; any other value →
+  `setAttribute(name, String(val))`). Fixing ONLY the SSR half diverges (SSR
+  omits, client re-adds `disabled="0"` on hydrate) — the fix belongs in CORE,
+  special-casing genuine HTML boolean attrs. Workaround: `:disabled="!!col"`.
+  (bugs.md #14.)
+- **`bind:value` inside a `display:none` container loses its value across the
+  toggle** — core reactivity/DOM. (bugs.md #11.)
+- **Bound `width`/`height` on a raw `<svg>` are cleared on the hydration
+  patch** — size a wrapper via interpolated `style`, give the `<svg>` static
+  `width="100%" height="100%"`. (bugs.md #1.)
+
 ## Deep references (load on demand)
 
 - `references/architecture.md` — core runtime internals (expression pipeline,
@@ -273,6 +291,12 @@ core budget** — all server-side spark-ssr code (its own footprint may grow if
 earned). Purely additive to existing inference (§7, pinned by a golden test).
 Next step = §5 item 1 (declarative rate limits, independently shippable). The
 doc's STATUS line is the live ledger.
+
+**spark-ssr CURRENT: 1.3.2** (registry-verified 2026-07-14). Post-1.3.0
+patches, both from the `examples/San-App` port audit (pitfalls.md "San-App
+port audit"): **1.3.1** = `live` broadcast on custom-endpoint raw
+`db.query()` writes; **1.3.2** = auth-table-as-SSR-source scoping (security) +
+dev-analyzer JS-globals false positive. Tags `ssr-v1.3.1` / `ssr-v1.3.2`.
 
 Prior roadmap: NO ACTIVE PROGRAM — `speed-up-extended.md` (the FIFTH
 speed program) closed 2026-07-11 as **core 1.7.0, released by owner
