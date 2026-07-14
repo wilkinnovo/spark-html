@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "spark dev",
+    "secure": "bun spark-html-dev-tls",
     "build": "spark build",
     "preview": "spark preview"
   },
@@ -12,6 +13,7 @@
     "spark-html": "latest"
   },
   "devDependencies": {
-    "spark-html-bun": "latest"
+    "spark-html-bun": "latest",
+    "spark-html-dev-tls": "latest"
   }
 }

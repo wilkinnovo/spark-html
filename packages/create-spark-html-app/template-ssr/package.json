@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "bun spark-ssr",
+    "secure": "bun spark-html-dev-tls",
     "db": "bun spark-ssr db",
     "start": "bun spark-ssr start",
     "build": "bun spark-ssr build"
@@ -16,6 +17,7 @@
     "spark-html-font": "latest"
   },
   "devDependencies": {
-    "spark-html-image": "latest"
+    "spark-html-image": "latest",
+    "spark-html-dev-tls": "latest"
   }
 }
