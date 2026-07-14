@@ -55,7 +55,12 @@ export function makeRoutes(app) {
               segs,
               handler: async (req, res) => {
                 if (!def.fn) return json({ error: 'not found' }, 404);
-                const out = await def.fn(req, res, db, app.makeAppFetch(req), app.mail);
+                // Raw writes through this handle fan out to `live` tabs, cache
+                // invalidation, and job hooks (coalesced, flushed post-handler).
+                const ldb = app.liveDb(db);
+                let out;
+                try { out = await def.fn(req, res, ldb, app.makeAppFetch(req), app.mail); }
+                finally { ldb.flushLive(); }
                 if (out instanceof Response) return out;
                 if (out && typeof out === 'object' && 'status' in out && 'body' in out) {
                   return new Response(typeof out.body === 'string' ? out.body : JSON.stringify(out.body), { status: out.status });

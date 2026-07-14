@@ -749,6 +749,15 @@ async function makeSiteApp() {
   writeFileSync(join(root, 'pages', 'notes.html'), `<template each="note in notes"><p class="n">{note.text}</p></template>
 <spark-ssr table="notes" />`);
   writeFileSync(join(root, 'pages', 'login.html'), '<h1>Login</h1>\n<spark-ssr table="users" />');
+  // A `live` page + a custom endpoint that writes the SAME table with a raw
+  // db.query() (not the auto-CRUD route) — the bugs.md #18 case.
+  writeFileSync(join(root, 'pages', 'live-notes.html'),
+    '<template each="note in notes"><p class="ln">{note.text}</p></template>\n<spark-ssr table="notes" live />');
+  writeFileSync(join(root, 'api', 'addnote.html'), `<script>
+  const body = await req.json();
+  await db.query('INSERT INTO notes (text) VALUES (?)', [body.text]);
+  return { ok: true };
+</script>`);
   writeFileSync(join(root, 'pages', 'upload.html'), `<h1>Upload</h1>
 <spark-ssr>
   POST /api/upload → INSERT INTO files (name, url) VALUES (:body.name, :file.url)
@@ -819,6 +828,29 @@ await test('api/ folder: <script> endpoint gets req and returns JSON', async () 
     body: JSON.stringify({ x: 42 }),
   })).json();
   assert.deepEqual(out, { got: 42, method: 'POST', header: 'yes' });
+});
+
+await test('live (§9): a raw db.query() write in a custom endpoint pings /__spark/live for a live table (bugs.md #18)', async () => {
+  const res = await fetch(`${S}/__spark/live`);
+  assert.equal(res.headers.get('content-type'), 'text/event-stream');
+  const reader = res.body.getReader();
+  const dec = new TextDecoder();
+  const read = async () => dec.decode((await reader.read()).value || new Uint8Array());
+  assert.ok((await read()).includes(': connected'), 'live SSE channel opens');
+
+  // A hand-written INSERT through the custom endpoint — never touches the
+  // auto-CRUD route — must still fan out to the live channel.
+  await fetch(`${S}/api/addnote`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ text: 'live!' }),
+  });
+  const ping = await Promise.race([
+    read(),
+    new Promise((_, rej) => setTimeout(() => rej(new Error('no live ping within 3s')), 3000)),
+  ]);
+  assert.ok(ping.includes('data: notes'), 'raw endpoint write broadcasts the touched table');
+  await reader.cancel();
 });
 
 await test('middleware.html: header on every response, short-circuit works', async () => {

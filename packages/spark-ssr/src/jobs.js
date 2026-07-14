@@ -120,12 +120,40 @@ export function makeJobs(app) {
       if (set) for (const name of set) runJob(name, event + ':' + table, row);
     }
   }
+  // insert/update/delete for a write statement; null for a read (SELECT/WITH).
+  const writeEvent = (sql) =>
+    /^\s*insert/i.test(sql) ? 'insert'
+    : /^\s*update/i.test(sql) ? 'update'
+    : /^\s*delete/i.test(sql) ? 'delete'
+    : /^\s*(select|with)\b/i.test(sql) ? null : 'write';
   const broadcastSql = (sql) => {
-    const event = /^\s*insert/i.test(sql) ? 'insert'
-      : /^\s*update/i.test(sql) ? 'update'
-      : /^\s*delete/i.test(sql) ? 'delete' : 'write';
+    const event = writeEvent(sql) || 'write';
     for (const t of sqlTables(sql)) fireEvent(event, t, null);
   };
 
-  return { mail, initMail, registerJob, runJob, fireEvent, broadcastSql, jobTimers };
+  // Wrap the raw `db` handed to a custom api/ endpoint so its hand-written
+  // writes still fan out to `live` tabs + cache invalidation + job hooks —
+  // the same automation the generated /api/<table> CRUD route gets, which is
+  // otherwise the ONLY path that pings /__spark/live (see bugs.md #18). Reads
+  // pass straight through. Broadcasts are COALESCED per request and flushed
+  // once the handler returns: an N-row write loop pings each touched table
+  // exactly once, never N back-to-back refresh storms across open tabs.
+  const liveDb = (rawDb) => {
+    const touched = new Map(); // table -> last write event, deduped per request
+    return {
+      ...rawDb,
+      async query(sql, values) {
+        const r = await rawDb.query(sql, values);
+        const event = writeEvent(sql);
+        if (event) for (const t of sqlTables(sql)) touched.set(t, event);
+        return r;
+      },
+      flushLive() {
+        for (const [t, event] of touched) fireEvent(event, t, null);
+        touched.clear();
+      },
+    };
+  };
+
+  return { mail, initMail, registerJob, runJob, fireEvent, broadcastSql, liveDb, jobTimers };
 }

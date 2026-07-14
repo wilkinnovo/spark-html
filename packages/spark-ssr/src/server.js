@@ -384,9 +384,10 @@ export async function serve(options = {}) {
   // Declarative mail + jobs + the write-event fan-out (split to src/jobs.js):
   // mail() ambient sender, jobs/<name>.js on schedules and write hooks,
   // fireEvent as the single "a write went through table X" path.
-  const { mail, initMail, registerJob, fireEvent, broadcastSql, jobTimers } = makeJobs(app);
+  const { mail, initMail, registerJob, fireEvent, broadcastSql, liveDb, jobTimers } = makeJobs(app);
   app.fireEvent = fireEvent;
   app.broadcastSql = broadcastSql;
+  app.liveDb = liveDb;
   app.mail = mail;
 
   // Component + static + /@modules file serving (split to src/static.js).
