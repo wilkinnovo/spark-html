@@ -1,0 +1,173 @@
+<!-- A blog post authored as real HTML (not a JS string): the prose lives in
+     the markup so it prerenders into the static page — crawlable, shareable,
+     no client render required. Add a post = one file like this + a static
+     route in index.html + a card in blog.html + a title in main.js head(). -->
+<section class="page">
+  <a class="back" :href="app.base + '/blog'">← All posts</a>
+
+  <header class="head">
+    <div class="row1">
+      <span class="tag tag-fix">Fix</span>
+      <time class="date" datetime="2026-07-13">2026-07-13</time>
+    </div>
+    <h1 class="title">spark-ssr 1.3.1 — live now fires on raw writes too</h1>
+  </header>
+
+  <article class="body">
+    <p><strong>spark-ssr 1.3.1</strong> is a focused fix that makes the
+    <code>live</code> attribute do what the docs already promised: <em>every</em>
+    write through the server pings hydrated tabs over SSE — including the
+    hand-written <code>db.query()</code> writes inside your own custom
+    endpoints.</p>
+
+    <h2 id="the-bug">The bug</h2>
+    <p>Adding <code>live</code> to a table block is supposed to be realtime as
+    one attribute: a write happens, every open tab refetches through its own
+    session. That worked — but only for writes that went through the
+    auto-generated <code>/api/&lt;table&gt;</code> CRUD route. A custom
+    <code>api/*.html</code> endpoint gets a deliberately raw, unintercepted
+    <code>db</code> handle, and its <code>db.query("INSERT INTO …")</code> never
+    pinged the live channel.</p>
+
+    <p>That bites hardest on exactly the pages most likely to want
+    <code>live</code>: anything with logic beyond single-row CRUD — a join
+    request that needs a duplicate check, an approve that moves a row between
+    tables plus writes a notification, a draw that writes N rows in a loop — is
+    <em>forced</em> into a custom endpoint in the first place, and then silently
+    got no live updates.</p>
+
+    <pre spark-ignore><code>&lt;!-- notifications is declared live… --&gt;
+&lt;spark-ssr table="notifications" live /&gt;
+
+&lt;!-- …but this hand-written INSERT never reached an open tab --&gt;
+&lt;!-- api/approve.html --&gt;
+&lt;script&gt;
+  await db.query(
+    "INSERT INTO notifications (user_id, kind) VALUES (?, 'approved')",
+    [hostId],
+  );
+&lt;/script&gt;</code></pre>
+
+    <h2 id="the-fix">The fix</h2>
+    <p>spark-ssr now wraps the <code>db</code> handle it hands to a custom
+    endpoint. Reads pass straight through; writes record which tables they
+    touched and fan out to live tabs, response-cache invalidation, and job
+    hooks — the same automation the generated CRUD route already gets. The
+    broadcast is <strong>coalesced per request</strong> and flushed once the
+    handler returns, so an endpoint that writes N rows in a loop pings each
+    touched table <em>exactly once</em>, never N back-to-back refresh storms.</p>
+
+    <pre spark-ignore><code>// The raw handle stays raw for reads and for db.raw; only db.query()
+// writes are observed, and the broadcast is deduped by table per request.
+const liveDb = (rawDb) =&gt; {
+  const touched = new Map();
+  return {
+    ...rawDb,
+    async query(sql, values) {
+      const r = await rawDb.query(sql, values);
+      const event = writeEvent(sql);           // insert / update / delete
+      if (event) for (const t of sqlTables(sql)) touched.set(t, event);
+      return r;
+    },
+    flushLive() { for (const [t, e] of touched) fireEvent(e, t, null); },
+  };
+};</code></pre>
+
+    <p>There's a correctness bonus riding along: because the broadcast path also
+    invalidates the full-page response cache, a raw custom-endpoint write now
+    busts the cache for its tables too. Previously an anonymous cached page
+    could serve <em>stale</em> data after a custom write until its TTL — that's
+    fixed as well.</p>
+
+    <h2 id="opt-in">Nothing changes unless you opt in</h2>
+    <p>This is purely additive. A table only broadcasts if some page declared it
+    <code>live</code>; if you never write <code>live</code>, behavior is
+    byte-identical to 1.3.0. The <code>db.raw</code> driver handle stays a full
+    manual escape hatch — its writes are never intercepted. The page render path
+    and the auto-CRUD path are untouched.</p>
+
+    <h2 id="the-badge">A live header badge, declaratively</h2>
+    <p>Because a layout's <code>&lt;spark-ssr&gt;</code> vars are in scope for
+    every page it wraps, declaring the table <code>live</code> in a layout makes
+    a shared piece of chrome — a notifications badge, say — update live on any
+    hydrating page, with no client code:</p>
+
+    <pre spark-ignore><code>&lt;!-- pages/_layout.html --&gt;
+&lt;span class="badge" :hidden="!(unread.n &gt; 0)"&gt;{unread.n}&lt;/span&gt;
+
+&lt;spark-ssr&gt;
+  unread = SELECT COUNT(*) AS n FROM notifications
+           WHERE user_id = :session.id AND IFNULL(read, 0) = 0
+&lt;/spark-ssr&gt;
+&lt;spark-ssr table="notifications" live /&gt;</code></pre>
+
+    <p>A write lands, the tab refetches, and the badge re-renders.
+    (The one precondition is that the page hydrates — a purely static page has
+    no client runtime to update, but it still renders the correct count on every
+    load.)</p>
+
+    <h2 id="verifying">Verifying it</h2>
+    <p>The fix ships with a removal-sensitive test — a raw <code>db.query()</code>
+    write in a custom endpoint must ping <code>/__spark/live</code>, and the test
+    fails if the wrapper is reverted. The full suite is green, and the render
+    benchmark is unmoved (the fix never touches the hot loop):</p>
+
+    <pre spark-ignore><code>spark-ssr: 107 passed, 0 failed
+1000-row render  p50 4.3 ms   ·   /big  ~9–10k req/s
+✅ within baseline</code></pre>
+
+    <h2 id="upgrade">Upgrading</h2>
+    <p>1.3.1 is a pure bug fix with no breaking changes — bump your
+    <code>spark-ssr</code> range and you're done:</p>
+    <pre spark-ignore><code>bun add spark-ssr@^1.3.1</code></pre>
+
+    <p>Full details: <a href="https://www.npmjs.com/package/spark-ssr" target="_blank" rel="noopener">spark-ssr on npm</a> · <a href="https://github.com/wilkinnovo/spark-html/releases/tag/ssr-v1.3.1" target="_blank" rel="noopener">ssr-v1.3.1 on GitHub</a>.</p>
+  </article>
+
+  <footer class="postfoot">
+    <a class="back2" :href="app.base + '/blog'">← All posts</a>
+  </footer>
+</section>
+
+<script>
+  // Baked into <head> at prerender (spark-prerender reads these off scope).
+  let pageTitle = 'Spark — spark-ssr 1.3.1: live fires on raw writes';
+  let pageDescription = 'The live attribute now broadcasts writes from custom endpoints too — not just the auto-CRUD route — so realtime works on the pages that need custom logic. Coalesced per request, opt-in, no API change.';
+  let ogTitle = 'spark-ssr 1.3.1 — live fires on raw writes';
+  let ogDescription = 'Custom-endpoint db.query() writes now ping live tabs and bust the response cache, coalesced per request. Opt-in, no breaking change.';
+  const app = useStore('app');
+</script>
+
+<style>
+  .page { padding: 64px 0 90px; min-height: calc(100vh - 220px); max-width: 720px; }
+  .back, .back2 { font-size: 13px; color: var(--muted); }
+  .back:hover, .back2:hover { color: var(--spark-ink); }
+  .back { display: inline-block; margin-bottom: 28px; }
+  .head { margin-bottom: 30px; }
+  .row1 { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+  .tag {
+    font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em;
+    padding: 3px 9px; border-radius: 999px; color: #000; background: var(--spark);
+  }
+  .tag-fix { background: var(--spark); }
+  .tag-release { background: #7ce29b; }
+  .tag-news { background: #8fc6ff; }
+  .date { font-size: 12.5px; color: var(--muted-dim); }
+  .title { font-size: clamp(26px, 4.4vw, 38px); font-weight: 800; letter-spacing: -.03em; line-height: 1.25; }
+
+  /* article prose — matches the docs page's typographic system */
+  .body h2 { font-size: 20px; margin: 40px 0 14px; padding-top: 20px; border-top: 1px solid var(--border); letter-spacing: -.01em; font-weight: 700; scroll-margin-top: 24px; }
+  .body p { margin: 12px 0; font-size: 15px; color: var(--muted); line-height: 1.8; }
+  .body p strong { color: var(--text); font-weight: 600; }
+  .body a { color: var(--spark-ink); }
+  .body code { font-size: 13px; background: var(--surface-2); padding: 2px 6px; color: var(--spark-ink); }
+  .body pre { background: var(--surface); border: 1px solid var(--border); padding: 16px 18px; font-size: 13px; line-height: 1.7; color: var(--muted); overflow-x: auto; margin: 16px 0; white-space: pre; }
+  .body pre code { background: none; padding: 0; color: inherit; }
+
+  .postfoot { margin-top: 48px; padding-top: 20px; border-top: 1px solid var(--border); }
+
+  @media (max-width: 720px) {
+    .page { padding: 36px 0 60px; }
+    .body pre { padding: 12px 14px; font-size: 12.5px; }
+  }
+</style>
