@@ -80,7 +80,11 @@ export function makeRequest(app) {
               try {
                 const sharp = (await import('sharp')).default;
                 const webpName = name.replace(/\.\w+$/, '.webp');
-                await sharp(join(uploadsDir, name)).webp({ quality: 82 }).toFile(join(uploadsDir, webpName));
+                // .rotate() bakes the EXIF orientation into the pixels FIRST —
+                // webp output drops the EXIF tag, so without this every phone
+                // photo (and extracted video poster) renders sideways. Same as
+                // spark-html-image's build-time pipeline (bugs.md #20).
+                await sharp(join(uploadsDir, name)).rotate().webp({ quality: 82 }).toFile(join(uploadsDir, webpName));
                 file.url = '/uploads/' + webpName;
               } catch { /* sharp unavailable — original serves fine */ }
             }
