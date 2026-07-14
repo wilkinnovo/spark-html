@@ -29,7 +29,7 @@
     <p>Turn it on wherever is smallest for the job — <strong>no
     <code>spark.json</code> required</strong>:</p>
 
-    <pre><code>&lt;!-- per page: this route is API-only, nothing else to configure --&gt;
+    <pre spark-ignore><code>&lt;!-- per page: this route is API-only, nothing else to configure --&gt;
 &lt;spark-ssr table="todos" api /&gt;</code></pre>
 
     <p>…or app-wide with <code>spark-ssr start --api</code>, or
@@ -52,13 +52,13 @@
     <p>Because the API is declared in HTML, a route's rate limit rides the same
     block — one more attribute:</p>
 
-    <pre><code>&lt;spark-ssr table="comments" api rate="10/1m" rate-key="ip" /&gt;</code></pre>
+    <pre spark-ignore><code>&lt;spark-ssr table="comments" api rate="10/1m" rate-key="ip" /&gt;</code></pre>
 
     <p>For cross-cutting policy, <code>spark.json</code> takes a
     <code>rateLimit</code> object with tiers that resolve narrowest-wins — per
     route, per table, per role, per method:</p>
 
-    <pre><code>{ "rateLimit": {
+    <pre spark-ignore><code>{ "rateLimit": {
     "window": "1m", "max": 120, "key": "ip",
     "methods": { "GET": { "max": 300 }, "POST": { "max": 30 } },
     "roles":   { "anon": { "max": 60 }, "user": { "max": 600, "key": "session" }, "admin": false },
@@ -75,7 +75,7 @@
     <p>Three lines declare the data model and a background email job — all
     API-only, all served as JSON, zero <code>spark.json</code>:</p>
 
-    <pre><code>&lt;!-- pages/_schema.html --&gt;
+    <pre spark-ignore><code>&lt;!-- pages/_schema.html --&gt;
 &lt;spark-ssr table="posts"    api seed="./seed/posts.json" /&gt;
 &lt;spark-ssr table="comments" api /&gt;
 &lt;spark-ssr job="notify-author" on="insert:comments" api /&gt;</code></pre>

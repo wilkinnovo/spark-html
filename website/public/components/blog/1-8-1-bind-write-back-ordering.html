@@ -26,7 +26,7 @@
     to see the state <em>after</em> the bind has written back — that's the whole
     point of a two-way bind.</p>
 
-    <pre><code>&lt;input type="checkbox" bind:checked="agreed" onchange="{track}" /&gt;
+    <pre spark-ignore><code>&lt;input type="checkbox" bind:checked="agreed" onchange="{track}" /&gt;
 
 &lt;script&gt;
   let agreed = false;
@@ -47,7 +47,7 @@
     binds wire before handlers, unconditionally, so registration order always
     puts the write-back first.</p>
 
-    <pre><code>// binds wire BEFORE handlers: a same-event onXXX (onchange={…} beside
+    <pre spark-ignore><code>// binds wire BEFORE handlers: a same-event onXXX (onchange={…} beside
 // bind:checked=…) must observe the write-back's new value, not the stale
 // one — DOM fires same-type listeners in registration order.
 for (const b of a.binds) { /* … */ }
@@ -64,7 +64,7 @@ for (const h of a.handlers) { /* … */ }</code></pre>
     and ecosystem checks, and the gzip budget gate — plus a manual convergence
     check for the ordering itself. All green:</p>
 
-    <pre><code>500 passed, 0 failed (500 scenarios, 29 corpus)
+    <pre spark-ignore><code>500 passed, 0 failed (500 scenarios, 29 corpus)
 scanner-fuzz: 200 passed, 0 failed
 spark-html runtime: 17.93 KB gzip · budget 18 KB
 ✅ within budget</code></pre>
@@ -72,7 +72,7 @@ spark-html runtime: 17.93 KB gzip · budget 18 KB
     <h2 id="upgrade">Upgrading</h2>
     <p>1.8.1 is a pure bug fix with no breaking changes — bump your
     <code>spark-html</code> range and you're done:</p>
-    <pre><code>npm install spark-html@^1.8.1</code></pre>
+    <pre spark-ignore><code>npm install spark-html@^1.8.1</code></pre>
 
     <p>Full details: <a href="https://www.npmjs.com/package/spark-html" target="_blank" rel="noopener">spark-html on npm</a> · <a href="https://github.com/wilkinnovo/spark-html/releases/tag/v1.8.1" target="_blank" rel="noopener">v1.8.1 on GitHub</a>.</p>
   </article>
