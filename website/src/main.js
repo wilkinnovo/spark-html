@@ -38,6 +38,7 @@ head({
     '/tutorials': 'Spark — Tutorials',
     '/showcase': 'Spark — Showcase',
     '/blog': 'Spark — Blog',
+    '/blog/1-3-3-upload-orientation': 'Spark — spark-ssr 1.3.3: upload orientation fix',
     '/blog/dev-tls-0-1-0-local-https': 'Spark — spark-html-dev-tls: local HTTPS for dev',
     '/blog/1-3-2-what-looks-like-a-bug': 'Spark — spark-ssr 1.3.2: 21 “bugs” and what they actually were',
     '/blog/1-3-1-spark-ssr-live-raw-writes': 'Spark — spark-ssr 1.3.1: live fires on raw writes',

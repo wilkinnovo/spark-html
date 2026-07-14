@@ -8,6 +8,16 @@
        listing prerenders into the page for crawlers. New post = add a card
        here + a component under components/blog/ + a route in index.html. -->
   <div class="list">
+    <a class="post" :href="app.base + '/blog/1-3-3-upload-orientation'">
+      <div class="row1">
+        <span class="tag tag-fix">Fix</span>
+        <time class="date" datetime="2026-07-14">2026-07-14</time>
+      </div>
+      <h2 class="title">spark-ssr 1.3.3 — phone photos no longer upload sideways</h2>
+      <p class="excerpt">Converting an uploaded photo to webp dropped its EXIF orientation tag without baking the rotation into the pixels, so phone photos rendered sideways. sharp().rotate() fixes it — one line.</p>
+      <span class="read">Read post <span class="arr">→</span></span>
+    </a>
+
     <a class="post" :href="app.base + '/blog/dev-tls-0-1-0-local-https'">
       <div class="row1">
         <span class="tag tag-release">Release</span>

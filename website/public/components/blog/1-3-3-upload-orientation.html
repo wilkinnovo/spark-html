@@ -1,0 +1,98 @@
+<!-- A blog post authored as real HTML (not a JS string): the prose lives in
+     the markup so it prerenders into the static page — crawlable, shareable,
+     no client render required. Add a post = one file like this + a static
+     route in index.html + a card in blog.html + a title in main.js head(). -->
+<section class="page">
+  <a class="back" :href="app.base + '/blog'">← All posts</a>
+
+  <header class="head">
+    <div class="row1">
+      <span class="tag tag-fix">Fix</span>
+      <time class="date" datetime="2026-07-14">2026-07-14</time>
+    </div>
+    <h1 class="title">spark-ssr 1.3.3 — phone photos no longer upload sideways</h1>
+  </header>
+
+  <article class="body">
+    <p><strong>spark-ssr 1.3.3</strong> is a one-line fix for a real annoyance:
+    a photo taken on a phone — a profile picture, a captured video poster —
+    could render <em>rotated</em> after upload, even though nothing in your CSS
+    touches it.</p>
+
+    <h2 id="why">Why it happened</h2>
+    <p>Phone cameras almost always save the sensor's native (landscape) pixels
+    plus an <strong>EXIF <code>Orientation</code> tag</strong> that says "rotate
+    this 90° for display." Viewers honor that tag, so the photo looks upright.</p>
+    <p>When <code>spark-ssr</code> has the optional
+    <code>spark-html-image</code> pipeline enabled, it converts uploaded
+    <code>png</code>/<code>jpg</code> files to <code>webp</code> at write time.
+    The problem: <strong>webp output drops the EXIF tag entirely.</strong> So
+    the conversion threw away the one piece of information that said "rotate
+    me," while leaving the raw sideways pixels untouched — and every viewer,
+    having nothing left to correct, showed it rotated.</p>
+
+    <h2 id="fix">The fix</h2>
+    <p>Call <code>.rotate()</code> before writing the webp. With no arguments,
+    sharp's <code>.rotate()</code> <em>bakes</em> the EXIF orientation into the
+    actual pixels, so the upright result survives even when the tag is dropped:</p>
+    <pre spark-ignore><code>// packages/spark-ssr/src/request.js
+await sharp(uploaded)
+  .rotate()                 // ← bake EXIF orientation into the pixels first
+  .webp({ quality: 82 })
+  .toFile(out);</code></pre>
+    <p>It's exactly what the sibling <code>spark-html-image</code> build-time
+    pipeline already did — the upload-time path just never got the same call.</p>
+
+    <h2 id="upgrade">Upgrading</h2>
+    <p>Pure bug fix, no breaking changes, no API surface change:</p>
+    <pre spark-ignore><code>bun add spark-ssr@^1.3.3</code></pre>
+    <p><a href="https://www.npmjs.com/package/spark-ssr" target="_blank" rel="noopener">spark-ssr on npm</a> · <a href="https://github.com/wilkinnovo/spark-html/releases/tag/ssr-v1.3.3" target="_blank" rel="noopener">ssr-v1.3.3 on GitHub</a>.</p>
+  </article>
+
+  <footer class="postfoot">
+    <a class="back2" :href="app.base + '/blog'">← All posts</a>
+  </footer>
+</section>
+
+<script>
+  // Baked into <head> at prerender (spark-prerender reads these off scope).
+  let pageTitle = 'Spark — spark-ssr 1.3.3: upload orientation fix';
+  let pageDescription = 'A phone photo could upload sideways: converting it to webp dropped the EXIF orientation tag without baking the rotation into the pixels. sharp().rotate() fixes it.';
+  let ogTitle = 'spark-ssr 1.3.3 — phone photos no longer upload sideways';
+  let ogDescription = 'webp conversion dropped the EXIF orientation tag; sharp().rotate() now bakes it into the pixels first. One-line fix.';
+  const app = useStore('app');
+</script>
+
+<style>
+  .page { padding: 64px 0 90px; min-height: calc(100vh - 220px); max-width: 720px; }
+  .back, .back2 { font-size: 13px; color: var(--muted); }
+  .back:hover, .back2:hover { color: var(--spark-ink); }
+  .back { display: inline-block; margin-bottom: 28px; }
+  .head { margin-bottom: 30px; }
+  .row1 { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+  .tag {
+    font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em;
+    padding: 3px 9px; border-radius: 999px; color: #000; background: var(--spark);
+  }
+  .tag-fix { background: var(--spark); }
+  .tag-release { background: #7ce29b; }
+  .tag-news { background: #8fc6ff; }
+  .date { font-size: 12.5px; color: var(--muted-dim); }
+  .title { font-size: clamp(26px, 4.4vw, 38px); font-weight: 800; letter-spacing: -.03em; line-height: 1.25; }
+
+  /* article prose — matches the docs page's typographic system */
+  .body h2 { font-size: 20px; margin: 40px 0 14px; padding-top: 20px; border-top: 1px solid var(--border); letter-spacing: -.01em; font-weight: 700; scroll-margin-top: 24px; }
+  .body p { margin: 12px 0; font-size: 15px; color: var(--muted); line-height: 1.8; }
+  .body p strong { color: var(--text); font-weight: 600; }
+  .body a { color: var(--spark-ink); }
+  .body code { font-size: 13px; background: var(--surface-2); padding: 2px 6px; color: var(--spark-ink); }
+  .body pre { background: var(--surface); border: 1px solid var(--border); padding: 16px 18px; font-size: 13px; line-height: 1.7; color: var(--muted); overflow-x: auto; margin: 16px 0; white-space: pre; }
+  .body pre code { background: none; padding: 0; color: inherit; }
+
+  .postfoot { margin-top: 48px; padding-top: 20px; border-top: 1px solid var(--border); }
+
+  @media (max-width: 720px) {
+    .page { padding: 36px 0 60px; }
+    .body pre { padding: 12px 14px; font-size: 12.5px; }
+  }
+</style>
