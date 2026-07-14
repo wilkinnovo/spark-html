@@ -749,6 +749,10 @@ async function makeSiteApp() {
   writeFileSync(join(root, 'pages', 'notes.html'), `<template each="note in notes"><p class="n">{note.text}</p></template>
 <spark-ssr table="notes" />`);
   writeFileSync(join(root, 'pages', 'login.html'), '<h1>Login</h1>\n<spark-ssr table="users" />');
+  // #7: the auth table used as a raw SSR source must scope to the caller's own
+  // row, not leak every account (like /api/<authTable> already does).
+  writeFileSync(join(root, 'pages', 'roster.html'),
+    '<template each="u in users"><span class="ru">{u.email}</span></template>\n<spark-ssr table="users" />');
   // A `live` page + a custom endpoint that writes the SAME table with a raw
   // db.query() (not the auto-CRUD route) — the bugs.md #18 case.
   writeFileSync(join(root, 'pages', 'live-notes.html'),
@@ -990,6 +994,27 @@ await test('family packages: theme init inlined, fonts in head, modules served, 
   assert.equal((await fetch(`${S}/@modules/spark-html-theme/init.js`)).status, 200,
     'sibling files resolve (relative imports inside a package)');
   assert.equal((await fetch(`${S}/@modules/left-pad`)).status, 404, 'non-family modules refused');
+});
+
+await test('#7 auth table as SSR source scopes to the caller (no cross-account leak)', async () => {
+  const cookie = globalThis.__sparkTestCookie;
+  // Ensure a SECOND account exists so an unscoped read would visibly leak it.
+  await fetch(`${S}/api/users`, {
+    method: 'POST', headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ email: 'leak@probe.c', password: 'pw3' }),
+  });
+  const mine = await (await fetch(`${S}/roster`, { headers: { cookie } })).text();
+  const emails = [...mine.matchAll(/class="ru">([^<]+)</g)].map((m) => m[1]);
+  assert.deepEqual(emails, ['a@b.c'], 'a non-admin sees only their own auth-table row');
+  assert.ok(!mine.includes('leak@probe.c'), 'other accounts are not leaked into the page');
+});
+
+await test('#13 dev analyzer: each over a JS-global call is not a "missing source"', () => {
+  const plan = dataPlan(analyze('<template each="n in Array(3).fill(0)"><i>{n}</i></template>'), []);
+  const names = (plan.unresolved || []).map((u) => u.name);
+  assert.ok(!names.includes('Array'), 'Array (a global call) is not flagged as an unresolved data source');
+  const plan2 = dataPlan(analyze('<template each="k in Object.keys(o)"><i>{k}</i></template>'), []);
+  assert.ok(!(plan2.unresolved || []).some((u) => u.name === 'Object'), 'Object.keys(...) is not a source either');
 });
 
 await test('auth table hygiene: no hashes over the wire, writes are own-account only', async () => {

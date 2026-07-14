@@ -43,19 +43,29 @@ export function makeCrud(app) {
     const cols = await columnsOf(table);
     const names = cols.map((c) => c.name);
     const scoped = !!config.auth && names.includes('user_id') && config.auth.table !== table;
-    return { cols, names, scoped };
+    // The auth/identity table self-references by `id`, not `user_id`, so the
+    // generic user_id scoping above deliberately excludes it — but a page that
+    // reads it as a raw source (`table="users"` + each) must STILL only see the
+    // caller's own row, exactly like the /api/<authTable> GET route does.
+    // Without this an "edit my profile" page leaks every account (bugs.md #7).
+    const authScoped = !!config.auth && config.auth.table === table;
+    return { cols, names, scoped, authScoped };
   }
 
   // List conventions (§10): ?page → LIMIT/OFFSET (+ .total/.pages on the
   // array), ?sort=col:dir validated against real columns, ?q across the
   // block's search="…" columns. Admins read unscoped (Tier 3 roles).
   async function tableRows(table, req, opts = {}) {
-    const { names, scoped } = await tableInfo(table);
+    const { names, scoped, authScoped } = await tableInfo(table);
     const where = [];
     const values = [];
     if (scoped) {
       if (!req.session) return [];
       if (!isAdmin(req.session)) { where.push('user_id = ?'); values.push(req.session.id); }
+    }
+    if (authScoped) {
+      if (!req.session) return [];
+      if (!isAdmin(req.session)) { where.push('id = ?'); values.push(req.session.id); }
     }
     if (opts.search && req.query.q) {
       const cols = opts.search.filter((c) => names.includes(c));
