@@ -1,0 +1,44 @@
+{
+  "name": "spark-html-dev-tls",
+  "version": "0.1.0",
+  "description": "Local HTTPS for spark-html dev servers. One command fronts your spark-ssr or spark-html-bun dev/preview server with a self-signed TLS reverse proxy, so secure-context browser APIs (camera, mic, geolocation, service workers) work when you open the app on a phone over your LAN. Auto-detects the mode, proxies HTTP + SSE + WebSocket HMR, and generates a SAN cert covering localhost + your LAN IPs. Zero dependencies (uses system openssl).",
+  "type": "module",
+  "main": "./src/index.js",
+  "homepage": "https://wilkinnovo.github.io/spark-html",
+  "bin": {
+    "spark-html-dev-tls": "./bin/cli.js"
+  },
+  "exports": {
+    ".": {
+      "default": "./src/index.js"
+    }
+  },
+  "scripts": {
+    "test": "bun test/dev-tls.js"
+  },
+  "files": [
+    "src",
+    "bin"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/wilkinnovo/spark-html.git",
+    "directory": "packages/spark-html-dev-tls"
+  },
+  "keywords": [
+    "spark-html",
+    "spark-ssr",
+    "https",
+    "tls",
+    "dev-server",
+    "self-signed",
+    "secure-context",
+    "getusermedia",
+    "reverse-proxy",
+    "bun"
+  ],
+  "engines": {
+    "bun": ">=1.2.0"
+  },
+  "license": "MIT"
+}

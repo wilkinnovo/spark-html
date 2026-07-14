@@ -1,0 +1,54 @@
+name: Publish spark-html-dev-tls to npm
+
+on:
+  push:
+    tags:
+      - 'dev-tls-v*' # e.g. git tag dev-tls-v0.1.0 && git push --tags
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write # npm provenance
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+
+      - name: Install dependencies
+        run: bun install
+
+      - name: Run tests
+        run: bun run test
+
+      - name: Verify tag matches package version
+        if: startsWith(github.ref, 'refs/tags/dev-tls-v')
+        run: |
+          PKG_VERSION=$(node -p "require('./packages/spark-html-dev-tls/package.json').version")
+          TAG_VERSION="${GITHUB_REF_NAME#dev-tls-v}"
+          if [ "$PKG_VERSION" != "$TAG_VERSION" ]; then
+            echo "Tag dev-tls-v$TAG_VERSION does not match package version $PKG_VERSION" >&2
+            exit 1
+          fi
+
+      - name: Publish
+        run: |
+          PKG_VERSION=$(node -p "require('./package.json').version")
+          NPM_TAG="latest"
+          if [[ "$PKG_VERSION" == *-* ]]; then
+            NPM_TAG=$(node -p "'$PKG_VERSION'.split('-')[1].split('.')[0]")
+          fi
+          npm publish --provenance --access public --tag "$NPM_TAG"
+        working-directory: packages/spark-html-dev-tls
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
