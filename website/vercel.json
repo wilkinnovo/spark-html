@@ -29,6 +29,10 @@
       "destination": "/blog.html"
     },
     {
+      "source": "/blog/dev-tls-0-1-0-local-https",
+      "destination": "/blog/dev-tls-0-1-0-local-https.html"
+    },
+    {
       "source": "/blog/1-3-2-what-looks-like-a-bug",
       "destination": "/blog/1-3-2-what-looks-like-a-bug.html"
     },

@@ -1,0 +1,158 @@
+<!-- A blog post authored as real HTML (not a JS string): the prose lives in
+     the markup so it prerenders into the static page — crawlable, shareable,
+     no client render required. Add a post = one file like this + a static
+     route in index.html + a card in blog.html + a title in main.js head(). -->
+<section class="page">
+  <a class="back" :href="app.base + '/blog'">← All posts</a>
+
+  <header class="head">
+    <div class="row1">
+      <span class="tag tag-release">Release</span>
+      <time class="date" datetime="2026-07-14">2026-07-14</time>
+    </div>
+    <h1 class="title">spark-html-dev-tls — test camera & mic from your phone, over local HTTPS</h1>
+  </header>
+
+  <article class="body">
+    <p>New tiny package: <strong>spark-html-dev-tls</strong>. One command gives
+    your spark dev server local HTTPS, so you can open the app on your phone and
+    actually use the camera, microphone, geolocation, or a service worker while
+    you build.</p>
+
+    <h2 id="why">Why you need it</h2>
+    <p>The browser gates its most powerful APIs behind a <em>secure context</em>:
+    <code>getUserMedia</code> (camera/mic), <code>geolocation</code>,
+    <code>ServiceWorker</code>, the clipboard, and more only run on
+    <code>https://</code> or <code>localhost</code>. That's fine on your laptop —
+    <code>http://localhost:3000</code> counts as secure. But the moment you pull
+    out your phone to test the real thing and hit
+    <code>http://192.168.1.20:3000</code>, none of it works. A LAN IP over plain
+    HTTP is not a secure context, so the camera call silently fails.</p>
+    <p>The fix is real HTTPS in dev — which normally means fiddling with
+    <code>openssl</code>, wiring certs into a server, and remembering to undo it.
+    spark-html-dev-tls does that once, as a wrapper, and leaves your existing
+    setup untouched.</p>
+
+    <h2 id="how">How to use it</h2>
+    <p>It's purely additive. Keep your <code>dev</code> script exactly as it is
+    (plain HTTP), and add a <code>secure</code> script next to it:</p>
+    <pre spark-ignore><code>{
+  "scripts": {
+    "dev": "bun spark-ssr",
+    "secure": "bun spark-html-dev-tls"
+  }
+}</code></pre>
+    <p>New apps from <code>create-spark-html-app</code> already ship this — every
+    template (client, SSR, prerender) has the <code>secure</code> script. For an
+    existing project, add the script and the dev dependency:</p>
+    <pre spark-ignore><code>bun add -d spark-html-dev-tls</code></pre>
+    <p>Then, instead of <code>bun run dev</code>, run:</p>
+    <pre spark-ignore><code>bun run secure
+
+[spark-html-dev-tls] 🔒 HTTPS on :3000  →  bun spark-ssr on :3001
+  local:    https://localhost:3000/
+  network:  https://192.168.1.20:3000/   ← open this on your phone
+  (self-signed — accept the browser warning once)</code></pre>
+    <p>Open that <code>network</code> URL on your phone, tap through the
+    one-time certificate warning, and the camera works. That's the whole flow.</p>
+
+    <h2 id="what">What it actually does</h2>
+    <p>It's a small HTTP→HTTPS reverse proxy that runs <em>in front of</em> your
+    normal dev server:</p>
+    <ol>
+      <li><strong>Auto-detects the mode.</strong> A <code>spark.json</code> or
+      <code>pages/</code> folder means spark-ssr; a <code>spark.config.js</code>
+      means spark-html-bun (client-only or prerender). It spawns that exact dev
+      server on a private port.</li>
+      <li><strong>Generates a certificate</strong> covering <code>localhost</code>,
+      <code>127.0.0.1</code>, and your machine's LAN IPs (so the phone URL
+      validates), cached in <code>.spark/</code> and reused until it nears
+      expiry. It uses your system <code>openssl</code> — no npm dependencies.</li>
+      <li><strong>Fronts it with HTTPS</strong> and proxies everything through:
+      plain requests, the live-reload and live-data <em>Server-Sent Events</em>,
+      and the <em>WebSocket</em> hot-reload channel. Hot reload and live updates
+      keep working over the secure connection.</li>
+    </ol>
+    <p>Because an HTTP→HTTPS proxy doesn't care what's behind it, the same one
+    command works identically for <strong>SSR, client-only, and prerender</strong>
+    apps — no per-mode configuration.</p>
+
+    <h2 id="cookies">Sessions keep working</h2>
+    <p>The proxy adds an <code>x-forwarded-proto: https</code> header on the way
+    to your dev server, so spark-ssr correctly marks session and flash cookies
+    <code>Secure</code> — logins and redirects behave exactly as they will in
+    production behind a real TLS terminator. Nothing to configure.</p>
+
+    <h2 id="options">Options</h2>
+    <p>Sensible defaults, easy to override:</p>
+    <pre spark-ignore><code>bun spark-html-dev-tls --port 8443          # pick the HTTPS port
+bun spark-html-dev-tls --cert c.pem --key k # bring your own cert (no warning)
+bun spark-html-dev-tls -- bun spark-ssr     # skip auto-detect; wrap explicitly</code></pre>
+    <p>Self-signed certs show a one-time browser warning. If you'd rather have
+    zero warnings — handy when several devices test at once — generate a
+    locally-trusted cert with <a href="https://github.com/FiloSottile/mkcert" target="_blank" rel="noopener">mkcert</a>
+    and pass it with <code>--cert</code>/<code>--key</code>.</p>
+
+    <h2 id="scope">A note on scope</h2>
+    <p>This is a <strong>dev / testing tool</strong>, on purpose. It doesn't
+    touch your app code, your build, or production — where HTTPS is normally
+    terminated by your host or a reverse proxy, and the <code>x-forwarded-proto</code>
+    path already handles it. spark-html-dev-tls exists for exactly one job:
+    making the secure-context APIs testable on a real device while you develop,
+    with a single script and no ceremony.</p>
+
+    <h2 id="get">Get it</h2>
+    <pre spark-ignore><code>bun add -d spark-html-dev-tls</code></pre>
+    <p><a href="https://www.npmjs.com/package/spark-html-dev-tls" target="_blank" rel="noopener">spark-html-dev-tls on npm</a> · <a href="https://github.com/wilkinnovo/spark-html/tree/main/packages/spark-html-dev-tls" target="_blank" rel="noopener">source on GitHub</a>.</p>
+  </article>
+
+  <footer class="postfoot">
+    <a class="back2" :href="app.base + '/blog'">← All posts</a>
+  </footer>
+</section>
+
+<script>
+  // Baked into <head> at prerender (spark-prerender reads these off scope).
+  let pageTitle = 'Spark — spark-html-dev-tls: local HTTPS for dev';
+  let pageDescription = 'A new tiny package: one `secure` script fronts your spark dev server with local HTTPS, so camera, mic, geolocation and service workers work when you test from a phone over your LAN. Auto-detects the mode; keeps your dev script untouched.';
+  let ogTitle = 'spark-html-dev-tls — test camera & mic from your phone over local HTTPS';
+  let ogDescription = 'Secure-context APIs need HTTPS. This wraps your dev server with a self-signed TLS proxy — one command, all modes, dev script unchanged.';
+  const app = useStore('app');
+</script>
+
+<style>
+  .page { padding: 64px 0 90px; min-height: calc(100vh - 220px); max-width: 720px; }
+  .back, .back2 { font-size: 13px; color: var(--muted); }
+  .back:hover, .back2:hover { color: var(--spark-ink); }
+  .back { display: inline-block; margin-bottom: 28px; }
+  .head { margin-bottom: 30px; }
+  .row1 { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+  .tag {
+    font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em;
+    padding: 3px 9px; border-radius: 999px; color: #000; background: var(--spark);
+  }
+  .tag-fix { background: var(--spark); }
+  .tag-release { background: #7ce29b; }
+  .tag-news { background: #8fc6ff; }
+  .date { font-size: 12.5px; color: var(--muted-dim); }
+  .title { font-size: clamp(26px, 4.4vw, 38px); font-weight: 800; letter-spacing: -.03em; line-height: 1.25; }
+
+  /* article prose — matches the docs page's typographic system */
+  .body h2 { font-size: 20px; margin: 40px 0 14px; padding-top: 20px; border-top: 1px solid var(--border); letter-spacing: -.01em; font-weight: 700; scroll-margin-top: 24px; }
+  .body p { margin: 12px 0; font-size: 15px; color: var(--muted); line-height: 1.8; }
+  .body p strong { color: var(--text); font-weight: 600; }
+  .body a { color: var(--spark-ink); }
+  .body ol, .body ul { margin: 12px 0 12px 22px; color: var(--muted); font-size: 15px; line-height: 1.8; }
+  .body li { margin: 8px 0; }
+  .body li strong { color: var(--text); font-weight: 600; }
+  .body code { font-size: 13px; background: var(--surface-2); padding: 2px 6px; color: var(--spark-ink); }
+  .body pre { background: var(--surface); border: 1px solid var(--border); padding: 16px 18px; font-size: 13px; line-height: 1.7; color: var(--muted); overflow-x: auto; margin: 16px 0; white-space: pre; }
+  .body pre code { background: none; padding: 0; color: inherit; }
+
+  .postfoot { margin-top: 48px; padding-top: 20px; border-top: 1px solid var(--border); }
+
+  @media (max-width: 720px) {
+    .page { padding: 36px 0 60px; }
+    .body pre { padding: 12px 14px; font-size: 12.5px; }
+  }
+</style>
