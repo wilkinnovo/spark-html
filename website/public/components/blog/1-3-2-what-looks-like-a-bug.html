@@ -1,0 +1,257 @@
+<!-- A blog post authored as real HTML (not a JS string): the prose lives in
+     the markup so it prerenders into the static page — crawlable, shareable,
+     no client render required. Add a post = one file like this + a static
+     route in index.html + a card in blog.html + a title in main.js head(). -->
+<section class="page">
+  <a class="back" :href="app.base + '/blog'">← All posts</a>
+
+  <header class="head">
+    <div class="row1">
+      <span class="tag tag-release">Release</span>
+      <time class="date" datetime="2026-07-14">2026-07-14</time>
+    </div>
+    <h1 class="title">spark-ssr 1.3.2 — 21 “bugs” from a real app, and what they actually were</h1>
+  </header>
+
+  <article class="body">
+    <p>We ported a real, non-trivial app to spark-ssr — a rotating-savings
+    (“san”) app with auth, uploads, cross-user notifications, live badges, a
+    draw animation, infinite scroll, the works — and kept a running list of
+    everything that <em>looked</em> like a framework bug. Twenty-one entries.</p>
+
+    <p>Then we audited each one against the actual source, not against what we
+    <em>expected</em> to happen. The result is the honest, slightly humbling
+    breakdown below: <strong>three were real spark-ssr bugs</strong> (now fixed),
+    a couple were spark-html <em>core</em> issues, and <strong>the large
+    majority were the framework working exactly as designed</strong> — misread
+    because we brought habits from frameworks that work differently.</p>
+
+    <p>We’re publishing the whole list on purpose. If something in spark-ssr
+    surprises you, there’s a good chance it’s one of these — with a documented
+    reason and a one-line “right way.” Read this before you file it.</p>
+
+    <h2 id="fixed">What actually shipped</h2>
+    <p>Three genuine spark-ssr defects, fixed and released:</p>
+    <ul>
+      <li><strong>1.3.1 — <code>live</code> on raw writes.</strong> A custom
+      <code>api/*.html</code> endpoint’s hand-written
+      <code>db.query("INSERT …")</code> didn’t ping <code>live</code> tabs —
+      only the auto-CRUD route did. The endpoint <code>db</code> handle now fans
+      out to <code>live</code> + cache invalidation, coalesced per request.</li>
+      <li><strong>1.3.2 — auth table as an SSR source scopes to the caller
+      (security).</strong> <code>table="users"</code> used as a page data source
+      ran an unscoped <code>SELECT</code>, so a self-service “edit my profile”
+      page that iterated it rendered <em>every</em> account. It now scopes to
+      the signed-in user (<code>WHERE id = ?</code>) for non-admins — matching
+      what the <code>/api/users</code> route already did.</li>
+      <li><strong>1.3.2 — dev-only false alarm.</strong> The “missing data
+      source” banner flagged a JS-global call in a loop
+      (<code>each="n in Array(k).fill(0)"</code>) as an unresolved source. It
+      now ignores built-in globals.</li>
+    </ul>
+    <p>Two more were real, but in spark-html <em>core</em>, not spark-ssr: a
+    phone-camera photo losing its EXIF orientation on upload (fixed upstream),
+    and a boolean attribute bound to a SQLite <code>0</code> rendering
+    <code>disabled="0"</code> (still on the core list — coerce with
+    <code>:disabled="!!col"</code> for now). That’s it for defects. Everything
+    below is <em>not</em> a bug.</p>
+
+    <h2 id="model">The mental model that explains the rest</h2>
+    <p>Almost every false alarm traces back to one of six design facts. Hold
+    these and spark-ssr stops surprising you:</p>
+    <ol>
+      <li><strong>The template is the schema and the API.</strong>
+      <code>table="X"</code> means <em>the X table</em> as a source. Want a
+      subset or a join? Write the SQL. The framework infers; it doesn’t
+      second-guess what you wrote.</li>
+      <li><strong>A page is either interactive or not, and it matters.</strong>
+      A page with handlers/binds <em>hydrates</em>: its <code>&lt;script&gt;</code>
+      becomes the <em>client</em> component and never runs on the server. A page
+      without them keeps its <code>&lt;script&gt;</code> as a <em>server-only</em>
+      script. Same tag, opposite runtime.</li>
+      <li><strong>Escape hatches are doors, not ejection seats — and they’re
+      deliberately unintercepted.</strong> The raw <code>db</code> handle,
+      custom endpoints, <code>spark-ignore</code>: these give you full control
+      precisely by <em>not</em> adding the framework’s automations.</li>
+      <li><strong>Components declare their own prop defaults</strong> with
+      <code>export let name = …</code> — exactly like the README shows.</li>
+      <li><strong>The script layer is a string scanner, not a JS parser</strong>
+      (by design, for size and speed). It reads structure from how you write
+      code; it doesn’t fully parse it.</li>
+      <li><strong><code>navigate</code> is <code>onclick</code> sugar, not a
+      router.</strong> It smooths <em>same-path</em> query-string links; it is
+      not a programmatic <code>navigate(path)</code>.</li>
+    </ol>
+
+    <h2 id="patterns">“Bugs” that were the documented pattern</h2>
+
+    <p><strong>Unpassed component props blanked an expression.</strong> A
+    component read <code spark-ignore>{big ? 'a' : 'b'}</code> but the call site passed no
+    <code>big=</code>, and it threw on hydration. The fix is the framework’s own
+    documented one: a component declares its defaults —
+    <code>&lt;script&gt;export let big = false;&lt;/script&gt;</code>. A prop you
+    read is a prop you default.</p>
+
+    <p><strong>A shared layout’s <code>session</code> broke on one page.</strong>
+    Making a page interactive hydrates the layout with it, and a hydrating
+    client component doesn’t receive the ambient server-side
+    <code spark-ignore>{session}</code>. That’s the documented hydration boundary — read the
+    user from a declared data source (<code>me.id</code>), and delegate any
+    layout event from <code>document</code>, not a cached node.</p>
+
+    <p><strong><code>redirect=</code>/<code>flash=</code> “stopped working” on an
+    interactive page.</strong> Those are the <em>no-JS</em> form mechanism. On a
+    page that hydrates, the client intercepts the submit — so you drive the
+    outcome from your own <code>fetch</code> handler instead. Both are
+    documented; they’re just different layers (no-JS vs. hydrated).</p>
+
+    <p><strong>A plain <code>&lt;form&gt;</code> was hijacked on an interactive
+    page.</strong> Same root: an interactive page owns its submits. Use an
+    explicit <code>fetch()</code> handler with your own reactive state. Not a
+    bug — the two form models (no-JS redirect vs. hydrated fetch) are a choice
+    you make per page.</p>
+
+    <p><strong><code spark-ignore>onclick={() =&gt; fn(arg)}</code> “broke.”</strong> This is
+    already the correct spark pattern for passing an argument; the breakage was
+    plain HTML quoting, not the framework. <code spark-ignore>onclick={fn(arg)}</code> also
+    works — spark wraps it into a handler for you.</p>
+
+    <h2 id="boundaries">Deliberate boundaries, not defects</h2>
+
+    <p><strong>A nested <code>const</code> in a server-only script threw a
+    <code>ReferenceError</code>.</strong> The top-level-name scanner is
+    line-anchored (string scanner, not a parser), so a <code>const</code> at the
+    start of a line inside a callback gets misread. Keep returned page-script
+    vars at the top level, or inline the expression. This is the framework-wide
+    “scanner, not parser” tradeoff, present in core too.</p>
+
+    <p><strong>A server-only script couldn’t see a sibling
+    <code>&lt;spark-ssr&gt;</code> source by name.</strong> Server scripts get
+    exactly <code>req</code>, <code>db</code>, <code>fetch</code>,
+    <code>mail</code> — the same scope-isolation rule the framework applies
+    everywhere (no implicit cross-scope lookups). Re-run the query with
+    <code>await db.query(...)</code> inside the script.</p>
+
+    <p><strong>An interactive page’s <code>&lt;script&gt;</code> never ran on the
+    server.</strong> Correct, and documented: on a hydrating page it’s the
+    client component. Compute display fields (formatted dates, counts) in the
+    <em>data source</em>, not the page script, so the first paint has them.</p>
+
+    <p><strong><code>spark-ignore</code> also disabled <em>server-side</em>
+    interpolation.</strong> Yes — it’s symmetric by design, so a code sample
+    renders identically on the server and the client. That’s the point.</p>
+
+    <p><strong>An empty <code>&lt;input type="file"&gt;</code> still created a
+    zero-byte upload.</strong> The raw upload path doesn’t apply per-field
+    heuristics about “empty means skip” — guard it in your handler. A deliberate
+    “raw and predictable” boundary.</p>
+
+    <p><strong>Auto-CRUD didn’t coerce a form field to the column’s type.</strong>
+    The generated write takes fields as-is (fast, predictable). Cast in SQL or a
+    custom endpoint when you need a specific type. Inference describes your
+    schema; it doesn’t silently rewrite your values.</p>
+
+    <p><strong><code>navigate('/dashboard')</code> threw after an
+    <code>await</code>.</strong> The one that taught us the most.
+    <code>navigate</code> is click-delegation sugar —
+    <code spark-ignore>onclick={navigate}</code> — that intercepts <em>same-path</em>
+    <code>&lt;a href="?q=…"&gt;</code> links and refetches via
+    <code>refresh()</code>. It takes an <em>event</em>, not a path. It works
+    beautifully in a <strong>single-route</strong> app (see
+    <code>examples/spark-chat</code>, whose nav is all <code>href="/?with=…"</code>
+    on one path), and is a no-op across a <strong>multi-route</strong> app’s
+    distinct pages by design. For a cross-route redirect, use
+    <code>location.href</code> or a real link; for app-wide client routing, use
+    the <code>spark-html-router</code> companion. It was never a programmatic
+    router.</p>
+
+    <h2 id="core">spark-html core, not spark-ssr</h2>
+    <p>A few surfaced through spark-ssr but live in the core runtime: a bound
+    <code>width</code>/<code>height</code> on a raw <code>&lt;svg&gt;</code> being
+    cleared on patch (size a wrapper via <code>style</code> instead); a
+    <code>bind:value</code> input inside a <code>display:none</code> container
+    losing its value across the toggle; and the boolean-attribute
+    <code>disabled="0"</code> case above. Tracked on the core side — the app-level
+    coercions (<code>!!col</code>, a static-sized wrapper) are the interim
+    answer.</p>
+
+    <h2 id="environment">Not the framework at all</h2>
+    <p>Two entries weren’t code issues: a dev server that survived
+    <code>pkill -f "bun spark-ssr"</code> because the real process name differs
+    (a shell thing), and the lack of a built-in HTTPS dev flag for testing
+    camera/mic from a phone (a missing convenience, worked around with a local
+    proxy). Neither is a defect to patch in the framework.</p>
+
+    <h2 id="tell">How to tell a real bug from a misunderstanding</h2>
+    <p>The pattern in almost every false alarm: an expectation imported from a
+    framework that describes your app <em>twice</em> (models + UI, or a client
+    router + routes). spark-ssr reads the single description you already wrote —
+    the template — so the questions to ask first are: <em>Is this page
+    interactive or not? Am I using a raw escape hatch (which is meant to be
+    unintercepted)? Did I write the SQL/prop-default the framework infers
+    from?</em></p>
+    <p>A <strong>real</strong> spark bug looks different: the DOM fails to
+    converge, a documented promise is broken, or it fails <em>silently</em>
+    where it should fail loud. Those we want — minimized repro, and they become
+    permanent tests (that’s how #18, #7 and #13 got here). The rest of this list
+    is the map for everything else.</p>
+
+    <h2 id="upgrade">Upgrading</h2>
+    <p>1.3.2 is a bug-fix release. #7 changes one behavior deliberately — the
+    auth/identity table, when read as a raw <code>table=</code> source, is now
+    scoped to the caller for non-admins; if you truly want to list all accounts,
+    write an explicit query. Otherwise it’s a clean bump:</p>
+    <pre spark-ignore><code>bun add spark-ssr@^1.3.2</code></pre>
+    <p>Details: <a href="https://www.npmjs.com/package/spark-ssr" target="_blank" rel="noopener">spark-ssr on npm</a> · <a href="https://github.com/wilkinnovo/spark-html/releases/tag/ssr-v1.3.2" target="_blank" rel="noopener">ssr-v1.3.2 on GitHub</a>.</p>
+  </article>
+
+  <footer class="postfoot">
+    <a class="back2" :href="app.base + '/blog'">← All posts</a>
+  </footer>
+</section>
+
+<script>
+  // Baked into <head> at prerender (spark-prerender reads these off scope).
+  let pageTitle = 'Spark — spark-ssr 1.3.2: 21 “bugs” and what they actually were';
+  let pageDescription = 'We ported a real app to spark-ssr and logged 21 things that looked like framework bugs. Three were real (now fixed); most were the framework working as designed. Here is the whole list, with the right pattern for each.';
+  let ogTitle = 'spark-ssr 1.3.2 — 21 “bugs” and what they actually were';
+  let ogDescription = 'Three real bugs fixed; the rest were misunderstandings of how spark-ssr works. The full breakdown, so you can tell one from the other.';
+  const app = useStore('app');
+</script>
+
+<style>
+  .page { padding: 64px 0 90px; min-height: calc(100vh - 220px); max-width: 720px; }
+  .back, .back2 { font-size: 13px; color: var(--muted); }
+  .back:hover, .back2:hover { color: var(--spark-ink); }
+  .back { display: inline-block; margin-bottom: 28px; }
+  .head { margin-bottom: 30px; }
+  .row1 { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+  .tag {
+    font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em;
+    padding: 3px 9px; border-radius: 999px; color: #000; background: var(--spark);
+  }
+  .tag-fix { background: var(--spark); }
+  .tag-release { background: #7ce29b; }
+  .tag-news { background: #8fc6ff; }
+  .date { font-size: 12.5px; color: var(--muted-dim); }
+  .title { font-size: clamp(26px, 4.4vw, 38px); font-weight: 800; letter-spacing: -.03em; line-height: 1.25; }
+
+  /* article prose — matches the docs page's typographic system */
+  .body h2 { font-size: 20px; margin: 40px 0 14px; padding-top: 20px; border-top: 1px solid var(--border); letter-spacing: -.01em; font-weight: 700; scroll-margin-top: 24px; }
+  .body p { margin: 12px 0; font-size: 15px; color: var(--muted); line-height: 1.8; }
+  .body p strong { color: var(--text); font-weight: 600; }
+  .body a { color: var(--spark-ink); }
+  .body ul, .body ol { margin: 12px 0 12px 22px; color: var(--muted); font-size: 15px; line-height: 1.8; }
+  .body li { margin: 8px 0; }
+  .body li strong { color: var(--text); font-weight: 600; }
+  .body code { font-size: 13px; background: var(--surface-2); padding: 2px 6px; color: var(--spark-ink); }
+  .body pre { background: var(--surface); border: 1px solid var(--border); padding: 16px 18px; font-size: 13px; line-height: 1.7; color: var(--muted); overflow-x: auto; margin: 16px 0; white-space: pre; }
+  .body pre code { background: none; padding: 0; color: inherit; }
+
+  .postfoot { margin-top: 48px; padding-top: 20px; border-top: 1px solid var(--border); }
+
+  @media (max-width: 720px) {
+    .page { padding: 36px 0 60px; }
+    .body pre { padding: 12px 14px; font-size: 12.5px; }
+  }
+</style>

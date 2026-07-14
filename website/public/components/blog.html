@@ -8,6 +8,16 @@
        listing prerenders into the page for crawlers. New post = add a card
        here + a component under components/blog/ + a route in index.html. -->
   <div class="list">
+    <a class="post" :href="app.base + '/blog/1-3-2-what-looks-like-a-bug'">
+      <div class="row1">
+        <span class="tag tag-release">Release</span>
+        <time class="date" datetime="2026-07-14">2026-07-14</time>
+      </div>
+      <h2 class="title">spark-ssr 1.3.2 — 21 “bugs” from a real app, and what they actually were</h2>
+      <p class="excerpt">We ported a real app and logged 21 things that looked like framework bugs. Three were real (now fixed); most were the framework working as designed. The full breakdown, with the right pattern for each — so you can tell one from the other.</p>
+      <span class="read">Read post <span class="arr">→</span></span>
+    </a>
+
     <a class="post" :href="app.base + '/blog/1-3-1-spark-ssr-live-raw-writes'">
       <div class="row1">
         <span class="tag tag-fix">Fix</span>
