@@ -9,7 +9,7 @@
       <span import="/components/theme-toggle"></span>
       <span class="avatar-chip">
         <template if="me.avatar"><img class="mini-avatar" src="{me.avatar}" alt="{me.name}"></template>
-        <template else><span class="mini-avatar initials">{me.name[0]}</span></template>
+        <template else><span class="mini-avatar initials">{me?.name?.[0]}</span></template>
       </span>
       <form action="/api/logout" method="post" redirect="/">
         <button class="ghost">Sign out</button>
