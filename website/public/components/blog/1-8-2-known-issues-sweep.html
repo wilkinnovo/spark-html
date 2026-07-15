@@ -1,0 +1,164 @@
+<!-- A blog post authored as real HTML (not a JS string): the prose lives in
+     the markup so it prerenders into the static page — crawlable, shareable,
+     no client render required. Add a post = one file like this + a static
+     route in index.html + a card in blog.html + a title in main.js head(). -->
+<section class="page">
+  <a class="back" :href="app.base + '/blog'">← All posts</a>
+
+  <header class="head">
+    <div class="row1">
+      <span class="tag tag-fix">Fix</span>
+      <time class="date" datetime="2026-07-15">2026-07-15</time>
+    </div>
+    <h1 class="title">spark-html 1.8.2 + spark-ssr 1.3.4 — the known-issues sweep</h1>
+  </header>
+
+  <article class="body">
+    <p>We keep an honest <a :href="app.base + '/docs#known-issues'">known-issues
+    table</a> in the docs. This release sweeps it: <strong>three core bugs
+    fixed</strong>, two spark-ssr fixes (one found while verifying the sweep),
+    and two reports we could not reproduce — now marked that way in the table,
+    with the correct behavior pinned by permanent tests.</p>
+
+    <h2 id="core">spark-html 1.8.2 — three fixes</h2>
+
+    <p><strong>1. A boolean attribute bound to a falsy non-boolean stayed
+    on.</strong> <code spark-ignore>:disabled="col"</code> with a SQLite
+    <code>0</code> rendered <code>disabled="0"</code> — which is still disabled;
+    presence is what counts for boolean attributes. The <code>:attr</code>
+    patcher now knows the genuine HTML boolean attributes
+    (<code>disabled checked selected readonly required multiple hidden
+    open</code>): a falsy non-boolean removes them. Truthy strings keep their
+    value (<code>hidden="until-found"</code> still works), and non-boolean
+    attributes are untouched — <code spark-ignore>:value="0"</code> still renders
+    <code>value="0"</code>. No more <code spark-ignore>:disabled="!!col"</code>
+    coercion.</p>
+
+    <p><strong>2. An interpolated <code>src</code>/<code>poster</code> fetched
+    the literal <code>{expr}</code>.</strong> On an imported component, the raw
+    markup briefly held <code spark-ignore>&lt;img src="{url}"&gt;</code> before
+    the first patch — and the browser fired a real request for
+    <code>/%7Burl%7D</code> (a cosmetic but noisy 404 on any component whose
+    data arrives async). The import path now parks those templates in the
+    element's patch plan and blanks the attribute until the first patch writes
+    the real value. Verified in a real browser: zero literal-brace requests,
+    image loads once, with the final URL.</p>
+
+    <p><strong>3. A loop variable passed as a prop to an imported component
+    crashed hydration.</strong> An <code>each</code> nested inside a
+    <code>&lt;template if&gt;</code> resolved its rows' import placeholders
+    <em>twice</em> — once with the loop scope (correct) and once more by the
+    if-block's own import sweep, whose scope doesn't have the loop variable:
+    <code>"h is not defined"</code>, plus a wasted duplicate fetch and boot.
+    Placeholders are now claimed by the first resolver; nested blocks keep
+    their own scope. Inlining child markup as a workaround is no longer
+    needed.</p>
+
+    <h2 id="ssr">spark-ssr 1.3.4 — two fixes</h2>
+
+    <p><strong>1. Boolean attributes, mirrored server-side.</strong> The same
+    falsy-non-boolean rule now applies in the server renderer, with the same
+    attribute list — otherwise SSR and the hydrated client would disagree
+    about the attribute.</p>
+
+    <p><strong>2. An interactive page with zero data sources was served
+    dead.</strong> A page with handlers and binds but no
+    <code>&lt;spark-ssr&gt;</code> source didn't hydrate at all: handlers
+    stripped server-side, no client component, no warning. It's a client page
+    that happens to live in <code>pages/</code> — it now hydrates like any
+    other interactive page. (Found while verifying this sweep; it never bit
+    real apps because real pages have sources.)</p>
+
+    <p>While in there, we re-reviewed 1.3.1's <code>live</code>-on-raw-writes
+    feature end to end. The design held up — per-request coalescing, flush in
+    <code>finally</code>, opt-in broadcast gating — but the SQL classifier had
+    two gaps, now fixed: a CTE-led write
+    (<code spark-ignore>WITH … INSERT/UPDATE/DELETE</code>) was classified as a
+    read and silently skipped the live ping, cache invalidation, and job hooks;
+    and a leading SQL comment made an <code>insert</code> fire hooks under the
+    generic <code>write</code> event, so <code>on="insert:table"</code> jobs
+    missed it.</p>
+
+    <h2 id="unconfirmed">The two we could not reproduce</h2>
+    <p>Two reports from the San-App port — <code>bind:value</code> losing its
+    value inside a <code>display:none</code>-toggled container, and interpolated
+    <code>width</code>/<code>height</code> on a raw <code>&lt;svg&gt;</code>
+    coming back empty after hydration — did not reproduce on 1.7.0, 1.8.0, or
+    1.8.1, across client-only, prerender-style hydration, spark-ssr hydration,
+    a hydrating layout, and <code>template if</code>-nested shapes, in a real
+    Chromium. Rather than claim a fix we can't verify, the table now marks both
+    <em>(unconfirmed)</em>, the correct behavior is pinned by permanent suite
+    tests, and we'd love a minimized repro if you can trigger either.</p>
+
+    <h2 id="verifying">Verifying it</h2>
+    <p>Every fix ships with a regression test (the import double-resolve and
+    eager-src ones poll mid-mount, so a revert fails loudly), and the whole
+    chain ran green: the 500-scenario fuzzer, scanner fuzzer, all package
+    suites, the SSR security and bench suites (render floor intact), the
+    relocation e2e (client / ssr / prerender converge), and the budget
+    gate:</p>
+
+    <pre spark-ignore><code>112 passed, 0 failed (spark-ssr)
+500 passed, 0 failed (fuzz)
+spark-html runtime: 18.00 KB gzip · budget 18 KB
+✅ within budget</code></pre>
+
+    <p>That last line is exact — the three fixes cost bytes, so two verbose
+    dev warnings got shorter to pay for them. The 18&nbsp;KB ceiling doesn't
+    move.</p>
+
+    <h2 id="upgrade">Upgrading</h2>
+    <p>Both are pure bug-fix releases, no breaking changes:</p>
+    <pre spark-ignore><code>npm install spark-html@^1.8.2
+bun add spark-ssr@^1.3.4</code></pre>
+
+    <p>Details: <a href="https://www.npmjs.com/package/spark-html" target="_blank" rel="noopener">spark-html on npm</a> · <a href="https://www.npmjs.com/package/spark-ssr" target="_blank" rel="noopener">spark-ssr on npm</a> · <a href="https://github.com/wilkinnovo/spark-html/releases/tag/v1.8.2" target="_blank" rel="noopener">v1.8.2</a> · <a href="https://github.com/wilkinnovo/spark-html/releases/tag/ssr-v1.3.4" target="_blank" rel="noopener">ssr-v1.3.4</a>.</p>
+  </article>
+
+  <footer class="postfoot">
+    <a class="back2" :href="app.base + '/blog'">← All posts</a>
+  </footer>
+</section>
+
+<script>
+  // Baked into <head> at prerender (spark-prerender reads these off scope).
+  let pageTitle = 'Spark — 1.8.2 + spark-ssr 1.3.4: the known-issues sweep';
+  let pageDescription = 'Three core bugs fixed (boolean attrs bound to falsy non-booleans, the literal {expr} src fetch, loop-var props into imported components), two spark-ssr fixes, and an honest "could not reproduce" for two more.';
+  let ogTitle = 'spark-html 1.8.2 + spark-ssr 1.3.4 — the known-issues sweep';
+  let ogDescription = 'The known-issues table, swept: three core fixes, two SSR fixes, two reports marked unconfirmed with pinned tests.';
+  const app = useStore('app');
+</script>
+
+<style>
+  .page { padding: 64px 0 90px; min-height: calc(100vh - 220px); max-width: 720px; }
+  .back, .back2 { font-size: 13px; color: var(--muted); }
+  .back:hover, .back2:hover { color: var(--spark-ink); }
+  .back { display: inline-block; margin-bottom: 28px; }
+  .head { margin-bottom: 30px; }
+  .row1 { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+  .tag {
+    font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em;
+    padding: 3px 9px; border-radius: 999px; color: #000; background: var(--spark);
+  }
+  .tag-fix { background: var(--spark); }
+  .tag-release { background: #7ce29b; }
+  .tag-news { background: #8fc6ff; }
+  .date { font-size: 12.5px; color: var(--muted-dim); }
+  .title { font-size: clamp(26px, 4.4vw, 38px); font-weight: 800; letter-spacing: -.03em; line-height: 1.25; }
+
+  /* article prose — matches the docs page's typographic system */
+  .body h2 { font-size: 20px; margin: 40px 0 14px; padding-top: 20px; border-top: 1px solid var(--border); letter-spacing: -.01em; font-weight: 700; scroll-margin-top: 24px; }
+  .body p { margin: 12px 0; font-size: 15px; color: var(--muted); line-height: 1.8; }
+  .body p strong { color: var(--text); font-weight: 600; }
+  .body a { color: var(--spark-ink); }
+  .body code { font-size: 13px; background: var(--surface-2); padding: 2px 6px; color: var(--spark-ink); }
+  .body pre { background: var(--surface); border: 1px solid var(--border); padding: 16px 18px; font-size: 13px; line-height: 1.7; color: var(--muted); overflow-x: auto; margin: 16px 0; white-space: pre; }
+  .body pre code { background: none; padding: 0; color: inherit; }
+
+  .postfoot { margin-top: 48px; padding-top: 20px; border-top: 1px solid var(--border); }
+
+  @media (max-width: 720px) {
+    .page { padding: 36px 0 60px; }
+    .body pre { padding: 12px 14px; font-size: 12.5px; }
+  }
+</style>

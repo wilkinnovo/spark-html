@@ -253,31 +253,14 @@ See pitfalls.md "Fixed at v1-prep".)
 shipped in ssr 1.3.1, **auth-table-as-SSR-source scoping** + **dev-analyzer
 false positive** in ssr 1.3.2 — see pitfalls.md "San-App port audit".)
 
-- **`:disabled="0"` / a boolean attribute bound to a falsy NON-boolean renders
-  it PRESENT** (a SQLite `0` → `disabled="0"`, still disabled). Lives in BOTH
-  spark-ssr `render.js` AND core `index.js` (~L1521, the `:attr` kind-2 patcher:
-  only `typeof===boolean`/null are presence-toggles; any other value →
-  `setAttribute(name, String(val))`). Fixing ONLY the SSR half diverges (SSR
-  omits, client re-adds `disabled="0"` on hydrate) — the fix belongs in CORE,
-  special-casing genuine HTML boolean attrs. Workaround: `:disabled="!!col"`.
-  (bugs.md #14.)
-- **`bind:value` inside a `display:none` container loses its value across the
-  toggle** — core reactivity/DOM. (bugs.md #11.)
-- **Bound `width`/`height` on a raw `<svg>` are cleared on the hydration
-  patch** — size a wrapper via interpolated `style`, give the `<svg>` static
-  `width="100%" height="100%"`. (bugs.md #1.)
-- **An interpolated `src`/`poster` on an async-first-paint component fires a
-  real request for the LITERAL `{expr}` text.** The non-hydrate `import=` path
-  (`resolveImportNode`) sets `host.innerHTML = markup` (raw `{expr}`) and
-  attaches it live BEFORE the first patch — so `<img src="{url}">` /
-  `<video poster>` / `<iframe src>` on any component whose first paint is async
-  (SSR module source, `onMount`-deferred write) briefly holds `{url}` in a
-  connected node and the browser 404s on `/…/%7Burl%7D`. Self-heals in ~300 ms
-  (cosmetic console error, correct final DOM). **root `bugs.md` #8 — its "FIXED
-  IN TREE" note is STALE** (an agent's boot-before-attach fix was reverted; the
-  code still gates on `if (hydrate)`). The fix design (`hydrate ||
-  node.isConnected` boot gate + `patchSlots` `off || n.isConnected` relaxation +
-  a `jsimport.js` regression test, ~+4 gz) is written up in full in that entry.
+- **`bind:value` in `display:none` container (bugs.md #11) and bound `<svg>`
+  width/height wiped on hydrate (bugs.md #1) are UNCONFIRMED** — 2026-07-15
+  repro attempts on 1.7.0/1.8.0/1.8.1 all pass (client-only, prerender
+  hydrate, spark-ssr hydrate, layout hydrate, template-if-nested, faithful
+  San-App wizard shape, real Chromium). Correct behavior is pinned in
+  `test/repro-bugs.js` (`test_pin_hidden_bind_and_svg`). Docs rows marked
+  "(unconfirmed)". Reopen ONLY with a minimized repro; don't burn hours
+  re-attempting — the shapes tried are listed here.
 - **A loop variable passed as a prop into an imported component throws
   "`X is not defined`" on CLIENT hydration** — only inside an `each` loop; the
   same `each → import(component)` shape works fine on a non-loop row. Not
@@ -325,7 +308,25 @@ earned). Purely additive to existing inference (§7, pinned by a golden test).
 Next step = §5 item 1 (declarative rate limits, independently shippable). The
 doc's STATUS line is the live ledger.
 
-**spark-ssr CURRENT: 1.3.2** (registry-verified 2026-07-14). Post-1.3.0
+**spark-ssr CURRENT: 1.3.4** (2026-07-15): falsy non-boolean boolean-attr
+omitted server-side (mirrors core BOOL_ATTRS in render.js — keep lists in
+sync); an interactive page with ZERO data sources now hydrates
+(shouldHydrate no longer gates on plan.length — was a silent dead page);
+liveDb `writeEvent` classifies CTE-led (`WITH … INSERT/UPDATE/DELETE`) and
+comment-led writes (the 1.3.1 feature reviewed 2026-07-15: design sound —
+per-request coalescing, finally-flush, opt-in gating, spread-safe handles —
+these two classifier gaps were the only real findings). 1.3.3 = upload EXIF
+orientation. **spark-html core CURRENT: 1.8.2** (2026-07-15, three fixes):
+(1) BOOL_ATTRS presence-toggle for falsy non-booleans in runElementPlan
+(`disabled|checked|selected|readonly|required|multiple|hidden|open` — the
+SSR render.js list must match); (2) resolveImportNode blanks brace-bearing
+src/poster after innerHTML (plan pre-built via buildElementPlan) — no more
+literal %7Burl%7D fetch; (3) claim-once gate on resolveImportNode (rides
+__sparkImportPath) kills the nested-block double-resolve that evaluated
+loop-var props against the outer scope ("h is not defined" in an each
+inside a template-if). Regression tests: repro-bugs.js + loop-imports.js +
+ssr.js; gzip refunded to exactly 18,432/18,432 via message trims.
+Previously: **1.3.2** (registry-verified 2026-07-14). Post-1.3.0
 patches, both from the `examples/San-App` port audit (pitfalls.md "San-App
 port audit"): **1.3.1** = `live` broadcast on custom-endpoint raw
 `db.query()` writes; **1.3.2** = auth-table-as-SSR-source scoping (security) +

@@ -44,6 +44,7 @@ head({
     '/blog/1-3-1-spark-ssr-live-raw-writes': 'Spark — spark-ssr 1.3.1: live fires on raw writes',
     '/blog/1-3-0-spark-ssr-api-only-mode': 'Spark — spark-ssr 1.3.0: API-only mode + rate limits',
     '/blog/1-8-1-bind-write-back-ordering': 'Spark — v1.8.1: a same-event bind + handler ordering fix',
+    '/blog/1-8-2-known-issues-sweep': 'Spark — 1.8.2 + spark-ssr 1.3.4: the known-issues sweep',
     '*': 'Spark — HTML that reacts. Built for humans.',
   },
 });

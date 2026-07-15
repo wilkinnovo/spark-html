@@ -8,6 +8,16 @@
        listing prerenders into the page for crawlers. New post = add a card
        here + a component under components/blog/ + a route in index.html. -->
   <div class="list">
+    <a class="post" :href="app.base + '/blog/1-8-2-known-issues-sweep'">
+      <div class="row1">
+        <span class="tag tag-fix">Fix</span>
+        <time class="date" datetime="2026-07-15">2026-07-15</time>
+      </div>
+      <h2 class="title">spark-html 1.8.2 + spark-ssr 1.3.4 — the known-issues sweep</h2>
+      <p class="excerpt">Three core bugs fixed — boolean attributes bound to a falsy non-boolean, the literal {expr} src fetch, loop-variable props into imported components — plus two spark-ssr fixes and an honest "could not reproduce" on two more.</p>
+      <span class="read">Read post <span class="arr">→</span></span>
+    </a>
+
     <a class="post" :href="app.base + '/blog/1-3-3-upload-orientation'">
       <div class="row1">
         <span class="tag tag-fix">Fix</span>

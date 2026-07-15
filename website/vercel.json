@@ -53,6 +53,10 @@
       "destination": "/blog/1-8-1-bind-write-back-ordering.html"
     },
     {
+      "source": "/blog/1-8-2-known-issues-sweep",
+      "destination": "/blog/1-8-2-known-issues-sweep.html"
+    },
+    {
       "source": "/(.*)",
       "destination": "/index.html"
     }
