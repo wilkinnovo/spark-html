@@ -47,7 +47,7 @@ export function makeCrud(app) {
     // generic user_id scoping above deliberately excludes it — but a page that
     // reads it as a raw source (`table="users"` + each) must STILL only see the
     // caller's own row, exactly like the /api/<authTable> GET route does.
-    // Without this an "edit my profile" page leaks every account (bugs.md #7).
+    // Without this an "edit my profile" page leaks every account (San-App audit #7).
     const authScoped = !!config.auth && config.auth.table === table;
     return { cols, names, scoped, authScoped };
   }

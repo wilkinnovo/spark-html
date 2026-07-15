@@ -150,7 +150,7 @@ export function inferSchema(pagesData, config, root) {
   // later used to be silently dropped from the schema entirely (a key that
   // is `null` everywhere is still a column the seed *mentioned*: TEXT,
   // nullable, plus a startup warning — never silently omitted;
-  // post-v1-bugs.md #4).
+  // San-App audit #4).
   for (const [name, t] of Object.entries(tables)) {
     if (!t.seed) continue;
     try {

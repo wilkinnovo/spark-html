@@ -2415,5 +2415,56 @@ await test('non-conflict: with no api/rate attrs, pages render exactly as before
   } finally { await s.stop(true); }
 });
 
+await test('renderer: a falsy non-boolean on a genuine boolean attribute omits it (SQLite 0)', async () => {
+  const out = await renderFragment(
+    '<button :disabled="z">x</button><input :value="z"><p :hidden="m">t</p><b :disabled="one">y</b>',
+    { z: 0, m: 'until-found', one: 1 });
+  assert.ok(!/<button[^>]*disabled/.test(out), ':disabled="0" omitted — got: ' + out);
+  assert.ok(out.includes('value="0"'), ':value="0" is not a boolean attr — string kept');
+  assert.ok(out.includes('hidden="until-found"'), 'truthy string on a boolean attr keeps its value');
+  assert.ok(/<b[^>]*disabled="1"/.test(out), 'truthy non-boolean stays present');
+});
+
+await test('an interactive page with ZERO data sources still hydrates (no dead handlers)', async () => {
+  const root = mkdtempSync(join(tmpdir(), 'spark-ssr-nosrc-'));
+  mkdirSync(join(root, 'pages'), { recursive: true });
+  writeFileSync(join(root, 'pages', 'index.html'),
+    '<button class="b" onclick={inc}>+</button><span>{n}</span>\n<script>\n  let n = 0;\n  function inc() { n++; }\n</script>');
+  const s = await serve({ root, port: 0, quiet: true, watch: false });
+  try {
+    const body = await (await fetch(`http://localhost:${s.port}/`)).text();
+    assert.ok(body.includes('import="/__spark/page/index"'), 'page hydrates without sources — got: ' + body.slice(0, 200));
+    const comp = await (await fetch(`http://localhost:${s.port}/__spark/page/index.html`)).text();
+    assert.ok(comp.includes('onclick') && comp.includes('function inc'), 'client component carries the handler');
+  } finally { await s.stop(true); }
+});
+
+await test('liveDb: CTE-led and comment-led writes through a custom endpoint fire the insert hook', async () => {
+  const root = mkdtempSync(join(tmpdir(), 'spark-ssr-cte-'));
+  writeFileSync(join(root, 'spark.json'), JSON.stringify({ db: 'sqlite:dev.db' }));
+  mkdirSync(join(root, 'pages'), { recursive: true });
+  mkdirSync(join(root, 'api'), { recursive: true });
+  mkdirSync(join(root, 'jobs'), { recursive: true });
+  writeFileSync(join(root, 'pages', 'index.html'),
+    '<template each="t in todos"><p>{t.title}</p></template>\n<spark-ssr table="todos" />\n<spark-ssr job="mark" on="insert:todos" />');
+  writeFileSync(join(root, 'jobs', 'mark.js'),
+    "import { writeFileSync } from 'node:fs';\nexport default (req) => { writeFileSync(new URL('../marker-' + req.event.replace(':', '_'), import.meta.url).pathname, '1'); };");
+  writeFileSync(join(root, 'api', 'cte.html'),
+    `<script>\n  await db.query("WITH x AS (SELECT 'from-cte' AS t) INSERT INTO todos (title) SELECT t FROM x");\n  await db.query("-- audit note\\nINSERT INTO todos (title) VALUES ('from-comment')");\n  return { ok: true };\n</script>`);
+  const s = await serve({ root, port: 0, quiet: true, watch: false });
+  try {
+    await fetch(`http://localhost:${s.port}/`); // boot page → registers table + job
+    const r = await (await fetch(`http://localhost:${s.port}/api/cte`, { method: 'POST' })).json();
+    assert.equal(r.ok, true, 'endpoint ran');
+    // runJob is fire-and-forget — poll briefly for the marker.
+    let marked = false;
+    for (let i = 0; i < 40 && !marked; i++) {
+      marked = existsSync(join(root, 'marker-insert_todos'));
+      await new Promise((res) => setTimeout(res, 50));
+    }
+    assert.ok(marked, 'insert:todos hook fired for CTE-led + comment-led writes');
+  } finally { await s.stop(true); }
+});
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

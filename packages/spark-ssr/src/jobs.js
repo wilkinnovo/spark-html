@@ -120,12 +120,21 @@ export function makeJobs(app) {
       if (set) for (const name of set) runJob(name, event + ':' + table, row);
     }
   }
-  // insert/update/delete for a write statement; null for a read (SELECT/WITH).
-  const writeEvent = (sql) =>
-    /^\s*insert/i.test(sql) ? 'insert'
-    : /^\s*update/i.test(sql) ? 'update'
-    : /^\s*delete/i.test(sql) ? 'delete'
-    : /^\s*(select|with)\b/i.test(sql) ? null : 'write';
+  // insert/update/delete for a write statement; null for a read. Leading
+  // comments are stripped first (a "-- note\nINSERT" is still an insert),
+  // and a CTE-led statement (WITH … INSERT/UPDATE/DELETE) is classified by
+  // the write keyword inside it — CTE writes are real writes.
+  const writeEvent = (sql) => {
+    const s = String(sql).replace(/^(?:\s*(?:--[^\n]*\n|\/\*[\s\S]*?\*\/))+/, '');
+    if (/^\s*insert/i.test(s)) return 'insert';
+    if (/^\s*update/i.test(s)) return 'update';
+    if (/^\s*delete/i.test(s)) return 'delete';
+    if (/^\s*with\b/i.test(s)) {
+      const m = /\b(insert|update|delete)\b/i.exec(s);
+      return m ? m[1].toLowerCase() : null;
+    }
+    return /^\s*select\b/i.test(s) ? null : 'write';
+  };
   const broadcastSql = (sql) => {
     const event = writeEvent(sql) || 'write';
     for (const t of sqlTables(sql)) fireEvent(event, t, null);
@@ -134,7 +143,7 @@ export function makeJobs(app) {
   // Wrap the raw `db` handed to a custom api/ endpoint so its hand-written
   // writes still fan out to `live` tabs + cache invalidation + job hooks —
   // the same automation the generated /api/<table> CRUD route gets, which is
-  // otherwise the ONLY path that pings /__spark/live (see bugs.md #18). Reads
+  // otherwise the ONLY path that pings /__spark/live (the San-App audit's #18). Reads
   // pass straight through. Broadcasts are COALESCED per request and flushed
   // once the handler returns: an N-row write loop pings each touched table
   // exactly once, never N back-to-back refresh storms across open tabs.

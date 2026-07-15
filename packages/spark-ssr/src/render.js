@@ -78,6 +78,9 @@ const EMPTY_ATTRS = new Set([
 // HTML the old pipeline never produced from OUR setAttribute path — keep the
 // full list for parity with parsed-static attributes.
 const VOID = /^(?:area|base|br|col|embed|hr|img|input|keygen|link|menuitem|meta|param|source|track|wbr)$/;
+// Mirrors the core runtime's BOOL_ATTRS (spark-html index.js) — a falsy
+// non-boolean bound to one of these omits the attribute on the server too.
+const BOOL_ATTRS = /^(?:disabled|checked|selected|readonly|required|multiple|hidden|open)$/;
 
 // linkedom's template parsing is inconsistent: children can land in .content,
 // in .childNodes, split between the two (whitespace one side, elements the
@@ -495,7 +498,11 @@ function emitOpen(op, scope, out) {
       continue;
     }
     const val = evalFn(a.fn, scope);
-    if (val === false || val == null) continue;
+    // Genuine boolean attrs: a falsy NON-boolean (a SQLite 0) must omit the
+    // attribute — disabled="0" is still disabled. Same list as the core's
+    // BOOL_ATTRS (index.js runElementPlan) — keep the two in sync, or SSR
+    // and the hydrated client disagree about the attribute.
+    if (val === false || val == null || (!val && BOOL_ATTRS.test(a.name))) continue;
     if (a.name === 'class') {
       const ex = pairs.find((p) => p.name === 'class');
       if (ex) { ex.value = (ex.value + ' ' + escapeAttr(str(val))).trim(); continue; }

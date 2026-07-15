@@ -50,7 +50,11 @@ export function makePage(app) {
   // injected, missing handlers synthesized), so authored pages hydrate too.
   const DB_SOURCE = new Set(['table', 'query', 'sql']);
   function shouldHydrate(pd) {
-    if (!pd.analysis.interactive || pd.plan.length === 0) return false;
+    // An interactive page hydrates even with ZERO data sources — it's a
+    // client page that happens to live in pages/. Gating on plan.length
+    // served a dead page: handlers/binds stripped server-side, no client
+    // component, no warning (relocation gate: the same file works client-only).
+    if (!pd.analysis.interactive) return false;
     const needsDb = pd.plan.some((p) => p.source && DB_SOURCE.has(p.source.kind));
     return !needsDb || !!db;
   }
