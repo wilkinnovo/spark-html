@@ -2466,5 +2466,36 @@ await test('liveDb: CTE-led and comment-led writes through a custom endpoint fir
   } finally { await s.stop(true); }
 });
 
+await test('jobs get the live automation: writes broadcast (hookless) and never chain further jobs', async () => {
+  const root = mkdtempSync(join(tmpdir(), 'spark-ssr-jobdb-'));
+  writeFileSync(join(root, 'spark.json'), JSON.stringify({ db: 'sqlite:dev.db' }));
+  mkdirSync(join(root, 'pages'), { recursive: true });
+  mkdirSync(join(root, 'api'), { recursive: true });
+  mkdirSync(join(root, 'jobs'), { recursive: true });
+  writeFileSync(join(root, 'pages', 'index.html'),
+    '<template each="t in todos"><p>{t.title}</p></template>\n<spark-ssr table="todos" live />\n<spark-ssr job="chain" on="insert:todos" />');
+  // The job WRITES ITS OWN TRIGGER TABLE — with hook chaining this loops.
+  writeFileSync(join(root, 'jobs', 'chain.js'),
+    "import { appendFileSync } from 'node:fs';\nexport default async (req, db) => {\n  appendFileSync(new URL('../runs.log', import.meta.url).pathname, 'x');\n  if (req.event.startsWith('insert')) await db.query(\"INSERT INTO todos (title) VALUES ('from-job')\");\n};");
+  writeFileSync(join(root, 'api', 'add.html'),
+    '<script>\n  await db.query("INSERT INTO todos (title) VALUES (\'first\')");\n  return { ok: true };\n</script>');
+  const s = await serve({ root, port: 0, quiet: true, watch: false });
+  try {
+    await fetch(`http://localhost:${s.port}/`); // registers table + job
+    await (await fetch(`http://localhost:${s.port}/api/add`, { method: 'POST' })).json();
+    let runs = '';
+    for (let i = 0; i < 40; i++) {
+      runs = existsSync(join(root, 'runs.log')) ? readFileSync(join(root, 'runs.log'), 'utf8') : '';
+      if (runs.length >= 1) { await new Promise((r) => setTimeout(r, 300)); break; }
+      await new Promise((r) => setTimeout(r, 50));
+    }
+    runs = readFileSync(join(root, 'runs.log'), 'utf8');
+    assert.equal(runs, 'x', `job must run exactly once (hookless flush) — ran ${runs.length}×`);
+    const rows = await (await fetch(`http://localhost:${s.port}/api/todos`)).json();
+    const titles = rows.map((r) => r.title).sort();
+    assert.deepEqual(titles, ['first', 'from-job'], "the job's own write landed");
+  } finally { await s.stop(true); }
+});
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

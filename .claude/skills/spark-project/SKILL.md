@@ -308,7 +308,7 @@ earned). Purely additive to existing inference (§7, pinned by a golden test).
 Next step = §5 item 1 (declarative rate limits, independently shippable). The
 doc's STATUS line is the live ledger.
 
-**spark-ssr CURRENT: 1.3.4** (2026-07-15): falsy non-boolean boolean-attr
+**spark-ssr CURRENT: 1.3.5** (2026-07-15): jobs run with a liveDb-wrapped handle - writes broadcast live + invalidate caches, HOOKLESS (flushLive(1): never chains further job hooks, so a job writing its own trigger table cannot loop). Found removing San-App's workarounds: notify-payout inserted notifications no open tab ever saw. **1.3.4** (same day): falsy non-boolean boolean-attr
 omitted server-side (mirrors core BOOL_ATTRS in render.js — keep lists in
 sync); an interactive page with ZERO data sources now hydrates
 (shouldHydrate no longer gates on plan.length — was a silent dead page);

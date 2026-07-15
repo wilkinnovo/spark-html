@@ -89,7 +89,12 @@ export function makeJobs(app) {
         params: {}, query: {}, headers: {}, session: null,
         mail, fetch: app.makeAppFetch(null),
       };
-      await mod.default(req, db);
+      // Jobs get the same live automation as custom endpoints: writes are
+      // coalesced and flushed after the run — but HOOKLESS (live ping +
+      // cache invalidation only, never chaining further job hooks, so a
+      // job that writes its own trigger table can't loop).
+      const jdb = liveDb(db);
+      try { await mod.default(req, jdb); } finally { jdb.flushLive(1); }
     } catch (e) { if (!quiet) console.warn(`[spark-ssr] job "${name}" threw: ${e.message}`); }
   }
   function registerJob(b) {
@@ -157,8 +162,11 @@ export function makeJobs(app) {
         if (event) for (const t of sqlTables(sql)) touched.set(t, event);
         return r;
       },
-      flushLive() {
-        for (const [t, event] of touched) fireEvent(event, t, null);
+      flushLive(hookless) {
+        for (const [t, event] of touched) {
+          if (hookless) app.broadcast(t);
+          else fireEvent(event, t, null);
+        }
         touched.clear();
       },
     };
