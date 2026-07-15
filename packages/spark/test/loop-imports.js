@@ -109,5 +109,40 @@ await test('import appears only when the branch is shown', async () => {
   assert.equal(cards[0].textContent, 'ifname=ifpow');
 });
 
+// An each nested INSIDE a template-if: the if's own [import] sweep used to
+// re-resolve the loop rows' placeholders with the IF scope (which lacks the
+// loop var) — "h is not defined" during hydration, double fetch+boot. The
+// claim-once gate in resolveImportNode leaves them to the loop's pass.
+console.log('\nimports in an each nested inside an if');
+await test('loop-var prop resolves once, with the loop scope', async () => {
+  const warns = [];
+  const ow = console.warn, oe = console.error;
+  console.warn = (...a) => warns.push(a.join(' '));
+  console.error = (...a) => warns.push(a.join(' '));
+  component('ifloopcard', `
+<span class="av">{uname}</span>
+<script>export let uname = '';</script>
+`);
+  component('ifloop', `
+<template if="hosts.length > 0">
+  <div class="hosts">
+    <template each="h in hosts" key="h.id">
+      <div import="ifloopcard" uname="{h.name}"></div>
+    </template>
+  </div>
+</template>
+<script>let hosts = [{ id: 1, name: 'ana' }, { id: 2, name: 'bo' }];</script>
+`);
+  body.childNodes = [];
+  parseHTML('<div import="ifloop"></div>', body);
+  await mount();
+  await tick(); await tick();
+  console.warn = ow; console.error = oe;
+  const avs = [...body.querySelectorAll('.av')].map((n) => n.textContent);
+  assert.deepEqual(avs, ['ana', 'bo'], `expected both avatars, got ${JSON.stringify(avs)}`);
+  const scopeErr = warns.filter((w) => w.includes('is not defined'));
+  assert.equal(scopeErr.length, 0, `wrong-scope resolve leaked: ${scopeErr[0] || ''}`);
+});
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

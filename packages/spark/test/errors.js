@@ -96,7 +96,7 @@ await test('an arrow function used as an on* handler warns and names the direct-
   } finally {
     console.warn = realWarn;
   }
-  const w = sparkWarns('constructed and discarded');
+  const w = sparkWarns('discards it');
   assert.ok(w.length >= 1, 'should warn about the arrow-function footgun');
   assert.ok(w[0].includes('onclick={bump(1)}'), 'should name the direct-call fix');
 });

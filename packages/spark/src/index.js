@@ -360,6 +360,14 @@ export function buildProps(node, scope, host) {
 // import="/users/{u.id}" or name="{u.name}" — so we evaluate them against
 // the block's scope before fetching and building props.
 async function resolveImportNode(node, scope = null) {
+  // Claim-once: a placeholder inside a nested block (each rows in an if) is
+  // reachable by BOTH the inner block's hydrate pass (right scope, runs
+  // first) and the outer block's [import] sweep (outer scope) — resolving
+  // twice evaluates loop-var props against a scope that lacks them. The
+  // claim rides __sparkImportPath (truthy on a resolved HOST, never set on
+  // a fresh placeholder — expandos don't survive serialization or cloning).
+  if (node.__sparkImportPath) return null;
+  node.__sparkImportPath = 1;
   let path = node.getAttribute('import');
   if (scope && path.includes('{')) path = interpolate(path, scope);
   // A query string (e.g. a server-baked "?id=3") must survive the
@@ -420,6 +428,18 @@ async function resolveImportNode(node, scope = null) {
     host.__sparkProps = buildProps(node, scope, host);
     host.__sparkHadSlots = slotted.length > 0; // lets dev HMR skip slotted hosts (full-reload instead)
     host.innerHTML = markup; // markup contains no <script>/<style> now
+    // An eager-fetch attr holding raw {expr} hits the network as literal
+    // text (a 404 for /%7Burl%7D) the moment the parser sees it — even
+    // detached. Park the template in the element's plan now, then blank the
+    // attr; the first patch writes the real value.
+    for (const n of ['src', 'poster']) {
+      for (const el of host.querySelectorAll('[' + n + ']')) {
+        if (el.getAttribute(n)?.includes('{')) {
+          el.__sparkPlan ??= buildElementPlan(el);
+          el.removeAttribute(n);
+        }
+      }
+    }
 
     // stash extracted source on the element — bootComponent reads these
     host.__sparkScriptSrc = script;
@@ -1112,7 +1132,7 @@ export function walkNode(node, scope, isRoot = false) {
     if (!node.__sparkIfManagedBy) {
       warnOnce(
         `orphan-else:${node.getAttribute('else-if') || 'else'}`,
-        '[spark] <template else-if>/<template else> must directly follow a <template if>/else-if — branch ignored.',
+        '[spark] <template else-if>/<template else> must directly follow the if/else-if branch — ignored.',
       );
     }
     if (!isRoot) node.__sparkStatic = 1;
@@ -1302,7 +1322,7 @@ function analyzeElement(el) {
       if (/^(async\s*)?(\([^)]*\)|[a-zA-Z_$][\w$]*)\s*=>/.test(fnExpr)) {
         const body = fnExpr.replace(/^(async\s*)?\([^)]*\)\s*=>\s*/, '').replace(/^(async\s*)?[a-zA-Z_$][\w$]*\s*=>\s*/, '');
         warnOnce(name + '={' + fnExpr + '}',
-          `[spark] ${name}="{${fnExpr}}" — this is a function, not a handler: it's constructed and discarded on click, never called. Write the call directly instead, e.g. ${name}={${body}}.`);
+          `[spark] ${name}="{${fnExpr}}" builds a function and discards it — never called. Write the call: ${name}={${body}}.`);
       }
       handlers.push({ name, evt: name.slice(2), code, fnExpr });
       live = 1;
@@ -1480,6 +1500,8 @@ function buildElementPlan(el) {
   return a.plan;
 }
 
+const BOOL_ATTRS = /^(?:disabled|checked|selected|readonly|required|multiple|hidden|open)$/;
+
 function runElementPlan(el, scope) {
   for (const op of el.__sparkPlan) {
     if (op.kind === 1) {
@@ -1517,8 +1539,13 @@ function runElementPlan(el, scope) {
       // null/undefined removes the attribute — `hidden="a.loading || a.error"`
       // yields null when both are clear, and stringifying that to hidden=""
       // would mean hidden=TRUE (an empty boolean attribute is present).
+      // Genuine boolean attrs: a falsy NON-boolean (a SQLite 0, NaN) must
+      // also remove — disabled="0" is still disabled. Truthy non-booleans
+      // keep their string (hidden="until-found"). List mirrored in
+      // spark-ssr render.js — keep the two in sync.
       const sc = op.staticClass;
-      if ((typeof result === 'boolean' || result == null) && sc === undefined) {
+      if ((typeof result === 'boolean' || result == null ||
+           (!result && BOOL_ATTRS.test(op.realAttr))) && sc === undefined) {
         result ? el.setAttribute(op.realAttr, '') : el.removeAttribute(op.realAttr);
       } else {
         let str = String(result ?? '');

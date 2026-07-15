@@ -137,9 +137,92 @@ async function test_bug_1_0_2_empty_string_prop() {
   console.log('  1.0.2 -- empty-string {expr} prop is not coerced to true');
 }
 
+// --- 1.8.2 - Boolean attribute bound to a falsy non-boolean ------------
+// Root cause: the kind-2 :attr patcher only presence-toggled real booleans
+// and null; any other value went through setAttribute(name, String(v)) — so
+// a SQLite 0 rendered disabled="0", which is still disabled. Fixed by:
+// BOOL_ATTRS — a falsy non-boolean on a genuine boolean attribute removes
+// it. Truthy non-booleans keep their string (hidden="until-found").
+async function test_bug_bool_attr_falsy() {
+  component('boolattr182', '<button class="z" :disabled="zero">a</button>' +
+    '<button class="o" :disabled="one">b</button>' +
+    '<input class="v" :value="zero">' +
+    '<p class="h" :hidden="mode">t</p>' +
+    "<script>let zero = 0; let one = 1; let mode = 'until-found';</script>");
+  body.childNodes = [];
+  parseHTML('<div import="boolattr182"></div>', body);
+  await mount();
+  await new Promise(r => setTimeout(r, 10));
+  assert.equal(body.querySelector('.z').getAttribute('disabled'), null, ':disabled="0" must remove the attribute');
+  assert.equal(body.querySelector('.o').getAttribute('disabled'), '1', ':disabled="1" stays present');
+  assert.equal(body.querySelector('.v').getAttribute('value'), '0', ':value="0" is NOT a boolean attr — string kept');
+  assert.equal(body.querySelector('.h').getAttribute('hidden'), 'until-found', 'truthy string on hidden keeps its value');
+  console.log('  bool-attr -- falsy non-boolean removes a genuine boolean attribute');
+}
+
+// --- 1.8.2 - Interpolated src/poster fetches the literal {expr} --------
+// Root cause: resolveImportNode set host.innerHTML with the raw markup, so
+// an <img src="{url}"> issued a real request for /%7Burl%7D (eager loads
+// fire even detached once a task boundary passes). Fixed by: pre-building
+// the element plan and blanking brace-bearing src/poster until first patch.
+// The microtask poll below interleaves with mount()'s awaits — if a
+// connected img ever carries a literal-brace src, the regression is back.
+async function test_bug_eager_literal_src() {
+  component('imgsrc182', '<img class="im" src="{url}" alt="">' +
+    "<script>let url = ''; onMount(() => { url = '/pic.png'; });</script>");
+  body.childNodes = [];
+  parseHTML('<div import="imgsrc182"></div>', body);
+  var sawLiteral = false;
+  var poll = (async function () {
+    for (var i = 0; i < 200; i++) {
+      var im = body.querySelector('.im');
+      var s = im && im.getAttribute('src');
+      if (s && s.includes('{')) sawLiteral = true;
+      await Promise.resolve();
+    }
+  })();
+  await mount();
+  await poll;
+  await new Promise(r => setTimeout(r, 10));
+  assert.ok(!sawLiteral, 'a literal {url} src must never be observable');
+  assert.equal(body.querySelector('.im').getAttribute('src'), '/pic.png', 'src patched to the real value');
+  console.log('  eager-src -- literal {expr} never reaches src; final value patched');
+}
+
+// --- pinned good behavior (repro attempts 2026-07-15, not reproducible) -
+// bind:value inside a display:none-toggled container, and interpolated
+// width/height on <svg>: both reported from the San-App port, neither
+// reproduces on 1.7.0+. Pin the correct behavior so a future regression
+// is caught by suite, not by an app port.
+async function test_pin_hidden_bind_and_svg() {
+  component('pin182', '<div class="wrap" :style="step === 1 ? \'\' : \'display:none\'">' +
+    '<input class="inp" bind:value="v"></div>' +
+    '<button class="nx" onclick="{next}">n</button>' +
+    '<svg class="sv" width="{big ? \'40\' : \'30\'}" height="{big ? \'40\' : \'30\'}"></svg>' +
+    "<script>let step = 1; let v = ''; let big = true; function next() { step = 2; }</script>");
+  body.childNodes = [];
+  parseHTML('<div import="pin182"></div>', body);
+  await mount();
+  await new Promise(r => setTimeout(r, 10));
+  var inp = body.querySelector('.inp');
+  inp.value = 'kept';
+  var e = { type: 'input', target: inp, currentTarget: inp };
+  (inp._listeners.input || []).forEach(function (fn) { fn(e); });
+  await new Promise(r => setTimeout(r, 10));
+  var btn = body.querySelector('.nx');
+  var c = { type: 'click', target: btn, currentTarget: btn };
+  (btn._listeners.click || []).forEach(function (fn) { fn(c); });
+  await new Promise(r => setTimeout(r, 10));
+  assert.equal(body.querySelector('.wrap').getAttribute('style'), 'display:none', 'container hidden after toggle');
+  assert.equal(inp.value, 'kept', 'bound value survives the display:none toggle');
+  assert.equal(body.querySelector('.sv').getAttribute('width'), '40', 'svg width stays interpolated');
+  console.log('  pinned -- hidden-container bind keeps value; svg width/height stay');
+}
+
 // --- Run ---------------------------------------------------------------
 var passed = 0, failed = 0;
-var fns = [test_bug_0_27_12, test_bug_0_27_13, test_bug_0_27_14, test_bug_1_0_2_empty_string_prop];
+var fns = [test_bug_0_27_12, test_bug_0_27_13, test_bug_0_27_14, test_bug_1_0_2_empty_string_prop,
+  test_bug_bool_attr_falsy, test_bug_eager_literal_src, test_pin_hidden_bind_and_svg];
 for (var i = 0; i < fns.length; i++) {
   try {
     await fns[i]();
