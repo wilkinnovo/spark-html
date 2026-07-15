@@ -325,7 +325,11 @@ literal %7Burl%7D fetch; (3) claim-once gate on resolveImportNode (rides
 __sparkImportPath) kills the nested-block double-resolve that evaluated
 loop-var props against the outer scope ("h is not defined" in an each
 inside a template-if). Regression tests: repro-bugs.js + loop-imports.js +
-ssr.js; gzip refunded to exactly 18,432/18,432 via message trims.
+ssr.js; gzip refunded to exactly 18,432/18,432 via message trims. San-App
+(untracked) runs workaround-free + live-only on the published packages —
+pitfalls.md "Known-issues sweep" has the root causes, the harness traps
+(size gate = gzip level 6; dom-shim selector/brace quirks), and the
+live-vs-refresh() rule.
 Previously: **1.3.2** (registry-verified 2026-07-14). Post-1.3.0
 patches, both from the `examples/San-App` port audit (pitfalls.md "San-App
 port audit"): **1.3.1** = `live` broadcast on custom-endpoint raw

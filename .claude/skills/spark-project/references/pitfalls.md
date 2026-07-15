@@ -344,3 +344,65 @@ model will be tempted to, and shouldn't:**
   both CLOSED at 1.2.0.
 - The docs#limits audit SHIPPED post-1.0 (7ba0986) — the old "don't touch
   until v1" deferral is over; the row lifecycle in spark-brain §6 governs.
+
+## Known-issues sweep (2026-07-15) — core 1.8.2, ssr 1.3.4/1.3.5
+
+Root causes for the swept bugs (match symptoms here before re-debugging):
+
+- **Nested-block import double-resolve** (was "loop var not defined on
+  hydration"): an `each` inside a `template if` renders rows during the if's
+  walkNode; the if's own `hydrateBlockImports` sweep (`querySelectorAll
+  ('[import]')`) then found the rows' still-unresolved placeholders and
+  resolved them AGAIN with the if scope — which lacks the loop var. Fix:
+  claim-once gate at the top of `resolveImportNode` riding
+  `__sparkImportPath` (truthy on resolved hosts, never on fresh
+  placeholders; expandos don't survive cloning). First resolver wins =
+  innermost block wins, because inner blocks render during the outer walk.
+- **Eager literal-`{expr}` fetch**: an `<img src="{url}">` in imported
+  markup fires a real request (`/%7Burl%7D`) once a task boundary passes
+  after `host.innerHTML = markup` — even detached. Fix in
+  `resolveImportNode`: pre-build the element's plan (`buildElementPlan`
+  caches the brace template), then `removeAttribute` src/poster until the
+  first patch writes the real value. Microtask-poll regression test in
+  `repro-bugs.js` — a revert fails loudly.
+- **Boolean attrs**: `BOOL_ATTRS` in `runElementPlan` + the same regex in
+  ssr `render.js` — the two lists MUST stay identical or SSR and hydrated
+  client disagree. Deliberately falsy-only (truthy strings pass through so
+  `hidden="until-found"` works). DOM-prop sniffing (`typeof el[name]`) was
+  rejected: wrong for draggable/spellcheck and impossible server-side.
+
+Harness/measurement traps paid for this session:
+
+- **The size gate gzips at zlib DEFAULT level (6), not 9.** Measuring
+  `dist/spark.js` with `gzip -9`/python level 9 reads ~70 bytes UNDER the
+  gate. Only `node scripts/size-check.mjs` is the admissible number.
+- **test/dom-shim.js does NOT support `[attr*=val]` substring selectors**
+  (returns empty, silently). A runtime fix relying on one no-ops in the
+  suite while working in real browsers — the eager-src fix was rewritten to
+  plain `[src],[poster]` + a JS `.includes('{')` check for exactly this.
+- **dom-shim parseHTML eats unquoted handler braces**: `onclick={fn}`
+  parses to `fn` (no braces) → handler never wired → clicks silently dead
+  in tests. Always quote in test markup: `onclick="{fn}"`.
+- Test `fire()` helpers must ALSO dispatch document-level delegates
+  (`document.__listeners`) — many handlers are document-delegated.
+
+ssr 1.3.5 — jobs and live: `runJob` handed jobs the UNWRAPPED db, so job
+writes (San-App's notify-payout) never pinged live/cache. Jobs now get
+`liveDb(db)` with a HOOKLESS flush (`flushLive(1)` = broadcast+invalidate
+only, never chains job hooks) — a job writing its own trigger table would
+otherwise loop; pinned by a test whose job does exactly that.
+
+San-App is now the live regression vehicle (2026-07-15, on disk only —
+examples/San-App is gitignored): all bug workarounds removed (imported
+avatar with loop-var props on 3 pages, svg sized directly, wizard cuota
+input submits from inside its display:none container) and the app is
+live-only — post-write `refresh()` calls deleted (a live SSE ping already
+triggers a full client `refresh()`; see hydrate.js `__openLive`), dead
+`fetchChat` calls deleted, `sans` declared live on dashboard + san/[id].
+The ONLY legitimate manual `refresh()` left is after a QUERY-PARAM change
+(dashboard selectSan, discover onFilterChange) — live can't refire those.
+Verified over real SSE: chat send → `san_chats` ping → message renders;
+mark-all-read → `notifications` ping → unread clears. Rule of thumb it
+pinned: on a live-declared table, write-then-refresh() is a double fetch —
+delete the refresh; on param-driven sources, refresh() is required and is
+not polling.
