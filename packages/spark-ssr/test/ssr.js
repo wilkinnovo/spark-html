@@ -1577,6 +1577,9 @@ async function makeLayoutApp() {
   posts = SELECT * FROM posts WHERE published = 1 ORDER BY id
 </spark-ssr>`);
   writeFileSync(join(root, 'pages', 'admin', '_layout.html'), '<div id="adminwrap"><slot></slot></div>');
+  writeFileSync(join(root, 'pages', '_layout.css'), '.navlink { position: relative; }');
+  writeFileSync(join(root, 'pages', 'blog', '_layout.css'), '.blogwrap { padding: 1px; }');
+  writeFileSync(join(root, 'pages', 'index.css'), 'main { display: block; }');
   writeFileSync(join(root, 'pages', 'admin', 'index.html'),
     '<h1 id="adm">Admin</h1>\n<spark-ssr guard="session" redirect="/login" />');
   writeFileSync(join(root, 'pages', 'vip.html'),
@@ -1629,6 +1632,16 @@ await test('layouts (§2): the folder wraps its pages; layout vars are in page s
   assert.ok(head.includes('<title>Home · Ada</title>'), 'page title wins the conflict');
   assert.ok(!head.includes('<title>Site</title>'), "layout title lost — the page's wins");
   assert.ok(head.includes('href="/style.css"'), "layout's stylesheet lifted");
+  // _layout.css pairs like page css — linked outermost-first, before the
+  // page's own css so page rules win ties. (Regression: it used to be
+  // silently ignored.)
+  assert.ok(head.includes('href="/_layout.css"'), "layout's co-located _layout.css linked");
+  assert.ok(head.indexOf('href="/_layout.css"') < head.indexOf('href="/index.css"'),
+    "layout css precedes the page's own css");
+  assert.equal((await fetch(`${L}/_layout.css`)).status, 200, '_layout.css served');
+  const blogHead = (await (await fetch(`${L}/blog/one`)).text()).split('</head>')[0];
+  assert.ok(blogHead.includes('href="/_layout.css"') && blogHead.includes('href="/blog/_layout.css"'),
+    'nested pages link every _layout.css on their chain');
 });
 
 await test('layouts (§2): a hydrating page still evaluates the layout\'s own import props', async () => {

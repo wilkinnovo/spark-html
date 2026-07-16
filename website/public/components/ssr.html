@@ -115,6 +115,7 @@ bun spark-ssr</pre>
 
     <h2 id="routing">Routing &amp; layouts</h2>
     <p>The filesystem is the router: <code>pages/index.html</code> → <code>/</code>, <code>pages/blog/[slug].html</code> → <code>/blog/:slug</code> — and <code>:slug</code> binds straight into queries. <code>pages/_layout.html</code> wraps every page in its folder (nested folders nest layouts); the layout is a component and <code>&lt;slot&gt;</code> is the page. A layout's <code>&lt;spark-ssr&gt;</code> vars are in scope for every page it wraps.</p>
+    <p>Stylesheets pair by filename: <code>pages/about.css</code> is linked automatically on <code>/about</code>, and a <code>pages/_layout.css</code> next to a layout is linked on every page that layout wraps — outermost layout first, the page's own css last, so a page rule wins ties with its layouts (spark-ssr ≥1.4.0).</p>
     <p>A <code>[param]</code> page whose single-row lookup comes back empty <strong>404s automatically</strong> — no code. Every error status gets a styled default page; drop <code>pages/404.html</code> (or any <code>&lt;status&gt;.html</code>) to override. Guards are declarative: <code>&lt;spark-ssr guard="session" redirect="/login" /&gt;</code>, and <code>guard="session.is_admin"</code> works because role columns ride into the session.</p>
 
     <h2 id="data">Data sources — one block, four worlds</h2>

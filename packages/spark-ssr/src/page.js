@@ -83,6 +83,21 @@ export function makePage(app) {
     const title = page.key === 'index' ? 'Spark' : page.key.split('/').pop().replace(/\[|\]/g, '');
     const cssRel = page.key + '.css';
     const hasCss = existsSync(join(app.pagesDir, cssRel));
+    // Layout css pairs exactly like page css: every folder on the page's
+    // layout chain with a `_layout.css` gets its stylesheet linked,
+    // outermost first and BEFORE the page's own css, so a page rule wins
+    // ties with its layouts. (Before this, a `_layout.css` sitting next to
+    // `_layout.html` was silently ignored — a file-pairing trap.)
+    const layoutCss = [];
+    {
+      const dirs = page.key.split('/').slice(0, -1);
+      let rel = '';
+      if (existsSync(join(app.pagesDir, '_layout.css'))) layoutCss.push('/_layout.css');
+      for (const d of dirs) {
+        rel = rel ? rel + '/' + d : d;
+        if (existsSync(join(app.pagesDir, rel, '_layout.css'))) layoutCss.push('/' + rel + '/_layout.css');
+      }
+    }
     // The importmap must precede EVERY module script in document order (a
     // later one is ignored), so the whole module story lives in <head>:
     // importmap → the page's own client scripts → mount. Page scripts are
@@ -121,6 +136,7 @@ export function makePage(app) {
       (scripts ? scripts + '\n' : '') +
       mountJs +
       devDiag +
+      layoutCss.map((href) => `<link rel="stylesheet" href="${href}">\n`).join('') +
       (hasCss ? `<link rel="stylesheet" href="/${cssRel}">\n` : '');
     // A hydrating page host carries BOTH `import` and `name` — that is the
     // runtime's flash-free hydrate contract (same as spark-prerender's
