@@ -268,6 +268,12 @@ false positive** in ssr 1.3.2 — see pitfalls.md "San-App port audit".)
   the loop's own template scope) instead of `<div import>`. (San-App
   `discover.html`/`notifs.html`/`san/[id].html` inlining comments; not yet a
   numbered `bugs.md` entry.)
+- **`{expr}` in numeric SVG attributes logs browser parse errors** — raw
+  templates pass through `innerHTML` before interpolation, and browsers
+  validate SVG lengths at parse time, so `<svg width="{size}">` logs
+  "Expected length" console errors (value still patches correctly after).
+  Cosmetic. Docs row in #known-issues; fix pattern: literal SVG attrs +
+  CSS sizing (see San-App components/wordmark.html). Found 2026-07-15.
 - **OpenAPI / typed-client generation doesn't reflect the inferred schema** —
   `/__spark/openapi.json` `components` is `{}`, inserts documented `200` not
   `201`, `client.ts` methods untyped. Experimental surface (V1-API-FREEZE
