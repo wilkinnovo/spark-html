@@ -273,6 +273,73 @@ false positive** in ssr 1.3.2 — see pitfalls.md "San-App port audit".)
   `201`, `client.ts` methods untyped. Experimental surface (V1-API-FREEZE
   buckets it experimental → may change in a 1.x minor), deprioritized. root
   `bugs.md` #6.
+- **A non-interactive page's `<script>` runs server-side as a plain
+  `AsyncFunction` body — static `import` and the ambient `useStore` both
+  break there, with no clear error.** `shouldHydrate(pd)` (page.js) decides
+  per ROUTE, not per file: `pd.analysis.interactive` is `handlers.length >
+  0 || topBinds.length > 0 || rowBinds.length > 0`, OR-merged across the
+  page AND its full layout chain (`mergeAnalyses` in parse.js) — a page
+  with zero `onclick`/`bind:`/`:checked` of its own, whose layout also has
+  none, never hydrates. Its `<script>` (concatenated with every layout's
+  `<script>` — `pageData()`'s `code = parsed.map(p => p.code).join('\n')`
+  in server.js) is instead wrapped in `new AsyncFunction('req','db','fetch',
+  'mail', code)` and run server-side (`runPageScript`, page.js). A static
+  `import {x} from 'y'` there throws `SyntaxError: Unexpected token '{'.
+  import call expects one or two arguments.` — and that throw happens at
+  the `new AsyncFunction(...)` call itself, OUTSIDE runPageScript's own
+  try/catch, so it isn't the usual soft-fail (empty props); the request
+  502/500s. `useStore` isn't passed as a param on this path either, so it's
+  a plain `ReferenceError` if referenced unguarded (`typeof useStore ===
+  'function'` is the one safe check — never throws on an undeclared
+  identifier). Two traps compound this: (1) since a layout's script is
+  glued onto EVERY page's script, a **layout script that imports something
+  or calls `useStore` silently breaks every currently-non-interactive page
+  using that layout** — a change to an unrelated page (giving it its first
+  real handler) can flip a shared layout from "fine so far" to "breaks
+  three other routes," and vice versa; (2) `namesOf()` (the regex deciding
+  which top-level names come back out of the server AsyncFunction into the
+  template's scope) only matches `^\s*(?:let|const|var)\s+NAME` — a
+  `function NAME() {}` declaration is invisible to the template on this
+  path even though it exists in the script; use `const NAME = (...) =>
+  {...}` for anything the template needs to call. Workaround: either give
+  the page one genuine handler so the whole merged bundle hydrates (a bare
+  identifier, `onclick={fn}` — the interactivity-detection regex only
+  recognizes a bare name or a single-bare-loop-var call like
+  `onclick={fn(row)}` inside `each`; `onclick={fn('literal')}` does NOT
+  count toward `handlers`, even though it works fine once the page is
+  ALREADY interactive some other way), or, if the page must stay
+  non-interactive (e.g. a plain `redirect=`/`flash=` form — hydrating it
+  loses those fields entirely, see the next bullet — CONFIRMED, not the
+  auto-synthesis guess this bullet used to make), avoid import/`useStore` in
+  that script entirely and derive any per-request signal server-side instead
+  (e.g. `req.headers['accept-language']`). Found porting San-App: a shared
+  `_layout.html` script doing `import {t} from '/i18n.js'; const lang =
+  useStore('lang');` for nav-label translation worked on every
+  already-interactive page and 500'd `/login`, `/signup`, and `/` (all
+  handler/bind-free) until each got its own workaround. Not yet a numbered
+  `bugs.md` entry.
+- **A hydrated `<form redirect="…" flash="…">` silently loses both — CONFIRMED
+  by direct test (real login submit via CDP), not the auto-synthesis guess an
+  earlier version of this bullet made.** `redirect=`/`flash=` on a form
+  posting to `/api/*` are compiled into hidden `<input type="hidden"
+  name="_redirect">`/`_flash` fields — but ONLY by the server-side SSR
+  renderer (`render.js`'s `compileList`, the `dropAttrs`/`extraKids` block
+  keyed on `tag === 'form' && (redirect|flash)`). The SEPARATE client
+  hydration compiler (`hydrate.js`'s `clientComponent`) has no matching
+  logic — it doesn't know these attributes mean anything, so the client
+  template it mounts has the raw (meaningless-to-a-browser) `redirect=`/
+  `flash=` attributes and no hidden fields. The initial SSR HTML is correct
+  either way (hidden fields present); the failure is specifically that
+  **mounting an interactive page's client component replaces that DOM with
+  the client-compiled version, dropping the fields** — verified end to end:
+  the same login form, same credentials, redirects to `/dashboard` (the
+  form's declared `redirect=`) when non-interactive, and to `/` (the
+  hard-coded no-`_redirect`-field fallback in server.js) once the page
+  gains a real handler and hydrates. There is no known workaround that
+  keeps hydration — a page using `redirect=`/`flash=` must stay
+  non-interactive (zero real `onclick`/`bind:`, and none inherited from its
+  layout chain either, per the bullet above) for the attributes to survive
+  past first paint. Not yet a numbered `bugs.md` entry.
 
 **This list IS the bug tracker now** (mirrored user-facing in the website docs'
 `#known-issues` table). The old repo-root `bugs.md` and `examples/San-App/bugs.md`
@@ -308,7 +375,13 @@ earned). Purely additive to existing inference (§7, pinned by a golden test).
 Next step = §5 item 1 (declarative rate limits, independently shippable). The
 doc's STATUS line is the live ledger.
 
-**spark-ssr CURRENT: 1.3.5** (2026-07-15): jobs run with a liveDb-wrapped handle - writes broadcast live + invalidate caches, HOOKLESS (flushLive(1): never chains further job hooks, so a job writing its own trigger table cannot loop). Found removing San-App's workarounds: notify-payout inserted notifications no open tab ever saw. **1.3.4** (same day): falsy non-boolean boolean-attr
+**spark-ssr CURRENT: 1.4.0** (2026-07-15): `_layout.css` pairs like page css —
+every `_layout.css` on a page's layout chain is linked (outermost first, page
+css last so the page wins ties). Found in the San-App redesign: layout css was
+silently ignored (shell() only paired `page.key + '.css'`), so `_layout.css`
+rules (e.g. the nav badge positioning) never applied. Pinned in test/ssr.js
+"layouts (§2)". Bench after: big 9.1k req/s, 1000-row 4.75 ms — floors held.
+Previously **1.3.5** (same day): jobs run with a liveDb-wrapped handle - writes broadcast live + invalidate caches, HOOKLESS (flushLive(1): never chains further job hooks, so a job writing its own trigger table cannot loop). Found removing San-App's workarounds: notify-payout inserted notifications no open tab ever saw. **1.3.4** (same day): falsy non-boolean boolean-attr
 omitted server-side (mirrors core BOOL_ATTRS in render.js — keep lists in
 sync); an interactive page with ZERO data sources now hydrates
 (shouldHydrate no longer gates on plan.length — was a silent dead page);
